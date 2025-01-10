@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func RestoreUser(system *actor.ActorSystem, user models.User) {
+func RestoreUser(user models.User) {
 	log.Printf("Restoring user: %s", user.UserId)
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return &actors.UserActor{
@@ -26,7 +26,7 @@ func RestoreUser(system *actor.ActorSystem, user models.User) {
 	state.AddUserPID(user.UserId, newPID)
 }
 
-func RegisterUser(system *actor.ActorSystem, user models.UserInput) (string, error) {
+func RegisterUser(user models.UserInput) (string, error) {
 	userId := uuid.New().String()
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return actors.NewUserActor(models.User{
@@ -41,7 +41,7 @@ func RegisterUser(system *actor.ActorSystem, user models.UserInput) (string, err
 	return userId, nil
 }
 
-func GetUser(system *actor.ActorSystem, userId string) (models.User, error) {
+func GetUser(userId string) (models.User, error) {
 	userPID, exists := state.GetUserPID(userId)
 	if !exists {
 		return models.User{}, &messages.UserNotFoundError{UserId: userId}

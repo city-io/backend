@@ -1,19 +1,19 @@
 package services
 
 import (
+	"cityio/internal/actors"
 	"cityio/internal/database"
 	"cityio/internal/models"
-
-	"github.com/asynkron/protoactor-go/actor"
 )
 
 var db = database.GetDb()
+var system = actors.GetSystem()
 
-func Init(system *actor.ActorSystem) {
+func Init() {
 	var users []models.User
 	db.Find(&users)
 
 	for _, user := range users {
-		RestoreUser(system, user)
+		RestoreUser(user)
 	}
 }
