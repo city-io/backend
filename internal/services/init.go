@@ -17,6 +17,10 @@ func Init() {
 		RestoreUser(user)
 	}
 
-	// var cities []models.City
+	var cities []models.City
+	db.Find(&cities)
 
+	for _, city := range cities {
+		RestoreCity(city)
+	}
 }

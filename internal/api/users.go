@@ -5,9 +5,12 @@ import (
 	"cityio/internal/services"
 
 	"encoding/json"
+	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func Register(response http.ResponseWriter, request *http.Request) {
@@ -19,7 +22,26 @@ func Register(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	_, err = services.RegisterUser(user)
+	var userId string
+	userId, err = services.RegisterUser(user)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(response).Encode(err.Error())
+		return
+	}
+
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+
+	_, err = services.CreateCity(models.City{
+		Type:       "city",
+		Owner:      userId,
+		Name:       fmt.Sprintf("%s's City", user.Username),
+		Population: 1000,
+		StartX:     r.Intn(1025),
+		StartY:     r.Intn(1025),
+		Size:       3,
+	})
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(response).Encode(err.Error())

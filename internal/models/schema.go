@@ -6,7 +6,6 @@ import (
 
 type User struct {
 	UserId    string    `json:"userId" gorm:"column:user_id;primaryKey;size:36"`
-	CityId    string    `json:"cityId" gorm:"column:city_id;size:36;unique;null"`
 	Email     string    `json:"email" gorm:"column:email;size:100;unique;not null"`
 	Username  string    `json:"username" gorm:"column:username;size:100;unique;not null"`
 	Password  string    `json:"password" gorm:"column:password;size:64;not null"`
@@ -14,7 +13,7 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
 
-	City City `json:"city" gorm:"foreignKey:CityId;references:CityId"`
+	City City `json:"city" gorm:"foreignKey:Owner;references:UserId"`
 }
 
 type MapTile struct {
