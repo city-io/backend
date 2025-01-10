@@ -15,33 +15,38 @@ type UserActor struct {
 	User models.User
 }
 
-func NewUserActor(user models.User, db *gorm.DB) *UserActor {
+func NewUserActor(db *gorm.DB) *UserActor {
 	actor := &UserActor{
-		User: models.User{
-			UserId:   user.UserId,
-			Email:    user.Email,
-			Username: user.Username,
-			Password: user.Password,
-		},
-		Db: db,
+		User: models.User{},
+		Db:   db,
 	}
-	actor.init()
 	return actor
 }
 
-func (actor *UserActor) init() {
-	result := actor.Db.Create(&actor.User)
-	if result.Error != nil {
-		log.Printf("Error creating user: %s", result.Error)
-		return
-	}
-	log.Printf("User actor with id %s has been spawned!", actor.User.UserId)
-}
-
 func (state *UserActor) Receive(ctx actor.Context) {
-	switch ctx.Message().(type) {
+	switch msg := ctx.Message().(type) {
+
+	case messages.RegisterUserMessage:
+		state.User = msg.User
+		if !msg.Restore {
+			err := state.createUser()
+			ctx.Respond(messages.RegisterUserResponseMessage{
+				Error: err,
+			})
+		}
 
 	case messages.GetUserMessage:
-		ctx.Respond(state.User)
+		ctx.Respond(messages.GetUserResponseMessage{
+			User: state.User,
+		})
 	}
+}
+
+func (state *UserActor) createUser() error {
+	result := state.Db.Create(&state.User)
+	if result.Error != nil {
+		log.Printf("Error creating user: %s", result.Error)
+		return result.Error
+	}
+	return nil
 }

@@ -66,4 +66,5 @@ func addRoutes(router *mux.Router) {
 	userRouter := router.PathPrefix("/users").Subrouter()
 
 	userRouter.HandleFunc("/register", Register).Methods("POST")
+	userRouter.HandleFunc("/login", Register).Methods("POST")
 }
