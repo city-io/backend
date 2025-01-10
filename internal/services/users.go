@@ -2,6 +2,7 @@ package services
 
 import (
 	"cityio/internal/actors"
+	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/state"
@@ -18,6 +19,7 @@ func RestoreUser(system *actor.ActorSystem, user models.User) {
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return &actors.UserActor{
 			User: user,
+			Db:   database.GetDb(),
 		}
 	})
 	newPID := system.Root.Spawn(props)
@@ -32,7 +34,7 @@ func RegisterUser(system *actor.ActorSystem, user models.UserInput) (string, err
 			Email:    user.Email,
 			Username: user.Username,
 			Password: user.Password,
-		})
+		}, database.GetDb())
 	})
 	newPID := system.Root.Spawn(props)
 	state.AddUserPID(userId, newPID)

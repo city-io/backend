@@ -11,11 +11,11 @@ import (
 )
 
 type UserActor struct {
-	db   *gorm.DB
+	Db   *gorm.DB
 	User models.User
 }
 
-func NewUserActor(user models.User) *UserActor {
+func NewUserActor(user models.User, db *gorm.DB) *UserActor {
 	actor := &UserActor{
 		User: models.User{
 			UserId:   user.UserId,
@@ -23,12 +23,18 @@ func NewUserActor(user models.User) *UserActor {
 			Username: user.Username,
 			Password: user.Password,
 		},
+		Db: db,
 	}
 	actor.init()
 	return actor
 }
 
 func (actor *UserActor) init() {
+	result := actor.Db.Create(&actor.User)
+	if result.Error != nil {
+		log.Printf("Error creating user: %s", result.Error)
+		return
+	}
 	log.Printf("User actor with id %s has been spawned!", actor.User.UserId)
 }
 
