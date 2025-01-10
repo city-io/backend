@@ -23,4 +23,11 @@ func Init() {
 	for _, city := range cities {
 		RestoreCity(city)
 	}
+
+	var mapTiles []models.MapTile
+	db.Find(&mapTiles)
+
+	// for _, mapTile := range mapTiles {
+	// 	RestoreMapTile(mapTile)
+	// }
 }
