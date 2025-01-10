@@ -77,6 +77,9 @@ func initDb() {
 
 	err = db.AutoMigrate(
 		&models.User{},
+		&models.Army{},
+		&models.MapTile{},
+		&models.City{},
 	)
 	if err != nil {
 		log.Fatal("Failed to auto-migrate:", err)
