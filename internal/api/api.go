@@ -1,13 +1,19 @@
 package api
 
 import (
+	"cityio/internal/models"
+	"cityio/internal/services"
+
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
@@ -22,6 +28,24 @@ func DecodeBody[T any](request *http.Request) (T, error) {
 	}
 
 	return obj, nil
+}
+
+func GetClaims(request *http.Request) models.UserClaims {
+	ctxClaims := request.Context().Value("claims").(jwt.MapClaims)
+	var claims models.UserClaims
+
+	if username, ok := ctxClaims["username"].(string); ok {
+		claims.Username = username
+	}
+
+	if email, ok := ctxClaims["email"].(string); ok {
+		claims.Email = email
+	}
+
+	if userId, ok := ctxClaims["userId"].(string); ok {
+		claims.UserId = userId
+	}
+	return claims
 }
 
 func Start() {
@@ -62,9 +86,51 @@ func recoverMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func authHandle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		token := request.Header.Get("Token")
+		if token == "" {
+			log.Println("No token is given")
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		claims, err := services.ValidateToken(token)
+		if err != nil {
+			log.Printf("Error parsing JWT: %s", err)
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(request.Context(), "claims", claims)
+		next.ServeHTTP(response, request.WithContext(ctx))
+	})
+}
+
+func authHandler(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		token := strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer ")
+		if token == "" {
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		claims, err := services.ValidateToken(token)
+		if err != nil {
+			log.Printf("Error parsing JWT: %s", err)
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(request.Context(), "claims", claims)
+		next.ServeHTTP(response, request.WithContext(ctx))
+	})
+}
+
 func addRoutes(router *mux.Router) {
 	userRouter := router.PathPrefix("/users").Subrouter()
 
 	userRouter.HandleFunc("/register", Register).Methods("POST")
-	userRouter.HandleFunc("/login", Register).Methods("POST")
+	userRouter.HandleFunc("/login", Login).Methods("POST")
+	userRouter.HandleFunc("/validate", authHandler(ValidateToken)).Methods("GET")
 }

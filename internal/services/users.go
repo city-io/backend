@@ -108,6 +108,27 @@ func LoginUser(user models.UserInput) (string, error) {
 	return signedToken, nil
 }
 
+func ValidateToken(tokenString string) (models.UserClaims, error) {
+	secretKey := []byte(os.Getenv("JWT_SECRET"))
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
+	if err != nil {
+		return models.UserClaims{}, err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return models.UserClaims{}, &messages.InvalidTokenError{}
+	}
+
+	return models.UserClaims{
+		Username: claims["username"].(string),
+		Email:    claims["email"].(string),
+		UserId:   claims["userId"].(string),
+	}, nil
+}
+
 func GetUser(userId string) (models.User, error) {
 	userPID, exists := state.GetUserPID(userId)
 	if !exists {

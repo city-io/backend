@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func Register(response http.ResponseWriter, request *http.Request) {
@@ -44,5 +45,30 @@ func Login(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	json.NewEncoder(response).Encode(token)
+	type LoginResponse struct {
+		Token string `json:"token"`
+	}
+
+	json.NewEncoder(response).Encode(LoginResponse{
+		Token: token,
+	})
+}
+
+func ValidateToken(response http.ResponseWriter, request *http.Request) {
+	log.Println("Received GET /users/validate")
+
+	token := strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer ")
+	if token == "" {
+		response.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	claims, err := services.ValidateToken(token)
+	if err != nil {
+		response.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(response).Encode(err.Error())
+		return
+	}
+
+	json.NewEncoder(response).Encode(claims)
 }

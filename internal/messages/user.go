@@ -36,6 +36,12 @@ func (e *InvalidPasswordError) Error() string {
 	return fmt.Sprintf("Invalid password for user: %s", e.Identifier)
 }
 
+type InvalidTokenError struct{}
+
+func (e *InvalidTokenError) Error() string {
+	return "Invalid token"
+}
+
 type UserCreationError struct {
 	UserId string
 }
