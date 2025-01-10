@@ -76,11 +76,20 @@ func initDb() {
 	}
 
 	err = db.AutoMigrate(
-		&models.Account{},
+		&models.User{},
 	)
 	if err != nil {
 		log.Fatal("Failed to auto-migrate:", err)
 	}
+
+	psqlDb, err := db.DB()
+	if err != nil {
+		panic(err)
+	}
+
+	psqlDb.SetMaxOpenConns(10)
+	psqlDb.SetMaxIdleConns(5)
+	psqlDb.SetConnMaxLifetime(0)
 }
 
 func GetDb() *gorm.DB {

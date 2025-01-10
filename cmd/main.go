@@ -1,13 +1,22 @@
 package main
 
 import (
-	"cityio/internal/database"
+	"cityio/internal/models"
+	"cityio/internal/services"
 
 	"log"
-	// "github.com/asynkron/protoactor-go/actor"
+
+	"github.com/asynkron/protoactor-go/actor"
 )
 
 func main() {
-	database.GetDb()
+	system := actor.NewActorSystem()
 	log.Println("Initiated actor system.")
+
+	services.Init(system)
+	services.RegisterUser(system, models.UserInput{
+		Email:    "test@gmail.com",
+		Username: "test",
+		Password: "test",
+	})
 }
