@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,18 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
+
+func DecodeBody[T any](request *http.Request) (T, error) {
+	var obj T
+	decoder := json.NewDecoder(request.Body)
+
+	if err := decoder.Decode(&obj); err != nil {
+		log.Printf("Error decoding request body: %s", err)
+		return obj, err
+	}
+
+	return obj, nil
+}
 
 func Start() {
 	log.Printf("Serving at 0.0.0.0:%s...", os.Getenv("API_PORT"))
