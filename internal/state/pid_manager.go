@@ -7,11 +7,13 @@ import (
 )
 
 type PIDManager struct {
-	UserPIDs map[string]*actor.PID
-	CityPIDs map[string]*actor.PID
+	UserPIDs    map[string]*actor.PID
+	CityPIDs    map[string]*actor.PID
+	MapTilePIDs map[int]map[int]*actor.PID
 
-	UserMutex sync.RWMutex
-	CityMutex sync.RWMutex
+	UserMutex    sync.RWMutex
+	CityMutex    sync.RWMutex
+	MapTileMutex sync.RWMutex
 }
 
 var _pm *PIDManager
@@ -19,8 +21,9 @@ var once sync.Once
 
 func initPM() {
 	_pm = &PIDManager{
-		UserPIDs: make(map[string]*actor.PID),
-		CityPIDs: make(map[string]*actor.PID),
+		UserPIDs:    make(map[string]*actor.PID),
+		CityPIDs:    make(map[string]*actor.PID),
+		MapTilePIDs: make(map[int]map[int]*actor.PID),
 	}
 }
 
@@ -73,4 +76,35 @@ func RemoveCityPID(cityId string) {
 	pm.CityMutex.Lock()
 	defer pm.CityMutex.Unlock()
 	delete(pm.CityPIDs, cityId)
+}
+
+// MapTiles
+func AddMapTilePID(x int, y int, pid *actor.PID) {
+	pm := getPM()
+	pm.MapTileMutex.Lock()
+	defer pm.MapTileMutex.Unlock()
+	if _, exists := pm.MapTilePIDs[x]; !exists {
+		pm.MapTilePIDs[x] = make(map[int]*actor.PID)
+	}
+	pm.MapTilePIDs[x][y] = pid
+}
+
+func GetMapTilePID(x int, y int) (*actor.PID, bool) {
+	pm := getPM()
+	pm.MapTileMutex.RLock()
+	defer pm.MapTileMutex.RUnlock()
+	if _, exists := pm.MapTilePIDs[x]; !exists {
+		return nil, false
+	}
+	pid, exists := pm.MapTilePIDs[x][y]
+	return pid, exists
+}
+
+func RemoveMapTilePID(x int, y int) {
+	pm := getPM()
+	pm.MapTileMutex.Lock()
+	defer pm.MapTileMutex.Unlock()
+	if _, exists := pm.MapTilePIDs[x]; exists {
+		delete(pm.MapTilePIDs[x], y)
+	}
 }

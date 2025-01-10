@@ -1,78 +1,74 @@
 package services
 
-// import (
-// 	"cityio/internal/actors"
-// 	"cityio/internal/database"
-// 	"cityio/internal/messages"
-// 	"cityio/internal/models"
-// 	"cityio/internal/state"
+import (
+	"cityio/internal/actors"
+	"cityio/internal/database"
+	"cityio/internal/messages"
+	"cityio/internal/models"
+	"cityio/internal/state"
 
-// 	"log"
-// 	"time"
+	"log"
+	"time"
 
-// 	"github.com/asynkron/protoactor-go/actor"
-// 	"github.com/google/uuid"
-// )
+	"github.com/asynkron/protoactor-go/actor"
+)
 
-// func RestoreMapTile(mapTile models.MapTile) {
-// 	log.Printf("Restoring map tile at: %d,%d", mapTile.X, mapTile.Y)
-// 	props := actor.PropsFromProducer(func() actor.Actor {
-// 		return actors.NewMapTileActor(database.GetDb())
-// 	})
-// 	newPID := system.Root.Spawn(props)
-// 	system.Root.Send(newPID, messages.CreateMapTileMessage{
-// 		MapTile: mapTile,
-// 		Restore: true,
-// 	})
-// 	state.AddMapTilePID(city.CityId, newPID)
-// }
+func RestoreMapTile(tile models.MapTile) {
+	log.Printf("Restoring map tile at: %d,%d", tile.X, tile.Y)
+	props := actor.PropsFromProducer(func() actor.Actor {
+		return actors.NewMapTileActor(database.GetDb())
+	})
+	newPID := system.Root.Spawn(props)
+	system.Root.Send(newPID, messages.CreateMapTileMessage{
+		Tile:    tile,
+		Restore: true,
+	})
+	state.AddMapTilePID(tile.X, tile.Y, newPID)
+}
 
-// func CreateCity(city models.City) (string, error) {
-// 	cityId := uuid.New().String()
+func CreateMapTile(tile models.MapTile) error {
+	props := actor.PropsFromProducer(func() actor.Actor {
+		return actors.NewMapTileActor(database.GetDb())
+	})
+	newPID := system.Root.Spawn(props)
+	future := system.Root.RequestFuture(newPID, messages.CreateMapTileMessage{
+		Tile:    tile,
+		Restore: false,
+	}, time.Second*2)
 
-// 	props := actor.PropsFromProducer(func() actor.Actor {
-// 		return actors.NewCityActor(database.GetDb())
-// 	})
-// 	newPID := system.Root.Spawn(props)
-// 	city.CityId = cityId
-// 	future := system.Root.RequestFuture(newPID, messages.CreateCityMessage{
-// 		City:    city,
-// 		Restore: false,
-// 	}, time.Second*2)
+	response, err := future.Result()
+	if err != nil {
+		return err
+	}
 
-// 	response, err := future.Result()
-// 	if err != nil {
-// 		return "", err
-// 	}
+	if response, ok := response.(messages.CreateMapTileResponseMessage); ok {
+		if response.Error != nil {
+			return response.Error
+		}
+	} else {
+		return &messages.InternalError{}
+	}
 
-// 	if response, ok := response.(messages.CreateCityResponseMessage); ok {
-// 		if response.Error != nil {
-// 			return "", response.Error
-// 		}
-// 	} else {
-// 		return "", &messages.InternalError{}
-// 	}
+	state.AddMapTilePID(tile.X, tile.Y, newPID)
+	return nil
+}
 
-// 	state.AddCityPID(cityId, newPID)
-// 	return cityId, nil
-// }
+func GetMapTile(x int, y int) (models.MapTile, error) {
+	tilePID, exists := state.GetMapTilePID(x, y)
+	if !exists {
+		return models.MapTile{}, &messages.MapTileNotFoundError{X: x, Y: y}
+	}
 
-// func GetCity(cityId string) (models.City, error) {
-// 	cityPID, exists := state.GetCityPID(cityId)
-// 	if !exists {
-// 		return models.City{}, &messages.CityNotFoundError{CityId: cityId}
-// 	}
+	future := system.Root.RequestFuture(tilePID, messages.GetMapTileMessage{}, time.Second*2)
+	response, err := future.Result()
+	if err != nil {
+		return models.MapTile{}, err
+	}
 
-// 	future := system.Root.RequestFuture(cityPID, messages.GetCityMessage{}, time.Second*2)
-// 	response, err := future.Result()
-// 	if err != nil {
-// 		return models.City{}, err
-// 	}
+	tile, ok := response.(models.MapTile)
+	if !ok {
+		return models.MapTile{}, &messages.MapTileNotFoundError{X: x, Y: y}
+	}
 
-// 	city, ok := response.(models.City)
-// 	if !ok {
-// 		return models.City{}, &messages.CityNotFoundError{CityId: cityId}
-// 	}
-
-// 	return city, nil
-// }
+	return tile, nil
+}

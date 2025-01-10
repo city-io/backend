@@ -27,7 +27,7 @@ func Init() {
 	var mapTiles []models.MapTile
 	db.Find(&mapTiles)
 
-	// for _, mapTile := range mapTiles {
-	// 	RestoreMapTile(mapTile)
-	// }
+	for _, mapTile := range mapTiles {
+		RestoreMapTile(mapTile)
+	}
 }

@@ -27,11 +27,3 @@ type CityNotFoundError struct {
 func (e *CityNotFoundError) Error() string {
 	return fmt.Sprintf("City not found: %s", e.CityId)
 }
-
-type CityCreationError struct {
-	CityId string
-}
-
-func (e *CityCreationError) Error() string {
-	return fmt.Sprintf("Error creating city: %s", e.CityId)
-}
