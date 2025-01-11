@@ -32,7 +32,7 @@ func RestoreUser(user models.User) error {
 	return nil
 }
 
-func RegisterUser(user models.UserInput) (string, error) {
+func RegisterUser(user models.RegisterUserRequest) (string, error) {
 	userId := uuid.New().String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -70,27 +70,25 @@ func RegisterUser(user models.UserInput) (string, error) {
 	return userId, nil
 }
 
-func LoginUser(user models.UserInput) (string, error) {
+func LoginUser(user models.LoginUserRequest) (models.LoginUserResponse, error) {
 	db := database.GetDb()
 	secretKey := []byte(os.Getenv("JWT_SECRET"))
 
 	var account models.User
-	var identifier string
-	if user.Email != "" {
-		identifier = user.Email
-		db.Find(&account, "email = ?", identifier)
-	} else {
-		identifier = user.Username
-		db.Find(&account, "username = ?", identifier)
+	err := db.Where("username = ?", user.Identifier).Or("email = ?", user.Identifier).First(&account).Error
+	if err != nil {
+		// TODO: make error message specific to login
+		return models.LoginUserResponse{}, &messages.UserNotFoundError{UserId: user.Identifier}
 	}
 
 	if account.UserId == "" {
-		return "", &messages.UserNotFoundError{UserId: user.Email}
+		// TODO: make error message specific to login
+		return models.LoginUserResponse{}, &messages.UserNotFoundError{UserId: user.Identifier}
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(user.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(account.Password), []byte(user.Password))
 	if err != nil {
-		return "", &messages.InvalidPasswordError{Identifier: identifier}
+		return models.LoginUserResponse{}, &messages.InvalidPasswordError{Identifier: user.Identifier}
 	}
 
 	claims := jwt.MapClaims{
@@ -104,10 +102,15 @@ func LoginUser(user models.UserInput) (string, error) {
 
 	signedToken, err := token.SignedString(secretKey)
 	if err != nil {
-		return "", err
+		return models.LoginUserResponse{}, err
 	}
 
-	return signedToken, nil
+	return models.LoginUserResponse{
+		Token:    signedToken,
+		UserId:   account.UserId,
+		Username: account.Username,
+		Email:    account.Email,
+	}, nil
 }
 
 func ValidateToken(tokenString string) (models.UserClaims, error) {

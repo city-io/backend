@@ -6,10 +6,15 @@ type UserClaims struct {
 	UserId   string `json:"userId"`
 }
 
-type UserInput struct {
+type RegisterUserRequest struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type LoginUserRequest struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
 }
 
 type CityInput struct {

@@ -15,7 +15,7 @@ import (
 func Register(response http.ResponseWriter, request *http.Request) {
 	log.Println("Received POST /users/register")
 
-	user, err := DecodeBody[models.UserInput](request)
+	user, err := DecodeBody[models.RegisterUserRequest](request)
 	if err != nil {
 		response.WriteHeader(http.StatusBadRequest)
 		return
@@ -48,26 +48,20 @@ func Register(response http.ResponseWriter, request *http.Request) {
 func Login(response http.ResponseWriter, request *http.Request) {
 	log.Println("Received POST /users/login")
 
-	user, err := DecodeBody[models.UserInput](request)
-	if err != nil {
+	user, err := DecodeBody[models.LoginUserRequest](request)
+	if err != nil || user.Identifier == "" || user.Password == "" {
 		response.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	token, err := services.LoginUser(user)
+	loginResponse, err := services.LoginUser(user)
 	if err != nil {
 		response.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(response).Encode(err.Error())
 		return
 	}
 
-	type LoginResponse struct {
-		Token string `json:"token"`
-	}
-
-	json.NewEncoder(response).Encode(LoginResponse{
-		Token: token,
-	})
+	json.NewEncoder(response).Encode(loginResponse)
 }
 
 func ValidateToken(response http.ResponseWriter, request *http.Request) {
