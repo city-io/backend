@@ -4,11 +4,16 @@ import (
 	"cityio/internal/models"
 
 	"fmt"
+
+	"github.com/asynkron/protoactor-go/actor"
 )
 
 type CreateMapTileMessage struct {
 	Tile    models.MapTile
 	Restore bool
+}
+type UpdateTileCityPIDMessage struct {
+	CityPID *actor.PID
 }
 type GetMapTileMessage struct{}
 
@@ -17,6 +22,7 @@ type CreateMapTileResponseMessage struct {
 }
 type GetMapTileResponseMessage struct {
 	Tile models.MapTile
+	City models.City
 }
 
 // Errors

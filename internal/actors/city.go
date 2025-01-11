@@ -11,14 +11,14 @@ import (
 )
 
 type CityActor struct {
-	Db   *gorm.DB
-	City models.City
+	Db       *gorm.DB
+	City     models.City
+	TilePIDs map[int]map[int]*actor.PID
 }
 
 func NewCityActor(db *gorm.DB) *CityActor {
 	actor := &CityActor{
-		City: models.City{},
-		Db:   db,
+		Db: db,
 	}
 	return actor
 }
@@ -28,6 +28,16 @@ func (state *CityActor) Receive(ctx actor.Context) {
 
 	case messages.CreateCityMessage:
 		state.City = msg.City
+		state.TilePIDs = msg.TilePIDs
+
+		for _, row := range state.TilePIDs {
+			for _, pid := range row {
+				ctx.Send(pid, messages.UpdateTileCityPIDMessage{
+					CityPID: ctx.Self(),
+				})
+			}
+		}
+
 		if !msg.Restore {
 			err := state.createCity()
 			ctx.Respond(messages.CreateCityResponseMessage{

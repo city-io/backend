@@ -136,15 +136,15 @@ func GetUser(userId string) (models.User, error) {
 	}
 
 	future := system.Root.RequestFuture(userPID, messages.GetUserMessage{}, time.Second*2)
-	response, err := future.Result()
+	result, err := future.Result()
 	if err != nil {
 		return models.User{}, err
 	}
 
-	user, ok := response.(models.User)
+	response, ok := result.(messages.GetUserResponseMessage)
 	if !ok {
 		return models.User{}, &messages.UserNotFoundError{UserId: userId}
 	}
 
-	return user, nil
+	return response.User, nil
 }

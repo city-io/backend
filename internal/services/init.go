@@ -4,6 +4,8 @@ import (
 	"cityio/internal/actors"
 	"cityio/internal/database"
 	"cityio/internal/models"
+
+	"log"
 )
 
 var db = database.GetDb()
@@ -16,13 +18,7 @@ func Init() {
 	for _, user := range users {
 		RestoreUser(user)
 	}
-
-	var cities []models.City
-	db.Find(&cities)
-
-	for _, city := range cities {
-		RestoreCity(city)
-	}
+	log.Printf("Spawned actors for %d users", len(users))
 
 	var mapTiles []models.MapTile
 	db.Find(&mapTiles)
@@ -30,4 +26,13 @@ func Init() {
 	for _, mapTile := range mapTiles {
 		RestoreMapTile(mapTile)
 	}
+	log.Printf("Spawned actors for %d map tiles", len(mapTiles))
+
+	var cities []models.City
+	db.Find(&cities)
+
+	for _, city := range cities {
+		RestoreCity(city)
+	}
+	log.Printf("Spawned actors for %d cities", len(cities))
 }

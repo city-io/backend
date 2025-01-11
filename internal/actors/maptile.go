@@ -5,20 +5,21 @@ import (
 	"cityio/internal/models"
 
 	"log"
+	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"gorm.io/gorm"
 )
 
 type MapTileActor struct {
-	Db   *gorm.DB
-	Tile models.MapTile
+	Db      *gorm.DB
+	Tile    models.MapTile
+	CityPID *actor.PID
 }
 
 func NewMapTileActor(db *gorm.DB) *MapTileActor {
 	actor := &MapTileActor{
-		Tile: models.MapTile{},
-		Db:   db,
+		Db: db,
 	}
 	return actor
 }
@@ -35,9 +36,22 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 			})
 		}
 
+	case messages.UpdateTileCityPIDMessage:
+		state.CityPID = msg.CityPID
+
 	case messages.GetMapTileMessage:
+		var city models.City
+		if state.CityPID != nil {
+			future := ctx.RequestFuture(state.CityPID, messages.GetCityMessage{}, time.Second*2)
+			response, err := future.Result()
+			if err != nil {
+				log.Printf("Error getting city for tile: %s", err)
+			}
+			city = response.(messages.GetCityResponseMessage).City
+		}
 		ctx.Respond(messages.GetMapTileResponseMessage{
 			Tile: state.Tile,
+			City: city,
 		})
 	}
 }

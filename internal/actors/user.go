@@ -17,8 +17,7 @@ type UserActor struct {
 
 func NewUserActor(db *gorm.DB) *UserActor {
 	actor := &UserActor{
-		User: models.User{},
-		Db:   db,
+		Db: db,
 	}
 	return actor
 }

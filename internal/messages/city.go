@@ -4,11 +4,14 @@ import (
 	"cityio/internal/models"
 
 	"fmt"
+
+	"github.com/asynkron/protoactor-go/actor"
 )
 
 type CreateCityMessage struct {
-	City    models.City
-	Restore bool
+	City     models.City
+	TilePIDs map[int]map[int]*actor.PID
+	Restore  bool
 }
 type GetCityMessage struct{}
 

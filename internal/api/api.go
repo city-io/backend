@@ -88,7 +88,7 @@ func recoverMiddleware(next http.Handler) http.Handler {
 
 func authHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		token := request.Header.Get("Token")
+		token := strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer ")
 		if token == "" {
 			log.Println("No token is given")
 			response.WriteHeader(http.StatusUnauthorized)
@@ -133,4 +133,9 @@ func addRoutes(router *mux.Router) {
 	userRouter.HandleFunc("/register", Register).Methods("POST")
 	userRouter.HandleFunc("/login", Login).Methods("POST")
 	userRouter.HandleFunc("/validate", authHandler(ValidateToken)).Methods("GET")
+
+	mapRouter := router.PathPrefix("/map").Subrouter()
+	mapRouter.Use(authHandle)
+	mapRouter.HandleFunc("/tiles", GetMapTiles).Methods("GET")
+	mapRouter.HandleFunc("/reset", ResetMap).Methods("POST")
 }

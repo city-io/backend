@@ -7,7 +7,6 @@ import (
 	"cityio/internal/models"
 	"cityio/internal/state"
 
-	"log"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -15,14 +14,27 @@ import (
 )
 
 func RestoreCity(city models.City) {
-	log.Printf("Restoring city: %s", city.CityId)
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return actors.NewCityActor(database.GetDb())
 	})
 	newPID := system.Root.Spawn(props)
+
+	tilePIDs := make(map[int]map[int]*actor.PID)
+	for i := 0; i < city.Size; i++ {
+		for j := 0; j < city.Size; j++ {
+			tilePID, exists := state.GetMapTilePID(city.StartX+i, city.StartY+j)
+			if exists {
+				if _, ok := tilePIDs[i]; !ok {
+					tilePIDs[i] = make(map[int]*actor.PID)
+				}
+				tilePIDs[i][j] = tilePID
+			}
+		}
+	}
 	system.Root.Send(newPID, messages.CreateCityMessage{
-		City:    city,
-		Restore: true,
+		City:     city,
+		TilePIDs: tilePIDs,
+		Restore:  true,
 	})
 	state.AddCityPID(city.CityId, newPID)
 }
@@ -34,10 +46,25 @@ func CreateCity(city models.City) (string, error) {
 		return actors.NewCityActor(database.GetDb())
 	})
 	newPID := system.Root.Spawn(props)
+
+	tilePIDS := make(map[int]map[int]*actor.PID)
+	for i := 0; i < city.Size; i++ {
+		for j := 0; j < city.Size; j++ {
+			tilePID, exists := state.GetMapTilePID(city.StartX+i, city.StartX+j)
+			if exists {
+				if _, ok := tilePIDS[i]; !ok {
+					tilePIDS[i] = make(map[int]*actor.PID)
+				}
+				tilePIDS[i][j] = tilePID
+			}
+		}
+	}
+
 	city.CityId = cityId
 	future := system.Root.RequestFuture(newPID, messages.CreateCityMessage{
-		City:    city,
-		Restore: false,
+		City:     city,
+		TilePIDs: tilePIDS,
+		Restore:  false,
 	}, time.Second*2)
 
 	response, err := future.Result()
@@ -64,15 +91,15 @@ func GetCity(cityId string) (models.City, error) {
 	}
 
 	future := system.Root.RequestFuture(cityPID, messages.GetCityMessage{}, time.Second*2)
-	response, err := future.Result()
+	result, err := future.Result()
 	if err != nil {
 		return models.City{}, err
 	}
 
-	city, ok := response.(models.City)
+	response, ok := result.(messages.GetCityResponseMessage)
 	if !ok {
 		return models.City{}, &messages.CityNotFoundError{CityId: cityId}
 	}
 
-	return city, nil
+	return response.City, nil
 }

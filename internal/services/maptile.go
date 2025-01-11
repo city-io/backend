@@ -7,14 +7,12 @@ import (
 	"cityio/internal/models"
 	"cityio/internal/state"
 
-	"log"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 )
 
 func RestoreMapTile(tile models.MapTile) {
-	log.Printf("Restoring map tile at: %d,%d", tile.X, tile.Y)
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return actors.NewMapTileActor(database.GetDb())
 	})
@@ -53,22 +51,26 @@ func CreateMapTile(tile models.MapTile) error {
 	return nil
 }
 
-func GetMapTile(x int, y int) (models.MapTile, error) {
+func GetMapTile(x int, y int) (models.MapTileOutput, error) {
 	tilePID, exists := state.GetMapTilePID(x, y)
 	if !exists {
-		return models.MapTile{}, &messages.MapTileNotFoundError{X: x, Y: y}
+		return models.MapTileOutput{}, &messages.MapTileNotFoundError{X: x, Y: y}
 	}
 
 	future := system.Root.RequestFuture(tilePID, messages.GetMapTileMessage{}, time.Second*2)
-	response, err := future.Result()
+	result, err := future.Result()
 	if err != nil {
-		return models.MapTile{}, err
+		return models.MapTileOutput{}, err
 	}
 
-	tile, ok := response.(models.MapTile)
+	response, ok := result.(messages.GetMapTileResponseMessage)
 	if !ok {
-		return models.MapTile{}, &messages.MapTileNotFoundError{X: x, Y: y}
+		return models.MapTileOutput{}, &messages.MapTileNotFoundError{X: x, Y: y}
 	}
 
-	return tile, nil
+	return models.MapTileOutput{
+		X:    response.Tile.X,
+		Y:    response.Tile.Y,
+		City: response.City,
+	}, nil
 }
