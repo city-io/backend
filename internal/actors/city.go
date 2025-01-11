@@ -49,6 +49,24 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.GetCityResponseMessage{
 			City: state.City,
 		})
+
+	case messages.DeleteCityMessage:
+		for _, row := range state.TilePIDs {
+			for _, pid := range row {
+				ctx.Send(pid, messages.UpdateTileCityPIDMessage{
+					CityPID: nil,
+				})
+			}
+		}
+		result := state.Db.Delete(&state.City)
+		if result.Error != nil {
+			log.Printf("Error deleting city: %s", result.Error)
+		}
+		ctx.Respond(messages.DeleteCityResponseMessage{
+			Error: result.Error,
+		})
+		log.Printf("Shutting down CityActor for city: %s", state.City.Name)
+		ctx.Stop(ctx.Self())
 	}
 }
 

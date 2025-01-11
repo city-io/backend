@@ -145,3 +145,35 @@ func GetCity(cityId string) (models.City, error) {
 
 	return response.City, nil
 }
+
+func DeleteUserCity(userId string) error {
+	db := database.GetDb()
+
+	var city models.City
+	err := db.Where("owner = ? AND type = 'city'", userId).First(&city).Error
+	if err != nil {
+		return err
+	}
+
+	cityPID, exists := state.GetCityPID(city.CityId)
+	if !exists {
+		return &messages.CityNotFoundError{CityId: city.CityId}
+	}
+
+	future := system.Root.RequestFuture(cityPID, messages.DeleteCityMessage{}, time.Second*2)
+	result, err := future.Result()
+	if err != nil {
+		return err
+	}
+
+	response, ok := result.(messages.DeleteCityResponseMessage)
+	if !ok {
+		return &messages.InternalError{}
+	}
+
+	if response.Error != nil {
+		return response.Error
+	}
+
+	return nil
+}

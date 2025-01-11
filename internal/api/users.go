@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 func Register(response http.ResponseWriter, request *http.Request) {
@@ -81,4 +83,27 @@ func ValidateToken(response http.ResponseWriter, request *http.Request) {
 	}
 
 	json.NewEncoder(response).Encode(claims)
+}
+
+func DeleteUser(response http.ResponseWriter, request *http.Request) {
+	log.Println("Received DELETE /users/delete")
+
+	vars := mux.Vars(request)
+	userId := vars["userId"]
+
+	err := services.DeleteUserCity(userId)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(response).Encode(err.Error())
+		return
+	}
+
+	err = services.DeleteUser(userId)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(response).Encode(err.Error())
+		return
+	}
+
+	response.WriteHeader(http.StatusOK)
 }

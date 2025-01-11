@@ -132,6 +132,7 @@ func addRoutes(router *mux.Router) {
 
 	userRouter.HandleFunc("/register", Register).Methods("POST")
 	userRouter.HandleFunc("/login", Login).Methods("POST")
+	userRouter.HandleFunc("/{userId}", DeleteUser).Methods("DELETE")
 	userRouter.HandleFunc("/validate", authHandler(ValidateToken)).Methods("GET")
 
 	mapRouter := router.PathPrefix("/map").Subrouter()

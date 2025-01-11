@@ -11,12 +11,18 @@ type RegisterUserMessage struct {
 	Restore bool
 }
 type GetUserMessage struct{}
+type DeleteUserMessage struct {
+	UserId string
+}
 
 type RegisterUserResponseMessage struct {
 	Error error
 }
 type GetUserResponseMessage struct {
 	User models.User
+}
+type DeleteUserResponseMessage struct {
+	Error error
 }
 
 // Errors

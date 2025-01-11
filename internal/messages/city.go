@@ -14,12 +14,18 @@ type CreateCityMessage struct {
 	Restore  bool
 }
 type GetCityMessage struct{}
+type DeleteCityMessage struct {
+	CityId string
+}
 
 type CreateCityResponseMessage struct {
 	Error error
 }
 type GetCityResponseMessage struct {
 	City models.City
+}
+type DeleteCityResponseMessage struct {
+	Error error
 }
 
 // Errors

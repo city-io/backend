@@ -153,3 +153,28 @@ func GetUser(userId string) (models.User, error) {
 
 	return response.User, nil
 }
+
+func DeleteUser(userId string) error {
+	userPID, exists := state.GetUserPID(userId)
+	if !exists {
+		return &messages.UserNotFoundError{UserId: userId}
+	}
+
+	future := system.Root.RequestFuture(userPID, messages.DeleteUserMessage{}, time.Second*2)
+	result, err := future.Result()
+	if err != nil {
+		return err
+	}
+
+	response, ok := result.(messages.DeleteUserResponseMessage)
+	if !ok {
+		return &messages.InternalError{}
+	}
+
+	if response.Error != nil {
+		return response.Error
+	}
+
+	state.RemoveUserPID(userId)
+	return nil
+}

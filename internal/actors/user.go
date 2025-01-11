@@ -38,6 +38,17 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.GetUserResponseMessage{
 			User: state.User,
 		})
+
+	case messages.DeleteUserMessage:
+		result := state.Db.Delete(&state.User)
+		if result.Error != nil {
+			log.Printf("Error deleting user: %s", result.Error)
+		}
+		ctx.Respond(messages.DeleteUserResponseMessage{
+			Error: result.Error,
+		})
+		log.Printf("Shutting down UserActor for user: %s", state.User.Username)
+		ctx.Stop(ctx.Self())
 	}
 }
 
