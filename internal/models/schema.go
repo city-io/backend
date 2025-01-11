@@ -12,8 +12,6 @@ type User struct {
 	Balance   float64   `json:"balance" gorm:"column:balance;default:2000000.0;not null;check:balance > 0"`
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
-
-	City City `json:"city" gorm:"foreignKey:Owner;references:UserId"`
 }
 
 type MapTile struct {
@@ -39,8 +37,8 @@ type City struct {
 
 type Army struct {
 	ArmyId    string    `json:"armyId" gorm:"column:army_id;primaryKey;size:36"`
-	TileX     int       `json:"tileX" gorm:"column:tile_x;not null"` // Matches MapTile.X
-	TileY     int       `json:"tileY" gorm:"column:tile_y;not null"` // Matches MapTile.Y
+	TileX     int       `json:"tileX" gorm:"column:tile_x;not null"`
+	TileY     int       `json:"tileY" gorm:"column:tile_y;not null"`
 	Owner     string    `json:"owner" gorm:"column:owner;size:36;not null"`
 	Size      int       `json:"size" gorm:"column:size;not null;check:size > 0"`
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
