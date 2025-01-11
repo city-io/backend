@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cityio/internal/constants"
 	"cityio/internal/models"
 	"cityio/internal/services"
 
@@ -37,10 +38,10 @@ func Register(response http.ResponseWriter, request *http.Request) {
 		Type:       "city",
 		Owner:      userId,
 		Name:       fmt.Sprintf("%s's City", user.Username),
-		Population: 1000,
-		StartX:     r.Intn(1025),
-		StartY:     r.Intn(1025),
-		Size:       3,
+		Population: constants.INITIAL_PLAYER_CITY_POPULATION,
+		StartX:     r.Intn(constants.MAP_SIZE - constants.CITY_SIZE),
+		StartY:     r.Intn(constants.MAP_SIZE - constants.CITY_SIZE),
+		Size:       constants.CITY_SIZE,
 	})
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)

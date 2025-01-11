@@ -32,7 +32,11 @@ func Init() {
 	db.Find(&cities)
 
 	for _, city := range cities {
-		RestoreCity(city)
+		err := RestoreCity(city)
+		if err != nil {
+			log.Printf("Failed to restore city %s: %s", city.CityId, err.Error())
+			panic(err)
+		}
 	}
 	log.Printf("Spawned actors for %d cities", len(cities))
 }

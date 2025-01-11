@@ -22,7 +22,7 @@ type CreateMapTileResponseMessage struct {
 }
 type GetMapTileResponseMessage struct {
 	Tile models.MapTile
-	City models.City
+	City *models.City
 }
 
 // Errors

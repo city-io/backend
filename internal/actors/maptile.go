@@ -40,14 +40,15 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 		state.CityPID = msg.CityPID
 
 	case messages.GetMapTileMessage:
-		var city models.City
+		var city *models.City = nil
 		if state.CityPID != nil {
 			future := ctx.RequestFuture(state.CityPID, messages.GetCityMessage{}, time.Second*2)
 			response, err := future.Result()
 			if err != nil {
 				log.Printf("Error getting city for tile: %s", err)
 			}
-			city = response.(messages.GetCityResponseMessage).City
+			cityValue := response.(messages.GetCityResponseMessage).City
+			city = &cityValue
 		}
 		ctx.Respond(messages.GetMapTileResponseMessage{
 			Tile: state.Tile,

@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func RestoreCity(city models.City) {
+func RestoreCity(city models.City) error {
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return actors.NewCityActor(database.GetDb())
 	})
@@ -28,6 +28,8 @@ func RestoreCity(city models.City) {
 					tilePIDs[i] = make(map[int]*actor.PID)
 				}
 				tilePIDs[i][j] = tilePID
+			} else {
+				return &messages.MapTileNotFoundError{X: city.StartX + i, Y: city.StartY + j}
 			}
 		}
 	}
@@ -37,6 +39,7 @@ func RestoreCity(city models.City) {
 		Restore:  true,
 	})
 	state.AddCityPID(city.CityId, newPID)
+	return nil
 }
 
 func CreateCity(city models.City) (string, error) {
@@ -56,6 +59,8 @@ func CreateCity(city models.City) (string, error) {
 					tilePIDS[i] = make(map[int]*actor.PID)
 				}
 				tilePIDS[i][j] = tilePID
+			} else {
+				return "", &messages.MapTileNotFoundError{X: city.StartX + i, Y: city.StartY + j}
 			}
 		}
 	}

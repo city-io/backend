@@ -17,8 +17,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func RestoreUser(user models.User) {
-	log.Printf("Restoring user: %s", user.UserId)
+func RestoreUser(user models.User) error {
+	log.Printf("Restoring user: %s", user.Username)
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return actors.NewUserActor(database.GetDb())
 	})
@@ -27,7 +27,9 @@ func RestoreUser(user models.User) {
 		User:    user,
 		Restore: true,
 	})
+	// TODO: add confirmation message
 	state.AddUserPID(user.UserId, newPID)
+	return nil
 }
 
 func RegisterUser(user models.UserInput) (string, error) {

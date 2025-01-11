@@ -12,7 +12,7 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 )
 
-func RestoreMapTile(tile models.MapTile) {
+func RestoreMapTile(tile models.MapTile) error {
 	props := actor.PropsFromProducer(func() actor.Actor {
 		return actors.NewMapTileActor(database.GetDb())
 	})
@@ -21,7 +21,9 @@ func RestoreMapTile(tile models.MapTile) {
 		Tile:    tile,
 		Restore: true,
 	})
+	// TODO: add confirmation message
 	state.AddMapTilePID(tile.X, tile.Y, newPID)
+	return nil
 }
 
 func CreateMapTile(tile models.MapTile) error {
