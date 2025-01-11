@@ -8,10 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func Register(response http.ResponseWriter, request *http.Request) {
@@ -31,16 +29,11 @@ func Register(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	src := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(src)
-
-	_, err = services.CreateCity(models.City{
+	_, err = services.CreateCity(models.CityInput{
 		Type:       "city",
 		Owner:      userId,
 		Name:       fmt.Sprintf("%s's City", user.Username),
 		Population: constants.INITIAL_PLAYER_CITY_POPULATION,
-		StartX:     r.Intn(constants.MAP_SIZE - constants.CITY_SIZE),
-		StartY:     r.Intn(constants.MAP_SIZE - constants.CITY_SIZE),
 		Size:       constants.CITY_SIZE,
 	})
 	if err != nil {

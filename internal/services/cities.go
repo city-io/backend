@@ -7,6 +7,8 @@ import (
 	"cityio/internal/models"
 	"cityio/internal/state"
 
+	"log"
+	"math/rand"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -42,32 +44,66 @@ func RestoreCity(city models.City) error {
 	return nil
 }
 
-func CreateCity(city models.City) (string, error) {
-	cityId := uuid.New().String()
+func CreateCity(city models.CityInput) (string, error) {
+	db := database.GetDb()
 
 	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewCityActor(database.GetDb())
+		return actors.NewCityActor(db)
 	})
 	newPID := system.Root.Spawn(props)
+
+	var tiles []models.MapTile
+	err := db.Raw(`
+		SELECT x, y, city_id
+		FROM map_tiles
+		WHERE city_id = ''
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM map_tiles t2
+			WHERE t2.x BETWEEN map_tiles.x AND map_tiles.x + 2
+			  AND t2.y BETWEEN map_tiles.y AND map_tiles.y + 2
+			  AND t2.city_id != ''
+		  )
+	`).Scan(&tiles).Error
+	// add limit to this query to spawn new users closer together
+	// 10000 adds sufficient spacing
+
+	if err != nil {
+		log.Println("Failed to fetch map empty tiles:", err)
+		return "", err
+	}
+
+	randomTile := tiles[rand.Intn(len(tiles))]
+	startX := randomTile.X
+	startY := randomTile.Y
 
 	tilePIDS := make(map[int]map[int]*actor.PID)
 	for i := 0; i < city.Size; i++ {
 		for j := 0; j < city.Size; j++ {
-			tilePID, exists := state.GetMapTilePID(city.StartX+i, city.StartX+j)
+			tilePID, exists := state.GetMapTilePID(startX+i, startX+j)
 			if exists {
 				if _, ok := tilePIDS[i]; !ok {
 					tilePIDS[i] = make(map[int]*actor.PID)
 				}
 				tilePIDS[i][j] = tilePID
 			} else {
-				return "", &messages.MapTileNotFoundError{X: city.StartX + i, Y: city.StartY + j}
+				return "", &messages.MapTileNotFoundError{X: startX + i, Y: startY + j}
 			}
 		}
 	}
 
-	city.CityId = cityId
+	cityId := uuid.New().String()
 	future := system.Root.RequestFuture(newPID, messages.CreateCityMessage{
-		City:     city,
+		City: models.City{
+			CityId:     cityId,
+			Type:       city.Type,
+			Owner:      city.Owner,
+			Name:       city.Name,
+			Population: city.Population,
+			StartX:     startX,
+			StartY:     startY,
+			Size:       city.Size,
+		},
 		TilePIDs: tilePIDS,
 		Restore:  false,
 	}, time.Second*2)
@@ -85,6 +121,7 @@ func CreateCity(city models.City) (string, error) {
 		return "", &messages.InternalError{}
 	}
 
+	log.Printf("Created new city at %d, %d", startX, startY)
 	state.AddCityPID(cityId, newPID)
 	return cityId, nil
 }
