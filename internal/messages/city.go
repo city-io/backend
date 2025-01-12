@@ -11,7 +11,11 @@ import (
 type CreateCityMessage struct {
 	City     models.City
 	TilePIDs map[int]map[int]*actor.PID
+	OwnerPID *actor.PID
 	Restore  bool
+}
+type UpdateOwnerPIDMessage struct {
+	PID *actor.PID
 }
 type GetCityMessage struct{}
 type DeleteCityMessage struct {

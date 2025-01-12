@@ -14,6 +14,7 @@ type CityActor struct {
 	Db       *gorm.DB
 	City     models.City
 	TilePIDs map[int]map[int]*actor.PID
+	OwnerPID *actor.PID
 }
 
 func NewCityActor(db *gorm.DB) *CityActor {
@@ -44,6 +45,9 @@ func (state *CityActor) Receive(ctx actor.Context) {
 				Error: err,
 			})
 		}
+
+	case messages.UpdateOwnerPIDMessage:
+		state.OwnerPID = msg.PID
 
 	case messages.GetCityMessage:
 		ctx.Respond(messages.GetCityResponseMessage{

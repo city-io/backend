@@ -55,6 +55,6 @@ func GetMapTiles(response http.ResponseWriter, request *http.Request) {
 func ResetMap(response http.ResponseWriter, request *http.Request) {
 	log.Println("Received POST /map/reset")
 
-	services.Reset()
-	response.WriteHeader(http.StatusNoContent)
+	go services.Reset()
+	response.WriteHeader(http.StatusAccepted)
 }

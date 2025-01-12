@@ -35,9 +35,16 @@ func RestoreCity(city models.City) error {
 			}
 		}
 	}
+
+	userPID, exists := state.GetUserPID(city.Owner)
+	if !exists {
+		return &messages.UserNotFoundError{UserId: city.Owner}
+	}
+
 	system.Root.Send(newPID, messages.CreateCityMessage{
 		City:     city,
 		TilePIDs: tilePIDs,
+		OwnerPID: userPID,
 		Restore:  true,
 	})
 	state.AddCityPID(city.CityId, newPID)
@@ -92,6 +99,10 @@ func CreateCity(city models.CityInput) (string, error) {
 		}
 	}
 
+	userPID, exists := state.GetUserPID(city.Owner)
+	if !exists {
+		return "", &messages.UserNotFoundError{UserId: city.Owner}
+	}
 	cityId := uuid.New().String()
 	future := system.Root.RequestFuture(newPID, messages.CreateCityMessage{
 		City: models.City{
@@ -105,6 +116,7 @@ func CreateCity(city models.CityInput) (string, error) {
 			Size:       city.Size,
 		},
 		TilePIDs: tilePIDS,
+		OwnerPID: userPID,
 		Restore:  false,
 	}, time.Second*2)
 
