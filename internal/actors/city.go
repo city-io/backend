@@ -30,6 +30,7 @@ func (state *CityActor) Receive(ctx actor.Context) {
 	case messages.CreateCityMessage:
 		state.City = msg.City
 		state.TilePIDs = msg.TilePIDs
+		state.OwnerPID = msg.OwnerPID
 
 		for _, row := range state.TilePIDs {
 			for _, pid := range row {
@@ -43,6 +44,10 @@ func (state *CityActor) Receive(ctx actor.Context) {
 			err := state.createCity()
 			ctx.Respond(messages.CreateCityResponseMessage{
 				Error: err,
+			})
+		} else {
+			ctx.Respond(messages.CreateCityResponseMessage{
+				Error: nil,
 			})
 		}
 

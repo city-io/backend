@@ -11,8 +11,9 @@ import (
 )
 
 type UserActor struct {
-	Db   *gorm.DB
-	User models.User
+	Db       *gorm.DB
+	User     models.User
+	ArmyPIDs map[string]*actor.PID
 }
 
 func NewUserActor(db *gorm.DB) *UserActor {
@@ -27,6 +28,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 
 	case messages.RegisterUserMessage:
 		state.User = msg.User
+		state.ArmyPIDs = make(map[string]*actor.PID)
 		if !msg.Restore {
 			err := state.createUser()
 			ctx.Respond(messages.RegisterUserResponseMessage{
@@ -37,6 +39,12 @@ func (state *UserActor) Receive(ctx actor.Context) {
 	case messages.GetUserMessage:
 		ctx.Respond(messages.GetUserResponseMessage{
 			User: state.User,
+		})
+
+	case messages.AddUserArmyMessage:
+		state.ArmyPIDs[msg.ArmyId] = msg.ArmyPID
+		ctx.Respond(messages.AddUserArmyResponseMessage{
+			Error: nil,
 		})
 
 	case messages.DeleteUserMessage:

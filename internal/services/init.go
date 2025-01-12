@@ -39,4 +39,16 @@ func Init() {
 		}
 	}
 	log.Printf("Spawned actors for %d cities", len(cities))
+
+	var armies []models.Army
+	db.Find(&armies)
+
+	for _, army := range armies {
+		err := RestoreArmy(army)
+		if err != nil {
+			log.Printf("Failed to restore army %s: %s", army.ArmyId, err.Error())
+			panic(err)
+		}
+	}
+	log.Printf("Spawned actors for %d armies", len(armies))
 }

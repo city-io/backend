@@ -4,6 +4,8 @@ import (
 	"cityio/internal/models"
 
 	"fmt"
+
+	"github.com/asynkron/protoactor-go/actor"
 )
 
 type RegisterUserMessage struct {
@@ -11,6 +13,10 @@ type RegisterUserMessage struct {
 	Restore bool
 }
 type GetUserMessage struct{}
+type AddUserArmyMessage struct {
+	ArmyId  string
+	ArmyPID *actor.PID
+}
 type DeleteUserMessage struct {
 	UserId string
 }
@@ -20,6 +26,9 @@ type RegisterUserResponseMessage struct {
 }
 type GetUserResponseMessage struct {
 	User models.User
+}
+type AddUserArmyResponseMessage struct {
+	Error error
 }
 type DeleteUserResponseMessage struct {
 	Error error

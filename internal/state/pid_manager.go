@@ -10,6 +10,7 @@ type PIDManager struct {
 	UserPIDs    map[string]*actor.PID
 	CityPIDs    map[string]*actor.PID
 	MapTilePIDs map[int]map[int]*actor.PID
+	ArmyPIDs    map[string]*actor.PID
 
 	UserMutex    sync.RWMutex
 	CityMutex    sync.RWMutex
@@ -24,6 +25,7 @@ func initPM() {
 		UserPIDs:    make(map[string]*actor.PID),
 		CityPIDs:    make(map[string]*actor.PID),
 		MapTilePIDs: make(map[int]map[int]*actor.PID),
+		ArmyPIDs:    make(map[string]*actor.PID),
 	}
 }
 
@@ -107,4 +109,27 @@ func RemoveMapTilePID(x int, y int) {
 	if _, exists := pm.MapTilePIDs[x]; exists {
 		delete(pm.MapTilePIDs[x], y)
 	}
+}
+
+// Armies
+func AddArmyPID(armyId string, pid *actor.PID) {
+	pm := getPM()
+	pm.UserMutex.Lock()
+	defer pm.UserMutex.Unlock()
+	pm.ArmyPIDs[armyId] = pid
+}
+
+func GetArmyPID(armyId string) (*actor.PID, bool) {
+	pm := getPM()
+	pm.UserMutex.RLock()
+	defer pm.UserMutex.RUnlock()
+	pid, exists := pm.ArmyPIDs[armyId]
+	return pid, exists
+}
+
+func RemoveArmyPID(armyId string) {
+	pm := getPM()
+	pm.UserMutex.Lock()
+	defer pm.UserMutex.Unlock()
+	delete(pm.ArmyPIDs, armyId)
 }
