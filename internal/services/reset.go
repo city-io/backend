@@ -69,12 +69,14 @@ func Reset() {
 		for y := 0; y < constants.MAP_SIZE; y++ {
 			if !occupied[x][y] {
 				size := 0
-				if r.Intn(100) < 2 {
+				if r.Intn(1000) < 5 {
+					size = 5
+				} else if r.Intn(100) < 1 {
+					size = 4
+				} else if r.Intn(100) < 5 {
 					size = 3
-				} else if r.Intn(100) < 8 {
+				} else if r.Intn(100) < 10 {
 					size = 2
-				} else if r.Intn(100) < 15 {
-					size = 1
 				}
 				if size > 0 && x+size < constants.MAP_SIZE && y+size < constants.MAP_SIZE {
 					cityId := uuid.New().String()

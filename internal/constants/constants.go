@@ -2,7 +2,7 @@ package constants
 
 const (
 	MAP_SIZE  = 1024
-	CITY_SIZE = 3
+	CITY_SIZE = 5
 
 	INITIAL_TOWN_POPULATION = 250
 

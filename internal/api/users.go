@@ -32,7 +32,7 @@ func Register(response http.ResponseWriter, request *http.Request) {
 	}
 
 	_, err = services.CreateCity(models.CityInput{
-		Type:       "city",
+		Type:       "capital",
 		Owner:      userId,
 		Name:       fmt.Sprintf("%s's City", user.Username),
 		Population: constants.INITIAL_PLAYER_CITY_POPULATION,

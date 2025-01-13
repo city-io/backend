@@ -24,7 +24,7 @@ type MapTile struct {
 
 type City struct {
 	CityId     string    `json:"cityId" gorm:"column:city_id;primaryKey;size:36"`
-	Type       string    `json:"type" gorm:"column:type;size:100;not null"` // city or town
+	Type       string    `json:"type" gorm:"column:type;size:100;not null"` // capital or town
 	Owner      string    `json:"owner" gorm:"column:owner;size:36;null"`
 	Name       string    `json:"name" gorm:"column:name;size:100;not null"`
 	Population int       `json:"population" gorm:"column:population;not null;check:population >= 0"`
