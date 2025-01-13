@@ -41,7 +41,7 @@ func Reset() {
 		cityId := uuid.New().String()
 		result := db.Create(&models.City{
 			CityId:     cityId,
-			Type:       "city",
+			Type:       "capital",
 			Owner:      user.UserId,
 			Name:       fmt.Sprintf("%s's City", user.Username),
 			Population: 1000,
