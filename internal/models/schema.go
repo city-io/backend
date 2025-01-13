@@ -33,6 +33,8 @@ type City struct {
 	Size       int       `json:"size" gorm:"column:size;not null;default:4"`
 	CreatedAt  time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt  time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+
+	Buildings []Building `json:"buildings" gorm:"foreignKey:CityId;references:CityId"`
 }
 
 type Army struct {
@@ -46,4 +48,17 @@ type Army struct {
 
 	MapTile MapTile `json:"mapTile" gorm:"foreignKey:TileX,TileY;references:X,Y"`
 	User    User    `json:"user" gorm:"foreignKey:Owner;references:UserId"`
+}
+
+type Building struct {
+	BuildingId string    `json:"buildingId" gorm:"column:building_id;primaryKey;size:36"`
+	CityId     string    `json:"cityId" gorm:"column:city_id;size:36;not null"`
+	Type       string    `json:"type" gorm:"column:type;size:100;not null"`
+	Level      int       `json:"level" gorm:"column:level;not null;default:1;check:level >= 0"`
+	X          int       `json:"x" gorm:"column:x;not null"`
+	Y          int       `json:"y" gorm:"column:y;not null"`
+	CreatedAt  time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt  time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+
+	City City `json:"city"`
 }

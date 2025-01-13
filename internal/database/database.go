@@ -80,6 +80,7 @@ func initDb() {
 		&models.Army{},
 		&models.MapTile{},
 		&models.City{},
+		&models.Building{},
 	)
 	if err != nil {
 		log.Fatal("Failed to auto-migrate:", err)

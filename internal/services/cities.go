@@ -66,6 +66,8 @@ func RestoreCity(city models.City) error {
 	}
 
 	state.AddCityPID(city.CityId, newPID)
+
+	// TODO: Create city / town center
 	return nil
 }
 

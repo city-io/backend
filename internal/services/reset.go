@@ -15,8 +15,8 @@ import (
 
 func Reset() {
 	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.MapTile{})
+	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Building{})
 	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.City{})
-	db.Where("type = ?", "town").Delete(&models.City{})
 
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
@@ -30,7 +30,7 @@ func Reset() {
 	db.Find(&users)
 
 	for _, user := range users {
-		user.Balance = 1000
+		user.Balance = constants.INITIAL_PLAYER_BALANCE
 		db.Save(&user)
 
 		src := rand.NewSource(time.Now().UnixNano())
