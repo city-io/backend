@@ -89,3 +89,25 @@ type DeleteArmyPIDMessage struct {
 type DeleteArmyPIDResponseMessage struct {
 	Error error
 }
+
+type AddBuildingPIDMessage struct {
+	BuildingId string
+	PID        *actor.PID
+}
+type AddBuildingPIDResponseMessage struct {
+	Error error
+}
+
+type GetBuildingPIDMessage struct {
+	BuildingId string
+}
+type GetBuildingPIDResponseMessage struct {
+	PID *actor.PID
+}
+
+type DeleteBuildingPIDMessage struct {
+	BuildingId string
+}
+type DeleteBuildingPIDResponseMessage struct {
+	Error error
+}

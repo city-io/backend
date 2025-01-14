@@ -1,6 +1,36 @@
 package messages
 
-import "fmt"
+import (
+	"cityio/internal/models"
+
+	"fmt"
+
+	"github.com/asynkron/protoactor-go/actor"
+)
+
+type CreateBuildingMessage struct {
+	Building models.Building
+	CityPID  *actor.PID
+	UserPID  *actor.PID
+	Restore  bool
+}
+type UpdateBuildingTilePIDMessage struct {
+	TilePID *actor.PID
+}
+
+type CreateBuildingResponseMessage struct {
+	Error error
+}
+
+type GetBuildingMessage struct{}
+type GetBuildingResponseMessage struct {
+	Building models.Building
+}
+
+type DeleteBuildingMessage struct{}
+type DeleteBuildingResponseMessage struct {
+	Error error
+}
 
 type BuildingTypeNotFoundError struct {
 	BuildingType string

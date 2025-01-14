@@ -15,9 +15,10 @@ type User struct {
 }
 
 type MapTile struct {
-	X      int    `json:"x" gorm:"column:x;primaryKey;not null"`
-	Y      int    `json:"y" gorm:"column:y;primaryKey;not null"`
-	CityId string `json:"cityId" gorm:"column:city_id;size:36;null"`
+	X          int    `json:"x" gorm:"column:x;primaryKey;not null"`
+	Y          int    `json:"y" gorm:"column:y;primaryKey;not null"`
+	CityId     string `json:"cityId" gorm:"column:city_id;size:36;null"`
+	BuildingId string `json:"buildingId" gorm:"column:building_id;size:36;null"`
 
 	Armies []Army `json:"armies" gorm:"foreignKey:TileX,TileY;references:X,Y"`
 }

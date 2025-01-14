@@ -5,15 +5,15 @@ import (
 	"cityio/internal/models"
 
 	"log"
-	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 )
 
 type MapTileActor struct {
 	BaseActor
-	Tile    models.MapTile
-	CityPID *actor.PID
+	Tile        models.MapTile
+	CityPID     *actor.PID
+	BuildingPID *actor.PID
 }
 
 func (state *MapTileActor) Receive(ctx actor.Context) {
@@ -35,20 +35,32 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 	case messages.UpdateTileCityPIDMessage:
 		state.CityPID = msg.CityPID
 
+	case messages.UpdateTileBuildingPIDMessage:
+		state.BuildingPID = msg.BuildingPID
+
 	case messages.GetMapTileMessage:
 		var city *models.City = nil
 		if state.CityPID != nil {
-			future := ctx.RequestFuture(state.CityPID, messages.GetCityMessage{}, time.Second*2)
-			response, err := future.Result()
+			response, err := Request[messages.GetCityResponseMessage](ctx, state.CityPID, messages.GetCityMessage{})
 			if err != nil {
-				log.Printf("Error getting city for tile: %s", err)
+				log.Printf("Error getting city: %s", err)
+			} else {
+				city = &response.City
 			}
-			cityValue := response.(messages.GetCityResponseMessage).City
-			city = &cityValue
+		}
+		var building *models.Building = nil
+		if state.BuildingPID != nil {
+			response, err := Request[messages.GetBuildingResponseMessage](ctx, state.BuildingPID, messages.GetBuildingMessage{})
+			if err != nil {
+				log.Printf("Error getting building: %s", err)
+			} else {
+				building = &response.Building
+			}
 		}
 		ctx.Respond(messages.GetMapTileResponseMessage{
-			Tile: state.Tile,
-			City: city,
+			Tile:     state.Tile,
+			City:     city,
+			Building: building,
 		})
 	}
 }

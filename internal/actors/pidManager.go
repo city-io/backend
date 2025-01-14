@@ -8,10 +8,11 @@ import (
 
 type PIDManagerActor struct {
 	BaseActor
-	userPIDs    map[string]*actor.PID
-	cityPIDs    map[string]*actor.PID
-	mapTilePIDs map[int]map[int]*actor.PID
-	armyPIDs    map[string]*actor.PID
+	userPIDs     map[string]*actor.PID
+	cityPIDs     map[string]*actor.PID
+	mapTilePIDs  map[int]map[int]*actor.PID
+	armyPIDs     map[string]*actor.PID
+	buildingPIDs map[string]*actor.PID
 }
 
 func (state *PIDManagerActor) Receive(ctx actor.Context) {
@@ -22,6 +23,7 @@ func (state *PIDManagerActor) Receive(ctx actor.Context) {
 		state.cityPIDs = make(map[string]*actor.PID)
 		state.mapTilePIDs = make(map[int]map[int]*actor.PID)
 		state.armyPIDs = make(map[string]*actor.PID)
+		state.buildingPIDs = make(map[string]*actor.PID)
 		ctx.Respond(messages.InitPIDManagerResponseMessage{
 			Error: nil,
 		})
@@ -94,6 +96,23 @@ func (state *PIDManagerActor) Receive(ctx actor.Context) {
 	case messages.DeleteArmyPIDMessage:
 		delete(state.armyPIDs, msg.ArmyId)
 		ctx.Respond(messages.DeleteArmyPIDResponseMessage{
+			Error: nil,
+		})
+
+	case messages.AddBuildingPIDMessage:
+		state.buildingPIDs[msg.BuildingId] = msg.PID
+		ctx.Respond(messages.AddBuildingPIDResponseMessage{
+			Error: nil,
+		})
+
+	case messages.GetBuildingPIDMessage:
+		ctx.Respond(messages.GetBuildingPIDResponseMessage{
+			PID: state.buildingPIDs[msg.BuildingId],
+		})
+
+	case messages.DeleteBuildingPIDMessage:
+		delete(state.buildingPIDs, msg.BuildingId)
+		ctx.Respond(messages.DeleteBuildingPIDResponseMessage{
 			Error: nil,
 		})
 	}

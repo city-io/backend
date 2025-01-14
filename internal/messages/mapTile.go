@@ -15,14 +15,18 @@ type CreateMapTileMessage struct {
 type UpdateTileCityPIDMessage struct {
 	CityPID *actor.PID
 }
+type UpdateTileBuildingPIDMessage struct {
+	BuildingPID *actor.PID
+}
 type GetMapTileMessage struct{}
 
 type CreateMapTileResponseMessage struct {
 	Error error
 }
 type GetMapTileResponseMessage struct {
-	Tile models.MapTile
-	City *models.City
+	Tile     models.MapTile
+	City     *models.City
+	Building *models.Building
 }
 
 // Errors
