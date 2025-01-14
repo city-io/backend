@@ -12,6 +12,12 @@ type RegisterUserMessage struct {
 	User    models.User
 	Restore bool
 }
+type UpdateUserGoldMessage struct {
+	Change int64
+}
+type UpdateUserFoodMessage struct {
+	Change int64
+}
 type GetUserMessage struct{}
 type AddUserArmyMessage struct {
 	ArmyId  string
@@ -22,6 +28,12 @@ type DeleteUserMessage struct {
 }
 
 type RegisterUserResponseMessage struct {
+	Error error
+}
+type UpdateUserGoldResponseMessage struct {
+	Error error
+}
+type UpdateUserFoodResponseMessage struct {
 	Error error
 }
 type GetUserResponseMessage struct {

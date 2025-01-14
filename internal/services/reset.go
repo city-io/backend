@@ -30,7 +30,8 @@ func Reset() {
 	db.Find(&users)
 
 	for _, user := range users {
-		user.Balance = constants.INITIAL_PLAYER_BALANCE
+		user.Gold = constants.INITIAL_PLAYER_GOLD
+		user.Food = constants.INITIAL_PLAYER_FOOD
 		db.Save(&user)
 
 		src := rand.NewSource(time.Now().UnixNano())

@@ -75,4 +75,5 @@ func Init() {
 			panic(err)
 		}
 	}
+	log.Printf("Spawned actors for %d buildings", len(buildings))
 }

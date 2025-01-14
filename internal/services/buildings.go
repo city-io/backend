@@ -24,7 +24,7 @@ func RestoreBuilding(building models.Building) error {
 	case models.BUILDING_TYPE_FARM:
 		return nil
 	case models.BUILDING_TYPE_MINE:
-		return nil
+		buildingPID, err = actors.Spawn(&actors.MineActor{})
 	default:
 		return &messages.BuildingTypeNotFoundError{
 			BuildingType: building.Type,
@@ -37,7 +37,7 @@ func RestoreBuilding(building models.Building) error {
 	}
 
 	var createBuildingResponse *messages.CreateBuildingResponseMessage
-	createBuildingResponse, err = actors.Request[messages.CreateBuildingResponseMessage](system.Root, buildingPID, &messages.CreateBuildingMessage{
+	createBuildingResponse, err = actors.Request[messages.CreateBuildingResponseMessage](system.Root, buildingPID, messages.CreateBuildingMessage{
 		Building: building,
 		Restore:  true,
 	})
@@ -51,7 +51,7 @@ func RestoreBuilding(building models.Building) error {
 	}
 
 	var addBuildingPIDResponse *messages.AddBuildingPIDResponseMessage
-	addBuildingPIDResponse, err = actors.Request[messages.AddBuildingPIDResponseMessage](system.Root, actors.GetManagerPID(), &messages.AddBuildingPIDMessage{
+	addBuildingPIDResponse, err = actors.Request[messages.AddBuildingPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddBuildingPIDMessage{
 		BuildingId: building.BuildingId,
 		PID:        buildingPID,
 	})
@@ -65,7 +65,7 @@ func RestoreBuilding(building models.Building) error {
 	}
 
 	var getMapTilePIDResponse *messages.GetMapTilePIDResponseMessage
-	getMapTilePIDResponse, err = actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), &messages.GetMapTilePIDMessage{
+	getMapTilePIDResponse, err = actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
 		X: building.X,
 		Y: building.Y,
 	})
@@ -81,11 +81,11 @@ func RestoreBuilding(building models.Building) error {
 		}
 	}
 
-	system.Root.Send(getMapTilePIDResponse.PID, &messages.UpdateTileBuildingPIDMessage{
+	system.Root.Send(getMapTilePIDResponse.PID, messages.UpdateTileBuildingPIDMessage{
 		BuildingPID: buildingPID,
 	})
 
-	system.Root.Send(buildingPID, &messages.UpdateBuildingTilePIDMessage{
+	system.Root.Send(buildingPID, messages.UpdateBuildingTilePIDMessage{
 		TilePID: getMapTilePIDResponse.PID,
 	})
 
