@@ -7,20 +7,12 @@ import (
 	"log"
 
 	"github.com/asynkron/protoactor-go/actor"
-	"gorm.io/gorm"
 )
 
 type UserActor struct {
-	Db       *gorm.DB
+	BaseActor
 	User     models.User
 	ArmyPIDs map[string]*actor.PID
-}
-
-func NewUserActor(db *gorm.DB) *UserActor {
-	actor := &UserActor{
-		Db: db,
-	}
-	return actor
 }
 
 func (state *UserActor) Receive(ctx actor.Context) {
@@ -48,7 +40,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteUserMessage:
-		result := state.Db.Delete(&state.User)
+		result := state.db.Delete(&state.User)
 		if result.Error != nil {
 			log.Printf("Error deleting user: %s", result.Error)
 		}
@@ -61,7 +53,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 }
 
 func (state *UserActor) createUser() error {
-	result := state.Db.Create(&state.User)
+	result := state.db.Create(&state.User)
 	if result.Error != nil {
 		log.Printf("Error creating user: %s", result.Error)
 		return result.Error

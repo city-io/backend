@@ -5,7 +5,6 @@ import (
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-	"cityio/internal/state"
 
 	"log"
 	"time"

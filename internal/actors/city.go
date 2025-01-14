@@ -11,7 +11,7 @@ import (
 )
 
 type CityActor struct {
-	Db       *gorm.DB
+	BaseActor
 	City     models.City
 	TilePIDs map[int]map[int]*actor.PID
 	OwnerPID *actor.PID

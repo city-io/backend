@@ -5,13 +5,11 @@ import (
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-	"cityio/internal/state"
 
 	"log"
 	"os"
 	"time"
 
-	"github.com/asynkron/protoactor-go/actor"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -19,16 +17,42 @@ import (
 
 func RestoreUser(user models.User) error {
 	log.Printf("Restoring user: %s", user.Username)
-	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewUserActor(database.GetDb())
-	})
-	newPID := system.Root.Spawn(props)
-	system.Root.Send(newPID, messages.RegisterUserMessage{
+
+	userActor := actors.UserActor{}
+	userPID, err := userActor.Spawn()
+	if err != nil {
+		log.Printf("Error spawning user actor: %s", err)
+		return err
+	}
+
+	response, err := actors.Request[messages.RegisterUserResponseMessage](system.Root, userPID, messages.RegisterUserMessage{
 		User:    user,
 		Restore: true,
 	})
-	// TODO: add confirmation message
-	state.AddUserPID(user.UserId, newPID)
+
+	if err != nil {
+		log.Printf("Error registering user: %s", err)
+		return err
+	}
+	if response.Error != nil {
+		log.Printf("Error registering user: %s", response.Error)
+		return response.Error
+	}
+
+	response, err = actors.Request[messages.RegisterUserResponseMessage](system.Root, actors.GetManagerPID(), messages.AddUserPIDMessage{
+		UserId: user.UserId,
+		PID:    userPID,
+	})
+
+	if err != nil {
+		log.Printf("Error adding user pid: %s", err)
+		return err
+	}
+	if response.Error != nil {
+		log.Printf("Error adding user pid: %s", response.Error)
+		return response.Error
+	}
+
 	return nil
 }
 
@@ -39,11 +63,10 @@ func RegisterUser(user models.RegisterUserRequest) (string, error) {
 		return "", err
 	}
 
-	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewUserActor(database.GetDb())
-	})
-	newPID := system.Root.Spawn(props)
-	future := system.Root.RequestFuture(newPID, messages.RegisterUserMessage{
+	userActor := actors.UserActor{}
+	userPID, err := userActor.Spawn()
+
+	response, err := actors.Request[messages.RegisterUserResponseMessage](system.Root, userPID, messages.RegisterUserMessage{
 		User: models.User{
 			UserId:   userId,
 			Username: user.Username,
@@ -51,22 +74,31 @@ func RegisterUser(user models.RegisterUserRequest) (string, error) {
 			Password: string(hashedPassword),
 		},
 		Restore: false,
-	}, time.Second*2)
+	})
 
-	response, err := future.Result()
 	if err != nil {
+		log.Printf("Error registering user: %s", err)
 		return "", err
 	}
-
-	if response, ok := response.(messages.RegisterUserResponseMessage); ok {
-		if response.Error != nil {
-			return "", response.Error
-		}
-	} else {
-		return "", &messages.InternalError{}
+	if response.Error != nil {
+		log.Printf("Error registering user: %s", response.Error)
+		return "", response.Error
 	}
 
-	state.AddUserPID(userId, newPID)
+	response, err = actors.Request[messages.RegisterUserResponseMessage](system.Root, actors.GetManagerPID(), messages.AddUserPIDMessage{
+		UserId: userId,
+		PID:    userPID,
+	})
+
+	if err != nil {
+		log.Printf("Error adding user pid: %s", err)
+		return "", err
+	}
+	if response.Error != nil {
+		log.Printf("Error adding user pid: %s", response.Error)
+		return "", response.Error
+	}
+
 	return userId, nil
 }
 
@@ -135,46 +167,58 @@ func ValidateToken(tokenString string) (models.UserClaims, error) {
 }
 
 func GetUser(userId string) (models.User, error) {
-	userPID, exists := state.GetUserPID(userId)
-	if !exists {
-		return models.User{}, &messages.UserNotFoundError{UserId: userId}
-	}
-
-	future := system.Root.RequestFuture(userPID, messages.GetUserMessage{}, time.Second*2)
-	result, err := future.Result()
+	response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: userId,
+	})
 	if err != nil {
 		return models.User{}, err
 	}
-
-	response, ok := result.(messages.GetUserResponseMessage)
-	if !ok {
+	if response.PID == nil {
 		return models.User{}, &messages.UserNotFoundError{UserId: userId}
 	}
 
-	return response.User, nil
+	var userResponse *messages.GetUserResponseMessage
+	userResponse, err = actors.Request[messages.GetUserResponseMessage](system.Root, response.PID, messages.GetUserMessage{})
+
+	return userResponse.User, nil
 }
 
 func DeleteUser(userId string) error {
-	userPID, exists := state.GetUserPID(userId)
-	if !exists {
+	response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: userId,
+	})
+	if err != nil {
+		log.Printf("Error getting user pid: %s", err)
+		return err
+	}
+	if response.PID == nil {
 		return &messages.UserNotFoundError{UserId: userId}
 	}
 
-	future := system.Root.RequestFuture(userPID, messages.DeleteUserMessage{}, time.Second*2)
-	result, err := future.Result()
+	var deleteResponse *messages.DeleteUserResponseMessage
+	deleteResponse, err = actors.Request[messages.DeleteUserResponseMessage](system.Root, response.PID, messages.DeleteUserMessage{})
 	if err != nil {
+		log.Printf("Error deleting user: %s", err)
 		return err
 	}
-
-	response, ok := result.(messages.DeleteUserResponseMessage)
-	if !ok {
-		return &messages.InternalError{}
+	if deleteResponse.Error != nil {
+		log.Printf("Error deleting user: %s", deleteResponse.Error)
+		return deleteResponse.Error
 	}
 
-	if response.Error != nil {
-		return response.Error
+	var removeResponse *messages.DeleteUserPIDResponseMessage
+	removeResponse, err = actors.Request[messages.DeleteUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.DeleteUserPIDMessage{
+		UserId: userId,
+	})
+
+	if err != nil {
+		log.Printf("Error removing user pid: %s", err)
+		return err
+	}
+	if removeResponse.Error != nil {
+		log.Printf("Error removing user pid: %s", removeResponse.Error)
+		return removeResponse.Error
 	}
 
-	state.RemoveUserPID(userId)
 	return nil
 }

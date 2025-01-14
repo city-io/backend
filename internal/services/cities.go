@@ -5,7 +5,6 @@ import (
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-	"cityio/internal/state"
 
 	"log"
 	"math/rand"
@@ -16,58 +15,94 @@ import (
 )
 
 func RestoreCity(city models.City) error {
-	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewCityActor(database.GetDb())
-	})
-	newPID := system.Root.Spawn(props)
+	cityActor := actors.CityActor{}
+	cityPID, err := cityActor.Spawn()
+	if err != nil {
+		log.Printf("Error spawning city actor: %s", err)
+		return err
+	}
 
 	tilePIDs := make(map[int]map[int]*actor.PID)
 	for i := 0; i < city.Size; i++ {
 		for j := 0; j < city.Size; j++ {
-			tilePID, exists := state.GetMapTilePID(city.StartX+i, city.StartY+j)
-			if exists {
-				if _, ok := tilePIDs[i]; !ok {
-					tilePIDs[i] = make(map[int]*actor.PID)
-				}
-				tilePIDs[i][j] = tilePID
-			} else {
-				return &messages.MapTileNotFoundError{X: city.StartX + i, Y: city.StartY + j}
+			response, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
+				X: city.StartX + i,
+				Y: city.StartY + j,
+			})
+			if err != nil {
+				log.Printf("Error getting map tile pid: %s", err)
+				return err
 			}
+
+			if _, ok := tilePIDs[i]; !ok {
+				tilePIDs[i] = make(map[int]*actor.PID)
+			}
+			tilePIDs[i][j] = response.PID
 		}
 	}
 
 	var userPID *actor.PID
 	if city.Owner != "" {
-		var exists bool
-		userPID, exists = state.GetUserPID(city.Owner)
-		if !exists {
-			return &messages.UserNotFoundError{UserId: city.Owner}
+		response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+			UserId: city.Owner,
+		})
+		if err != nil {
+			log.Printf("Error getting user pid: %s", err)
+			return err
 		}
+		userPID = response.PID
 	}
 
-	future := system.Root.RequestFuture(newPID, messages.CreateCityMessage{
+	createCityResponse, err := actors.Request[messages.CreateCityResponseMessage](system.Root, cityPID, messages.CreateCityMessage{
 		City:     city,
 		TilePIDs: tilePIDs,
 		OwnerPID: userPID,
 		Restore:  true,
-	}, time.Second*2)
-
-	response, err := future.Result()
+	})
 	if err != nil {
+		log.Printf("Error creating city: %s", err)
+		return err
+	}
+	if createCityResponse.Error != nil {
+		log.Printf("Error creating city: %s", createCityResponse.Error)
+		return createCityResponse.Error
+	}
+
+	addCityPIDResponse, err := actors.Request[messages.AddCityPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddCityPIDMessage{
+		CityId: city.CityId,
+		PID:    cityPID,
+	})
+	if err != nil {
+		log.Printf("Error adding city pid: %s", err)
+		return err
+	}
+	if addCityPIDResponse.Error != nil {
+		log.Printf("Error adding city pid: %s", addCityPIDResponse.Error)
+		return addCityPIDResponse.Error
+	}
+
+	var buildings []models.Building
+	err = database.GetDb().Where("city_id = ?", city.CityId).Find(&buildings).Error
+	if err != nil {
+		log.Printf("Failed to fetch buildings for city %s: %s", city.CityId, err.Error())
 		return err
 	}
 
-	if response, ok := response.(messages.CreateCityResponseMessage); ok {
-		if response.Error != nil {
-			return response.Error
+	for _, building := range buildings {
+		switch building.Type {
+		case "center":
+			continue
+		case "barracks":
+			continue
+		case "house":
+			continue
+		case "farm":
+			continue
+		case "mine":
+			continue
 		}
-	} else {
-		return &messages.InternalError{}
 	}
 
-	state.AddCityPID(city.CityId, newPID)
-
-	// TODO: Create city / town center
 	return nil
 }
 
