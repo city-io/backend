@@ -8,20 +8,12 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
-	"gorm.io/gorm"
 )
 
 type MapTileActor struct {
-	Db      *gorm.DB
+	BaseActor
 	Tile    models.MapTile
 	CityPID *actor.PID
-}
-
-func NewMapTileActor(db *gorm.DB) *MapTileActor {
-	actor := &MapTileActor{
-		Db: db,
-	}
-	return actor
 }
 
 func (state *MapTileActor) Receive(ctx actor.Context) {
@@ -33,6 +25,10 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 			err := state.createMapTile()
 			ctx.Respond(messages.CreateMapTileResponseMessage{
 				Error: err,
+			})
+		} else {
+			ctx.Respond(messages.CreateMapTileResponseMessage{
+				Error: nil,
 			})
 		}
 
@@ -58,7 +54,7 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 }
 
 func (state *MapTileActor) createMapTile() error {
-	result := state.Db.Create(&state.Tile)
+	result := state.db.Create(&state.Tile)
 	if result.Error != nil {
 		log.Printf("Error creating map tile: %s", result.Error)
 		return result.Error

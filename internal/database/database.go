@@ -7,14 +7,14 @@ import (
 	_ "github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	// "gorm.io/gorm/logger"
+	"gorm.io/gorm/logger"
 
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"sync"
-	// "time"
+	"time"
 )
 
 var db *gorm.DB
@@ -58,17 +58,17 @@ func initDb() {
 			os.Getenv("PSQL_DATABASE"))
 	}
 
-	// gormLogger := logger.New(
-	// 	log.New(os.Stdout, "\r\n", log.LstdFlags),
-	// 	logger.Config{
-	// 		SlowThreshold: time.Second,
-	// 		LogLevel:      logger.Info,
-	// 		Colorful:      true,
-	// 	},
-	// )
+	gormLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold: time.Second,
+			LogLevel:      logger.Info,
+			Colorful:      true,
+		},
+	)
 
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		// Logger: gormLogger,
+		Logger: gormLogger,
 	})
 
 	if err != nil {
@@ -91,8 +91,8 @@ func initDb() {
 		panic(err)
 	}
 
-	psqlDb.SetMaxOpenConns(10)
-	psqlDb.SetMaxIdleConns(5)
+	psqlDb.SetMaxOpenConns(50)
+	psqlDb.SetMaxIdleConns(25)
 	psqlDb.SetConnMaxLifetime(0)
 }
 

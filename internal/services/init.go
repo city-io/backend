@@ -3,6 +3,7 @@ package services
 import (
 	"cityio/internal/actors"
 	"cityio/internal/database"
+	"cityio/internal/messages"
 	"cityio/internal/models"
 
 	"log"
@@ -12,11 +13,23 @@ var db = database.GetDb()
 var system = actors.GetSystem()
 
 func Init() {
+	managerPID := actors.GetManagerPID()
+	initResponse, err := actors.Request[messages.InitPIDManagerResponseMessage](system.Root, managerPID, messages.InitPIDManagerMessage{})
+	if err != nil {
+		panic(err)
+	}
+	if initResponse.Error != nil {
+		panic(initResponse.Error)
+	}
+
 	var users []models.User
 	db.Find(&users)
 
 	for _, user := range users {
-		RestoreUser(user)
+		err := RestoreUser(user)
+		if err != nil {
+			panic(err)
+		}
 	}
 	log.Printf("Spawned actors for %d users", len(users))
 
@@ -24,7 +37,10 @@ func Init() {
 	db.Find(&mapTiles)
 
 	for _, mapTile := range mapTiles {
-		RestoreMapTile(mapTile)
+		err := RestoreMapTile(mapTile)
+		if err != nil {
+			panic(err)
+		}
 	}
 	log.Printf("Spawned actors for %d map tiles", len(mapTiles))
 
@@ -34,7 +50,6 @@ func Init() {
 	for _, city := range cities {
 		err := RestoreCity(city)
 		if err != nil {
-			log.Printf("Failed to restore city %s: %s", city.CityId, err.Error())
 			panic(err)
 		}
 	}
@@ -46,9 +61,18 @@ func Init() {
 	for _, army := range armies {
 		err := RestoreArmy(army)
 		if err != nil {
-			log.Printf("Failed to restore army %s: %s", army.ArmyId, err.Error())
 			panic(err)
 		}
 	}
 	log.Printf("Spawned actors for %d armies", len(armies))
+
+	var buildings []models.Building
+	db.Find(&buildings)
+
+	for _, building := range buildings {
+		err := RestoreBuilding(building)
+		if err != nil {
+			panic(err)
+		}
+	}
 }

@@ -7,138 +7,150 @@ import (
 	"cityio/internal/models"
 
 	"log"
-	"time"
 
-	"github.com/asynkron/protoactor-go/actor"
 	"github.com/google/uuid"
 )
 
 func RestoreArmy(army models.Army) error {
-	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewArmyActor(database.GetDb())
-	})
-	newPID := system.Root.Spawn(props)
+	armyPID, err := actors.Spawn(&actors.ArmyActor{})
+	if err != nil {
+		log.Printf("Error spawning actor for restored army: %s", err)
+		return err
+	}
 
-	userPID, exists := state.GetUserPID(army.Owner)
-	if !exists {
+	getUserPIDResponse, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: army.Owner,
+	})
+	if err != nil {
+		log.Printf("Error restoring army: %s", err)
+		return err
+	}
+	if getUserPIDResponse.PID == nil {
+		log.Printf("Error restoring army: User not found")
 		return &messages.UserNotFoundError{UserId: army.Owner}
 	}
 
-	future := system.Root.RequestFuture(newPID, messages.CreateArmyMessage{
+	createArmyResponse, err := actors.Request[messages.CreateArmyResponseMessage](system.Root, armyPID, messages.CreateArmyMessage{
 		Army:     army,
-		OwnerPID: userPID,
+		OwnerPID: getUserPIDResponse.PID,
 		Restore:  true,
-	}, time.Second*2)
-	response, err := future.Result()
+	})
 	if err != nil {
+		log.Printf("Error restoring army: %s", err)
 		return err
 	}
-
-	if response, ok := response.(messages.CreateArmyResponseMessage); ok {
-		if response.Error != nil {
-			return response.Error
-		}
-	} else {
-		return &messages.InternalError{}
+	if createArmyResponse.Error != nil {
+		log.Printf("Error restoring army: %s", createArmyResponse.Error)
+		return createArmyResponse.Error
 	}
 
-	future = system.Root.RequestFuture(userPID, messages.AddUserArmyMessage{
+	addUserArmyResponse, err := actors.Request[messages.AddUserArmyResponseMessage](system.Root, getUserPIDResponse.PID, messages.AddUserArmyMessage{
 		ArmyId:  army.ArmyId,
-		ArmyPID: newPID,
-	}, time.Second*2)
-
-	response, err = future.Result()
+		ArmyPID: armyPID,
+	})
 	if err != nil {
+		log.Printf("Error restoring army: %s", err)
 		return err
 	}
-
-	if response, ok := response.(messages.AddUserArmyResponseMessage); ok {
-		if response.Error != nil {
-			return response.Error
-		}
-	} else {
-		return &messages.InternalError{}
+	if addUserArmyResponse.Error != nil {
+		log.Printf("Error restoring army: %s", addUserArmyResponse.Error)
+		return addUserArmyResponse.Error
 	}
-
 	log.Printf("Restored army at (%d, %d)", army.TileX, army.TileY)
 
-	state.AddArmyPID(army.ArmyId, newPID)
+	addArmyPIDResponse, err := actors.Request[messages.AddArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddArmyPIDMessage{
+		ArmyId: army.ArmyId,
+		PID:    armyPID,
+	})
+	if err != nil {
+		log.Printf("Error restoring army: %s", err)
+		return err
+	}
+	if addArmyPIDResponse.Error != nil {
+		log.Printf("Error restoring army: %s", addArmyPIDResponse.Error)
+		return addArmyPIDResponse.Error
+	}
 	return nil
 }
 
 func CreateArmy(army models.Army) (string, error) {
-	db := database.GetDb()
+	armyPID, err := actors.Spawn(&actors.ArmyActor{})
 
-	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewArmyActor(db)
+	getUserPIDResponse, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: army.Owner,
 	})
-	newPID := system.Root.Spawn(props)
-
-	userPID, exists := state.GetUserPID(army.Owner)
-	if !exists {
+	if err != nil {
+		log.Printf("Error creating army: %s", err)
+		return "", err
+	}
+	if getUserPIDResponse.PID == nil {
+		log.Printf("Error creating army: User not found")
 		return "", &messages.UserNotFoundError{UserId: army.Owner}
 	}
+
 	army.ArmyId = uuid.New().String()
-	future := system.Root.RequestFuture(newPID, messages.CreateArmyMessage{
+	createArmyResponse, err := actors.Request[messages.CreateArmyResponseMessage](system.Root, armyPID, messages.CreateArmyMessage{
 		Army:     army,
-		OwnerPID: userPID,
+		OwnerPID: getUserPIDResponse.PID,
 		Restore:  false,
-	}, time.Second*2)
-
-	response, err := future.Result()
+	})
 	if err != nil {
+		log.Printf("Error creating army: %s", err)
 		return "", err
 	}
-
-	if response, ok := response.(messages.CreateArmyResponseMessage); ok {
-		if response.Error != nil {
-			return "", response.Error
-		}
-	} else {
-		return "", &messages.InternalError{}
+	if createArmyResponse.Error != nil {
+		log.Printf("Error creating army: %s", createArmyResponse.Error)
+		return "", createArmyResponse.Error
 	}
 
-	future = system.Root.RequestFuture(userPID, messages.AddUserArmyMessage{
+	addUserArmyResponse, err := actors.Request[messages.AddUserArmyResponseMessage](system.Root, getUserPIDResponse.PID, messages.AddUserArmyMessage{
 		ArmyId:  army.ArmyId,
-		ArmyPID: newPID,
-	}, time.Second*2)
-
-	response, err = future.Result()
+		ArmyPID: armyPID,
+	})
 	if err != nil {
+		log.Printf("Error creating army: %s", err)
 		return "", err
 	}
-
-	if response, ok := response.(messages.AddUserArmyResponseMessage); ok {
-		if response.Error != nil {
-			return "", response.Error
-		}
-	} else {
-		return "", &messages.InternalError{}
+	if addUserArmyResponse.Error != nil {
+		log.Printf("Error creating army: %s", addUserArmyResponse.Error)
+		return "", addUserArmyResponse.Error
 	}
+	log.Printf("Created army at (%d, %d)", army.TileX, army.TileY)
 
-	log.Printf("Created new army at (%d, %d)", army.TileX, army.TileY)
-	state.AddArmyPID(army.ArmyId, newPID)
+	addArmyPIDResponse, err := actors.Request[messages.AddArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddArmyPIDMessage{
+		ArmyId: army.ArmyId,
+		PID:    armyPID,
+	})
+	if err != nil {
+		log.Printf("Error creating army: %s", err)
+		return "", err
+	}
+	if addArmyPIDResponse.Error != nil {
+		log.Printf("Error creating army: %s", addArmyPIDResponse.Error)
+		return "", addArmyPIDResponse.Error
+	}
 	return army.ArmyId, nil
 }
 
 func GetArmy(armyId string) (models.Army, error) {
-	armyPID, exists := state.GetArmyPID(armyId)
-	if !exists {
+	getArmyPIDResponse, err := actors.Request[messages.GetArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetArmyPIDMessage{
+		ArmyId: armyId,
+	})
+	if err != nil {
+		log.Printf("Error getting army: %s", err)
+		return models.Army{}, err
+	}
+	if getArmyPIDResponse.PID == nil {
 		return models.Army{}, &messages.ArmyNotFoundError{ArmyId: armyId}
 	}
 
-	future := system.Root.RequestFuture(armyPID, messages.GetArmyMessage{}, time.Second*2)
-	result, err := future.Result()
+	getArmyResponse, err := actors.Request[messages.GetArmyResponseMessage](system.Root, getArmyPIDResponse.PID, messages.GetArmyMessage{})
 	if err != nil {
+		log.Printf("Error getting army: %s", err)
 		return models.Army{}, err
 	}
 
-	response, ok := result.(messages.GetArmyResponseMessage)
-	if !ok {
-		return models.Army{}, &messages.ArmyNotFoundError{ArmyId: armyId}
-	}
-
-	return response.Army, nil
+	return getArmyResponse.Army, nil
 }
 
 func DeleteUserArmies(userId string) error {
@@ -151,24 +163,37 @@ func DeleteUserArmies(userId string) error {
 	}
 
 	for _, army := range armies {
-		armyPID, exists := state.GetArmyPID(army.ArmyId)
-		if !exists {
+		getArmyPIDResponse, err := actors.Request[messages.GetArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetArmyPIDMessage{
+			ArmyId: army.ArmyId,
+		})
+		if err != nil {
+			log.Printf("Error deleting user armies: %s", err)
+			return err
+		}
+		if getArmyPIDResponse.PID == nil {
 			return &messages.ArmyNotFoundError{ArmyId: army.ArmyId}
 		}
 
-		future := system.Root.RequestFuture(armyPID, messages.DeleteArmyMessage{}, time.Second*2)
-		result, err := future.Result()
+		deleteArmyResponse, err := actors.Request[messages.DeleteArmyResponseMessage](system.Root, getArmyPIDResponse.PID, messages.DeleteArmyMessage{})
 		if err != nil {
+			log.Printf("Error deleting user armies: %s", err)
 			return err
 		}
-
-		response, ok := result.(messages.DeleteArmyResponseMessage)
-		if !ok {
-			return &messages.InternalError{}
+		if deleteArmyResponse.Error != nil {
+			log.Printf("Error deleting user armies: %s", deleteArmyResponse.Error)
+			return deleteArmyResponse.Error
 		}
 
-		if response.Error != nil {
-			return response.Error
+		deleteArmyPIDResponse, err := actors.Request[messages.DeleteArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.DeleteArmyPIDMessage{
+			ArmyId: army.ArmyId,
+		})
+		if err != nil {
+			log.Printf("Error deleting user armies: %s", err)
+			return err
+		}
+		if deleteArmyPIDResponse.Error != nil {
+			log.Printf("Error deleting user armies: %s", deleteArmyPIDResponse.Error)
+			return deleteArmyPIDResponse.Error
 		}
 	}
 

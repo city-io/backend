@@ -18,14 +18,13 @@ import (
 func RestoreUser(user models.User) error {
 	log.Printf("Restoring user: %s", user.Username)
 
-	userActor := actors.UserActor{}
-	userPID, err := userActor.Spawn()
+	userPID, err := actors.Spawn(&actors.UserActor{})
 	if err != nil {
 		log.Printf("Error spawning user actor: %s", err)
 		return err
 	}
 
-	response, err := actors.Request[messages.RegisterUserResponseMessage](system.Root, userPID, messages.RegisterUserMessage{
+	registerUserResponse, err := actors.Request[messages.RegisterUserResponseMessage](system.Root, userPID, messages.RegisterUserMessage{
 		User:    user,
 		Restore: true,
 	})
@@ -34,12 +33,13 @@ func RestoreUser(user models.User) error {
 		log.Printf("Error registering user: %s", err)
 		return err
 	}
-	if response.Error != nil {
-		log.Printf("Error registering user: %s", response.Error)
-		return response.Error
+	if registerUserResponse.Error != nil {
+		log.Printf("Error registering user: %s", registerUserResponse.Error)
+		return registerUserResponse.Error
 	}
 
-	response, err = actors.Request[messages.RegisterUserResponseMessage](system.Root, actors.GetManagerPID(), messages.AddUserPIDMessage{
+	var addUserPIDResponse *messages.AddUserPIDResponseMessage
+	addUserPIDResponse, err = actors.Request[messages.AddUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddUserPIDMessage{
 		UserId: user.UserId,
 		PID:    userPID,
 	})
@@ -48,9 +48,9 @@ func RestoreUser(user models.User) error {
 		log.Printf("Error adding user pid: %s", err)
 		return err
 	}
-	if response.Error != nil {
-		log.Printf("Error adding user pid: %s", response.Error)
-		return response.Error
+	if addUserPIDResponse.Error != nil {
+		log.Printf("Error adding user pid: %s", addUserPIDResponse.Error)
+		return addUserPIDResponse.Error
 	}
 
 	return nil
@@ -63,8 +63,7 @@ func RegisterUser(user models.RegisterUserRequest) (string, error) {
 		return "", err
 	}
 
-	userActor := actors.UserActor{}
-	userPID, err := userActor.Spawn()
+	userPID, err := actors.Spawn(&actors.UserActor{})
 
 	response, err := actors.Request[messages.RegisterUserResponseMessage](system.Root, userPID, messages.RegisterUserMessage{
 		User: models.User{

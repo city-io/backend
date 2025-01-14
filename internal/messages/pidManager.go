@@ -2,6 +2,11 @@ package messages
 
 import "github.com/asynkron/protoactor-go/actor"
 
+type InitPIDManagerMessage struct{}
+type InitPIDManagerResponseMessage struct {
+	Error error
+}
+
 type AddUserPIDMessage struct {
 	UserId string
 	PID    *actor.PID

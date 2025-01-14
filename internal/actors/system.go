@@ -4,6 +4,7 @@ import (
 	"cityio/internal/database"
 	"cityio/internal/messages"
 
+	"log"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ type BaseActorInterface interface {
 }
 
 type BaseActor struct {
+	actor.Actor
 	db      *gorm.DB
 	manager *actor.PID
 }
@@ -52,12 +54,11 @@ func initSystem() {
 }
 
 func initManager() {
-	var err error
-	managerActor := PIDManagerActor{}
-	managerPID, err = managerActor.Spawn()
-	if err != nil {
-		panic(err)
-	}
+	props := actor.PropsFromProducer(func() actor.Actor {
+		return &PIDManagerActor{}
+	})
+	managerPID = GetSystem().Root.Spawn(props)
+	log.Printf("Spawned manager with PID: %s", managerPID)
 }
 
 func GetSystem() *actor.ActorSystem {
@@ -70,13 +71,20 @@ func GetManagerPID() *actor.PID {
 	return managerPID
 }
 
-func (_actor *BaseActor) Spawn() (*actor.PID, error) {
-	_actor.SetDb(database.GetDb())
-	// TODO: update to use actual pid
-	_actor.SetPIDActor(GetManagerPID())
+func Spawn[T BaseActorInterface](ac T) (*actor.PID, error) {
+	return SpawnBase(func() actor.Actor {
+		return ac
+	})
+}
 
+func SpawnBase(newActor func() actor.Actor) (*actor.PID, error) {
 	props := actor.PropsFromProducer(func() actor.Actor {
-		return _actor
+		a := newActor()
+		if baseActor, ok := a.(BaseActorInterface); ok {
+			baseActor.SetDb(database.GetDb())
+			baseActor.SetPIDActor(GetManagerPID())
+		}
+		return a
 	})
 	newPID := GetSystem().Root.Spawn(props)
 	return newPID, nil
@@ -91,15 +99,14 @@ func (_actor *BaseActor) Spawn() (*actor.PID, error) {
 // }
 
 func Request[T any](ctx ActorSystem, pid *actor.PID, message interface{}) (*T, error) {
-	future := ctx.RequestFuture(pid, message, 0)
+	future := ctx.RequestFuture(pid, message, time.Second)
 	result, err := future.Result()
 	if err != nil {
 		return nil, err
 	}
 
-	if response, ok := result.(*T); ok {
-		return response, nil
+	if response, ok := result.(T); ok {
+		return &response, nil
 	}
-
 	return nil, &messages.InvalidResponseTypeError{}
 }

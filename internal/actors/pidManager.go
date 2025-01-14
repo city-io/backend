@@ -17,6 +17,15 @@ type PIDManagerActor struct {
 func (state *PIDManagerActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
+	case messages.InitPIDManagerMessage:
+		state.userPIDs = make(map[string]*actor.PID)
+		state.cityPIDs = make(map[string]*actor.PID)
+		state.mapTilePIDs = make(map[int]map[int]*actor.PID)
+		state.armyPIDs = make(map[string]*actor.PID)
+		ctx.Respond(messages.InitPIDManagerResponseMessage{
+			Error: nil,
+		})
+
 	case messages.AddUserPIDMessage:
 		state.userPIDs[msg.UserId] = msg.PID
 		ctx.Respond(messages.AddUserPIDResponseMessage{

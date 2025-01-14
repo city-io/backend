@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"github.com/asynkron/protoactor-go/actor"
-	"gorm.io/gorm"
 )
 
 type CityActor struct {
@@ -15,13 +14,6 @@ type CityActor struct {
 	City     models.City
 	TilePIDs map[int]map[int]*actor.PID
 	OwnerPID *actor.PID
-}
-
-func NewCityActor(db *gorm.DB) *CityActor {
-	actor := &CityActor{
-		Db: db,
-	}
-	return actor
 }
 
 func (state *CityActor) Receive(ctx actor.Context) {
@@ -67,10 +59,7 @@ func (state *CityActor) Receive(ctx actor.Context) {
 				})
 			}
 		}
-		result := state.Db.Delete(&state.City)
-		if result.Error != nil {
-			log.Printf("Error deleting city: %s", result.Error)
-		}
+		result := state.db.Delete(&state.City)
 		ctx.Respond(messages.DeleteCityResponseMessage{
 			Error: result.Error,
 		})
@@ -80,9 +69,8 @@ func (state *CityActor) Receive(ctx actor.Context) {
 }
 
 func (state *CityActor) createCity() error {
-	result := state.Db.Create(&state.City)
+	result := state.db.Create(&state.City)
 	if result.Error != nil {
-		log.Printf("Error creating city: %s", result.Error)
 		return result.Error
 	}
 	return nil

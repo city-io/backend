@@ -7,20 +7,12 @@ import (
 	"log"
 
 	"github.com/asynkron/protoactor-go/actor"
-	"gorm.io/gorm"
 )
 
 type ArmyActor struct {
-	Db       *gorm.DB
+	BaseActor
 	Army     models.Army
 	OwnerPID *actor.PID
-}
-
-func NewArmyActor(db *gorm.DB) *ArmyActor {
-	actor := &ArmyActor{
-		Db: db,
-	}
-	return actor
 }
 
 func (state *ArmyActor) Receive(ctx actor.Context) {
@@ -35,6 +27,10 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 			ctx.Respond(messages.CreateArmyResponseMessage{
 				Error: err,
 			})
+		} else {
+			ctx.Respond(messages.CreateArmyResponseMessage{
+				Error: nil,
+			})
 		}
 
 	case messages.GetArmyMessage:
@@ -43,7 +39,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteArmyMessage:
-		result := state.Db.Delete(&state.Army)
+		result := state.db.Delete(&state.Army)
 		if result.Error != nil {
 			log.Printf("Error deleting army: %s", result.Error)
 		}
@@ -56,7 +52,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 }
 
 func (state *ArmyActor) createArmy() error {
-	result := state.Db.Create(&state.Army)
+	result := state.db.Create(&state.Army)
 	if result.Error != nil {
 		log.Printf("Error creating army: %s", result.Error)
 		return result.Error

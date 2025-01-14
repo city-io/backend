@@ -26,6 +26,10 @@ func (state *UserActor) Receive(ctx actor.Context) {
 			ctx.Respond(messages.RegisterUserResponseMessage{
 				Error: err,
 			})
+		} else {
+			ctx.Respond(messages.RegisterUserResponseMessage{
+				Error: nil,
+			})
 		}
 
 	case messages.GetUserMessage:
@@ -41,9 +45,6 @@ func (state *UserActor) Receive(ctx actor.Context) {
 
 	case messages.DeleteUserMessage:
 		result := state.db.Delete(&state.User)
-		if result.Error != nil {
-			log.Printf("Error deleting user: %s", result.Error)
-		}
 		ctx.Respond(messages.DeleteUserResponseMessage{
 			Error: result.Error,
 		})
@@ -55,7 +56,6 @@ func (state *UserActor) Receive(ctx actor.Context) {
 func (state *UserActor) createUser() error {
 	result := state.db.Create(&state.User)
 	if result.Error != nil {
-		log.Printf("Error creating user: %s", result.Error)
 		return result.Error
 	}
 	return nil

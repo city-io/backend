@@ -2,76 +2,109 @@ package services
 
 import (
 	"cityio/internal/actors"
-	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 
-	"time"
-
-	"github.com/asynkron/protoactor-go/actor"
+	"log"
 )
 
 func RestoreMapTile(tile models.MapTile) error {
-	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewMapTileActor(database.GetDb())
-	})
-	newPID := system.Root.Spawn(props)
-	system.Root.Send(newPID, messages.CreateMapTileMessage{
+	mapTilePID, err := actors.Spawn(&actors.MapTileActor{})
+	if err != nil {
+		log.Printf("Error spawning actor while restoring map tile: %s", err)
+		return err
+	}
+
+	response, err := actors.Request[messages.CreateMapTileResponseMessage](system.Root, mapTilePID, messages.CreateMapTileMessage{
 		Tile:    tile,
 		Restore: true,
 	})
-	// TODO: add confirmation message
-	state.AddMapTilePID(tile.X, tile.Y, newPID)
+	if err != nil {
+		log.Printf("Error restoring map tile: %s", err)
+		return err
+	}
+	if response.Error != nil {
+		log.Printf("Error restoring map tile: %s", response.Error)
+		return response.Error
+	}
+
+	addMapTilePIDResponse, err := actors.Request[messages.AddMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddMapTilePIDMessage{
+		X:   tile.X,
+		Y:   tile.Y,
+		PID: mapTilePID,
+	})
+	if err != nil {
+		log.Printf("Error restoring map tile: %s", err)
+		return err
+	}
+	if addMapTilePIDResponse.Error != nil {
+		log.Printf("Error restoring map tile: %s", addMapTilePIDResponse.Error)
+		return addMapTilePIDResponse.Error
+	}
+
 	return nil
 }
 
 func CreateMapTile(tile models.MapTile) error {
-	props := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewMapTileActor(database.GetDb())
-	})
-	newPID := system.Root.Spawn(props)
-	future := system.Root.RequestFuture(newPID, messages.CreateMapTileMessage{
-		Tile:    tile,
-		Restore: false,
-	}, time.Second*2)
-
-	response, err := future.Result()
+	mapTilePID, err := actors.Spawn(&actors.MapTileActor{})
 	if err != nil {
+		log.Printf("Error restoring map tile: %s", err)
 		return err
 	}
 
-	if response, ok := response.(messages.CreateMapTileResponseMessage); ok {
-		if response.Error != nil {
-			return response.Error
-		}
-	} else {
-		return &messages.InternalError{}
+	response, err := actors.Request[messages.CreateMapTileResponseMessage](system.Root, mapTilePID, messages.CreateMapTileMessage{
+		Tile:    tile,
+		Restore: true,
+	})
+	if err != nil {
+		log.Printf("Error restoring map tile: %s", err)
+		return err
+	}
+	if response.Error != nil {
+		log.Printf("Error restoring map tile: %s", response.Error)
+		return response.Error
 	}
 
-	state.AddMapTilePID(tile.X, tile.Y, newPID)
+	addMapTilePIDResponse, err := actors.Request[messages.AddMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddMapTilePIDMessage{
+		X:   tile.X,
+		Y:   tile.Y,
+		PID: mapTilePID,
+	})
+	if err != nil {
+		log.Printf("Error restoring map tile: %s", err)
+		return err
+	}
+	if addMapTilePIDResponse.Error != nil {
+		log.Printf("Error restoring map tile: %s", addMapTilePIDResponse.Error)
+		return addMapTilePIDResponse.Error
+	}
+
 	return nil
 }
 
 func GetMapTile(x int, y int) (models.MapTileOutput, error) {
-	tilePID, exists := state.GetMapTilePID(x, y)
-	if !exists {
+	getMapTilePIDResponse, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
+		X: x,
+		Y: y,
+	})
+	if err != nil {
+		log.Printf("Error getting map tile: %s", err)
+		return models.MapTileOutput{}, err
+	}
+	if getMapTilePIDResponse.PID == nil {
+		log.Printf("Error getting map tile: %s", &messages.MapTileNotFoundError{X: x, Y: y})
 		return models.MapTileOutput{}, &messages.MapTileNotFoundError{X: x, Y: y}
 	}
 
-	future := system.Root.RequestFuture(tilePID, messages.GetMapTileMessage{}, time.Second*2)
-	result, err := future.Result()
+	getMapTileResponse, err := actors.Request[messages.GetMapTileResponseMessage](system.Root, getMapTilePIDResponse.PID, messages.GetMapTileMessage{})
 	if err != nil {
+		log.Printf("Error getting map tile: %s", err)
 		return models.MapTileOutput{}, err
 	}
 
-	response, ok := result.(messages.GetMapTileResponseMessage)
-	if !ok {
-		return models.MapTileOutput{}, &messages.MapTileNotFoundError{X: x, Y: y}
-	}
-
 	return models.MapTileOutput{
-		X:    response.Tile.X,
-		Y:    response.Tile.Y,
-		City: response.City,
+		X:    getMapTileResponse.Tile.X,
+		Y:    getMapTileResponse.Tile.Y,
+		City: getMapTileResponse.City,
 	}, nil
 }
