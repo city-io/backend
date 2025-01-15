@@ -17,6 +17,9 @@ type CreateCityMessage struct {
 type UpdateOwnerPIDMessage struct {
 	PID *actor.PID
 }
+type UpdateCityPopulationMessage struct {
+	Change int64
+}
 type GetCityMessage struct{}
 type DeleteCityMessage struct {
 	CityId string
@@ -25,6 +28,10 @@ type DeleteCityMessage struct {
 type CreateCityResponseMessage struct {
 	Error error
 }
+type UpdateCityPopulationResponseMessage struct {
+	Error error
+}
+
 type GetCityResponseMessage struct {
 	City models.City
 }

@@ -62,6 +62,7 @@ func (state *BuildingActor) getCityPID() *actor.PID {
 func (state *BuildingActor) getUserPID() *actor.PID {
 	cityPID := state.getCityPID()
 	if cityPID == nil {
+		log.Println("City PID is nil")
 		return nil
 	}
 
@@ -80,6 +81,7 @@ func (state *BuildingActor) getUserPID() *actor.PID {
 			return nil
 		}
 		state.UserPID = getUserPIDResponse.PID
+		state.OwnerId = getCityResponse.City.Owner
 	}
 	return state.UserPID
 }

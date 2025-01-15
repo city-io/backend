@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 
@@ -31,18 +32,26 @@ func Register(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	_, err = services.CreateCity(models.CityInput{
-		Type:       "capital",
-		Owner:      userId,
-		Name:       fmt.Sprintf("%s's City", user.Username),
-		Population: constants.INITIAL_PLAYER_CITY_POPULATION,
-		Size:       constants.CITY_SIZE,
+	var city *models.City
+	city, err = services.CreateCity(models.CityInput{
+		Type:  "capital",
+		Owner: userId,
+		Name:  fmt.Sprintf("%s's City", user.Username),
+		Size:  constants.CITY_SIZE,
 	})
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(response).Encode(err.Error())
 		return
 	}
+
+	_, err = services.CreateBuilding(models.Building{
+		CityId: city.CityId,
+		Type:   constants.BUILDING_TYPE_CITY_CENTER,
+		Level:  1,
+		X:      city.StartX + int(math.Floor(constants.CITY_SIZE/2)),
+		Y:      city.StartY + int(math.Floor(constants.CITY_SIZE/2)),
+	})
 
 	response.WriteHeader(http.StatusOK)
 }

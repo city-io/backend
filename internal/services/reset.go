@@ -6,6 +6,7 @@ import (
 
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"time"
 
@@ -14,9 +15,14 @@ import (
 )
 
 func Reset() {
+	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Army{})
+	log.Println("Deleted armies")
 	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.MapTile{})
+	log.Println("Deleted map tiles")
 	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Building{})
+	log.Println("Deleted buildings")
 	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.City{})
+	log.Println("Deleted cities")
 
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
@@ -45,7 +51,7 @@ func Reset() {
 			Type:       "capital",
 			Owner:      user.UserId,
 			Name:       fmt.Sprintf("%s's City", user.Username),
-			Population: 1000,
+			Population: constants.INITIAL_PLAYER_CITY_POPULATION,
 			StartX:     startX,
 			StartY:     startY,
 			Size:       constants.CITY_SIZE,
@@ -57,6 +63,15 @@ func Reset() {
 			log.Printf("Created city %s for user %s", cityId, user.Username)
 		}
 
+		result = db.Create(&models.Building{
+			BuildingId: uuid.New().String(),
+			CityId:     cityId,
+			Type:       "city_center",
+			Level:      1,
+			X:          startX + int(math.Floor(float64(constants.CITY_SIZE)/2)),
+			Y:          startY + int(math.Floor(float64(constants.CITY_SIZE)/2)),
+		})
+
 		for i := 0; i < constants.CITY_SIZE; i++ {
 			for j := 0; j < constants.CITY_SIZE; j++ {
 				occupied[startX+i][startY+j] = true
@@ -65,6 +80,7 @@ func Reset() {
 	}
 
 	cities := make([]models.City, 0)
+	buildings := make([]models.Building, 0)
 	mapTiles := make([]models.MapTile, 0)
 	for x := 0; x < constants.MAP_SIZE; x++ {
 		for y := 0; y < constants.MAP_SIZE; y++ {
@@ -82,14 +98,23 @@ func Reset() {
 				if size > 0 && x+size < constants.MAP_SIZE && y+size < constants.MAP_SIZE {
 					cityId := uuid.New().String()
 					cities = append(cities, models.City{
+						CityId:        cityId,
+						Type:          "town",
+						Owner:         "",
+						Name:          fmt.Sprintf("Town %s", cityId),
+						Population:    constants.INITIAL_TOWN_POPULATION,
+						PopulationCap: constants.INITIAL_TOWN_POPULATION,
+						StartX:        x,
+						StartY:        y,
+						Size:          size,
+					})
+					buildings = append(buildings, models.Building{
+						BuildingId: uuid.New().String(),
 						CityId:     cityId,
-						Type:       "town",
-						Owner:      "",
-						Name:       fmt.Sprintf("Town %s", cityId),
-						Population: constants.INITIAL_TOWN_POPULATION * size,
-						StartX:     x,
-						StartY:     y,
-						Size:       size,
+						Type:       "city_center",
+						Level:      1,
+						X:          x + int(math.Floor(float64(size)/2)),
+						Y:          y + int(math.Floor(float64(size)/2)),
 					})
 					occupied[x][y] = true
 					for i := 0; i < size-1; i++ {
@@ -118,7 +143,18 @@ func Reset() {
 		}
 	}
 
-	tileBatchSize := 20000
+	buildingBatchSize := 5000
+	for i := 0; i < len(buildings); i += buildingBatchSize {
+		end := i + buildingBatchSize
+		if end > len(buildings) {
+			end = len(buildings)
+		}
+		if result := db.Create(buildings[i:end]); result.Error != nil {
+			log.Printf("Error creating buildings: %s", result.Error)
+		}
+	}
+
+	tileBatchSize := 15000
 	for i := 0; i < len(mapTiles); i += tileBatchSize {
 		end := i + tileBatchSize
 		if end > len(mapTiles) {

@@ -2,6 +2,7 @@ package services
 
 import (
 	"cityio/internal/actors"
+	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
@@ -82,7 +83,7 @@ func RestoreCity(city models.City) error {
 	return nil
 }
 
-func CreateCity(city models.CityInput) (string, error) {
+func CreateCity(city models.CityInput) (*models.City, error) {
 	db := database.GetDb()
 
 	cityPID, err := actors.Spawn(&actors.CityActor{})
@@ -105,7 +106,7 @@ func CreateCity(city models.CityInput) (string, error) {
 
 	if err != nil {
 		log.Println("Failed to fetch map empty tiles:", err)
-		return "", err
+		return &models.City{}, err
 	}
 
 	randomTile := tiles[rand.Intn(len(tiles))]
@@ -121,7 +122,7 @@ func CreateCity(city models.CityInput) (string, error) {
 			})
 			if err != nil {
 				log.Printf("Error getting map tile pid: %s", err)
-				return "", err
+				return &models.City{}, err
 			}
 			if _, ok := tilePIDS[i]; !ok {
 				tilePIDS[i] = make(map[int]*actor.PID)
@@ -135,38 +136,41 @@ func CreateCity(city models.CityInput) (string, error) {
 	})
 	if err != nil {
 		log.Printf("Error getting user pid: %s", err)
-		return "", err
+		return &models.City{}, err
 	}
 	if response.PID == nil {
-		return "", &messages.UserNotFoundError{
+		return &models.City{}, &messages.UserNotFoundError{
 			UserId: city.Owner,
 		}
 	}
 
 	cityId := uuid.New().String()
+	newCity := models.City{
+		CityId:        cityId,
+		Type:          city.Type,
+		Owner:         city.Owner,
+		Name:          city.Name,
+		Population:    constants.INITIAL_PLAYER_CITY_POPULATION,
+		PopulationCap: constants.INITIAL_PLAYER_CITY_POPULATION,
+		StartX:        startX,
+		StartY:        startY,
+		Size:          city.Size,
+	}
+
 	var createCityResponse *messages.CreateCityResponseMessage
 	createCityResponse, err = actors.Request[messages.CreateCityResponseMessage](system.Root, cityPID, messages.CreateCityMessage{
-		City: models.City{
-			CityId:     cityId,
-			Type:       city.Type,
-			Owner:      city.Owner,
-			Name:       city.Name,
-			Population: city.Population,
-			StartX:     startX,
-			StartY:     startY,
-			Size:       city.Size,
-		},
+		City:     newCity,
 		TilePIDs: tilePIDS,
 		OwnerPID: response.PID,
 		Restore:  false,
 	})
 	if err != nil {
 		log.Printf("Error creating city: %s", err)
-		return "", err
+		return &models.City{}, err
 	}
 	if createCityResponse.Error != nil {
 		log.Printf("Error creating city: %s", createCityResponse.Error)
-		return "", createCityResponse.Error
+		return &models.City{}, createCityResponse.Error
 	}
 
 	log.Printf("Created new city at (%d, %d)", startX, startY)
@@ -177,14 +181,14 @@ func CreateCity(city models.CityInput) (string, error) {
 	})
 	if err != nil {
 		log.Printf("Error adding city pid: %s", err)
-		return "", err
+		return &models.City{}, err
 	}
 	if addCityPIDResponse.Error != nil {
 		log.Printf("Error adding city pid: %s", addCityPIDResponse.Error)
-		return "", addCityPIDResponse.Error
+		return &models.City{}, addCityPIDResponse.Error
 	}
 
-	return cityId, nil
+	return &newCity, nil
 }
 
 func GetCity(cityId string) (models.City, error) {

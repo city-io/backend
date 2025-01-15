@@ -21,8 +21,6 @@ func (state *MineActor) Receive(ctx actor.Context) {
 
 	case messages.CreateBuildingMessage:
 		state.Building = msg.Building
-		state.CityPID = msg.CityPID
-		state.UserPID = msg.UserPID
 
 		if !msg.Restore {
 			err := state.createMine()
@@ -37,8 +35,13 @@ func (state *MineActor) Receive(ctx actor.Context) {
 		state.startPeriodicOperation(ctx)
 
 	case messages.PeriodicOperationMessage:
+		userPID := state.getUserPID()
+		if userPID == nil {
+			// not owned by a player
+			return
+		}
 		// TODO: set constant amount based on level
-		response, err := Request[messages.UpdateUserGoldResponseMessage](ctx, state.getUserPID(), messages.UpdateUserGoldMessage{
+		response, err := Request[messages.UpdateUserGoldResponseMessage](ctx, userPID, messages.UpdateUserGoldMessage{
 			Change: 1,
 		})
 		if err != nil {

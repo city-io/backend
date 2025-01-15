@@ -10,8 +10,6 @@ import (
 
 type CreateBuildingMessage struct {
 	Building models.Building
-	CityPID  *actor.PID
-	UserPID  *actor.PID
 	Restore  bool
 }
 type UpdateBuildingTilePIDMessage struct {

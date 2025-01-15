@@ -25,16 +25,17 @@ type MapTile struct {
 }
 
 type City struct {
-	CityId     string    `json:"cityId" gorm:"column:city_id;primaryKey;size:36"`
-	Type       string    `json:"type" gorm:"column:type;size:100;not null"` // capital or town
-	Owner      string    `json:"owner" gorm:"column:owner;size:36;null"`
-	Name       string    `json:"name" gorm:"column:name;size:100;not null"`
-	Population int       `json:"population" gorm:"column:population;not null;check:population >= 0"`
-	StartX     int       `json:"startX" gorm:"column:start_x;not null"`
-	StartY     int       `json:"startY" gorm:"column:start_y;not null"`
-	Size       int       `json:"size" gorm:"column:size;not null;default:4"`
-	CreatedAt  time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt  time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+	CityId        string    `json:"cityId" gorm:"column:city_id;primaryKey;size:36"`
+	Type          string    `json:"type" gorm:"column:type;size:100;not null"` // capital or town
+	Owner         string    `json:"owner" gorm:"column:owner;size:36;null"`
+	Name          string    `json:"name" gorm:"column:name;size:100;not null"`
+	Population    int64     `json:"population" gorm:"column:population;not null;default:0;check:population >= 0"`
+	PopulationCap int64     `json:"populationCap" gorm:"column:population_cap;not null;default:0;check:population_cap >= 0"`
+	StartX        int       `json:"startX" gorm:"column:start_x;not null"`
+	StartY        int       `json:"startY" gorm:"column:start_y;not null"`
+	Size          int       `json:"size" gorm:"column:size;not null"`
+	CreatedAt     time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt     time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
 
 	Buildings []Building `json:"buildings" gorm:"foreignKey:CityId;references:CityId"`
 }

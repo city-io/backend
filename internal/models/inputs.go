@@ -18,9 +18,8 @@ type LoginUserRequest struct {
 }
 
 type CityInput struct {
-	Type       string `json:"type"`
-	Owner      string `json:"owner"`
-	Name       string `json:"name"`
-	Population int    `json:"population"`
-	Size       int    `json:"size"`
+	Type  string `json:"type"`
+	Owner string `json:"owner"`
+	Name  string `json:"name"`
+	Size  int    `json:"size"`
 }

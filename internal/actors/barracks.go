@@ -17,8 +17,6 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 
 	case messages.CreateBuildingMessage:
 		state.Building = msg.Building
-		state.CityPID = msg.CityPID
-		state.UserPID = msg.UserPID
 
 		if !msg.Restore {
 			err := state.createBarracks()

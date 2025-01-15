@@ -33,14 +33,14 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		}
 
 	case messages.UpdateUserGoldMessage:
-		log.Printf("Changing user gold by: %d", msg.Change)
+		log.Printf("Changing %s's gold by: %d", state.User.Username, msg.Change)
 		state.User.Gold += msg.Change
 		ctx.Respond(messages.UpdateUserGoldResponseMessage{
 			Error: nil,
 		})
 
 	case messages.UpdateUserFoodMessage:
-		log.Printf("Changing user food by: %d", msg.Change)
+		log.Printf("Changing %s's food by: %d", state.User.Username, msg.Change)
 		state.User.Food += msg.Change
 		ctx.Respond(messages.UpdateUserFoodResponseMessage{
 			Error: nil,

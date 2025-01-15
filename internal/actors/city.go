@@ -46,6 +46,12 @@ func (state *CityActor) Receive(ctx actor.Context) {
 	case messages.UpdateOwnerPIDMessage:
 		state.OwnerPID = msg.PID
 
+	case messages.UpdateCityPopulationMessage:
+		state.City.PopulationCap += msg.Change
+		ctx.Respond(messages.UpdateCityPopulationResponseMessage{
+			Error: nil,
+		})
+
 	case messages.GetCityMessage:
 		ctx.Respond(messages.GetCityResponseMessage{
 			City: state.City,
