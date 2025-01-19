@@ -96,14 +96,14 @@ func (state *CityActor) Receive(ctx actor.Context) {
 }
 
 func (state *CityActor) startPeriodicOperation(ctx actor.Context) {
-	// sleep for a random duration up to 10 seconds to attempt
-	// creating an even distribution of database writing
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	time.Sleep(time.Duration(rnd.Intn(10)) * time.Second)
-
-	state.ticker = time.NewTicker(constants.CITY_BACKUP_FREQUENCY * time.Second)
-
 	go func() {
+		// sleep for a random duration up to 10 seconds to attempt
+		// creating an even distribution of database writing
+		rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+		time.Sleep(time.Duration(rnd.Intn(10)) * time.Second)
+
+		state.ticker = time.NewTicker(constants.CITY_BACKUP_FREQUENCY * time.Second)
+
 		for {
 			select {
 			case <-state.ticker.C:
