@@ -29,7 +29,6 @@ func (state *BuildingActor) getBuilding(ctx actor.Context) {
 }
 
 func (state *BuildingActor) createBuilding(ctx actor.Context) {
-	state.Building = ctx.Message().(messages.CreateBuildingMessage).Building
 	ctx.Send(state.database, messages.CreateBuildingMessage{
 		Building: state.Building,
 	})
@@ -56,7 +55,7 @@ func (state *BuildingActor) getCityPID() *actor.PID {
 			return
 		}
 		if response.PID == nil {
-			log.Printf("City pid is nil")
+			log.Printf("City PID is nil")
 		} else {
 			state.CityPID = response.PID
 		}

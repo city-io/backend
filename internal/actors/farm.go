@@ -21,6 +21,7 @@ func (state *FarmActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.CreateBuildingMessage:
+		state.Building = msg.Building
 		if !msg.Restore {
 			state.createBuilding(ctx)
 			ctx.Send(state.database, messages.CreateBuildingMessage{

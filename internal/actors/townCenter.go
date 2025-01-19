@@ -21,6 +21,7 @@ func (state *TownCenterActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.CreateBuildingMessage:
+		state.Building = msg.Building
 		if !msg.Restore {
 			ctx.Send(state.database, messages.CreateBuildingMessage{
 				Building: state.Building,

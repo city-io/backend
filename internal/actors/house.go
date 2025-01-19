@@ -17,6 +17,7 @@ func (state *HouseActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.CreateBuildingMessage:
+		state.Building = msg.Building
 		if !msg.Restore {
 			state.createBuilding(ctx)
 
