@@ -29,6 +29,7 @@ func (state *BuildingActor) getBuilding(ctx actor.Context) {
 }
 
 func (state *BuildingActor) createBuilding(ctx actor.Context) {
+	state.Building = ctx.Message().(messages.CreateBuildingMessage).Building
 	ctx.Send(state.database, messages.CreateBuildingMessage{
 		Building: state.Building,
 	})

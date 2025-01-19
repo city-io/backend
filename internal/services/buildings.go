@@ -23,9 +23,9 @@ func RestoreBuilding(building models.Building) error {
 	case constants.BUILDING_TYPE_BARRACKS:
 		buildingPID, err = actors.Spawn(&actors.BarracksActor{})
 	case constants.BUILDING_TYPE_HOUSE:
-		return nil
+		buildingPID, err = actors.Spawn(&actors.HouseActor{})
 	case constants.BUILDING_TYPE_FARM:
-		return nil
+		buildingPID, err = actors.Spawn(&actors.FarmActor{})
 	case constants.BUILDING_TYPE_MINE:
 		buildingPID, err = actors.Spawn(&actors.MineActor{})
 	default:

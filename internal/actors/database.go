@@ -37,10 +37,6 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		}
 	case *messages.UpdateUserMessage:
 		state.userBuffer = append(state.userBuffer, msg.User)
-		// result := state.db.Save(&msg.User)
-		// if result.Error != nil {
-		// 	log.Printf("Error updating user in db: %s", result.Error)
-		// }
 	case messages.DeleteUserMessage:
 		result := state.db.Delete(&models.User{}, msg.UserId)
 		if result.Error != nil {
@@ -65,10 +61,6 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		}
 	case *messages.UpdateCityMessage:
 		state.cityBuffer = append(state.cityBuffer, msg.City)
-		// result := state.db.Save(&msg.City)
-		// if result.Error != nil {
-		// 	log.Printf("Error updating city in db: %s", result.Error)
-		// }
 
 	case messages.CreateBuildingMessage:
 		result := state.db.Create(&msg.Building)

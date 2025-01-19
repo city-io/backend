@@ -10,18 +10,19 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 )
 
-type MineActor struct {
+type FarmActor struct {
 	BuildingActor
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
 
-func (state *MineActor) Receive(ctx actor.Context) {
+func (state *FarmActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.CreateBuildingMessage:
 		if !msg.Restore {
+			state.createBuilding(ctx)
 			ctx.Send(state.database, messages.CreateBuildingMessage{
 				Building: state.Building,
 			})
@@ -59,7 +60,7 @@ func (state *MineActor) Receive(ctx actor.Context) {
 	}
 }
 
-func (state *MineActor) startPeriodicOperation(ctx actor.Context) {
+func (state *FarmActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.BUILDING_PRODUCTION_FREQUENCY * time.Second)
 
 	go func() {
@@ -75,7 +76,7 @@ func (state *MineActor) startPeriodicOperation(ctx actor.Context) {
 	}()
 }
 
-func (state *MineActor) stopPeriodicOperation() {
+func (state *FarmActor) stopPeriodicOperation() {
 	close(state.stopTickerCh)
 	state.ticker = nil
 }
