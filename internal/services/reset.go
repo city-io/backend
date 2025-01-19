@@ -14,15 +14,41 @@ import (
 	"gorm.io/gorm"
 )
 
+func resetTable(db *gorm.DB, model interface{}) error {
+	tableName := db.Migrator().CurrentDatabase()
+	if err := db.Migrator().DropTable(model); err != nil {
+		return fmt.Errorf("failed to drop table %s: %w", tableName, err)
+	}
+	if err := db.AutoMigrate(model); err != nil {
+		return fmt.Errorf("failed to recreate table %s: %w", tableName, err)
+	}
+	return nil
+}
+
 func Reset() {
-	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Army{})
-	log.Println("Deleted armies")
-	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.MapTile{})
-	log.Println("Deleted map tiles")
-	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Building{})
-	log.Println("Deleted buildings")
-	db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.City{})
-	log.Println("Deleted cities")
+	err := resetTable(db, &models.Army{})
+	if err != nil {
+		log.Fatalf("Error resetting Army table: %v", err)
+	}
+	log.Println("Reset Army table")
+
+	err = resetTable(db, &models.MapTile{})
+	if err != nil {
+		log.Fatalf("Error resetting MapTile table: %v", err)
+	}
+	log.Println("Reset MapTile table")
+
+	err = resetTable(db, &models.Building{})
+	if err != nil {
+		log.Fatalf("Error resetting Building table: %v", err)
+	}
+	log.Println("Reset Building table")
+
+	err = resetTable(db, &models.City{})
+	if err != nil {
+		log.Fatalf("Error resetting City table: %v", err)
+	}
+	log.Println("Reset City table")
 
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
@@ -47,14 +73,15 @@ func Reset() {
 		startY := r.Intn(constants.MAP_SIZE - constants.CITY_SIZE)
 		cityId := uuid.New().String()
 		result := db.Create(&models.City{
-			CityId:     cityId,
-			Type:       "capital",
-			Owner:      user.UserId,
-			Name:       fmt.Sprintf("%s's City", user.Username),
-			Population: constants.INITIAL_PLAYER_CITY_POPULATION,
-			StartX:     startX,
-			StartY:     startY,
-			Size:       constants.CITY_SIZE,
+			CityId:        cityId,
+			Type:          "capital",
+			Owner:         user.UserId,
+			Name:          fmt.Sprintf("%s's City", user.Username),
+			Population:    constants.INITIAL_PLAYER_CITY_POPULATION,
+			PopulationCap: constants.GetBuildingPopulation(constants.BUILDING_TYPE_CITY_CENTER, 1),
+			StartX:        startX,
+			StartY:        startY,
+			Size:          constants.CITY_SIZE,
 		})
 		if result.Error != nil {
 			log.Printf("Error creating city: %s", result.Error)
@@ -103,7 +130,7 @@ func Reset() {
 						Owner:         "",
 						Name:          fmt.Sprintf("Town %s", cityId),
 						Population:    constants.INITIAL_TOWN_POPULATION,
-						PopulationCap: constants.INITIAL_TOWN_POPULATION,
+						PopulationCap: constants.GetBuildingPopulation(constants.BUILDING_TYPE_TOWN_CENTER, 1),
 						StartX:        x,
 						StartY:        y,
 						Size:          size,
@@ -111,7 +138,7 @@ func Reset() {
 					buildings = append(buildings, models.Building{
 						BuildingId: uuid.New().String(),
 						CityId:     cityId,
-						Type:       "city_center",
+						Type:       "town_center",
 						Level:      1,
 						X:          x + int(math.Floor(float64(size)/2)),
 						Y:          y + int(math.Floor(float64(size)/2)),
@@ -132,6 +159,18 @@ func Reset() {
 		}
 	}
 
+	tileBatchSize := 15000
+	for i := 0; i < len(mapTiles); i += tileBatchSize {
+		end := i + tileBatchSize
+		if end > len(mapTiles) {
+			end = len(mapTiles)
+		}
+		if result := db.Create(mapTiles[i:end]); result.Error != nil {
+			log.Printf("Error creating map tiles: %s", result.Error)
+		}
+	}
+	log.Printf("Created %d map tiles", len(mapTiles))
+
 	cityBatchSize := 5000
 	for i := 0; i < len(cities); i += cityBatchSize {
 		end := i + cityBatchSize
@@ -142,6 +181,7 @@ func Reset() {
 			log.Printf("Error creating cities: %s", result.Error)
 		}
 	}
+	log.Printf("Created %d cities", len(cities))
 
 	buildingBatchSize := 5000
 	for i := 0; i < len(buildings); i += buildingBatchSize {
@@ -153,15 +193,5 @@ func Reset() {
 			log.Printf("Error creating buildings: %s", result.Error)
 		}
 	}
-
-	tileBatchSize := 15000
-	for i := 0; i < len(mapTiles); i += tileBatchSize {
-		end := i + tileBatchSize
-		if end > len(mapTiles) {
-			end = len(mapTiles)
-		}
-		if result := db.Create(mapTiles[i:end]); result.Error != nil {
-			log.Printf("Error creating map tiles: %s", result.Error)
-		}
-	}
+	log.Printf("Created %d buildings", len(buildings))
 }

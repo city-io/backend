@@ -10,21 +10,21 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 )
 
-type CityCenterActor struct {
+type TownCenterActor struct {
 	BuildingActor
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
 
-func (state *CityCenterActor) Receive(ctx actor.Context) {
+func (state *TownCenterActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.CreateBuildingMessage:
 		state.Building = msg.Building
 
 		if !msg.Restore {
-			err := state.createCityCenter()
+			err := state.createTownCenter()
 			if err != nil {
 				ctx.Respond(messages.CreateBuildingResponseMessage{
 					Error: err,
@@ -33,17 +33,17 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 			}
 
 			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getUserPID(), messages.UpdateCityPopulationCapMessage{
-				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
+				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_TOWN_CENTER, state.Building.Level),
 			})
 			if err != nil {
-				log.Printf("Error updating city population cap: %s", err)
+				log.Printf("Error updating town population cap: %s", err)
 				ctx.Respond(messages.CreateBuildingResponseMessage{
 					Error: err,
 				})
 				return
 			}
 			if response.Error != nil {
-				log.Printf("Error updating city population cap: %s", response.Error)
+				log.Printf("Error updating town population cap: %s", response.Error)
 				ctx.Respond(messages.CreateBuildingResponseMessage{
 					Error: response.Error,
 				})
@@ -63,7 +63,7 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 			return
 		}
 		updateGoldResponse, err := Request[messages.UpdateUserGoldResponseMessage](ctx, userPID, messages.UpdateUserGoldMessage{
-			Change: constants.GetBuildingProduction(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
+			Change: constants.GetBuildingProduction(constants.BUILDING_TYPE_TOWN_CENTER, state.Building.Level),
 		})
 		if err != nil {
 			log.Printf("Error updating user gold: %s", err)
@@ -74,7 +74,7 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 
 		var updateFoodResponse *messages.UpdateUserFoodResponseMessage
 		updateFoodResponse, err = Request[messages.UpdateUserFoodResponseMessage](ctx, userPID, messages.UpdateUserFoodMessage{
-			Change: constants.GetBuildingProduction(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
+			Change: constants.GetBuildingProduction(constants.BUILDING_TYPE_TOWN_CENTER, state.Building.Level),
 		})
 		if err != nil {
 			log.Printf("Error updating user gold: %s", err)
@@ -95,16 +95,16 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 	}
 }
 
-func (state *CityCenterActor) createCityCenter() error {
+func (state *TownCenterActor) createTownCenter() error {
 	result := state.db.Create(&state.Building)
 	if result.Error != nil {
-		log.Printf("Error creating city center: %s", result.Error)
+		log.Printf("Error creating town center: %s", result.Error)
 		return result.Error
 	}
 	return nil
 }
 
-func (state *CityCenterActor) startPeriodicOperation(ctx actor.Context) {
+func (state *TownCenterActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(3 * time.Second)
 
 	go func() {
@@ -120,7 +120,7 @@ func (state *CityCenterActor) startPeriodicOperation(ctx actor.Context) {
 	}()
 }
 
-func (state *CityCenterActor) stopPeriodicOperation() {
+func (state *TownCenterActor) stopPeriodicOperation() {
 	close(state.stopTickerCh)
 	state.ticker = nil
 }

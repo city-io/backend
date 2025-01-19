@@ -29,8 +29,8 @@ type City struct {
 	Type          string    `json:"type" gorm:"column:type;size:100;not null"` // capital or town
 	Owner         string    `json:"owner" gorm:"column:owner;size:36;null"`
 	Name          string    `json:"name" gorm:"column:name;size:100;not null"`
-	Population    int64     `json:"population" gorm:"column:population;not null;default:0;check:population >= 0"`
-	PopulationCap int64     `json:"populationCap" gorm:"column:population_cap;not null;default:0;check:population_cap >= 0"`
+	Population    float64   `json:"population" gorm:"column:population;not null;default:0;check:population >= 0"`
+	PopulationCap float64   `json:"populationCap" gorm:"column:population_cap;not null;default:0;check:population_cap >= 0"`
 	StartX        int       `json:"startX" gorm:"column:start_x;not null"`
 	StartY        int       `json:"startY" gorm:"column:start_y;not null"`
 	Size          int       `json:"size" gorm:"column:size;not null"`

@@ -17,10 +17,10 @@ var buildingProduction = map[string][]int64{
 	BUILDING_TYPE_MINE:        {30, 60, 90, 120, 150, 180, 210, 240, 270, 300},
 }
 
-var buildingPopulation = map[string][]int64{
-	BUILDING_TYPE_CITY_CENTER: {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
-	BUILDING_TYPE_TOWN_CENTER: {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
-	BUILDING_TYPE_HOUSE:       {50, 100, 150, 200, 250, 300, 350, 400, 450, 500},
+var buildingPopulation = map[string][]float64{
+	BUILDING_TYPE_CITY_CENTER: {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000},
+	BUILDING_TYPE_TOWN_CENTER: {1000, 200, 300, 400, 500, 600, 700, 800, 900, 10000},
+	BUILDING_TYPE_HOUSE:       {250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500},
 }
 
 var buildingCosts = map[string][]int64{
@@ -36,7 +36,7 @@ func GetBuildingProduction(buildingType string, level int) int64 {
 	return buildingProduction[buildingType][level]
 }
 
-func GetBuildingPopulation(buildingType string, level int) int64 {
+func GetBuildingPopulation(buildingType string, level int) float64 {
 	return buildingPopulation[buildingType][level]
 }
 
