@@ -191,5 +191,5 @@ func Reset() {
 	}
 	log.Printf("Created %d buildings", len(buildings))
 
-	log.Println("Reset complete!")
+	log.Println("Reset complete!\n")
 }
