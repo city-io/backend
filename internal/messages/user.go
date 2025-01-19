@@ -12,6 +12,9 @@ type RegisterUserMessage struct {
 	User    models.User
 	Restore bool
 }
+type UpdateUserMessage struct {
+	User models.User
+}
 type UpdateUserGoldMessage struct {
 	Change int64
 }

@@ -30,25 +30,21 @@ func Reset() {
 	if err != nil {
 		log.Fatalf("Error resetting Army table: %v", err)
 	}
-	log.Println("Reset Army table")
 
 	err = resetTable(db, &models.MapTile{})
 	if err != nil {
 		log.Fatalf("Error resetting MapTile table: %v", err)
 	}
-	log.Println("Reset MapTile table")
 
 	err = resetTable(db, &models.Building{})
 	if err != nil {
 		log.Fatalf("Error resetting Building table: %v", err)
 	}
-	log.Println("Reset Building table")
 
 	err = resetTable(db, &models.City{})
 	if err != nil {
 		log.Fatalf("Error resetting City table: %v", err)
 	}
-	log.Println("Reset City table")
 
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
@@ -194,4 +190,6 @@ func Reset() {
 		}
 	}
 	log.Printf("Created %d buildings", len(buildings))
+
+	log.Println("Reset complete!")
 }

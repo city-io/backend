@@ -28,15 +28,20 @@ func (state *BuildingActor) getBuilding(ctx actor.Context) {
 	})
 }
 
-func (state *BuildingActor) deleteBuilding(ctx actor.Context) {
-	result := state.db.Delete(&state.Building)
-	if result.Error != nil {
-		log.Printf("Error deleting building: %s", result.Error)
-	}
-	ctx.Respond(messages.DeleteBuildingResponseMessage{
-		Error: result.Error,
+func (state *BuildingActor) createBuilding(ctx actor.Context) {
+	ctx.Send(state.database, messages.CreateBuildingMessage{
+		Building: state.Building,
 	})
-	log.Printf("Shutting down BarracksActor at: (%d, %d)", state.Building.X, state.Building.Y)
+}
+
+func (state *BuildingActor) deleteBuilding(ctx actor.Context) {
+	ctx.Send(state.database, messages.DeleteBuildingMessage{
+		BuildingId: state.Building.BuildingId,
+	})
+	ctx.Respond(messages.DeleteBuildingResponseMessage{
+		Error: nil,
+	})
+	log.Printf("Shutting down BuildingActor of type %s at: (%d, %d)", state.Building.Type, state.Building.X, state.Building.Y)
 	ctx.Stop(ctx.Self())
 }
 

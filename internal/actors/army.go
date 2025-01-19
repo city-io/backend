@@ -23,15 +23,13 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		state.OwnerPID = msg.OwnerPID
 
 		if !msg.Restore {
-			err := state.createArmy()
-			ctx.Respond(messages.CreateArmyResponseMessage{
-				Error: err,
-			})
-		} else {
-			ctx.Respond(messages.CreateArmyResponseMessage{
-				Error: nil,
+			ctx.Send(state.database, messages.CreateArmyMessage{
+				Army: state.Army,
 			})
 		}
+		ctx.Respond(messages.CreateArmyResponseMessage{
+			Error: nil,
+		})
 
 	case messages.GetArmyMessage:
 		ctx.Respond(messages.GetArmyResponseMessage{
@@ -39,23 +37,13 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteArmyMessage:
-		result := state.db.Delete(&state.Army)
-		if result.Error != nil {
-			log.Printf("Error deleting army: %s", result.Error)
-		}
+		ctx.Send(state.database, messages.DeleteArmyMessage{
+			ArmyId: state.Army.ArmyId,
+		})
 		ctx.Respond(messages.DeleteArmyResponseMessage{
-			Error: result.Error,
+			Error: nil,
 		})
 		log.Printf("Shutting down ArmyActor for army: %s", state.Army.ArmyId)
 		ctx.Stop(ctx.Self())
 	}
-}
-
-func (state *ArmyActor) createArmy() error {
-	result := state.db.Create(&state.Army)
-	if result.Error != nil {
-		log.Printf("Error creating army: %s", result.Error)
-		return result.Error
-	}
-	return nil
 }

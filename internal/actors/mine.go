@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"cityio/internal/constants"
 	"cityio/internal/messages"
 
 	"log"
@@ -23,15 +24,13 @@ func (state *MineActor) Receive(ctx actor.Context) {
 		state.Building = msg.Building
 
 		if !msg.Restore {
-			err := state.createMine()
-			ctx.Respond(messages.CreateBuildingResponseMessage{
-				Error: err,
-			})
-		} else {
-			ctx.Respond(messages.CreateBuildingResponseMessage{
-				Error: nil,
+			ctx.Send(state.database, messages.CreateBuildingMessage{
+				Building: state.Building,
 			})
 		}
+		ctx.Respond(messages.CreateBuildingResponseMessage{
+			Error: nil,
+		})
 		state.startPeriodicOperation(ctx)
 
 	case messages.PeriodicOperationMessage:
@@ -63,17 +62,8 @@ func (state *MineActor) Receive(ctx actor.Context) {
 	}
 }
 
-func (state *MineActor) createMine() error {
-	result := state.db.Create(&state.Building)
-	if result.Error != nil {
-		log.Printf("Error creating mine: %s", result.Error)
-		return result.Error
-	}
-	return nil
-}
-
 func (state *MineActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(3 * time.Second)
+	state.ticker = time.NewTicker(constants.BUILDING_PRODUCTION_FREQUENCY * time.Second)
 
 	go func() {
 		for {

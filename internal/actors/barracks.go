@@ -3,8 +3,6 @@ package actors
 import (
 	"cityio/internal/messages"
 
-	"log"
-
 	"github.com/asynkron/protoactor-go/actor"
 )
 
@@ -19,15 +17,11 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 		state.Building = msg.Building
 
 		if !msg.Restore {
-			err := state.createBarracks()
-			ctx.Respond(messages.CreateBuildingResponseMessage{
-				Error: err,
-			})
-		} else {
-			ctx.Respond(messages.CreateBuildingResponseMessage{
-				Error: nil,
-			})
+			state.createBuilding(ctx)
 		}
+		ctx.Respond(messages.CreateBuildingResponseMessage{
+			Error: nil,
+		})
 
 	case messages.UpdateBuildingTilePIDMessage:
 		state.MapTilePID = msg.TilePID
@@ -38,13 +32,4 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 	case messages.DeleteBuildingMessage:
 		state.deleteBuilding(ctx)
 	}
-}
-
-func (state *BarracksActor) createBarracks() error {
-	result := state.db.Create(&state.Building)
-	if result.Error != nil {
-		log.Printf("Error creating barracks: %s", result.Error)
-		return result.Error
-	}
-	return nil
 }

@@ -1,5 +1,6 @@
 package messages
 
+type InitDatabaseMessage struct{}
 type PeriodicOperationMessage struct{}
 
 type InternalError struct{}

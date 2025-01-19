@@ -22,15 +22,13 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 	case messages.CreateMapTileMessage:
 		state.Tile = msg.Tile
 		if !msg.Restore {
-			err := state.createMapTile()
-			ctx.Respond(messages.CreateMapTileResponseMessage{
-				Error: err,
-			})
-		} else {
-			ctx.Respond(messages.CreateMapTileResponseMessage{
-				Error: nil,
+			ctx.Send(state.database, messages.CreateMapTileMessage{
+				Tile: state.Tile,
 			})
 		}
+		ctx.Respond(messages.CreateMapTileResponseMessage{
+			Error: nil,
+		})
 
 	case messages.UpdateTileCityPIDMessage:
 		state.CityPID = msg.CityPID
@@ -63,13 +61,4 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 			Building: building,
 		})
 	}
-}
-
-func (state *MapTileActor) createMapTile() error {
-	result := state.db.Create(&state.Tile)
-	if result.Error != nil {
-		log.Printf("Error creating map tile: %s", result.Error)
-		return result.Error
-	}
-	return nil
 }

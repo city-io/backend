@@ -24,13 +24,7 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 		state.Building = msg.Building
 
 		if !msg.Restore {
-			err := state.createCityCenter()
-			if err != nil {
-				ctx.Respond(messages.CreateBuildingResponseMessage{
-					Error: err,
-				})
-				return
-			}
+			state.createBuilding(ctx)
 
 			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getUserPID(), messages.UpdateCityPopulationCapMessage{
 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
@@ -95,17 +89,8 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 	}
 }
 
-func (state *CityCenterActor) createCityCenter() error {
-	result := state.db.Create(&state.Building)
-	if result.Error != nil {
-		log.Printf("Error creating city center: %s", result.Error)
-		return result.Error
-	}
-	return nil
-}
-
 func (state *CityCenterActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(3 * time.Second)
+	state.ticker = time.NewTicker(constants.BUILDING_PRODUCTION_FREQUENCY * time.Second)
 
 	go func() {
 		for {

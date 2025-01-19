@@ -15,17 +15,17 @@ type CreateBuildingMessage struct {
 type UpdateBuildingTilePIDMessage struct {
 	TilePID *actor.PID
 }
+type GetBuildingMessage struct{}
+type DeleteBuildingMessage struct {
+	BuildingId string
+}
 
 type CreateBuildingResponseMessage struct {
 	Error error
 }
-
-type GetBuildingMessage struct{}
 type GetBuildingResponseMessage struct {
 	Building models.Building
 }
-
-type DeleteBuildingMessage struct{}
 type DeleteBuildingResponseMessage struct {
 	Error error
 }

@@ -38,15 +38,13 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		}
 
 		if !msg.Restore {
-			err := state.createCity()
-			ctx.Respond(messages.CreateCityResponseMessage{
-				Error: err,
-			})
-		} else {
-			ctx.Respond(messages.CreateCityResponseMessage{
-				Error: nil,
+			ctx.Send(state.database, messages.CreateCityMessage{
+				City: state.City,
 			})
 		}
+		ctx.Respond(messages.CreateCityResponseMessage{
+			Error: nil,
+		})
 		state.startPeriodicOperation(ctx)
 
 	case messages.UpdateOwnerPIDMessage:
@@ -74,9 +72,11 @@ func (state *CityActor) Receive(ctx actor.Context) {
 				})
 			}
 		}
-		result := state.db.Delete(&state.City)
+		ctx.Send(state.database, messages.DeleteCityMessage{
+			CityId: state.City.CityId,
+		})
 		ctx.Respond(messages.DeleteCityResponseMessage{
-			Error: result.Error,
+			Error: nil,
 		})
 		log.Printf("Shutting down CityActor for city: %s", state.City.Name)
 		state.stopPeriodicOperation()
@@ -88,19 +88,14 @@ func (state *CityActor) Receive(ctx actor.Context) {
 
 		newPopulation := currentPopulation + (constants.POPULATION_GROWTH_RATE)*currentPopulation*(1-currentPopulation/populationCap)
 		state.City.Population = newPopulation
+		ctx.Send(state.database, &messages.UpdateCityMessage{
+			City: state.City,
+		})
 	}
-}
-
-func (state *CityActor) createCity() error {
-	result := state.db.Create(&state.City)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
 }
 
 func (state *CityActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(3 * time.Second)
+	state.ticker = time.NewTicker(constants.CITY_BACKUP_FREQUENCY * time.Second)
 
 	go func() {
 		for {

@@ -14,6 +14,9 @@ type CreateCityMessage struct {
 	OwnerPID *actor.PID
 	Restore  bool
 }
+type UpdateCityMessage struct {
+	City models.City
+}
 type UpdateOwnerPIDMessage struct {
 	PID *actor.PID
 }
