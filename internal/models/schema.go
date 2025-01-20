@@ -11,8 +11,8 @@ type User struct {
 	Password  string    `json:"password" gorm:"column:password;size:64;not null"`
 	Gold      int64     `json:"gold" gorm:"column:gold;default:100000;not null;check:gold > 0"`
 	Food      int64     `json:"food" gorm:"column:food;default:100000;not null;check:food > 0"`
-	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+	CreatedAt time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
 }
 
 type MapTile struct {
@@ -21,7 +21,7 @@ type MapTile struct {
 	CityId     string `json:"cityId" gorm:"column:city_id;size:36;null"`
 	BuildingId string `json:"buildingId" gorm:"column:building_id;size:36;null"`
 
-	Armies []Army `json:"armies" gorm:"foreignKey:TileX,TileY;references:X,Y"`
+	Armies []Army `json:"-" gorm:"foreignKey:TileX,TileY;references:X,Y"`
 }
 
 type City struct {
@@ -34,10 +34,10 @@ type City struct {
 	StartX        int       `json:"startX" gorm:"column:start_x;not null"`
 	StartY        int       `json:"startY" gorm:"column:start_y;not null"`
 	Size          int       `json:"size" gorm:"column:size;not null"`
-	CreatedAt     time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt     time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+	CreatedAt     time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt     time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
 
-	Buildings []Building `json:"buildings" gorm:"foreignKey:CityId;references:CityId"`
+	Buildings []Building `json:"-" gorm:"foreignKey:CityId;references:CityId"`
 }
 
 type Army struct {
@@ -46,11 +46,11 @@ type Army struct {
 	TileY     int       `json:"tileY" gorm:"column:tile_y;not null"`
 	Owner     string    `json:"owner" gorm:"column:owner;size:36;not null"`
 	Size      int       `json:"size" gorm:"column:size;not null;check:size > 0"`
-	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+	CreatedAt time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
 
-	MapTile MapTile `json:"mapTile" gorm:"foreignKey:TileX,TileY;references:X,Y"`
-	User    User    `json:"user" gorm:"foreignKey:Owner;references:UserId"`
+	MapTile MapTile `json:"-" gorm:"foreignKey:TileX,TileY;references:X,Y"`
+	User    User    `json:"-" gorm:"foreignKey:Owner;references:UserId"`
 }
 
 type Building struct {
@@ -60,8 +60,8 @@ type Building struct {
 	Level      int       `json:"level" gorm:"column:level;not null;default:1;check:level >= 0"`
 	X          int       `json:"x" gorm:"column:x;not null"`
 	Y          int       `json:"y" gorm:"column:y;not null"`
-	CreatedAt  time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt  time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+	CreatedAt  time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt  time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
 
-	City City `json:"city"`
+	City City `json:"-"`
 }
