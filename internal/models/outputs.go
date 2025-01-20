@@ -8,7 +8,8 @@ type LoginUserResponse struct {
 }
 
 type MapTileOutput struct {
-	X    int   `json:"x"`
-	Y    int   `json:"y"`
-	City *City `json:"city"`
+	X        int       `json:"x"`
+	Y        int       `json:"y"`
+	City     *City     `json:"city"`
+	Building *Building `json:"building"`
 }
