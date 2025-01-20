@@ -6,6 +6,7 @@ import (
 
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/gorilla/websocket"
@@ -13,20 +14,23 @@ import (
 
 func getMapTiles(ctx context.Context, conn *websocket.Conn, msg *models.WebSocketMessage) error {
 	claims := ctx.Value("claims").(models.UserClaims)
-	log.Printf("[WS] Getting map tiles for %s", claims.Username)
+	log.Printf("[ws] Fetching map tiles for %s", claims.Username)
 
 	var data models.MapTileRequest
 	if dataMap, ok := msg.Data.(map[string]interface{}); ok {
 		dataBytes, err := json.Marshal(dataMap)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error marshalling data: %s", err)
+			return err
 		}
 
 		if err := json.Unmarshal(dataBytes, &data); err != nil {
-			log.Fatal(err)
+			log.Printf("Error unmarshalling data: %s", err)
+			return err
 		}
 	} else {
 		log.Println("Data is not in expected format.")
+		return errors.New("Data is not in expected format.")
 	}
 
 	x, y := data.X, data.Y
@@ -46,7 +50,6 @@ func getMapTiles(ctx context.Context, conn *websocket.Conn, msg *models.WebSocke
 			tiles = append(tiles, tile)
 		}
 	}
-	log.Printf("Getting map tiles at x: %d, y: %d", x, y)
 
 	conn.WriteJSON(&tiles)
 

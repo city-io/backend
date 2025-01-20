@@ -60,7 +60,7 @@ func initManager() {
 		return &PIDManagerActor{}
 	})
 	managerPID = GetSystem().Root.Spawn(props)
-	log.Printf("Spawned manager with PID: %s", managerPID)
+	log.Printf("[init] Spawned manager with PID: %s", managerPID)
 }
 
 func initDatabaseActor() {
@@ -73,7 +73,7 @@ func initDatabaseActor() {
 		}
 	})
 	databasePID = GetSystem().Root.Spawn(props)
-	log.Printf("Spawned database actor with PID: %s", managerPID)
+	log.Printf("[init] Spawned database actor with PID: %s", managerPID)
 	system.Root.Send(databasePID, messages.InitDatabaseMessage{})
 }
 

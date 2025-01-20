@@ -83,7 +83,7 @@ func Reset() {
 			log.Printf("Error creating city: %s", result.Error)
 			panic(result.Error)
 		} else {
-			log.Printf("Created city %s for user %s", cityId, user.Username)
+			log.Printf("[reset] Created city %s for user %s", cityId, user.Username)
 		}
 
 		result = db.Create(&models.Building{
@@ -165,7 +165,7 @@ func Reset() {
 			log.Printf("Error creating map tiles: %s", result.Error)
 		}
 	}
-	log.Printf("Created %d map tiles", len(mapTiles))
+	log.Printf("[reset] Created %d map tiles", len(mapTiles))
 
 	cityBatchSize := 5000
 	for i := 0; i < len(cities); i += cityBatchSize {
@@ -177,7 +177,7 @@ func Reset() {
 			log.Printf("Error creating cities: %s", result.Error)
 		}
 	}
-	log.Printf("Created %d cities", len(cities))
+	log.Printf("[reset] Created %d cities", len(cities))
 
 	buildingBatchSize := 5000
 	for i := 0; i < len(buildings); i += buildingBatchSize {
@@ -189,7 +189,8 @@ func Reset() {
 			log.Printf("Error creating buildings: %s", result.Error)
 		}
 	}
-	log.Printf("Created %d buildings", len(buildings))
+	log.Printf("[reset] Created %d buildings", len(buildings))
 
-	log.Println("Reset complete!\n")
+	log.Println("[reset] Reset complete!")
+	log.Println()
 }

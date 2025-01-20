@@ -31,7 +31,7 @@ func Init() {
 			panic(err)
 		}
 	}
-	log.Printf("Spawned actors for %d users", len(users))
+	log.Printf("[init] Spawned actors for %d users", len(users))
 
 	var mapTiles []models.MapTile
 	db.Find(&mapTiles)
@@ -42,7 +42,7 @@ func Init() {
 			panic(err)
 		}
 	}
-	log.Printf("Spawned actors for %d map tiles", len(mapTiles))
+	log.Printf("[init] Spawned actors for %d map tiles", len(mapTiles))
 
 	var cities []models.City
 	db.Find(&cities)
@@ -53,7 +53,7 @@ func Init() {
 			panic(err)
 		}
 	}
-	log.Printf("Spawned actors for %d cities", len(cities))
+	log.Printf("[init] Spawned actors for %d cities", len(cities))
 
 	var armies []models.Army
 	db.Find(&armies)
@@ -64,7 +64,7 @@ func Init() {
 			panic(err)
 		}
 	}
-	log.Printf("Spawned actors for %d armies", len(armies))
+	log.Printf("[init] Spawned actors for %d armies", len(armies))
 
 	var buildings []models.Building
 	db.Find(&buildings)
@@ -75,5 +75,5 @@ func Init() {
 			panic(err)
 		}
 	}
-	log.Printf("Spawned actors for %d buildings", len(buildings))
+	log.Printf("[init] Spawned actors for %d buildings", len(buildings))
 }

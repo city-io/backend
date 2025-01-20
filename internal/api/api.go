@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/cors"
@@ -90,59 +89,6 @@ func recoverMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func handleWebSocket(response http.ResponseWriter, request *http.Request) {
-	values := request.URL.Query()
-	token := values.Get("token")
-	if token == "" {
-		log.Println("No token is provided")
-		http.Error(response, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	claims, err := services.ValidateToken(token)
-	if err != nil {
-		log.Printf("Error parsing JWT: %s", err)
-		http.Error(response, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			// check origin for security
-			return true
-		},
-	}
-
-	conn, err := upgrader.Upgrade(response, request, nil)
-	if err != nil {
-		log.Printf("Error upgrading to WebSocket: %s", err)
-		http.Error(response, "Failed to upgrade to WebSocket", http.StatusInternalServerError)
-		return
-	}
-	defer conn.Close()
-
-	ctx := context.WithValue(request.Context(), "claims", claims)
-	log.Printf("WebSocket connection established with %s", claims.Username)
-
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				log.Println("Connection closed by client")
-			} else {
-				log.Printf("Error reading WebSocket message: %s", err)
-			}
-			break
-		}
-
-		err = ws.ProcessMessage(ctx, conn, messageType, p)
-		if err != nil {
-			log.Printf("Error processing WebSocket message: %s", err)
-			break
-		}
-	}
-}
-
 func authHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		token := strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer ")
@@ -185,7 +131,7 @@ func authHandler(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func addRoutes(router *mux.Router) {
-	router.HandleFunc("/ws", handleWebSocket).Methods("GET")
+	router.HandleFunc("/ws", ws.HandleWebSocket).Methods("GET")
 
 	userRouter := router.PathPrefix("/users").Subrouter()
 

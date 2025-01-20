@@ -16,8 +16,6 @@ import (
 )
 
 func RestoreUser(user models.User) error {
-	log.Printf("Restoring user: %s", user.Username)
-
 	userPID, err := actors.Spawn(&actors.UserActor{})
 	if err != nil {
 		log.Printf("Error spawning user actor: %s", err)
