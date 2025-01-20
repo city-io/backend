@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	services.Reset()
+	// services.Reset()
 	services.Init()
 	api.Start()
 }

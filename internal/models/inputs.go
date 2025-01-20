@@ -1,5 +1,11 @@
 package models
 
+type WebSocketMessage struct {
+	Request   string      `json:"req"`
+	Operation string      `json:"op"`
+	Data      interface{} `json:"data"`
+}
+
 type UserClaims struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
@@ -22,4 +28,10 @@ type CityInput struct {
 	Owner string `json:"owner"`
 	Name  string `json:"name"`
 	Size  int    `json:"size"`
+}
+
+type MapTileRequest struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Radius int `json:"radius"`
 }
