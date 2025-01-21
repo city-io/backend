@@ -115,9 +115,8 @@ func (state *BarracksActor) createArmy(ctx actor.Context, army models.Army) erro
 
 	army.ArmyId = uuid.New().String()
 	createArmyResponse, err := Request[messages.CreateArmyResponseMessage](ctx, armyPID, messages.CreateArmyMessage{
-		Army:     army,
-		OwnerPID: userPID,
-		Restore:  false,
+		Army:    army,
+		Restore: false,
 	})
 	if err != nil {
 		log.Printf("Error creating army: %s", err)

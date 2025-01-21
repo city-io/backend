@@ -30,14 +30,6 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		state.TilePIDs = msg.TilePIDs
 		state.OwnerPID = msg.OwnerPID
 
-		for _, row := range state.TilePIDs {
-			for _, pid := range row {
-				ctx.Send(pid, messages.UpdateTileCityPIDMessage{
-					CityPID: ctx.Self(),
-				})
-			}
-		}
-
 		if !msg.Restore {
 			ctx.Send(state.database, messages.CreateCityMessage{
 				City: state.City,
@@ -66,13 +58,6 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteCityMessage:
-		for _, row := range state.TilePIDs {
-			for _, pid := range row {
-				ctx.Send(pid, messages.UpdateTileCityPIDMessage{
-					CityPID: nil,
-				})
-			}
-		}
 		ctx.Send(state.database, messages.DeleteCityMessage{
 			CityId: state.City.CityId,
 		})

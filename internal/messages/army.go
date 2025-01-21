@@ -4,14 +4,11 @@ import (
 	"cityio/internal/models"
 
 	"fmt"
-
-	"github.com/asynkron/protoactor-go/actor"
 )
 
 type CreateArmyMessage struct {
-	Army     models.Army
-	OwnerPID *actor.PID
-	Restore  bool
+	Army    models.Army
+	Restore bool
 }
 type GetArmyMessage struct{}
 type DeleteArmyMessage struct {

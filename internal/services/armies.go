@@ -31,9 +31,8 @@ func RestoreArmy(army models.Army) error {
 	}
 
 	createArmyResponse, err := actors.Request[messages.CreateArmyResponseMessage](system.Root, armyPID, messages.CreateArmyMessage{
-		Army:     army,
-		OwnerPID: getUserPIDResponse.PID,
-		Restore:  true,
+		Army:    army,
+		Restore: true,
 	})
 	if err != nil {
 		log.Printf("Error restoring army: %s", err)
@@ -118,9 +117,8 @@ func CreateArmy(army models.Army) (string, error) {
 
 	army.ArmyId = uuid.New().String()
 	createArmyResponse, err := actors.Request[messages.CreateArmyResponseMessage](system.Root, armyPID, messages.CreateArmyMessage{
-		Army:     army,
-		OwnerPID: getUserPIDResponse.PID,
-		Restore:  false,
+		Army:    army,
+		Restore: false,
 	})
 	if err != nil {
 		log.Printf("Error creating army: %s", err)

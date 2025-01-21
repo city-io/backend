@@ -86,10 +86,6 @@ func RestoreBuilding(building models.Building) error {
 		}
 	}
 
-	system.Root.Send(getMapTilePIDResponse.PID, messages.UpdateTileBuildingPIDMessage{
-		BuildingPID: buildingPID,
-	})
-
 	system.Root.Send(buildingPID, messages.UpdateBuildingTilePIDMessage{
 		TilePID: getMapTilePIDResponse.PID,
 	})
@@ -194,10 +190,6 @@ func CreateBuilding(building models.Building) (string, error) {
 			Y: building.Y,
 		}
 	}
-
-	system.Root.Send(getMapTilePIDResponse.PID, messages.UpdateTileBuildingPIDMessage{
-		BuildingPID: buildingPID,
-	})
 
 	system.Root.Send(buildingPID, messages.UpdateBuildingTilePIDMessage{
 		TilePID: getMapTilePIDResponse.PID,

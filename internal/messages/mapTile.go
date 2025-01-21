@@ -12,12 +12,6 @@ type CreateMapTileMessage struct {
 	Tile    models.MapTile
 	Restore bool
 }
-type UpdateTileCityPIDMessage struct {
-	CityPID *actor.PID
-}
-type UpdateTileBuildingPIDMessage struct {
-	BuildingPID *actor.PID
-}
 type AddTileArmyMessage struct {
 	ArmyPID *actor.PID
 	Army    models.Army

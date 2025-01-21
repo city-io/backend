@@ -5,6 +5,7 @@ import (
 	"cityio/internal/models"
 
 	"log"
+	"sync"
 
 	"github.com/asynkron/protoactor-go/actor"
 )
@@ -14,6 +15,8 @@ type ArmyActor struct {
 	Army models.Army
 
 	OwnerPID *actor.PID
+
+	armyOnce sync.Once
 }
 
 func (state *ArmyActor) Receive(ctx actor.Context) {
@@ -21,7 +24,6 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 
 	case messages.CreateArmyMessage:
 		state.Army = msg.Army
-		state.OwnerPID = msg.OwnerPID
 
 		if !msg.Restore {
 			ctx.Send(state.database, messages.CreateArmyMessage{
@@ -63,4 +65,25 @@ func (state *ArmyActor) getTilePID() (*actor.PID, error) {
 		return nil, &messages.MapTileNotFoundError{X: state.Army.TileX, Y: state.Army.TileY}
 	}
 	return getTilePIDResponse.PID, nil
+}
+
+func (state *ArmyActor) getOwnerPID() (*actor.PID, error) {
+	state.armyOnce.Do(func() {
+		getOwnerPIDResponse, err := Request[messages.GetUserPIDResponseMessage](system.Root, GetManagerPID(), messages.GetUserPIDMessage{
+			UserId: state.Army.Owner,
+		})
+		if err != nil {
+			log.Printf("Error restoring army: %s", err)
+			return
+		}
+		if getOwnerPIDResponse.PID == nil {
+			log.Printf("Error restoring army: User not found")
+			return
+		}
+		state.OwnerPID = getOwnerPIDResponse.PID
+	})
+	if state.OwnerPID == nil {
+		return nil, &messages.UserNotFoundError{UserId: state.Army.Owner}
+	}
+	return state.OwnerPID, nil
 }

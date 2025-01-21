@@ -5,6 +5,7 @@ import (
 	"cityio/internal/models"
 
 	"log"
+	"sync"
 
 	"github.com/asynkron/protoactor-go/actor"
 )
@@ -17,6 +18,8 @@ type MapTileActor struct {
 	BuildingPID *actor.PID
 	ArmyPIDs    []*actor.PID
 	Armies      []models.Army
+
+	cityOnce sync.Once
 }
 
 func (state *MapTileActor) Receive(ctx actor.Context) {
@@ -33,12 +36,6 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.CreateMapTileResponseMessage{
 			Error: nil,
 		})
-
-	case messages.UpdateTileCityPIDMessage:
-		state.CityPID = msg.CityPID
-
-	case messages.UpdateTileBuildingPIDMessage:
-		state.BuildingPID = msg.BuildingPID
 
 	case messages.AddTileArmyMessage:
 		state.ArmyPIDs = append(state.ArmyPIDs, msg.ArmyPID)
@@ -77,4 +74,41 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 			Armies: state.Armies,
 		})
 	}
+}
+
+func (state *MapTileActor) getCityPID() (*actor.PID, error) {
+	// can cities ever be removed? if so this should not use sync.Once
+	state.cityOnce.Do(func() {
+		getCityPIDResponse, err := Request[messages.GetCityPIDResponseMessage](system.Root, GetManagerPID(), messages.GetCityPIDMessage{
+			CityId: state.Tile.CityId,
+		})
+		if err != nil {
+			log.Printf("Error restoring map tile: %s", err)
+			return
+		}
+		if getCityPIDResponse.PID == nil {
+			log.Printf("Error restoring map tile: City not found")
+			return
+		}
+		state.CityPID = getCityPIDResponse.PID
+	})
+	if state.CityPID == nil {
+		return nil, &messages.CityNotFoundError{CityId: state.Tile.CityId}
+	}
+	return state.CityPID, nil
+}
+
+func (state *MapTileActor) getBuildingPID() (*actor.PID, error) {
+	getBuildingPIDResponse, err := Request[messages.GetBuildingPIDResponseMessage](system.Root, GetManagerPID(), messages.GetBuildingPIDMessage{
+		BuildingId: state.Tile.BuildingId,
+	})
+	if err != nil {
+		log.Printf("Error retrieving map tile building pid: %s", err)
+		return nil, err
+	}
+	if getBuildingPIDResponse.PID == nil {
+		log.Printf("Error retrieving map tile building pid: Building not found")
+		return nil, nil
+	}
+	return getBuildingPIDResponse.PID, nil
 }
