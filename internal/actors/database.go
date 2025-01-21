@@ -84,6 +84,17 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			log.Printf("Error deleting army in db: %s", result.Error)
 		}
 
+	case messages.TrainTroopsMessage:
+		result := state.db.Create(&msg.Training)
+		if result.Error != nil {
+			log.Printf("Error creating training in db: %s", result.Error)
+		}
+	case messages.DeleteTrainingMessage:
+		result := state.db.Where("barracks_id = ?", msg.BarracksId).Delete(&models.Training{})
+		if result.Error != nil {
+			log.Printf("Error deleting training in db: %s", result.Error)
+		}
+
 	case messages.PeriodicOperationMessage:
 		if len(state.userBuffer) > 0 {
 			for _, user := range state.userBuffer {

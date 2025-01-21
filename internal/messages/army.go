@@ -17,9 +17,6 @@ type GetArmyMessage struct{}
 type DeleteArmyMessage struct {
 	ArmyId string
 }
-type RestoreTrainingMessage struct {
-	Training models.Training
-}
 
 type CreateArmyResponseMessage struct {
 	Error error
@@ -28,9 +25,6 @@ type GetArmyResponseMessage struct {
 	Army models.Army
 }
 type DeleteArmyResponseMessage struct {
-	Error error
-}
-type RestoreTrainingResponseMessage struct {
 	Error error
 }
 

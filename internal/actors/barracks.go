@@ -30,6 +30,7 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.RestoreTrainingMessage:
+		log.Printf("Restoring training %+v", msg.Training)
 		state.Training = &msg.Training
 		if state.Training.End.Before(time.Now()) {
 			state.completeTraining(ctx)
@@ -54,6 +55,9 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 			DeployTo:   msg.Training.DeployTo,
 			End:        endTime,
 		}
+		ctx.Send(GetDatabasePID(), messages.TrainTroopsMessage{
+			Training: *state.Training,
+		})
 		log.Printf("Spawning traning of %+v", state.Training)
 		go state.backgroundTrain(ctx)
 		ctx.Respond(messages.TrainTroopsResponseMessage{
@@ -94,6 +98,9 @@ func (state *BarracksActor) completeTraining(ctx actor.Context) {
 	if state.Training.DeployTo != "" {
 		// TODO: Spawn a march order to new deployment city
 	}
+	ctx.Send(GetDatabasePID(), messages.DeleteTrainingMessage{
+		BarracksId: state.Training.BarracksId,
+	})
 	state.Training = nil
 }
 

@@ -20,5 +20,5 @@ const (
 
 	ACTOR_TIMEOUT_DURATION = 1 // timeout on actor response await
 
-	TROOP_TRAINING_DURATION = 10
+	TROOP_TRAINING_DURATION = 60
 )

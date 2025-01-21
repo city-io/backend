@@ -22,6 +22,12 @@ type DeleteBuildingMessage struct {
 type TrainTroopsMessage struct {
 	Training models.Training
 }
+type RestoreTrainingMessage struct {
+	Training models.Training
+}
+type DeleteTrainingMessage struct {
+	BarracksId string
+}
 
 type CreateBuildingResponseMessage struct {
 	Error error
@@ -33,6 +39,9 @@ type DeleteBuildingResponseMessage struct {
 	Error error
 }
 type TrainTroopsResponseMessage struct {
+	Error error
+}
+type RestoreTrainingResponseMessage struct {
 	Error error
 }
 
