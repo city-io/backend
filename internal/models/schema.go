@@ -58,10 +58,12 @@ type Building struct {
 	CityId     string    `json:"cityId" gorm:"column:city_id;size:36;not null"`
 	Type       string    `json:"type" gorm:"column:type;size:100;not null"`
 	Level      int       `json:"level" gorm:"column:level;not null;default:1;check:level >= 0"`
-	X          int       `json:"x" gorm:"column:x;not null"`
-	Y          int       `json:"y" gorm:"column:y;not null"`
+	X          int       `json:"x" gorm:"column:x;uniqueIndex:compositeindex;not null"`
+	Y          int       `json:"y" gorm:"column:y;uniqueIndex:compositeindex;not null"`
 	CreatedAt  time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt  time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
+
+	// add a unique constraint on (x, y)
 
 	City City `json:"-"`
 }

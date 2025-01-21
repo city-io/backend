@@ -205,3 +205,32 @@ func CreateBuilding(building models.Building) (string, error) {
 
 	return building.BuildingId, nil
 }
+
+func TrainTroops(training models.Training) error {
+	getBarracksPIDResponse, err := actors.Request[messages.GetBuildingPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetBuildingPIDMessage{
+		BuildingId: training.BarracksId,
+	})
+	if err != nil {
+		log.Printf("Error training troops: %s", err)
+		return err
+	}
+	if getBarracksPIDResponse.PID == nil {
+		log.Printf("Error training troops: %s", &messages.BuildingNotFoundError{BuildingId: training.BarracksId})
+		return err
+	}
+
+	var trainResponse *messages.TrainTroopsResponseMessage
+	trainResponse, err = actors.Request[messages.TrainTroopsResponseMessage](system.Root, getBarracksPIDResponse.PID, messages.TrainTroopsMessage{
+		Training: training,
+	})
+	if err != nil {
+		log.Printf("Error training troops: %s", err)
+		return err
+	}
+	if trainResponse.Error != nil {
+		log.Printf("Error training troops: %s", trainResponse.Error)
+		return trainResponse.Error
+	}
+
+	return nil
+}

@@ -42,12 +42,19 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 
 	case messages.TrainTroopsMessage:
 		endTime := time.Now().Add(time.Second * constants.TROOP_TRAINING_DURATION)
+		if state.Building.BuildingId != msg.Training.BarracksId {
+			ctx.Respond(messages.TrainTroopsResponseMessage{
+				Error: &messages.UnknownError{Message: "Requested barracks id does not match this building"},
+			})
+			return
+		}
 		state.Training = &models.Training{
 			BarracksId: state.Building.BuildingId,
-			Size:       msg.Size,
-			DeployTo:   msg.DeployTo,
+			Size:       msg.Training.Size,
+			DeployTo:   msg.Training.DeployTo,
 			End:        endTime,
 		}
+		log.Printf("Spawning traning of %+v", state.Training)
 		go state.backgroundTrain(ctx)
 		ctx.Respond(messages.TrainTroopsResponseMessage{
 			Error: nil,
@@ -65,11 +72,12 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 }
 
 func (state *BarracksActor) backgroundTrain(ctx actor.Context) {
-	time.Sleep(constants.TROOP_TRAINING_DURATION)
+	time.Sleep(time.Until(state.Training.End))
 	state.completeTraining(ctx)
 }
 
 func (state *BarracksActor) completeTraining(ctx actor.Context) {
+	log.Printf("Training complete for %+v", state.Training)
 	ownerId, err := state.getOwnerId()
 	if err != nil {
 		log.Printf("Error completing training: %s", err)
@@ -83,6 +91,9 @@ func (state *BarracksActor) completeTraining(ctx actor.Context) {
 		Size:  state.Training.Size,
 	})
 
+	if state.Training.DeployTo != "" {
+		// TODO: Spawn a march order to new deployment city
+	}
 	state.Training = nil
 }
 
@@ -163,6 +174,6 @@ func (state *BarracksActor) createArmy(ctx actor.Context, army models.Army) erro
 		return addArmyPIDResponse.Error
 	}
 
-	log.Printf("Created %s's army at (%d, %d) of size %d", army.Owner, army.TileX, army.TileY, army.Size)
+	log.Printf("Created army at (%d, %d) of size %d", army.TileX, army.TileY, army.Size)
 	return nil
 }

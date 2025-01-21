@@ -20,8 +20,7 @@ type DeleteBuildingMessage struct {
 	BuildingId string
 }
 type TrainTroopsMessage struct {
-	Size     int64
-	DeployTo string
+	Training models.Training
 }
 
 type CreateBuildingResponseMessage struct {
@@ -37,10 +36,19 @@ type TrainTroopsResponseMessage struct {
 	Error error
 }
 
+// Errors
 type BuildingTypeNotFoundError struct {
 	BuildingType string
 }
 
 func (e *BuildingTypeNotFoundError) Error() string {
 	return fmt.Sprintf("Building type not found: %s", e.BuildingType)
+}
+
+type BuildingNotFoundError struct {
+	BuildingId string
+}
+
+func (e *BuildingNotFoundError) Error() string {
+	return fmt.Sprintf("Building not found: %s", e.BuildingId)
 }

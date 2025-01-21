@@ -184,7 +184,7 @@ func CreateArmy(army models.Army) (string, error) {
 		return "", addArmyPIDResponse.Error
 	}
 
-	log.Printf("Created %s's army at (%d, %d) of size %d", army.Owner, army.TileX, army.TileY, army.Size)
+	log.Printf("Created army at (%d, %d) of size %d", army.TileX, army.TileY, army.Size)
 	return army.ArmyId, nil
 }
 
