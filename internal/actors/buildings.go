@@ -19,7 +19,8 @@ type BuildingActor struct {
 	MapTilePID *actor.PID
 	UserPID    *actor.PID
 
-	once sync.Once
+	cityOnce sync.Once
+	tileOnce sync.Once
 }
 
 func (state *BuildingActor) getBuilding(ctx actor.Context) {
@@ -46,7 +47,7 @@ func (state *BuildingActor) deleteBuilding(ctx actor.Context) {
 }
 
 func (state *BuildingActor) getCityPID() *actor.PID {
-	state.once.Do(func() {
+	state.cityOnce.Do(func() {
 		response, err := Request[messages.GetCityPIDResponseMessage](system.Root, GetManagerPID(), messages.GetCityPIDMessage{
 			CityId: state.Building.CityId,
 		})
@@ -100,4 +101,23 @@ func (state *BuildingActor) getUserPID() *actor.PID {
 		state.OwnerId = ownerId
 	}
 	return state.UserPID
+}
+
+func (state *BuildingActor) getTilePID() *actor.PID {
+	state.tileOnce.Do(func() {
+		response, err := Request[messages.GetMapTilePIDResponseMessage](system.Root, GetManagerPID(), messages.GetMapTilePIDMessage{
+			X: state.Building.X,
+			Y: state.Building.Y,
+		})
+		if err != nil {
+			log.Printf("Error getting tile pid: %s", err)
+			return
+		}
+		if response.PID == nil {
+			log.Printf("Tile PID is nil")
+		} else {
+			state.MapTilePID = response.PID
+		}
+	})
+	return state.MapTilePID
 }

@@ -81,9 +81,6 @@ func (state *TownCenterActor) Receive(ctx actor.Context) {
 			log.Printf("Error updating user gold: %s", updateFoodResponse.Error)
 		}
 
-	case messages.UpdateBuildingTilePIDMessage:
-		state.MapTilePID = msg.TilePID
-
 	case messages.GetBuildingMessage:
 		state.getBuilding(ctx)
 
@@ -95,6 +92,7 @@ func (state *TownCenterActor) Receive(ctx actor.Context) {
 
 func (state *TownCenterActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.BUILDING_PRODUCTION_FREQUENCY * time.Second)
+	state.stopTickerCh = make(chan struct{})
 
 	go func() {
 		for {

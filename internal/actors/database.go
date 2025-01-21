@@ -78,6 +78,11 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		if result.Error != nil {
 			log.Printf("Error creating army in db: %s", result.Error)
 		}
+	case messages.UpdateArmyMessage:
+		result := state.db.Save(&msg.Army)
+		if result.Error != nil {
+			log.Printf("Error updating army in db: %s", result.Error)
+		}
 	case messages.DeleteArmyMessage:
 		result := state.db.Delete(&models.Army{}, msg.ArmyId)
 		if result.Error != nil {

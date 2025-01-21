@@ -20,5 +20,6 @@ const (
 
 	ACTOR_TIMEOUT_DURATION = 1 // timeout on actor response await
 
-	TROOP_TRAINING_DURATION = 60
+	TROOP_TRAINING_DURATION = 5
+	TROOP_MOVEMENT_DURATION = 1 // time it takes to cross 1 tile
 )

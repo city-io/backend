@@ -41,13 +41,18 @@ type City struct {
 }
 
 type Army struct {
-	ArmyId    string    `json:"armyId" gorm:"column:army_id;primaryKey;size:36"`
-	TileX     int       `json:"tileX" gorm:"column:tile_x;not null"`
-	TileY     int       `json:"tileY" gorm:"column:tile_y;not null"`
-	Owner     string    `json:"owner" gorm:"column:owner;size:36;not null"`
-	Size      int64     `json:"size" gorm:"column:size;not null;check:size > 0"`
-	CreatedAt time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
+	ArmyId string `json:"armyId" gorm:"column:army_id;primaryKey;size:36"`
+	TileX  int    `json:"tileX" gorm:"column:tile_x;not null"`
+	TileY  int    `json:"tileY" gorm:"column:tile_y;not null"`
+	Owner  string `json:"owner" gorm:"column:owner;size:36;not null"`
+	Size   int64  `json:"size" gorm:"column:size;not null;check:size > 0"`
+
+	// march details
+	FromX       int  `json:"fromX" gorm:"column:from_x;null"`
+	FromY       int  `json:"fromY" gorm:"column:from_y;null"`
+	ToX         int  `json:"toX" gorm:"column:to_x;null"`
+	ToY         int  `json:"toY" gorm:"column:to_y;null"`
+	MarchActive bool `json:"marchActive" gorm:"column:march_active;not null;default:false"`
 
 	MapTile MapTile `json:"-" gorm:"foreignKey:TileX,TileY;references:X,Y"`
 	User    User    `json:"-" gorm:"foreignKey:Owner;references:UserId"`
@@ -62,8 +67,6 @@ type Building struct {
 	Y          int       `json:"y" gorm:"column:y;uniqueIndex:compositeindex;not null"`
 	CreatedAt  time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt  time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
-
-	// add a unique constraint on (x, y)
 
 	City City `json:"-"`
 }

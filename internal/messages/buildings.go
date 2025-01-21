@@ -4,16 +4,11 @@ import (
 	"cityio/internal/models"
 
 	"fmt"
-
-	"github.com/asynkron/protoactor-go/actor"
 )
 
 type CreateBuildingMessage struct {
 	Building models.Building
 	Restore  bool
-}
-type UpdateBuildingTilePIDMessage struct {
-	TilePID *actor.PID
 }
 type GetBuildingMessage struct{}
 type DeleteBuildingMessage struct {

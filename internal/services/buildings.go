@@ -86,10 +86,6 @@ func RestoreBuilding(building models.Building) error {
 		}
 	}
 
-	system.Root.Send(buildingPID, messages.UpdateBuildingTilePIDMessage{
-		TilePID: getMapTilePIDResponse.PID,
-	})
-
 	if building.Type == constants.BUILDING_TYPE_BARRACKS {
 		var training models.Training
 		result := db.Where("barracks_id = ?", building.BuildingId).First(&training)
@@ -190,10 +186,6 @@ func CreateBuilding(building models.Building) (string, error) {
 			Y: building.Y,
 		}
 	}
-
-	system.Root.Send(buildingPID, messages.UpdateBuildingTilePIDMessage{
-		TilePID: getMapTilePIDResponse.PID,
-	})
 
 	return building.BuildingId, nil
 }

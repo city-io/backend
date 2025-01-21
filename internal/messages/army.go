@@ -11,9 +11,17 @@ type CreateArmyMessage struct {
 	Restore bool
 }
 type GetArmyMessage struct{}
+type UpdateArmyMessage struct {
+	Army models.Army
+}
 type DeleteArmyMessage struct {
 	ArmyId string
 }
+type StartArmyMarchMessage struct {
+	X int
+	Y int
+}
+type UpdateArmyTileMessage struct{}
 
 type CreateArmyResponseMessage struct {
 	Error error

@@ -83,6 +83,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 
 func (state *UserActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.USER_BACKUP_FREQUENCY * time.Second)
+	state.stopTickerCh = make(chan struct{})
 
 	go func() {
 		for {

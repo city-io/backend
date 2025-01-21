@@ -43,9 +43,6 @@ func (state *HouseActor) Receive(ctx actor.Context) {
 			Error: nil,
 		})
 
-	case messages.UpdateBuildingTilePIDMessage:
-		state.MapTilePID = msg.TilePID
-
 	case messages.GetBuildingMessage:
 		state.getBuilding(ctx)
 

@@ -6,6 +6,7 @@ import (
 	"cityio/internal/models"
 
 	"log"
+	"math"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -64,9 +65,6 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 			Error: nil,
 		})
 
-	case messages.UpdateBuildingTilePIDMessage:
-		state.MapTilePID = msg.TilePID
-
 	case messages.GetBuildingMessage:
 		state.getBuilding(ctx)
 
@@ -88,15 +86,88 @@ func (state *BarracksActor) completeTraining(ctx actor.Context) {
 		return
 	}
 
-	state.createArmy(ctx, models.Army{
-		TileX: state.Building.X,
-		TileY: state.Building.Y,
-		Owner: ownerId,
-		Size:  state.Training.Size,
-	})
+	log.Println(state.Training.DeployTo)
+	if state.Training.DeployTo != "" && state.Training.DeployTo != state.Building.CityId {
+		// TODO: do ownership verification checks of deployment city here at deploy time, not in api
+		getDeployCityPIDResponse, err := Request[messages.GetCityPIDResponseMessage](system.Root, GetManagerPID(), messages.GetCityPIDMessage{
+			CityId: state.Training.DeployTo,
+		})
+		// TODO: simplify error flow lol
+		if err != nil {
+			log.Printf("Error fetching deployment city pid after training, defaulting to same city barracks")
+			state.createArmy(ctx, models.Army{
+				TileX: state.Building.X,
+				TileY: state.Building.Y,
+				Owner: ownerId,
+				Size:  state.Training.Size,
+			})
+		}
+		if getDeployCityPIDResponse.PID == nil {
+			log.Printf("Error fetching deployment city pid after training, defaulting to same city barracks")
+			state.createArmy(ctx, models.Army{
+				TileX: state.Building.X,
+				TileY: state.Building.Y,
+				Owner: ownerId,
+				Size:  state.Training.Size,
+			})
+		}
 
-	if state.Training.DeployTo != "" {
-		// TODO: Spawn a march order to new deployment city
+		var getDeployCityResponse *messages.GetCityResponseMessage
+		getDeployCityResponse, err = Request[messages.GetCityResponseMessage](ctx, getDeployCityPIDResponse.PID, messages.GetCityMessage{})
+		if err != nil {
+			log.Printf("Error fetching deployment city after training, defaulting to same city barracks")
+			state.createArmy(ctx, models.Army{
+				TileX: state.Building.X,
+				TileY: state.Building.Y,
+				Owner: ownerId,
+				Size:  state.Training.Size,
+			})
+		}
+		log.Printf("Deploy City: %+v", getDeployCityResponse.City)
+
+		cityX := getDeployCityResponse.City.StartX + int(math.Floor(float64(getDeployCityResponse.City.Size)/2))
+		cityY := getDeployCityResponse.City.StartY + int(math.Floor(float64(getDeployCityResponse.City.Size)/2))
+		log.Printf("Deploying to city at (%d, %d)", cityX, cityY)
+		state.createArmy(ctx, models.Army{
+			TileX: state.Building.X,
+			TileY: state.Building.Y,
+			Owner: ownerId,
+			Size:  state.Training.Size,
+
+			FromX:       state.Building.X,
+			FromY:       state.Building.Y,
+			ToX:         cityX,
+			ToY:         cityY,
+			MarchActive: true,
+		})
+	} else {
+		cityPID := state.getCityPID()
+		if cityPID == nil {
+			log.Printf("Error fetching city pid after training, spawning in city barracks")
+			state.createArmy(ctx, models.Army{
+				TileX: state.Building.X,
+				TileY: state.Building.Y,
+				Owner: ownerId,
+				Size:  state.Training.Size,
+			})
+		}
+
+		getCityResponse, err := Request[messages.GetCityResponseMessage](ctx, cityPID, messages.GetCityMessage{})
+		if err != nil {
+			log.Printf("Error fetching city after training, spawning in city barracks")
+			state.createArmy(ctx, models.Army{
+				TileX: state.Building.X,
+				TileY: state.Building.Y,
+				Owner: ownerId,
+				Size:  state.Training.Size,
+			})
+		}
+		state.createArmy(ctx, models.Army{
+			TileX: getCityResponse.City.StartX + int(math.Floor(float64(getCityResponse.City.Size)/2)),
+			TileY: getCityResponse.City.StartY + int(math.Floor(float64(getCityResponse.City.Size)/2)),
+			Owner: ownerId,
+			Size:  state.Training.Size,
+		})
 	}
 	ctx.Send(GetDatabasePID(), messages.DeleteTrainingMessage{
 		BarracksId: state.Training.BarracksId,

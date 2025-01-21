@@ -1,11 +1,13 @@
 package actors
 
 import (
+	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 
 	"log"
 	"sync"
+	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 )
@@ -17,6 +19,9 @@ type ArmyActor struct {
 	OwnerPID *actor.PID
 
 	armyOnce sync.Once
+
+	ticker       *time.Ticker
+	stopTickerCh chan struct{}
 }
 
 func (state *ArmyActor) Receive(ctx actor.Context) {
@@ -26,9 +31,20 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		state.Army = msg.Army
 
 		if !msg.Restore {
+			// default coordinates to (-1, -1) to distinguish from (0, 0) tile
+			if !state.Army.MarchActive {
+				state.Army.FromX = -1
+				state.Army.FromY = -1
+				state.Army.ToX = -1
+				state.Army.ToY = -1
+			}
+
 			ctx.Send(state.database, messages.CreateArmyMessage{
 				Army: state.Army,
 			})
+		}
+		if state.Army.MarchActive {
+			state.startTroopMovement(ctx)
 		}
 		ctx.Respond(messages.CreateArmyResponseMessage{
 			Error: nil,
@@ -47,7 +63,87 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 			Error: nil,
 		})
 		log.Printf("Shutting down ArmyActor for army: %s", state.Army.ArmyId)
+
+		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
+
+	case messages.StartArmyMarchMessage:
+		// init background march operation
+		log.Printf("Army %s marching to (%d, %d)", state.Army.ArmyId, msg.X, msg.Y)
+		state.Army.FromX = state.Army.TileX
+		state.Army.FromY = state.Army.TileY
+		state.Army.ToX = msg.X
+		state.Army.ToY = msg.Y
+		state.Army.MarchActive = true
+
+		ctx.Send(state.database, messages.UpdateArmyMessage{
+			Army: state.Army,
+		})
+		state.startTroopMovement(ctx)
+
+	case messages.UpdateArmyTileMessage:
+		// periodically update army position
+		if !state.Army.MarchActive {
+			state.stopPeriodicOperation()
+			return
+		}
+
+		// move 1 at a time in the x direction, then y direction
+		if state.Army.TileX < state.Army.ToX {
+			state.Army.TileX++
+		} else if state.Army.TileX > state.Army.ToX {
+			state.Army.TileX--
+		} else if state.Army.TileY < state.Army.ToY {
+			state.Army.TileY++
+		} else if state.Army.TileY > state.Army.ToY {
+			state.Army.TileY--
+		}
+		log.Printf("Update: Army %s at (%d, %d)", state.Army.ArmyId, state.Army.TileX, state.Army.TileY)
+
+		if state.Army.TileX == state.Army.ToX && state.Army.TileY == state.Army.ToY {
+			state.stopPeriodicOperation()
+			state.Army.MarchActive = false
+			state.Army.FromX = -1
+			state.Army.FromY = -1
+			state.Army.ToX = -1
+			state.Army.ToY = -1
+			ctx.Send(state.database, messages.UpdateArmyMessage{
+				Army: state.Army,
+			})
+		}
+	}
+}
+
+func (state *ArmyActor) startTroopMovement(ctx actor.Context) {
+	go func() {
+		state.ticker = time.NewTicker(constants.TROOP_MOVEMENT_DURATION * time.Second)
+		state.stopTickerCh = make(chan struct{})
+
+		count := 0
+		for {
+			select {
+			case <-state.ticker.C:
+				// make periodic backups every 5 updates
+				count++
+				if count%5 == 0 {
+					ctx.Send(state.database, messages.UpdateArmyMessage{
+						Army: state.Army,
+					})
+				}
+				ctx.Send(ctx.Self(), messages.UpdateArmyTileMessage{})
+			case <-state.stopTickerCh:
+				state.ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (state *ArmyActor) stopPeriodicOperation() {
+	select {
+	case <-state.stopTickerCh:
+	default:
+		close(state.stopTickerCh)
 	}
 }
 

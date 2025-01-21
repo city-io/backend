@@ -29,6 +29,25 @@ func Start(reset bool) {
 		Reset()
 	}
 	Init()
+
+	// buildingId, err := services.CreateBuilding(models.Building{
+	// 	CityId: "f094d9b8-ed30-453c-9fd9-e5c44862105b",
+	// 	Type:   "barracks",
+	// 	Level:  1,
+	// 	X:      54,
+	// 	Y:      0,
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// log.Printf("Created barracks with id %s", buildingId)
+
+	// err = services.TrainTroops(models.Training{
+	// 	BarracksId: buildingId,
+	// 	Size:       10,
+	// 	DeployTo:   "46474942-3524-4289-9276-1990bc3270a0",
+	// })
+
 	api.Start()
 }
 
@@ -97,6 +116,7 @@ func Init() {
 		}
 	}
 	log.Printf("Spawned actors for %d buildings", len(buildings))
+	log.Println("Initialization complete!")
 
 	log.SetPrefix("[app]\t")
 }

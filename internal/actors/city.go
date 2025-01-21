@@ -88,6 +88,7 @@ func (state *CityActor) startPeriodicOperation(ctx actor.Context) {
 		time.Sleep(time.Duration(rnd.Intn(10)) * time.Second)
 
 		state.ticker = time.NewTicker(constants.CITY_BACKUP_FREQUENCY * time.Second)
+		state.stopTickerCh = make(chan struct{})
 
 		for {
 			select {
