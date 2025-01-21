@@ -1,7 +1,7 @@
 package constants
 
 const (
-	MAP_SIZE  = 1024
+	MAP_SIZE  = 128 // generate a map of size MAP_SIZE x MAP_SIZE
 	CITY_SIZE = 5
 
 	POPULATION_GROWTH_RATE = 0.001
@@ -17,4 +17,6 @@ const (
 	USER_BACKUP_FREQUENCY         = 10 // frequency of user state being sent to update queue
 	CITY_BACKUP_FREQUENCY         = 10 // frequency of population growth event and city state being sent to update queue
 	BUILDING_PRODUCTION_FREQUENCY = 3  // frequency of building production
+
+	ACTOR_TIMEOUT_DURATION = 10 // timeout on actor response await
 )

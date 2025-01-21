@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
@@ -45,9 +46,6 @@ func (b *BaseActor) SetDatabaseActor(databasePID *actor.PID) {
 }
 
 type ActorSystem interface {
-	// Send(pid *actor.PID, message interface{})
-	// Request(pid *actor.PID, message interface{})
-	// RequestWithCustomSender(pid *actor.PID, message interface{}, sender *actor.PID)
 	RequestFuture(pid *actor.PID, message interface{}, timeout time.Duration) *actor.Future
 }
 
@@ -111,16 +109,8 @@ func SpawnBase(newActor func() actor.Actor) (*actor.PID, error) {
 	return newPID, nil
 }
 
-// func SendMessage(ctx ActorSystem, pid *actor.PID, message interface{}) {
-// 	ctx.Send(pid, message)
-// }
-
-// func Respond(ctx actor.Context, message interface{}) {
-// 	ctx.Respond(message)
-// }
-
 func Request[T any](ctx ActorSystem, pid *actor.PID, message interface{}) (*T, error) {
-	future := ctx.RequestFuture(pid, message, time.Second)
+	future := ctx.RequestFuture(pid, message, constants.ACTOR_TIMEOUT_DURATION*time.Second)
 	result, err := future.Result()
 	if err != nil {
 		return nil, err
