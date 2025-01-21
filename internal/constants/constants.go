@@ -18,5 +18,7 @@ const (
 	CITY_BACKUP_FREQUENCY         = 10 // frequency of population growth event and city state being sent to update queue
 	BUILDING_PRODUCTION_FREQUENCY = 3  // frequency of building production
 
-	ACTOR_TIMEOUT_DURATION = 10 // timeout on actor response await
+	ACTOR_TIMEOUT_DURATION = 1 // timeout on actor response await
+
+	TROOP_TRAINING_DURATION = 10
 )

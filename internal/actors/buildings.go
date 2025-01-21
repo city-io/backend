@@ -64,29 +64,40 @@ func (state *BuildingActor) getCityPID() *actor.PID {
 	return state.CityPID
 }
 
-func (state *BuildingActor) getUserPID() *actor.PID {
+func (state *BuildingActor) getOwnerId() (string, error) {
 	cityPID := state.getCityPID()
 	if cityPID == nil {
 		log.Println("City PID is nil")
-		return nil
+		return "", &messages.CityNotFoundError{CityId: state.Building.CityId}
 	}
 
 	getCityResponse, err := Request[messages.GetCityResponseMessage](system.Root, cityPID, messages.GetCityMessage{})
 	if err != nil {
 		log.Printf("Error getting city: %s", err)
+		return "", err
+	}
+	if getCityResponse.City.Owner == "" {
+		return "", nil
+	}
+	return getCityResponse.City.Owner, nil
+}
+
+func (state *BuildingActor) getUserPID() *actor.PID {
+	ownerId, err := state.getOwnerId()
+	if err != nil {
 		return nil
 	}
-	if getCityResponse.City.Owner != state.OwnerId {
+	if ownerId != state.OwnerId {
 		var getUserPIDResponse *messages.GetUserPIDResponseMessage
 		getUserPIDResponse, err = Request[messages.GetUserPIDResponseMessage](system.Root, GetManagerPID(), messages.GetUserPIDMessage{
-			UserId: getCityResponse.City.Owner,
+			UserId: ownerId,
 		})
 		if err != nil {
 			log.Printf("Error getting user pid: %s", err)
 			return nil
 		}
 		state.UserPID = getUserPIDResponse.PID
-		state.OwnerId = getCityResponse.City.Owner
+		state.OwnerId = ownerId
 	}
 	return state.UserPID
 }

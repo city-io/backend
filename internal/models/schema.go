@@ -45,7 +45,7 @@ type Army struct {
 	TileX     int       `json:"tileX" gorm:"column:tile_x;not null"`
 	TileY     int       `json:"tileY" gorm:"column:tile_y;not null"`
 	Owner     string    `json:"owner" gorm:"column:owner;size:36;not null"`
-	Size      int       `json:"size" gorm:"column:size;not null;check:size > 0"`
+	Size      int64     `json:"size" gorm:"column:size;not null;check:size > 0"`
 	CreatedAt time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
 
@@ -64,4 +64,11 @@ type Building struct {
 	UpdatedAt  time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
 
 	City City `json:"-"`
+}
+
+type Training struct {
+	BarracksId string    `json:"barracksId" gorm:"column:barracks_id;primaryKey;size:36"`
+	Size       int64     `json:"size" gorm:"column:size;not null;check:size > 0"`
+	DeployTo   string    `json:"deployTo" gorm:"column:deploy_to;size:36;null"`
+	End        time.Time `json:"end" gorm:"column:end;not null"`
 }

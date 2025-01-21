@@ -102,6 +102,15 @@ func GetMapTile(x int, y int) (models.MapTileOutput, error) {
 		return models.MapTileOutput{}, err
 	}
 
+	if getMapTileResponse.City != nil && getMapTileResponse.City.Owner != "" {
+		user, err := GetUser(getMapTileResponse.City.Owner)
+		if err != nil {
+			log.Printf("Error getting city owner: %s", err)
+			return models.MapTileOutput{}, err
+		}
+		getMapTileResponse.City.Owner = user.Username
+	}
+
 	return models.MapTileOutput{
 		X:        getMapTileResponse.Tile.X,
 		Y:        getMapTileResponse.Tile.Y,

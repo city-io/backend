@@ -18,15 +18,26 @@ type UpdateTileCityPIDMessage struct {
 type UpdateTileBuildingPIDMessage struct {
 	BuildingPID *actor.PID
 }
+type AddTileArmyMessage struct {
+	ArmyPID *actor.PID
+	Army    models.Army
+}
 type GetMapTileMessage struct{}
+type GetMapTileArmiesMessage struct{}
 
 type CreateMapTileResponseMessage struct {
+	Error error
+}
+type AddTileArmyResponseMessage struct {
 	Error error
 }
 type GetMapTileResponseMessage struct {
 	Tile     models.MapTile
 	City     *models.City
 	Building *models.Building
+}
+type GetMapTileArmiesResponseMessage struct {
+	Armies []models.Army
 }
 
 // Errors

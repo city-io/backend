@@ -6,10 +6,12 @@ import (
 	"cityio/internal/messages"
 	"cityio/internal/models"
 
+	"errors"
 	"log"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 func RestoreBuilding(building models.Building) error {
@@ -91,6 +93,31 @@ func RestoreBuilding(building models.Building) error {
 	system.Root.Send(buildingPID, messages.UpdateBuildingTilePIDMessage{
 		TilePID: getMapTilePIDResponse.PID,
 	})
+
+	if building.Type == constants.BUILDING_TYPE_BARRACKS {
+		var training models.Training
+		result := db.Where("barracks_id = ?", building.BuildingId).First(&training)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			log.Printf("Error getting training: %s", result.Error)
+			return result.Error
+		}
+
+		var restoreTrainingResponse *messages.RestoreTrainingResponseMessage
+		restoreTrainingResponse, err = actors.Request[messages.RestoreTrainingResponseMessage](system.Root, buildingPID, messages.RestoreTrainingMessage{
+			Training: training,
+		})
+		if err != nil {
+			log.Printf("Error restoring training: %s", err)
+			return err
+		}
+		if restoreTrainingResponse.Error != nil {
+			log.Printf("Error restoring training: %s", restoreTrainingResponse.Error)
+			return restoreTrainingResponse.Error
+		}
+	}
 
 	return nil
 }

@@ -19,6 +19,10 @@ type GetBuildingMessage struct{}
 type DeleteBuildingMessage struct {
 	BuildingId string
 }
+type TrainTroopsMessage struct {
+	Size     int64
+	DeployTo string
+}
 
 type CreateBuildingResponseMessage struct {
 	Error error
@@ -27,6 +31,9 @@ type GetBuildingResponseMessage struct {
 	Building models.Building
 }
 type DeleteBuildingResponseMessage struct {
+	Error error
+}
+type TrainTroopsResponseMessage struct {
 	Error error
 }
 

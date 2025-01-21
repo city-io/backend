@@ -21,11 +21,11 @@ func ProcessMessage(ctx context.Context, conn *websocket.Conn, messageType int, 
 
 	switch message.Request {
 	case "ping":
-		log.Println("[ws] Received ping")
+		log.Println("Received ping")
 		conn.WriteMessage(messageType, []byte("pong"))
 		return nil
 	case "pong":
-		log.Println("[ws] Received pong")
+		log.Println("Received pong")
 		return nil
 	case "map":
 		return getMapTiles(ctx, conn, &message)
@@ -66,7 +66,7 @@ func HandleWebSocket(response http.ResponseWriter, request *http.Request) {
 	defer conn.Close()
 
 	ctx := context.WithValue(request.Context(), "claims", claims)
-	log.Printf("[ws] WebSocket connection established with %s", claims.Username)
+	log.Printf("WebSocket connection established with %s", claims.Username)
 
 	for {
 		messageType, p, err := conn.ReadMessage()

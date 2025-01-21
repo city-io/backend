@@ -56,7 +56,33 @@ func RestoreArmy(army models.Army) error {
 		log.Printf("Error restoring army: %s", addUserArmyResponse.Error)
 		return addUserArmyResponse.Error
 	}
-	log.Printf("Restored army at (%d, %d)", army.TileX, army.TileY)
+
+	getTilePIDResponse, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
+		X: army.TileX,
+		Y: army.TileY,
+	})
+	if err != nil {
+		log.Printf("Error restoring army: %s", err)
+		return err
+	}
+	if getTilePIDResponse.PID == nil {
+		log.Printf("Error restoring army: Map tile not found")
+		return &messages.MapTileNotFoundError{X: army.TileX, Y: army.TileY}
+	}
+
+	// TODO: replace with better way of storing armies in tiles
+	addTileArmyPIDResponse, err := actors.Request[messages.AddTileArmyResponseMessage](system.Root, getTilePIDResponse.PID, messages.AddTileArmyMessage{
+		ArmyPID: armyPID,
+		Army:    army,
+	})
+	if err != nil {
+		log.Printf("Error restoring army: %s", err)
+		return err
+	}
+	if addTileArmyPIDResponse.Error != nil {
+		log.Printf("Error restoring army: %s", addTileArmyPIDResponse.Error)
+		return addTileArmyPIDResponse.Error
+	}
 
 	addArmyPIDResponse, err := actors.Request[messages.AddArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddArmyPIDMessage{
 		ArmyId: army.ArmyId,
@@ -70,6 +96,8 @@ func RestoreArmy(army models.Army) error {
 		log.Printf("Error restoring army: %s", addArmyPIDResponse.Error)
 		return addArmyPIDResponse.Error
 	}
+
+	log.Printf("Restored army at (%d, %d) of size %d", army.TileX, army.TileY, army.Size)
 	return nil
 }
 
@@ -115,7 +143,33 @@ func CreateArmy(army models.Army) (string, error) {
 		log.Printf("Error creating army: %s", addUserArmyResponse.Error)
 		return "", addUserArmyResponse.Error
 	}
-	log.Printf("Created army at (%d, %d)", army.TileX, army.TileY)
+
+	getTilePIDResponse, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
+		X: army.TileX,
+		Y: army.TileY,
+	})
+	if err != nil {
+		log.Printf("Error restoring army: %s", err)
+		return "", err
+	}
+	if getTilePIDResponse.PID == nil {
+		log.Printf("Error restoring army: Map tile not found")
+		return "", &messages.MapTileNotFoundError{X: army.TileX, Y: army.TileY}
+	}
+
+	// TODO: replace with better way of storing armies in tiles
+	addTileArmyPIDResponse, err := actors.Request[messages.AddTileArmyResponseMessage](system.Root, getTilePIDResponse.PID, messages.AddTileArmyMessage{
+		ArmyPID: armyPID,
+		Army:    army,
+	})
+	if err != nil {
+		log.Printf("Error restoring army: %s", err)
+		return "", err
+	}
+	if addTileArmyPIDResponse.Error != nil {
+		log.Printf("Error restoring army: %s", addTileArmyPIDResponse.Error)
+		return "", addTileArmyPIDResponse.Error
+	}
 
 	addArmyPIDResponse, err := actors.Request[messages.AddArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddArmyPIDMessage{
 		ArmyId: army.ArmyId,
@@ -129,6 +183,8 @@ func CreateArmy(army models.Army) (string, error) {
 		log.Printf("Error creating army: %s", addArmyPIDResponse.Error)
 		return "", addArmyPIDResponse.Error
 	}
+
+	log.Printf("Created %s's army at (%d, %d) of size %d", army.Owner, army.TileX, army.TileY, army.Size)
 	return army.ArmyId, nil
 }
 
