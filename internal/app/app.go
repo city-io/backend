@@ -1,8 +1,13 @@
-package services
+package app
 
 import (
+	"cityio/internal/actors"
+	"cityio/internal/api"
 	"cityio/internal/constants"
+	"cityio/internal/database"
+	"cityio/internal/messages"
 	"cityio/internal/models"
+	"cityio/internal/services"
 
 	"fmt"
 	"log"
@@ -14,18 +19,90 @@ import (
 	"gorm.io/gorm"
 )
 
-func resetTable(db *gorm.DB, model interface{}) error {
-	tableName := db.Migrator().CurrentDatabase()
-	if err := db.Migrator().DropTable(model); err != nil {
-		return fmt.Errorf("failed to drop table %s: %w", tableName, err)
+var db = database.GetDb()
+var system = actors.GetSystem()
+
+func Start(reset bool) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	if reset {
+		Reset()
 	}
-	if err := db.AutoMigrate(model); err != nil {
-		return fmt.Errorf("failed to recreate table %s: %w", tableName, err)
+	Init()
+	api.Start()
+}
+
+func Init() {
+	log.SetPrefix("[init]\t")
+	managerPID := actors.GetManagerPID()
+	initResponse, err := actors.Request[messages.InitPIDManagerResponseMessage](system.Root, managerPID, messages.InitPIDManagerMessage{})
+	if err != nil {
+		panic(err)
 	}
-	return nil
+	if initResponse.Error != nil {
+		panic(initResponse.Error)
+	}
+
+	var users []models.User
+	db.Find(&users)
+
+	for _, user := range users {
+		err := services.RestoreUser(user)
+		if err != nil {
+			panic(err)
+		}
+	}
+	log.Printf("Spawned actors for %d users", len(users))
+
+	var mapTiles []models.MapTile
+	db.Find(&mapTiles)
+
+	for _, mapTile := range mapTiles {
+		err := services.RestoreMapTile(mapTile)
+		if err != nil {
+			panic(err)
+		}
+	}
+	log.Printf("Spawned actors for %d map tiles", len(mapTiles))
+
+	var cities []models.City
+	db.Find(&cities)
+
+	for _, city := range cities {
+		err := services.RestoreCity(city)
+		if err != nil {
+			panic(err)
+		}
+	}
+	log.Printf("Spawned actors for %d cities", len(cities))
+
+	var armies []models.Army
+	db.Find(&armies)
+
+	for _, army := range armies {
+		err := services.RestoreArmy(army)
+		if err != nil {
+			panic(err)
+		}
+	}
+	log.Printf("Spawned actors for %d armies", len(armies))
+
+	var buildings []models.Building
+	db.Find(&buildings)
+
+	for _, building := range buildings {
+		err := services.RestoreBuilding(building)
+		if err != nil {
+			panic(err)
+		}
+	}
+	log.Printf("Spawned actors for %d buildings", len(buildings))
+
+	log.SetPrefix("[app]\t")
 }
 
 func Reset() {
+	log.SetPrefix("[reset]\t")
 	err := resetTable(db, &models.Army{})
 	if err != nil {
 		log.Fatalf("Error resetting Army table: %v", err)
@@ -83,7 +160,7 @@ func Reset() {
 			log.Printf("Error creating city: %s", result.Error)
 			panic(result.Error)
 		} else {
-			log.Printf("[reset] Created city %s for user %s", cityId, user.Username)
+			log.Printf("Created city %s for user %s", cityId, user.Username)
 		}
 
 		result = db.Create(&models.Building{
@@ -165,7 +242,7 @@ func Reset() {
 			log.Printf("Error creating map tiles: %s", result.Error)
 		}
 	}
-	log.Printf("[reset] Created %d map tiles", len(mapTiles))
+	log.Printf("Created %d map tiles", len(mapTiles))
 
 	cityBatchSize := 5000
 	for i := 0; i < len(cities); i += cityBatchSize {
@@ -177,7 +254,7 @@ func Reset() {
 			log.Printf("Error creating cities: %s", result.Error)
 		}
 	}
-	log.Printf("[reset] Created %d cities", len(cities))
+	log.Printf("Created %d cities", len(cities))
 
 	buildingBatchSize := 5000
 	for i := 0; i < len(buildings); i += buildingBatchSize {
@@ -189,8 +266,19 @@ func Reset() {
 			log.Printf("Error creating buildings: %s", result.Error)
 		}
 	}
-	log.Printf("[reset] Created %d buildings", len(buildings))
+	log.Printf("Created %d buildings", len(buildings))
 
-	log.Println("[reset] Reset complete!")
+	log.Println("Reset complete!")
 	log.Println()
+}
+
+func resetTable(db *gorm.DB, model interface{}) error {
+	tableName := db.Migrator().CurrentDatabase()
+	if err := db.Migrator().DropTable(model); err != nil {
+		return fmt.Errorf("failed to drop table %s: %w", tableName, err)
+	}
+	if err := db.AutoMigrate(model); err != nil {
+		return fmt.Errorf("failed to recreate table %s: %w", tableName, err)
+	}
+	return nil
 }

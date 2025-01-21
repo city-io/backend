@@ -1,12 +1,9 @@
 package main
 
 import (
-	"cityio/internal/api"
-	"cityio/internal/services"
+	"cityio/internal/app"
 )
 
 func main() {
-	services.Reset()
-	services.Init()
-	api.Start()
+	app.Start(true)
 }
