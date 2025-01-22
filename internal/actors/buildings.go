@@ -1,11 +1,13 @@
 package actors
 
 import (
+	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 
 	"log"
 	"sync"
+	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 )
@@ -23,16 +25,19 @@ type BuildingActor struct {
 	tileOnce sync.Once
 }
 
-func (state *BuildingActor) getBuilding(ctx actor.Context) {
-	ctx.Respond(messages.GetBuildingResponseMessage{
-		Building: state.Building,
-	})
-}
+func (state *BuildingActor) upgradeBuilding(ctx actor.Context) error {
+	if state.Building.Level >= constants.MAX_BUILDING_LEVEL {
+		return &messages.MaxLevelReachedError{BuildingId: state.Building.BuildingId}
+	}
 
-func (state *BuildingActor) createBuilding(ctx actor.Context) {
-	ctx.Send(state.database, messages.CreateBuildingMessage{
+	state.Building.Level++
+	state.Building.ConstructionEnd = state.Building.ConstructionEnd.Add(
+		time.Duration(constants.GetBuildingConstructionTime(state.Building.Type, state.Building.Level)) * time.Second,
+	)
+	ctx.Send(state.database, messages.UpdateBuildingMessage{
 		Building: state.Building,
 	})
+	return nil
 }
 
 func (state *BuildingActor) deleteBuilding(ctx actor.Context) {

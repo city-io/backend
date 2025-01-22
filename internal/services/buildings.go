@@ -158,6 +158,33 @@ func ConstructBuilding(building models.Building) (string, error) {
 	return building.BuildingId, nil
 }
 
+func UpgradeBuilding(building models.Building) error {
+	getBuildingPIDResponse, err := actors.Request[messages.GetBuildingPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetBuildingPIDMessage{
+		BuildingId: building.BuildingId,
+	})
+	if err != nil {
+		log.Printf("Error upgrading building: %s", err)
+		return err
+	}
+	if getBuildingPIDResponse.PID == nil {
+		log.Printf("Error upgrading building: %s", &messages.BuildingNotFoundError{BuildingId: building.BuildingId})
+		return err
+	}
+
+	var upgradeResponse *messages.UpgradeBuildingResponseMessage
+	upgradeResponse, err = actors.Request[messages.UpgradeBuildingResponseMessage](system.Root, getBuildingPIDResponse.PID, messages.UpgradeBuildingMessage{})
+	if err != nil {
+		log.Printf("Error upgrading building: %s", err)
+		return err
+	}
+	if upgradeResponse.Error != nil {
+		log.Printf("Error upgrading building: %s", upgradeResponse.Error)
+		return upgradeResponse.Error
+	}
+
+	return nil
+}
+
 func TrainTroops(training models.Training) error {
 	getBarracksPIDResponse, err := actors.Request[messages.GetBuildingPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetBuildingPIDMessage{
 		BuildingId: training.BarracksId,

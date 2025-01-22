@@ -10,7 +10,11 @@ type CreateBuildingMessage struct {
 	Building models.Building
 	Restore  bool
 }
+type UpgradeBuildingMessage struct{}
 type GetBuildingMessage struct{}
+type UpdateBuildingMessage struct {
+	Building models.Building
+}
 type DeleteBuildingMessage struct {
 	BuildingId string
 }
@@ -25,6 +29,9 @@ type DeleteTrainingMessage struct {
 }
 
 type CreateBuildingResponseMessage struct {
+	Error error
+}
+type UpgradeBuildingResponseMessage struct {
 	Error error
 }
 type GetBuildingResponseMessage struct {
@@ -63,4 +70,12 @@ type TrainingAlreadyExistsError struct {
 
 func (e *TrainingAlreadyExistsError) Error() string {
 	return fmt.Sprintf("Training already exists for barracks: %s", e.BarracksId)
+}
+
+type MaxLevelReachedError struct {
+	BuildingId string
+}
+
+func (e *MaxLevelReachedError) Error() string {
+	return fmt.Sprintf("Max level reached for building: %s", e.BuildingId)
 }

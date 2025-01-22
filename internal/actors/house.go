@@ -45,6 +45,11 @@ func (state *HouseActor) Receive(ctx actor.Context) {
 			Error: nil,
 		})
 
+	case messages.UpgradeBuildingMessage:
+		ctx.Respond(messages.UpgradeBuildingResponseMessage{
+			Error: state.upgradeBuilding(ctx),
+		})
+
 	case messages.GetBuildingMessage:
 		ctx.Respond(messages.GetBuildingResponseMessage{
 			Building: state.Building,

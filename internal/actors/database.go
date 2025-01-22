@@ -67,6 +67,11 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		if result.Error != nil {
 			log.Printf("Error creating building in db: %s", result.Error)
 		}
+	case messages.UpdateBuildingMessage:
+		result := state.db.Save(&msg.Building)
+		if result.Error != nil {
+			log.Printf("Error updating building in db: %s", result.Error)
+		}
 	case messages.DeleteBuildingMessage:
 		result := state.db.Where("building_id = ?", msg.BuildingId).Delete(&models.Building{})
 		if result.Error != nil {

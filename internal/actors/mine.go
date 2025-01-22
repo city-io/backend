@@ -32,6 +32,11 @@ func (state *MineActor) Receive(ctx actor.Context) {
 		})
 		state.startPeriodicOperation(ctx)
 
+	case messages.UpgradeBuildingMessage:
+		ctx.Respond(messages.UpgradeBuildingResponseMessage{
+			Error: state.upgradeBuilding(ctx),
+		})
+
 	case messages.PeriodicOperationMessage:
 		if state.Building.ConstructionEnd.After(time.Now()) {
 			return

@@ -32,6 +32,11 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 			Error: nil,
 		})
 
+	case messages.UpgradeBuildingMessage:
+		ctx.Respond(messages.UpgradeBuildingResponseMessage{
+			Error: state.upgradeBuilding(ctx),
+		})
+
 	case messages.RestoreTrainingMessage:
 		log.Printf("Restoring training %+v", msg.Training)
 		state.Training = &msg.Training

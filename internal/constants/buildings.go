@@ -7,6 +7,8 @@ const (
 	BUILDING_TYPE_HOUSE       = "house"
 	BUILDING_TYPE_FARM        = "farm"
 	BUILDING_TYPE_MINE        = "mine"
+
+	MAX_BUILDING_LEVEL = 10
 )
 
 var buildingProduction = map[string][]int64{
