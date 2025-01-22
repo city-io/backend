@@ -12,6 +12,8 @@ const (
 	INITIAL_PLAYER_GOLD            = 100000
 	INITIAL_PLAYER_FOOD            = 100000
 
+	TROOP_MOVEMENT_BACKUP_FREQUENCY = 5 // number of tile movements before state saved to db
+
 	// in seconds
 	DB_BACKUP_FREQUENCY           = 2  // frequency of database flushing buffer queue and writing to database
 	USER_BACKUP_FREQUENCY         = 10 // frequency of user state being sent to update queue

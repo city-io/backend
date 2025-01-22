@@ -103,6 +103,9 @@ func (state *CityActor) startPeriodicOperation(ctx actor.Context) {
 }
 
 func (state *CityActor) stopPeriodicOperation() {
-	close(state.stopTickerCh)
-	state.ticker = nil
+	select {
+	case <-state.stopTickerCh:
+	default:
+		close(state.stopTickerCh)
+	}
 }

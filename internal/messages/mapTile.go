@@ -17,7 +17,8 @@ type AddTileArmyMessage struct {
 	Army    models.Army
 }
 type RemoveTileArmyMessage struct {
-	Owner string
+	Owner  string
+	ArmyId string
 }
 type GetMapTileMessage struct{}
 type GetMapTileArmiesMessage struct{}

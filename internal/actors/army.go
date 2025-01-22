@@ -109,12 +109,22 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		})
 		state.startTroopMovement(ctx)
 
+	// periodically called to update army position
 	case messages.UpdateArmyTileMessage:
-		// periodically update army position
 		if !state.Army.MarchActive {
 			state.stopPeriodicOperation()
 			return
 		}
+
+		tilePID, err := state.getTilePID()
+		if err != nil {
+			log.Printf("Error updating army tile: %s", err)
+			return
+		}
+		ctx.Send(tilePID, messages.RemoveTileArmyMessage{
+			Owner:  state.Army.Owner,
+			ArmyId: state.Army.ArmyId,
+		})
 
 		// move 1 at a time in the x direction, then y direction
 		if state.Army.TileX < state.Army.ToX {
@@ -126,9 +136,8 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		} else if state.Army.TileY > state.Army.ToY {
 			state.Army.TileY--
 		}
-		log.Printf("Update: Army %s at (%d, %d)", state.Army.ArmyId, state.Army.TileX, state.Army.TileY)
+		log.Printf("Army %s at (%d, %d)", state.Army.ArmyId, state.Army.TileX, state.Army.TileY)
 
-		// TODO: send message to tile actor to update army list
 		if state.Army.TileX == state.Army.ToX && state.Army.TileY == state.Army.ToY {
 			state.stopPeriodicOperation()
 			state.Army.MarchActive = false
@@ -140,6 +149,16 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 				Army: state.Army,
 			})
 		}
+
+		tilePID, err = state.getTilePID()
+		if err != nil {
+			log.Printf("Error updating army tile: %s", err)
+			return
+		}
+		ctx.Send(tilePID, messages.AddTileArmyMessage{
+			ArmyPID: ctx.Self(),
+			Army:    state.Army,
+		})
 	}
 }
 
@@ -154,7 +173,7 @@ func (state *ArmyActor) startTroopMovement(ctx actor.Context) {
 			case <-state.ticker.C:
 				// make periodic backups every 5 updates
 				count++
-				if count%5 == 0 {
+				if count%(constants.TROOP_MOVEMENT_BACKUP_FREQUENCY) == 0 {
 					ctx.Send(state.database, messages.UpdateArmyMessage{
 						Army: state.Army,
 					})
@@ -169,9 +188,10 @@ func (state *ArmyActor) startTroopMovement(ctx actor.Context) {
 }
 
 func (state *ArmyActor) stopPeriodicOperation() {
-	if state.ticker != nil {
+	select {
+	case <-state.stopTickerCh:
+	default:
 		close(state.stopTickerCh)
-		state.ticker = nil
 	}
 }
 

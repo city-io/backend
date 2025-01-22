@@ -49,7 +49,7 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 				Army:    msg.Army,
 			})
 		} else {
-			log.Printf("Adding army to existing armies")
+			log.Printf("Merging idle armies at %d, %d", state.Tile.X, state.Tile.Y)
 			state.Armies[msg.Army.Owner] = append(state.Armies[msg.Army.Owner], &army{
 				ArmyPID: msg.ArmyPID,
 				Army:    msg.Army,
@@ -100,10 +100,17 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 		}
 
 	case messages.RemoveTileArmyMessage:
-		delete(state.Armies, msg.Owner)
-		ctx.Respond(messages.RemoveTileArmyResponseMessage{
-			Error: nil,
-		})
+		if len(state.Armies[msg.Owner]) == 1 {
+			delete(state.Armies, msg.Owner)
+		} else {
+			newArmies := make([]*army, 0)
+			for _, army := range state.Armies[msg.Owner] {
+				if army.Army.ArmyId != msg.ArmyId {
+					newArmies = append(newArmies, army)
+				}
+			}
+			state.Armies[msg.Owner] = newArmies
+		}
 
 	case messages.GetMapTileMessage:
 		var city *models.City = nil

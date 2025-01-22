@@ -131,7 +131,6 @@ func (state *BarracksActor) completeTraining(ctx actor.Context) {
 				Size:  state.Training.Size,
 			})
 		}
-		log.Printf("Deploy City: %+v", getDeployCityResponse.City)
 
 		cityX := getDeployCityResponse.City.StartX + int(math.Floor(float64(getDeployCityResponse.City.Size)/2))
 		cityY := getDeployCityResponse.City.StartY + int(math.Floor(float64(getDeployCityResponse.City.Size)/2))

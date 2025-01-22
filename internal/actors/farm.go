@@ -76,6 +76,9 @@ func (state *FarmActor) startPeriodicOperation(ctx actor.Context) {
 }
 
 func (state *FarmActor) stopPeriodicOperation() {
-	close(state.stopTickerCh)
-	state.ticker = nil
+	select {
+	case <-state.stopTickerCh:
+	default:
+		close(state.stopTickerCh)
+	}
 }
