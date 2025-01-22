@@ -9,8 +9,8 @@ type User struct {
 	Email    string `json:"email" gorm:"column:email;size:100;unique;not null"`
 	Username string `json:"username" gorm:"column:username;size:100;unique;not null"`
 	Password string `json:"password" gorm:"column:password;size:64;not null"`
-	Gold     int64  `json:"gold" gorm:"column:gold;default:100000;not null;check:gold > 0"`
-	Food     int64  `json:"food" gorm:"column:food;default:100000;not null;check:food > 0"`
+	Gold     int64  `json:"gold" gorm:"column:gold;not null;check:gold >= 0"`
+	Food     int64  `json:"food" gorm:"column:food;not null;check:food >= 0"`
 
 	Allies    []string  `json:"allies" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
 	CreatedAt time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`

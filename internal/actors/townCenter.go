@@ -30,7 +30,7 @@ func (state *TownCenterActor) Receive(ctx actor.Context) {
 				Error: nil,
 			})
 
-			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getUserPID(), messages.UpdateCityPopulationCapMessage{
+			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getCityPID(), messages.UpdateCityPopulationCapMessage{
 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_TOWN_CENTER, state.Building.Level),
 			})
 			if err != nil {

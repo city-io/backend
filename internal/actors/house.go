@@ -23,7 +23,7 @@ func (state *HouseActor) Receive(ctx actor.Context) {
 				Building: state.Building,
 			})
 
-			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getUserPID(), messages.UpdateCityPopulationCapMessage{
+			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getCityPID(), messages.UpdateCityPopulationCapMessage{
 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_HOUSE, state.Building.Level),
 			})
 			if err != nil {

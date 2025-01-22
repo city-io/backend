@@ -35,6 +35,9 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		if result.Error != nil {
 			log.Printf("Error creating user in db: %s", result.Error)
 		}
+		ctx.Respond(messages.RegisterUserResponseMessage{
+			Error: result.Error,
+		})
 	case *messages.UpdateUserMessage:
 		state.userBuffer = append(state.userBuffer, msg.User)
 	case messages.DeleteUserMessage:

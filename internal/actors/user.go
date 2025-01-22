@@ -1,7 +1,6 @@
 package actors
 
 import (
-	// "cityio/internal/constants"
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
@@ -28,9 +27,23 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		state.User = msg.User
 		state.ArmyPIDs = make(map[string]*actor.PID)
 		if !msg.Restore {
-			ctx.Send(state.database, messages.RegisterUserMessage{
+			registerUserResponse, err := Request[messages.RegisterUserResponseMessage](ctx, state.database, messages.RegisterUserMessage{
 				User: state.User,
 			})
+			if err != nil {
+				log.Printf("Error in register user db operation: %s", err)
+				ctx.Respond(messages.RegisterUserResponseMessage{
+					Error: err,
+				})
+				return
+			}
+			if registerUserResponse.Error != nil {
+				log.Printf("Error in register user db operation: %s", registerUserResponse.Error)
+				ctx.Respond(messages.RegisterUserResponseMessage{
+					Error: registerUserResponse.Error,
+				})
+				return
+			}
 		}
 		ctx.Respond(messages.RegisterUserResponseMessage{
 			Error: nil,

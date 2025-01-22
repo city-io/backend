@@ -2,6 +2,7 @@ package services
 
 import (
 	"cityio/internal/actors"
+	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
@@ -63,12 +64,15 @@ func RegisterUser(user models.RegisterUserRequest) (string, error) {
 
 	userPID, err := actors.Spawn(&actors.UserActor{})
 
-	response, err := actors.Request[messages.RegisterUserResponseMessage](system.Root, userPID, messages.RegisterUserMessage{
+	registerUserResponse, err := actors.Request[messages.RegisterUserResponseMessage](system.Root, userPID, messages.RegisterUserMessage{
 		User: models.User{
 			UserId:   userId,
 			Username: user.Username,
 			Email:    user.Email,
 			Password: string(hashedPassword),
+			Gold:     constants.INITIAL_PLAYER_GOLD,
+			Food:     constants.INITIAL_PLAYER_FOOD,
+			Allies:   make([]string, 0),
 		},
 		Restore: false,
 	})
@@ -77,12 +81,13 @@ func RegisterUser(user models.RegisterUserRequest) (string, error) {
 		log.Printf("Error registering user: %s", err)
 		return "", err
 	}
-	if response.Error != nil {
-		log.Printf("Error registering user: %s", response.Error)
-		return "", response.Error
+	if registerUserResponse.Error != nil {
+		log.Printf("Error registering user: %s", registerUserResponse.Error)
+		return "", registerUserResponse.Error
 	}
 
-	response, err = actors.Request[messages.RegisterUserResponseMessage](system.Root, actors.GetManagerPID(), messages.AddUserPIDMessage{
+	var addUserPIDResponse *messages.AddUserPIDResponseMessage
+	addUserPIDResponse, err = actors.Request[messages.AddUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddUserPIDMessage{
 		UserId: userId,
 		PID:    userPID,
 	})
@@ -91,9 +96,9 @@ func RegisterUser(user models.RegisterUserRequest) (string, error) {
 		log.Printf("Error adding user pid: %s", err)
 		return "", err
 	}
-	if response.Error != nil {
-		log.Printf("Error adding user pid: %s", response.Error)
-		return "", response.Error
+	if addUserPIDResponse.Error != nil {
+		log.Printf("Error adding user pid: %s", addUserPIDResponse.Error)
+		return "", addUserPIDResponse.Error
 	}
 
 	return userId, nil
