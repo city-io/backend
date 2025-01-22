@@ -100,6 +100,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		}
 		log.Printf("Update: Army %s at (%d, %d)", state.Army.ArmyId, state.Army.TileX, state.Army.TileY)
 
+		// TODO: send message to tile actor to update army list
 		if state.Army.TileX == state.Army.ToX && state.Army.TileY == state.Army.ToY {
 			state.stopPeriodicOperation()
 			state.Army.MarchActive = false
