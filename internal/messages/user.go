@@ -15,6 +15,12 @@ type RegisterUserMessage struct {
 type UpdateUserMessage struct {
 	User models.User
 }
+type AddAllyMessage struct {
+	Ally string
+}
+type RemoveAllyMessage struct {
+	Ally string
+}
 type UpdateUserGoldMessage struct {
 	Change int64
 }
@@ -31,6 +37,12 @@ type DeleteUserMessage struct {
 }
 
 type RegisterUserResponseMessage struct {
+	Error error
+}
+type AddAllyResponseMessage struct {
+	Error error
+}
+type RemoveAllyResponseMessage struct {
 	Error error
 }
 type UpdateUserGoldResponseMessage struct {

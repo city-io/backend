@@ -56,33 +56,6 @@ func RestoreArmy(army models.Army) error {
 		return addUserArmyResponse.Error
 	}
 
-	getTilePIDResponse, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
-		X: army.TileX,
-		Y: army.TileY,
-	})
-	if err != nil {
-		log.Printf("Error restoring army: %s", err)
-		return err
-	}
-	if getTilePIDResponse.PID == nil {
-		log.Printf("Error restoring army: Map tile not found")
-		return &messages.MapTileNotFoundError{X: army.TileX, Y: army.TileY}
-	}
-
-	// TODO: replace with better way of storing armies in tiles
-	addTileArmyPIDResponse, err := actors.Request[messages.AddTileArmyResponseMessage](system.Root, getTilePIDResponse.PID, messages.AddTileArmyMessage{
-		ArmyPID: armyPID,
-		Army:    army,
-	})
-	if err != nil {
-		log.Printf("Error restoring army: %s", err)
-		return err
-	}
-	if addTileArmyPIDResponse.Error != nil {
-		log.Printf("Error restoring army: %s", addTileArmyPIDResponse.Error)
-		return addTileArmyPIDResponse.Error
-	}
-
 	addArmyPIDResponse, err := actors.Request[messages.AddArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddArmyPIDMessage{
 		ArmyId: army.ArmyId,
 		PID:    armyPID,
@@ -140,33 +113,6 @@ func CreateArmy(army models.Army) (string, error) {
 	if addUserArmyResponse.Error != nil {
 		log.Printf("Error creating army: %s", addUserArmyResponse.Error)
 		return "", addUserArmyResponse.Error
-	}
-
-	getTilePIDResponse, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
-		X: army.TileX,
-		Y: army.TileY,
-	})
-	if err != nil {
-		log.Printf("Error restoring army: %s", err)
-		return "", err
-	}
-	if getTilePIDResponse.PID == nil {
-		log.Printf("Error restoring army: Map tile not found")
-		return "", &messages.MapTileNotFoundError{X: army.TileX, Y: army.TileY}
-	}
-
-	// TODO: replace with better way of storing armies in tiles
-	addTileArmyPIDResponse, err := actors.Request[messages.AddTileArmyResponseMessage](system.Root, getTilePIDResponse.PID, messages.AddTileArmyMessage{
-		ArmyPID: armyPID,
-		Army:    army,
-	})
-	if err != nil {
-		log.Printf("Error restoring army: %s", err)
-		return "", err
-	}
-	if addTileArmyPIDResponse.Error != nil {
-		log.Printf("Error restoring army: %s", addTileArmyPIDResponse.Error)
-		return "", addTileArmyPIDResponse.Error
 	}
 
 	addArmyPIDResponse, err := actors.Request[messages.AddArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddArmyPIDMessage{

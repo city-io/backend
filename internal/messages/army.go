@@ -29,6 +29,9 @@ type CreateArmyResponseMessage struct {
 type GetArmyResponseMessage struct {
 	Army models.Army
 }
+type UpdateArmyResponseMessage struct {
+	Error error
+}
 type DeleteArmyResponseMessage struct {
 	Error error
 }

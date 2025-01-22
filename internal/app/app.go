@@ -31,11 +31,11 @@ func Start(reset bool) {
 	Init()
 
 	// buildingId, err := services.CreateBuilding(models.Building{
-	// 	CityId: "f094d9b8-ed30-453c-9fd9-e5c44862105b",
+	// 	CityId: "89ba297d-5e7d-4a1c-977e-4c6f8897e968",
 	// 	Type:   "barracks",
 	// 	Level:  1,
-	// 	X:      54,
-	// 	Y:      0,
+	// 	X:      98,
+	// 	Y:      82,
 	// })
 	// if err != nil {
 	// 	panic(err)
@@ -44,8 +44,15 @@ func Start(reset bool) {
 
 	// err = services.TrainTroops(models.Training{
 	// 	BarracksId: buildingId,
+	// 	Size:       20,
+	// DeployTo:   "164bab00-3fc7-41a8-bf76-22d6bba42f2a",
+	// })
+
+	// time.Sleep(time.Second * (constants.TROOP_TRAINING_DURATION))
+
+	// err = services.TrainTroops(models.Training{
+	// 	BarracksId: buildingId,
 	// 	Size:       10,
-	// 	DeployTo:   "46474942-3524-4289-9276-1990bc3270a0",
 	// })
 
 	api.Start()

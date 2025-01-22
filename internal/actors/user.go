@@ -37,15 +37,30 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		})
 		state.startPeriodicOperation(ctx)
 
+	case messages.AddAllyMessage:
+		state.User.Allies = append(state.User.Allies, msg.Ally)
+		ctx.Respond(messages.AddAllyResponseMessage{
+			Error: nil,
+		})
+
+	case messages.RemoveAllyMessage:
+		for i, ally := range state.User.Allies {
+			if ally == msg.Ally {
+				state.User.Allies = append(state.User.Allies[:i], state.User.Allies[i+1:]...)
+				break
+			}
+		}
+		ctx.Respond(messages.RemoveAllyResponseMessage{
+			Error: nil,
+		})
+
 	case messages.UpdateUserGoldMessage:
-		// log.Printf("Changing %s's gold by: %d", state.User.Username, msg.Change)
 		state.User.Gold += msg.Change
 		ctx.Respond(messages.UpdateUserGoldResponseMessage{
 			Error: nil,
 		})
 
 	case messages.UpdateUserFoodMessage:
-		// log.Printf("Changing %s's food by: %d", state.User.Username, msg.Change)
 		state.User.Food += msg.Change
 		ctx.Respond(messages.UpdateUserFoodResponseMessage{
 			Error: nil,

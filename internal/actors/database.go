@@ -38,7 +38,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 	case *messages.UpdateUserMessage:
 		state.userBuffer = append(state.userBuffer, msg.User)
 	case messages.DeleteUserMessage:
-		result := state.db.Delete(&models.User{}, msg.UserId)
+		result := state.db.Where("user_id = ?", msg.UserId).Delete(&models.User{})
 		if result.Error != nil {
 			log.Printf("Error deleting user in db: %s", result.Error)
 		}
@@ -55,7 +55,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			log.Printf("Error creating city in db: %s", result.Error)
 		}
 	case messages.DeleteCityMessage:
-		result := state.db.Delete(&models.City{}, msg.CityId)
+		result := state.db.Where("city_id = ?", msg.CityId).Delete(&models.City{})
 		if result.Error != nil {
 			log.Printf("Error deleting city in db: %s", result.Error)
 		}
@@ -68,7 +68,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			log.Printf("Error creating building in db: %s", result.Error)
 		}
 	case messages.DeleteBuildingMessage:
-		result := state.db.Delete(&models.Building{}, msg.BuildingId)
+		result := state.db.Where("building_id = ?", msg.BuildingId).Delete(&models.Building{})
 		if result.Error != nil {
 			log.Printf("Error deleting building in db: %s", result.Error)
 		}
@@ -84,7 +84,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			log.Printf("Error updating army in db: %s", result.Error)
 		}
 	case messages.DeleteArmyMessage:
-		result := state.db.Delete(&models.Army{}, msg.ArmyId)
+		result := state.db.Where("army_id = ?", msg.ArmyId).Delete(&models.Army{})
 		if result.Error != nil {
 			log.Printf("Error deleting army in db: %s", result.Error)
 		}

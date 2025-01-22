@@ -56,3 +56,11 @@ type BuildingNotFoundError struct {
 func (e *BuildingNotFoundError) Error() string {
 	return fmt.Sprintf("Building not found: %s", e.BuildingId)
 }
+
+type TrainingAlreadyExistsError struct {
+	BarracksId string
+}
+
+func (e *TrainingAlreadyExistsError) Error() string {
+	return fmt.Sprintf("Training already exists for barracks: %s", e.BarracksId)
+}

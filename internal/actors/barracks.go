@@ -43,6 +43,12 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.TrainTroopsMessage:
+		if state.Training != nil {
+			ctx.Respond(messages.TrainTroopsResponseMessage{
+				Error: &messages.TrainingAlreadyExistsError{BarracksId: state.Training.BarracksId},
+			})
+			return
+		}
 		endTime := time.Now().Add(time.Second * constants.TROOP_TRAINING_DURATION)
 		if state.Building.BuildingId != msg.Training.BarracksId {
 			ctx.Respond(messages.TrainTroopsResponseMessage{
@@ -56,10 +62,10 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 			DeployTo:   msg.Training.DeployTo,
 			End:        endTime,
 		}
+		log.Printf("Spawning traning of %d troops", state.Training.Size)
 		ctx.Send(GetDatabasePID(), messages.TrainTroopsMessage{
 			Training: *state.Training,
 		})
-		log.Printf("Spawning traning of %+v", state.Training)
 		go state.backgroundTrain(ctx)
 		ctx.Respond(messages.TrainTroopsResponseMessage{
 			Error: nil,
@@ -80,13 +86,15 @@ func (state *BarracksActor) backgroundTrain(ctx actor.Context) {
 
 func (state *BarracksActor) completeTraining(ctx actor.Context) {
 	log.Printf("Training complete for %+v", state.Training)
+	ctx.Send(GetDatabasePID(), messages.DeleteTrainingMessage{
+		BarracksId: state.Training.BarracksId,
+	})
 	ownerId, err := state.getOwnerId()
 	if err != nil {
 		log.Printf("Error completing training: %s", err)
 		return
 	}
 
-	log.Println(state.Training.DeployTo)
 	if state.Training.DeployTo != "" && state.Training.DeployTo != state.Building.CityId {
 		// TODO: do ownership verification checks of deployment city here at deploy time, not in api
 		getDeployCityPIDResponse, err := Request[messages.GetCityPIDResponseMessage](system.Root, GetManagerPID(), messages.GetCityPIDMessage{
@@ -169,9 +177,6 @@ func (state *BarracksActor) completeTraining(ctx actor.Context) {
 			Size:  state.Training.Size,
 		})
 	}
-	ctx.Send(GetDatabasePID(), messages.DeleteTrainingMessage{
-		BarracksId: state.Training.BarracksId,
-	})
 	state.Training = nil
 }
 
@@ -209,33 +214,6 @@ func (state *BarracksActor) createArmy(ctx actor.Context, army models.Army) erro
 	if addUserArmyResponse.Error != nil {
 		log.Printf("Error creating army: %s", addUserArmyResponse.Error)
 		return addUserArmyResponse.Error
-	}
-
-	getTilePIDResponse, err := Request[messages.GetMapTilePIDResponseMessage](ctx, GetManagerPID(), messages.GetMapTilePIDMessage{
-		X: army.TileX,
-		Y: army.TileY,
-	})
-	if err != nil {
-		log.Printf("Error restoring army: %s", err)
-		return err
-	}
-	if getTilePIDResponse.PID == nil {
-		log.Printf("Error restoring army: Map tile not found")
-		return &messages.MapTileNotFoundError{X: army.TileX, Y: army.TileY}
-	}
-
-	// TODO: replace with better way of storing armies in tiles
-	addTileArmyPIDResponse, err := Request[messages.AddTileArmyResponseMessage](ctx, getTilePIDResponse.PID, messages.AddTileArmyMessage{
-		ArmyPID: armyPID,
-		Army:    army,
-	})
-	if err != nil {
-		log.Printf("Error restoring army: %s", err)
-		return err
-	}
-	if addTileArmyPIDResponse.Error != nil {
-		log.Printf("Error restoring army: %s", addTileArmyPIDResponse.Error)
-		return addTileArmyPIDResponse.Error
 	}
 
 	addArmyPIDResponse, err := Request[messages.AddArmyPIDResponseMessage](ctx, GetManagerPID(), messages.AddArmyPIDMessage{

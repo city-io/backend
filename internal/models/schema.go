@@ -12,7 +12,7 @@ type User struct {
 	Gold     int64  `json:"gold" gorm:"column:gold;default:100000;not null;check:gold > 0"`
 	Food     int64  `json:"food" gorm:"column:food;default:100000;not null;check:food > 0"`
 
-	Alliances []string  `json:"alliances" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
+	Allies    []string  `json:"allies" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
 	CreatedAt time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
 }

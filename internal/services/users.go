@@ -219,3 +219,105 @@ func DeleteUser(userId string) error {
 
 	return nil
 }
+
+func AddAlliance(user1 string, user2 string) error {
+	response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: user1,
+	})
+	if err != nil {
+		log.Printf("Error getting user1 pid: %s", err)
+		return err
+	}
+	if response.PID == nil {
+		return &messages.UserNotFoundError{UserId: user1}
+	}
+
+	var addAllyResponse *messages.AddAllyResponseMessage
+	addAllyResponse, err = actors.Request[messages.AddAllyResponseMessage](system.Root, response.PID, messages.AddAllyMessage{
+		Ally: user2,
+	})
+	if err != nil {
+		log.Printf("Error adding ally: %s", err)
+		return err
+	}
+	if addAllyResponse.Error != nil {
+		log.Printf("Error adding ally: %s", addAllyResponse.Error)
+		return addAllyResponse.Error
+	}
+
+	response, err = actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: user2,
+	})
+	if err != nil {
+		log.Printf("Error getting user2 pid: %s", err)
+		return err
+	}
+	if response.PID == nil {
+		return &messages.UserNotFoundError{UserId: user2}
+	}
+
+	addAllyResponse, err = actors.Request[messages.AddAllyResponseMessage](system.Root, response.PID, messages.AddAllyMessage{
+		Ally: user1,
+	})
+	if err != nil {
+		log.Printf("Error adding ally: %s", err)
+		return err
+	}
+	if addAllyResponse.Error != nil {
+		log.Printf("Error adding ally: %s", addAllyResponse.Error)
+		return addAllyResponse.Error
+	}
+
+	return nil
+}
+
+func RemoveAlliance(user1 string, user2 string) error {
+	response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: user1,
+	})
+	if err != nil {
+		log.Printf("Error getting user1 pid: %s", err)
+		return err
+	}
+	if response.PID == nil {
+		return &messages.UserNotFoundError{UserId: user1}
+	}
+
+	var removeAllyResponse *messages.RemoveAllyResponseMessage
+	removeAllyResponse, err = actors.Request[messages.RemoveAllyResponseMessage](system.Root, response.PID, messages.RemoveAllyMessage{
+		Ally: user2,
+	})
+	if err != nil {
+		log.Printf("Error removing ally: %s", err)
+		return err
+	}
+	if removeAllyResponse.Error != nil {
+		log.Printf("Error removing ally: %s", removeAllyResponse.Error)
+		return removeAllyResponse.Error
+	}
+
+	response, err = actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
+		UserId: user2,
+	})
+	if err != nil {
+		log.Printf("Error getting user2 pid: %s", err)
+		return err
+	}
+	if response.PID == nil {
+		return &messages.UserNotFoundError{UserId: user2}
+	}
+
+	removeAllyResponse, err = actors.Request[messages.RemoveAllyResponseMessage](system.Root, response.PID, messages.RemoveAllyMessage{
+		Ally: user1,
+	})
+	if err != nil {
+		log.Printf("Error removing ally: %s", err)
+		return err
+	}
+	if removeAllyResponse.Error != nil {
+		log.Printf("Error removing ally: %s", removeAllyResponse.Error)
+		return removeAllyResponse.Error
+	}
+
+	return nil
+}

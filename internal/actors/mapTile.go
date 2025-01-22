@@ -10,14 +10,18 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 )
 
+type army struct {
+	ArmyPID *actor.PID
+	Army    models.Army
+}
+
 type MapTileActor struct {
 	BaseActor
 	Tile models.MapTile
 
 	CityPID     *actor.PID
 	BuildingPID *actor.PID
-	ArmyPIDs    []*actor.PID
-	Armies      []models.Army
+	Armies      map[string][]*army
 
 	cityOnce sync.Once
 }
@@ -27,7 +31,7 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 
 	case messages.CreateMapTileMessage:
 		state.Tile = msg.Tile
-		state.ArmyPIDs = make([]*actor.PID, 0)
+		state.Armies = make(map[string][]*army)
 		if !msg.Restore {
 			ctx.Send(state.database, messages.CreateMapTileMessage{
 				Tile: state.Tile,
@@ -38,9 +42,66 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.AddTileArmyMessage:
-		state.ArmyPIDs = append(state.ArmyPIDs, msg.ArmyPID)
-		state.Armies = append(state.Armies, msg.Army)
-		ctx.Respond(messages.AddTileArmyResponseMessage{
+		// no armies from player on this tile
+		if _, ok := state.Armies[msg.Army.Owner]; !ok {
+			state.Armies[msg.Army.Owner] = append(make([]*army, 0), &army{
+				ArmyPID: msg.ArmyPID,
+				Army:    msg.Army,
+			})
+		} else {
+			log.Printf("Adding army to existing armies")
+			state.Armies[msg.Army.Owner] = append(state.Armies[msg.Army.Owner], &army{
+				ArmyPID: msg.ArmyPID,
+				Army:    msg.Army,
+			})
+			mergeArmies := make([]*army, 0)
+			newArmies := make([]*army, 0)
+			for i := 0; i < len(state.Armies[msg.Army.Owner]); i++ {
+				if !state.Armies[msg.Army.Owner][i].Army.MarchActive {
+					mergeArmies = append(mergeArmies, state.Armies[msg.Army.Owner][i])
+				} else {
+					newArmies = append(newArmies, state.Armies[msg.Army.Owner][i])
+				}
+			}
+			// merge together all armies that are not marching anywhere
+			if len(mergeArmies) > 1 {
+				mergedArmy := &army{
+					ArmyPID: mergeArmies[0].ArmyPID,
+					Army:    mergeArmies[0].Army,
+				}
+				for i := 1; i < len(mergeArmies); i++ {
+					mergedArmy.Army.Size += mergeArmies[i].Army.Size
+					deleteArmyResponse, err := Request[messages.DeleteArmyResponseMessage](ctx, mergeArmies[i].ArmyPID, messages.DeleteArmyMessage{
+						ArmyId: mergeArmies[i].Army.ArmyId,
+					})
+					if err != nil {
+						log.Printf("Error merging army: %s", err)
+						return
+					}
+					if deleteArmyResponse.Error != nil {
+						log.Printf("Error merging army: %s", deleteArmyResponse.Error)
+						return
+					}
+				}
+				updateArmyMessage, err := Request[messages.UpdateArmyResponseMessage](ctx, mergedArmy.ArmyPID, messages.UpdateArmyMessage{
+					Army: mergedArmy.Army,
+				})
+				if err != nil {
+					log.Printf("Error merging army: %s", err)
+					return
+				}
+				if updateArmyMessage.Error != nil {
+					log.Printf("Error merging army: %s", updateArmyMessage.Error)
+					return
+				}
+				newArmies = append([]*army{mergedArmy}, newArmies...)
+				state.Armies[msg.Army.Owner] = newArmies
+			}
+		}
+
+	case messages.RemoveTileArmyMessage:
+		delete(state.Armies, msg.Owner)
+		ctx.Respond(messages.RemoveTileArmyResponseMessage{
 			Error: nil,
 		})
 
@@ -70,8 +131,16 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.GetMapTileArmiesMessage:
+		armies := make(map[string][]*models.Army)
+		for owner, _armies := range state.Armies {
+			newArmies := make([]*models.Army, 0)
+			for _, army := range _armies {
+				newArmies = append(newArmies, &army.Army)
+			}
+			armies[owner] = newArmies
+		}
 		ctx.Respond(messages.GetMapTileArmiesResponseMessage{
-			Armies: state.Armies,
+			Armies: armies,
 		})
 	}
 }

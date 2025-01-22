@@ -16,6 +16,9 @@ type AddTileArmyMessage struct {
 	ArmyPID *actor.PID
 	Army    models.Army
 }
+type RemoveTileArmyMessage struct {
+	Owner string
+}
 type GetMapTileMessage struct{}
 type GetMapTileArmiesMessage struct{}
 
@@ -25,13 +28,16 @@ type CreateMapTileResponseMessage struct {
 type AddTileArmyResponseMessage struct {
 	Error error
 }
+type RemoveTileArmyResponseMessage struct {
+	Error error
+}
 type GetMapTileResponseMessage struct {
 	Tile     models.MapTile
 	City     *models.City
 	Building *models.Building
 }
 type GetMapTileArmiesResponseMessage struct {
-	Armies []models.Army
+	Armies map[string][]*models.Army
 }
 
 // Errors

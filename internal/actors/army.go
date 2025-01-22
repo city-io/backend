@@ -43,6 +43,25 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 				Army: state.Army,
 			})
 		}
+
+		getTilePIDResponse, err := Request[messages.GetMapTilePIDResponseMessage](ctx, GetManagerPID(), messages.GetMapTilePIDMessage{
+			X: state.Army.TileX,
+			Y: state.Army.TileY,
+		})
+		if err != nil {
+			log.Printf("Error updating tile with new army: %s", err)
+			return
+		}
+		if getTilePIDResponse.PID == nil {
+			log.Printf("Error creating army: Map tile not found")
+			return
+		}
+
+		ctx.Send(getTilePIDResponse.PID, messages.AddTileArmyMessage{
+			ArmyPID: ctx.Self(),
+			Army:    state.Army,
+		})
+
 		if state.Army.MarchActive {
 			state.startTroopMovement(ctx)
 		}
@@ -53,6 +72,15 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 	case messages.GetArmyMessage:
 		ctx.Respond(messages.GetArmyResponseMessage{
 			Army: state.Army,
+		})
+
+	case messages.UpdateArmyMessage:
+		state.Army = msg.Army
+		ctx.Send(state.database, messages.UpdateArmyMessage{
+			Army: state.Army,
+		})
+		ctx.Respond(messages.UpdateArmyResponseMessage{
+			Error: nil,
 		})
 
 	case messages.DeleteArmyMessage:
@@ -141,10 +169,9 @@ func (state *ArmyActor) startTroopMovement(ctx actor.Context) {
 }
 
 func (state *ArmyActor) stopPeriodicOperation() {
-	select {
-	case <-state.stopTickerCh:
-	default:
+	if state.ticker != nil {
 		close(state.stopTickerCh)
+		state.ticker = nil
 	}
 }
 
