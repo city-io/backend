@@ -54,8 +54,11 @@ func (state *TownCenterActor) Receive(ctx actor.Context) {
 		state.startPeriodicOperation(ctx)
 
 	case messages.PeriodicOperationMessage:
-		userPID := state.getUserPID()
+		if state.Building.ConstructionEnd.After(time.Now()) {
+			return
+		}
 
+		userPID := state.getUserPID()
 		if userPID == nil {
 			// not owned by a player, don't update production balance
 			return
@@ -82,7 +85,9 @@ func (state *TownCenterActor) Receive(ctx actor.Context) {
 		}
 
 	case messages.GetBuildingMessage:
-		state.getBuilding(ctx)
+		ctx.Respond(messages.GetBuildingResponseMessage{
+			Building: state.Building,
+		})
 
 	case messages.DeleteBuildingMessage:
 		state.stopPeriodicOperation()

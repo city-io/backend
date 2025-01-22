@@ -24,7 +24,9 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 	case messages.CreateBuildingMessage:
 		state.Building = msg.Building
 		if !msg.Restore {
-			state.createBuilding(ctx)
+			ctx.Send(state.database, messages.CreateBuildingMessage{
+				Building: state.Building,
+			})
 		}
 		ctx.Respond(messages.CreateBuildingResponseMessage{
 			Error: nil,
@@ -72,7 +74,9 @@ func (state *BarracksActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.GetBuildingMessage:
-		state.getBuilding(ctx)
+		ctx.Respond(messages.GetBuildingResponseMessage{
+			Building: state.Building,
+		})
 
 	case messages.DeleteBuildingMessage:
 		state.deleteBuilding(ctx)

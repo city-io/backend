@@ -32,14 +32,28 @@ var buildingCosts = map[string][]int64{
 	BUILDING_TYPE_MINE:        {300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000},
 }
 
+// in seconds
+var buildingConstructionTime = map[string][]int64{
+	BUILDING_TYPE_CITY_CENTER: {0, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+	BUILDING_TYPE_TOWN_CENTER: {0, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+	BUILDING_TYPE_BARRACKS:    {10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+	BUILDING_TYPE_HOUSE:       {5, 10, 15, 20, 25, 30, 35, 40, 45, 50},
+	BUILDING_TYPE_FARM:        {5, 10, 15, 20, 25, 30, 35, 40, 45, 50},
+	BUILDING_TYPE_MINE:        {5, 10, 15, 20, 25, 30, 35, 40, 45, 50},
+}
+
 func GetBuildingProduction(buildingType string, level int) int64 {
-	return buildingProduction[buildingType][level]
+	return buildingProduction[buildingType][level-1]
 }
 
 func GetBuildingPopulation(buildingType string, level int) float64 {
-	return buildingPopulation[buildingType][level]
+	return buildingPopulation[buildingType][level-1]
 }
 
 func GetBuildingCost(buildingType string, level int) int64 {
-	return buildingCosts[buildingType][level]
+	return buildingCosts[buildingType][level-1]
+}
+
+func GetBuildingConstructionTime(buildingType string, level int) int64 {
+	return buildingConstructionTime[buildingType][level-1]
 }

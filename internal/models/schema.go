@@ -61,14 +61,13 @@ type Army struct {
 }
 
 type Building struct {
-	BuildingId string    `json:"buildingId" gorm:"column:building_id;primaryKey;size:36"`
-	CityId     string    `json:"cityId" gorm:"column:city_id;size:36;not null"`
-	Type       string    `json:"type" gorm:"column:type;size:100;not null"`
-	Level      int       `json:"level" gorm:"column:level;not null;default:1;check:level >= 0"`
-	X          int       `json:"x" gorm:"column:x;uniqueIndex:compositeindex;not null"`
-	Y          int       `json:"y" gorm:"column:y;uniqueIndex:compositeindex;not null"`
-	CreatedAt  time.Time `json:"-" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt  time.Time `json:"-" gorm:"column:updated_at;autoUpdateTime"`
+	BuildingId      string    `json:"buildingId" gorm:"column:building_id;primaryKey;size:36"`
+	CityId          string    `json:"cityId" gorm:"column:city_id;size:36;not null"`
+	Type            string    `json:"type" gorm:"column:type;size:100;not null"`
+	Level           int       `json:"level" gorm:"column:level;not null;default:1;check:level >= 0"`
+	X               int       `json:"x" gorm:"column:x;uniqueIndex:compositeindex;not null"`
+	Y               int       `json:"y" gorm:"column:y;uniqueIndex:compositeindex;not null"`
+	ConstructionEnd time.Time `json:"constructionEnd" gorm:"column:construction_end;not null"`
 
 	City City `json:"-"`
 }

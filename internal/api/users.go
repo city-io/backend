@@ -45,7 +45,7 @@ func Register(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	_, err = services.CreateBuilding(models.Building{
+	_, err = services.ConstructBuilding(models.Building{
 		CityId: city.CityId,
 		Type:   constants.BUILDING_TYPE_CITY_CENTER,
 		Level:  1,

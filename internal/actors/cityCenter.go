@@ -23,7 +23,9 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 	case messages.CreateBuildingMessage:
 		state.Building = msg.Building
 		if !msg.Restore {
-			state.createBuilding(ctx)
+			ctx.Send(state.database, messages.CreateBuildingMessage{
+				Building: state.Building,
+			})
 
 			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getUserPID(), messages.UpdateCityPopulationCapMessage{
 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
@@ -49,8 +51,11 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 		state.startPeriodicOperation(ctx)
 
 	case messages.PeriodicOperationMessage:
-		userPID := state.getUserPID()
+		if state.Building.ConstructionEnd.After(time.Now()) {
+			return
+		}
 
+		userPID := state.getUserPID()
 		if userPID == nil {
 			// not owned by a player, don't update production balance
 			return
@@ -77,7 +82,9 @@ func (state *CityCenterActor) Receive(ctx actor.Context) {
 		}
 
 	case messages.GetBuildingMessage:
-		state.getBuilding(ctx)
+		ctx.Respond(messages.GetBuildingResponseMessage{
+			Building: state.Building,
+		})
 
 	case messages.DeleteBuildingMessage:
 		state.stopPeriodicOperation()

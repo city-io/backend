@@ -30,17 +30,18 @@ func Start(reset bool) {
 	}
 	Init()
 
-	buildingId, err := services.CreateBuilding(models.Building{
-		CityId: "89ba297d-5e7d-4a1c-977e-4c6f8897e968",
-		Type:   "barracks",
-		Level:  1,
-		X:      98,
-		Y:      82,
-	})
-	if err != nil {
-		panic(err)
-	}
-	log.Printf("Created barracks with id %s", buildingId)
+	// Migrate this to tests
+	// buildingId, err := services.ConstructBuilding(models.Building{
+	// 	CityId: "f11b4dc7-0496-4c28-8814-5361f3a8e800",
+	// 	Type:   "mine",
+	// 	Level:  1,
+	// 	X:      54,
+	// 	Y:      117,
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// log.Printf("Created mine with id %s", buildingId)
 
 	// err = services.TrainTroops(models.Training{
 	// 	BarracksId: buildingId,

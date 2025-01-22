@@ -19,7 +19,9 @@ func (state *HouseActor) Receive(ctx actor.Context) {
 	case messages.CreateBuildingMessage:
 		state.Building = msg.Building
 		if !msg.Restore {
-			state.createBuilding(ctx)
+			ctx.Send(state.database, messages.CreateBuildingMessage{
+				Building: state.Building,
+			})
 
 			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getUserPID(), messages.UpdateCityPopulationCapMessage{
 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_HOUSE, state.Building.Level),
@@ -44,7 +46,9 @@ func (state *HouseActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.GetBuildingMessage:
-		state.getBuilding(ctx)
+		ctx.Respond(messages.GetBuildingResponseMessage{
+			Building: state.Building,
+		})
 
 	case messages.DeleteBuildingMessage:
 		state.deleteBuilding(ctx)

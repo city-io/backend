@@ -8,6 +8,7 @@ import (
 
 	"errors"
 	"log"
+	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/google/uuid"
@@ -69,23 +70,6 @@ func RestoreBuilding(building models.Building) error {
 		return addBuildingPIDResponse.Error
 	}
 
-	var getMapTilePIDResponse *messages.GetMapTilePIDResponseMessage
-	getMapTilePIDResponse, err = actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
-		X: building.X,
-		Y: building.Y,
-	})
-	if err != nil {
-		log.Printf("Error getting map tile pid: %s", err)
-		return err
-	}
-	if getMapTilePIDResponse.PID == nil {
-		log.Printf("Error getting map tile pid: %s", err)
-		return &messages.MapTileNotFoundError{
-			X: building.X,
-			Y: building.Y,
-		}
-	}
-
 	if building.Type == constants.BUILDING_TYPE_BARRACKS {
 		var training models.Training
 		result := db.Where("barracks_id = ?", building.BuildingId).First(&training)
@@ -114,7 +98,7 @@ func RestoreBuilding(building models.Building) error {
 	return nil
 }
 
-func CreateBuilding(building models.Building) (string, error) {
+func ConstructBuilding(building models.Building) (string, error) {
 	var err error
 	var buildingPID *actor.PID
 	switch building.Type {
@@ -142,6 +126,7 @@ func CreateBuilding(building models.Building) (string, error) {
 	}
 
 	building.BuildingId = uuid.New().String()
+	building.ConstructionEnd = time.Now().Add(time.Duration(constants.GetBuildingConstructionTime(building.Type, 1)) * time.Second)
 	var createBuildingResponse *messages.CreateBuildingResponseMessage
 	createBuildingResponse, err = actors.Request[messages.CreateBuildingResponseMessage](system.Root, buildingPID, messages.CreateBuildingMessage{
 		Building: building,
@@ -168,23 +153,6 @@ func CreateBuilding(building models.Building) (string, error) {
 	if addBuildingPIDResponse.Error != nil {
 		log.Printf("Error adding building pid: %s", addBuildingPIDResponse.Error)
 		return "", addBuildingPIDResponse.Error
-	}
-
-	var getMapTilePIDResponse *messages.GetMapTilePIDResponseMessage
-	getMapTilePIDResponse, err = actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
-		X: building.X,
-		Y: building.Y,
-	})
-	if err != nil {
-		log.Printf("Error getting map tile pid: %s", err)
-		return "", err
-	}
-	if getMapTilePIDResponse.PID == nil {
-		log.Printf("Error getting map tile pid: %s", err)
-		return "", &messages.MapTileNotFoundError{
-			X: building.X,
-			Y: building.Y,
-		}
 	}
 
 	return building.BuildingId, nil
