@@ -214,6 +214,7 @@ func Reset() {
 	for x := 0; x < constants.MAP_SIZE; x++ {
 		for y := 0; y < constants.MAP_SIZE; y++ {
 			open := true
+			// TODO: optimize random city placement
 			for i := 0; i < 5; i++ {
 				for j := 0; j < 5; j++ {
 					if x+i >= constants.MAP_SIZE || y+j >= constants.MAP_SIZE || occupied[x+i][y+j] {
@@ -229,9 +230,9 @@ func Reset() {
 					size = 5
 				} else if r.Intn(100) < 1 {
 					size = 4
-				} else if r.Intn(100) < 5 {
+				} else if r.Intn(100) < 3 {
 					size = 3
-				} else if r.Intn(100) < 10 {
+				} else if r.Intn(100) < 5 {
 					size = 2
 				}
 				if size > 0 && x+size < constants.MAP_SIZE && y+size < constants.MAP_SIZE {

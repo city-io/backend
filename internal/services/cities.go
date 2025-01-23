@@ -108,11 +108,11 @@ func CreateCity(city models.CityInput) (*models.City, error) {
 		  AND NOT EXISTS (
 			SELECT 1
 			FROM map_tiles t2
-			WHERE t2.x BETWEEN map_tiles.x AND map_tiles.x + 2
-			  AND t2.y BETWEEN map_tiles.y AND map_tiles.y + 2
+			WHERE t2.x BETWEEN map_tiles.x AND map_tiles.x + ?
+			  AND t2.y BETWEEN map_tiles.y AND map_tiles.y + ?
 			  AND t2.city_id != ''
 		  )
-	`).Scan(&tiles).Error
+	`, constants.CITY_SIZE, constants.CITY_SIZE).Scan(&tiles).Error
 	// add limit to this query to spawn new users closer together
 	// 10000 adds sufficient spacing
 
