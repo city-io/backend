@@ -116,5 +116,6 @@ func GetMapTile(x int, y int) (models.MapTileOutput, error) {
 		Y:        getMapTileResponse.Tile.Y,
 		City:     getMapTileResponse.City,
 		Building: getMapTileResponse.Building,
+		Armies:   getMapTileResponse.Armies,
 	}, nil
 }

@@ -48,6 +48,7 @@ type GetMapTileResponseMessage struct {
 	Tile     models.MapTile
 	City     *models.City
 	Building *models.Building
+	Armies   map[string][]*models.Army
 }
 type GetMapTileArmiesResponseMessage struct {
 	Armies map[string][]*models.Army

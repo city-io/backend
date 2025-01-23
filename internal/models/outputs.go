@@ -16,8 +16,9 @@ type ValidateUserResponse struct {
 }
 
 type MapTileOutput struct {
-	X        int       `json:"x"`
-	Y        int       `json:"y"`
-	City     *City     `json:"city"`
-	Building *Building `json:"building"`
+	X        int                `json:"x"`
+	Y        int                `json:"y"`
+	City     *City              `json:"city"`
+	Building *Building          `json:"building"`
+	Armies   map[string][]*Army `json:"armies"`
 }

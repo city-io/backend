@@ -168,21 +168,63 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 			Tile:     state.Tile,
 			City:     city,
 			Building: building,
+			Armies:   state.getTileArmies(),
 		})
 
 	case messages.GetMapTileArmiesMessage:
-		armies := make(map[string][]*models.Army)
-		for owner, _armies := range state.Armies {
-			newArmies := make([]*models.Army, 0)
-			for _, army := range _armies {
-				newArmies = append(newArmies, &army.Army)
-			}
-			armies[owner] = newArmies
-		}
+		// returns names of owners and their armies
+		armies := state.getTileArmies()
 		ctx.Respond(messages.GetMapTileArmiesResponseMessage{
 			Armies: armies,
 		})
+		// below code only returns userIds
+		// armies := make(map[string][]*models.Army)
+		// for owner, _armies := range state.Armies {
+		// 	newArmies := make([]*models.Army, 0)
+		// 	for _, army := range _armies {
+		// 		newArmies = append(newArmies, &army.Army)
+		// 	}
+		// 	armies[owner] = newArmies
+		// }
+		// ctx.Respond(messages.GetMapTileArmiesResponseMessage{
+		// 	Armies: armies,
+		// })
 	}
+}
+
+func (state *MapTileActor) getTileArmies() map[string][]*models.Army {
+	// TODO: add better error handling
+	ownerNames := make(map[string]string)
+	armies := make(map[string][]*models.Army)
+	for owner, _armies := range state.Armies {
+		newArmies := make([]*models.Army, 0)
+		for _, army := range _armies {
+			newArmies = append(newArmies, &army.Army)
+		}
+		if _, ok := ownerNames[owner]; !ok {
+			getUserPIDResponse, err := Request[messages.GetUserPIDResponseMessage](system.Root, GetManagerPID(), messages.GetUserPIDMessage{
+				UserId: owner,
+			})
+			if err != nil {
+				log.Printf("Error getting user pid: %s", err)
+				return armies
+			}
+			if getUserPIDResponse.PID == nil {
+				log.Printf("User pid not found for %s", owner)
+				return armies
+			}
+			getUserResponse, err := Request[messages.GetUserResponseMessage](system.Root, getUserPIDResponse.PID, messages.GetUserMessage{})
+			if err != nil {
+				log.Printf("Error getting user: %s", err)
+				return armies
+			}
+			ownerNames[owner] = getUserResponse.User.Username
+			armies[ownerNames[owner]] = newArmies
+		} else {
+			armies[ownerNames[owner]] = newArmies
+		}
+	}
+	return armies
 }
 
 func (state *MapTileActor) getCityPID() (*actor.PID, error) {
