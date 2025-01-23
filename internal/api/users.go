@@ -84,14 +84,18 @@ func ValidateToken(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	claims, err := services.ValidateToken(token)
+	claims, capital, err := services.ValidateToken(token)
 	if err != nil {
 		response.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(response).Encode(err.Error())
 		return
 	}
-
-	json.NewEncoder(response).Encode(claims)
+	json.NewEncoder(response).Encode(models.ValidateUserResponse{
+		UserId:   claims.UserId,
+		Username: claims.Username,
+		Email:    claims.Email,
+		Capital:  capital,
+	})
 }
 
 func DeleteUser(response http.ResponseWriter, request *http.Request) {

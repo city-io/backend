@@ -5,6 +5,14 @@ type LoginUserResponse struct {
 	UserId   string `json:"userId"`
 	Email    string `json:"email"`
 	Username string `json:"username"`
+	Capital  *City  `json:"capital"`
+}
+
+type ValidateUserResponse struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	UserId   string `json:"userId"`
+	Capital  *City  `json:"capital"`
 }
 
 type MapTileOutput struct {

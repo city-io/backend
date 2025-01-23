@@ -37,6 +37,18 @@ func RestoreCity(city models.City) error {
 				tilePIDs[i] = make(map[int]*actor.PID)
 			}
 			tilePIDs[i][j] = response.PID
+
+			addCityResponse, err := actors.Request[messages.AddCityToTileResponseMessage](system.Root, response.PID, messages.AddCityToTileMessage{
+				CityId: city.CityId,
+			})
+			if err != nil {
+				log.Printf("Error adding city to tile: %s", err)
+				return err
+			}
+			if addCityResponse.Error != nil {
+				log.Printf("Error adding city to tile: %s", addCityResponse.Error)
+				return addCityResponse.Error
+			}
 		}
 	}
 
@@ -109,6 +121,8 @@ func CreateCity(city models.CityInput) (*models.City, error) {
 		return &models.City{}, err
 	}
 
+	cityId := uuid.New().String()
+
 	randomTile := tiles[rand.Intn(len(tiles))]
 	startX := randomTile.X
 	startY := randomTile.Y
@@ -128,6 +142,18 @@ func CreateCity(city models.CityInput) (*models.City, error) {
 				tilePIDS[i] = make(map[int]*actor.PID)
 			}
 			tilePIDS[i][j] = response.PID
+
+			addCityResponse, err := actors.Request[messages.AddCityToTileResponseMessage](system.Root, response.PID, messages.AddCityToTileMessage{
+				CityId: cityId,
+			})
+			if err != nil {
+				log.Printf("Error adding city to tile: %s", err)
+				return &models.City{}, err
+			}
+			if addCityResponse.Error != nil {
+				log.Printf("Error adding city to tile: %s", addCityResponse.Error)
+				return &models.City{}, addCityResponse.Error
+			}
 		}
 	}
 
@@ -144,7 +170,6 @@ func CreateCity(city models.CityInput) (*models.City, error) {
 		}
 	}
 
-	cityId := uuid.New().String()
 	newCity := models.City{
 		CityId:        cityId,
 		Type:          city.Type,

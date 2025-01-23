@@ -21,11 +21,9 @@ func ProcessMessage(ctx context.Context, conn *websocket.Conn, messageType int, 
 
 	switch message.Request {
 	case "ping":
-		log.Println("Received ping")
 		conn.WriteMessage(messageType, []byte("pong"))
 		return nil
 	case "pong":
-		log.Println("Received pong")
 		return nil
 	case "map":
 		return getMapTiles(ctx, conn, &message)
@@ -43,7 +41,7 @@ func HandleWebSocket(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	claims, err := services.ValidateToken(token)
+	claims, _, err := services.ValidateToken(token)
 	if err != nil {
 		log.Printf("Error parsing JWT: %s", err)
 		http.Error(response, "Unauthorized", http.StatusUnauthorized)

@@ -70,6 +70,33 @@ func RestoreBuilding(building models.Building) error {
 		return addBuildingPIDResponse.Error
 	}
 
+	var getMapTilePIDResponse *messages.GetMapTilePIDResponseMessage
+	getMapTilePIDResponse, err = actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
+		X: building.X,
+		Y: building.Y,
+	})
+	if err != nil {
+		log.Printf("Error getting map tile pid: %s", err)
+		return err
+	}
+	if getMapTilePIDResponse.PID == nil {
+		log.Printf("Error getting map tile pid: %s", &messages.MapTileNotFoundError{X: building.X, Y: building.Y})
+		return err
+	}
+
+	var addBuildingResponse *messages.AddBuildingToTileResponseMessage
+	addBuildingResponse, err = actors.Request[messages.AddBuildingToTileResponseMessage](system.Root, getMapTilePIDResponse.PID, messages.AddBuildingToTileMessage{
+		BuildingId: building.BuildingId,
+	})
+	if err != nil {
+		log.Printf("Error adding building to tile: %s", err)
+		return err
+	}
+	if addBuildingResponse.Error != nil {
+		log.Printf("Error adding building to tile: %s", addBuildingResponse.Error)
+		return addBuildingResponse.Error
+	}
+
 	if building.Type == constants.BUILDING_TYPE_BARRACKS {
 		var training models.Training
 		result := db.Where("barracks_id = ?", building.BuildingId).First(&training)
@@ -153,6 +180,33 @@ func ConstructBuilding(building models.Building) (string, error) {
 	if addBuildingPIDResponse.Error != nil {
 		log.Printf("Error adding building pid: %s", addBuildingPIDResponse.Error)
 		return "", addBuildingPIDResponse.Error
+	}
+
+	var getMapTilePIDResponse *messages.GetMapTilePIDResponseMessage
+	getMapTilePIDResponse, err = actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
+		X: building.X,
+		Y: building.Y,
+	})
+	if err != nil {
+		log.Printf("Error getting map tile pid: %s", err)
+		return "", err
+	}
+	if getMapTilePIDResponse.PID == nil {
+		log.Printf("Error getting map tile pid: %s", &messages.MapTileNotFoundError{X: building.X, Y: building.Y})
+		return "", err
+	}
+
+	var addBuildingResponse *messages.AddBuildingToTileResponseMessage
+	addBuildingResponse, err = actors.Request[messages.AddBuildingToTileResponseMessage](system.Root, getMapTilePIDResponse.PID, messages.AddBuildingToTileMessage{
+		BuildingId: building.BuildingId,
+	})
+	if err != nil {
+		log.Printf("Error adding building to tile: %s", err)
+		return "", err
+	}
+	if addBuildingResponse.Error != nil {
+		log.Printf("Error adding building to tile: %s", addBuildingResponse.Error)
+		return "", addBuildingResponse.Error
 	}
 
 	return building.BuildingId, nil

@@ -41,6 +41,18 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 			Error: nil,
 		})
 
+	case messages.AddCityToTileMessage:
+		state.Tile.CityId = msg.CityId
+		ctx.Respond(messages.AddCityToTileResponseMessage{
+			Error: nil,
+		})
+
+	case messages.AddBuildingToTileMessage:
+		state.Tile.BuildingId = msg.BuildingId
+		ctx.Respond(messages.AddBuildingToTileResponseMessage{
+			Error: nil,
+		})
+
 	case messages.AddTileArmyMessage:
 		// no armies from player on this tile
 		if _, ok := state.Armies[msg.Army.Owner]; !ok {
@@ -114,17 +126,38 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 
 	case messages.GetMapTileMessage:
 		var city *models.City = nil
-		if state.CityPID != nil {
-			response, err := Request[messages.GetCityResponseMessage](ctx, state.CityPID, messages.GetCityMessage{})
+		cityPID, err := state.getCityPID()
+		if err != nil {
+			log.Printf("Error getting city pid: %s", err)
+			ctx.Respond(messages.GetMapTileResponseMessage{
+				Tile:     state.Tile,
+				City:     nil,
+				Building: nil,
+			})
+			return
+		}
+		if cityPID != nil {
+			response, err := Request[messages.GetCityResponseMessage](ctx, cityPID, messages.GetCityMessage{})
 			if err != nil {
 				log.Printf("Error getting city: %s", err)
 			} else {
 				city = &response.City
 			}
 		}
+
 		var building *models.Building = nil
-		if state.BuildingPID != nil {
-			response, err := Request[messages.GetBuildingResponseMessage](ctx, state.BuildingPID, messages.GetBuildingMessage{})
+		buildingPID, err := state.getBuildingPID()
+		if err != nil {
+			log.Printf("Error getting building pid: %s", err)
+			ctx.Respond(messages.GetMapTileResponseMessage{
+				Tile:     state.Tile,
+				City:     city,
+				Building: nil,
+			})
+			return
+		}
+		if buildingPID != nil {
+			response, err := Request[messages.GetBuildingResponseMessage](ctx, buildingPID, messages.GetBuildingMessage{})
 			if err != nil {
 				log.Printf("Error getting building: %s", err)
 			} else {
@@ -159,18 +192,14 @@ func (state *MapTileActor) getCityPID() (*actor.PID, error) {
 			CityId: state.Tile.CityId,
 		})
 		if err != nil {
-			log.Printf("Error restoring map tile: %s", err)
+			log.Printf("Error retreiving city pid: %s", err)
 			return
 		}
 		if getCityPIDResponse.PID == nil {
-			log.Printf("Error restoring map tile: City not found")
 			return
 		}
 		state.CityPID = getCityPIDResponse.PID
 	})
-	if state.CityPID == nil {
-		return nil, &messages.CityNotFoundError{CityId: state.Tile.CityId}
-	}
 	return state.CityPID, nil
 }
 
@@ -183,7 +212,6 @@ func (state *MapTileActor) getBuildingPID() (*actor.PID, error) {
 		return nil, err
 	}
 	if getBuildingPIDResponse.PID == nil {
-		log.Printf("Error retrieving map tile building pid: Building not found")
 		return nil, nil
 	}
 	return getBuildingPIDResponse.PID, nil

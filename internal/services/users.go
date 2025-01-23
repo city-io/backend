@@ -139,33 +139,46 @@ func LoginUser(user models.LoginUserRequest) (models.LoginUserResponse, error) {
 		return models.LoginUserResponse{}, err
 	}
 
+	var capital models.City
+	err = db.Where("owner = ?", account.UserId).First(&capital).Error
+	if err != nil {
+		return models.LoginUserResponse{}, err
+	}
+
 	return models.LoginUserResponse{
 		Token:    signedToken,
 		UserId:   account.UserId,
 		Username: account.Username,
 		Email:    account.Email,
+		Capital:  &capital,
 	}, nil
 }
 
-func ValidateToken(tokenString string) (models.UserClaims, error) {
+func ValidateToken(tokenString string) (models.UserClaims, *models.City, error) {
 	secretKey := []byte(os.Getenv("JWT_SECRET"))
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil
 	})
 	if err != nil {
-		return models.UserClaims{}, err
+		return models.UserClaims{}, nil, err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return models.UserClaims{}, &messages.InvalidTokenError{}
+		return models.UserClaims{}, nil, &messages.InvalidTokenError{}
+	}
+
+	var capital models.City
+	err = db.Where("owner = ?", claims["userId"]).First(&capital).Error
+	if err != nil {
+		return models.UserClaims{}, nil, err
 	}
 
 	return models.UserClaims{
 		Username: claims["username"].(string),
 		Email:    claims["email"].(string),
 		UserId:   claims["userId"].(string),
-	}, nil
+	}, &capital, nil
 }
 
 func GetUser(userId string) (models.User, error) {

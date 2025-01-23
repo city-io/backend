@@ -12,6 +12,12 @@ type CreateMapTileMessage struct {
 	Tile    models.MapTile
 	Restore bool
 }
+type AddCityToTileMessage struct {
+	CityId string
+}
+type AddBuildingToTileMessage struct {
+	BuildingId string
+}
 type AddTileArmyMessage struct {
 	ArmyPID *actor.PID
 	Army    models.Army
@@ -24,6 +30,12 @@ type GetMapTileMessage struct{}
 type GetMapTileArmiesMessage struct{}
 
 type CreateMapTileResponseMessage struct {
+	Error error
+}
+type AddCityToTileResponseMessage struct {
+	Error error
+}
+type AddBuildingToTileResponseMessage struct {
 	Error error
 }
 type AddTileArmyResponseMessage struct {

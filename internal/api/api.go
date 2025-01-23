@@ -98,7 +98,7 @@ func authHandle(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := services.ValidateToken(token)
+		claims, _, err := services.ValidateToken(token)
 		if err != nil {
 			log.Printf("Error parsing JWT: %s", err)
 			response.WriteHeader(http.StatusUnauthorized)
@@ -118,7 +118,7 @@ func authHandler(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		claims, err := services.ValidateToken(token)
+		claims, _, err := services.ValidateToken(token)
 		if err != nil {
 			log.Printf("Error parsing JWT: %s", err)
 			response.WriteHeader(http.StatusUnauthorized)
