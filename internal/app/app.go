@@ -170,9 +170,9 @@ func Reset() {
 
 		src := rand.NewSource(time.Now().UnixNano())
 		r := rand.New(src)
-
 		startX := r.Intn(constants.MAP_SIZE - constants.CITY_SIZE)
 		startY := r.Intn(constants.MAP_SIZE - constants.CITY_SIZE)
+
 		cityId := uuid.New().String()
 		result := db.Create(&models.City{
 			CityId:        cityId,
@@ -189,7 +189,7 @@ func Reset() {
 			log.Printf("Error creating city: %s", result.Error)
 			panic(result.Error)
 		} else {
-			log.Printf("Created city %s for user %s", cityId, user.Username)
+			log.Printf("Created city at (%d, %d) for user %s", startX, startY, user.Username)
 		}
 
 		result = db.Create(&models.Building{
