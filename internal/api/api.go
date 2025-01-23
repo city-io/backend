@@ -58,7 +58,7 @@ func Start() {
 	addRoutes(router)
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:4173", "https://cityio.prayujt.com"},
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:4173", "http://localhost:3000", "https://cityio.prayujt.com"},
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"*"},
 	})
