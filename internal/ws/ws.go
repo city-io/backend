@@ -12,6 +12,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var connections = make(map[string]*websocket.Conn)
+
 func ProcessMessage(ctx context.Context, conn *websocket.Conn, messageType int, p []byte) error {
 	var message models.WebSocketMessage
 	if err := json.Unmarshal(p, &message); err != nil {
@@ -26,10 +28,27 @@ func ProcessMessage(ctx context.Context, conn *websocket.Conn, messageType int, 
 	case "pong":
 		return nil
 	case "map":
-		return getMapTiles(ctx, conn, &message)
+		return getMapTiles(ctx, &message)
 	}
 
 	return nil
+}
+
+func Send(userId string, message interface{}) error {
+	conn, ok := connections[userId]
+	if !ok {
+		return nil
+	}
+
+	return conn.WriteJSON(message)
+}
+
+func Broadcast(message interface{}) {
+	for _, conn := range connections {
+		if err := conn.WriteJSON(message); err != nil {
+			log.Printf("Error broadcasting message: %s", err)
+		}
+	}
 }
 
 func HandleWebSocket(response http.ResponseWriter, request *http.Request) {
@@ -63,6 +82,7 @@ func HandleWebSocket(response http.ResponseWriter, request *http.Request) {
 	}
 	defer conn.Close()
 
+	connections[claims.UserId] = conn
 	ctx := context.WithValue(request.Context(), "claims", claims)
 	log.Printf("WebSocket connection established with %s", claims.Username)
 

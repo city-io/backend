@@ -9,11 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-
-	"github.com/gorilla/websocket"
 )
 
-func getMapTiles(ctx context.Context, conn *websocket.Conn, msg *models.WebSocketMessage) error {
+func getMapTiles(ctx context.Context, msg *models.WebSocketMessage) error {
 	claims := ctx.Value("claims").(models.UserClaims)
 	log.Printf("Fetching map tiles for %s", claims.Username)
 
@@ -59,7 +57,7 @@ func getMapTiles(ctx context.Context, conn *websocket.Conn, msg *models.WebSocke
 		}
 	}
 
-	conn.WriteJSON(&tiles)
+	Send(claims.UserId, &tiles)
 
 	return nil
 }
