@@ -213,7 +213,17 @@ func Reset() {
 	mapTiles := make([]models.MapTile, 0)
 	for x := 0; x < constants.MAP_SIZE; x++ {
 		for y := 0; y < constants.MAP_SIZE; y++ {
-			if !occupied[x][y] {
+			open := true
+			for i := 0; i < 5; i++ {
+				for j := 0; j < 5; j++ {
+					if x+i >= constants.MAP_SIZE || y+j >= constants.MAP_SIZE || occupied[x+i][y+j] {
+						open = false
+						break
+					}
+				}
+			}
+
+			if open {
 				size := 0
 				if r.Intn(1000) < 5 {
 					size = 5
