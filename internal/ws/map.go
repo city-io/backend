@@ -2,6 +2,7 @@ package ws
 
 import (
 	"cityio/internal/constants"
+	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/services"
 
@@ -11,7 +12,7 @@ import (
 	"log"
 )
 
-func getMapTiles(ctx context.Context, msg *models.WebSocketMessage) error {
+func getMapTiles(ctx context.Context, msg *models.WebSocketRequest) error {
 	claims := ctx.Value("claims").(models.UserClaims)
 	log.Printf("Fetching map tiles for %s", claims.Username)
 
@@ -57,7 +58,7 @@ func getMapTiles(ctx context.Context, msg *models.WebSocketMessage) error {
 		}
 	}
 
-	Send(claims.UserId, &tiles)
+	Send(claims.UserId, messages.WS_MAP, &tiles)
 
 	return nil
 }

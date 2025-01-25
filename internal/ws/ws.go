@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/services"
 
@@ -15,32 +16,36 @@ import (
 var connections = make(map[string]*websocket.Conn)
 
 func ProcessMessage(ctx context.Context, conn *websocket.Conn, messageType int, p []byte) error {
-	var message models.WebSocketMessage
+	var message models.WebSocketRequest
 	if err := json.Unmarshal(p, &message); err != nil {
 		log.Printf("Error decoding WebSocket message: %s", err)
 		return err
 	}
 
-	switch message.Request {
-	case "ping":
-		conn.WriteMessage(messageType, []byte("pong"))
+	prefix := message.Req / 100
+	switch prefix {
+	case 10:
+		conn.WriteJSON(&models.WebSocketResponse{
+			Msg: messages.WS_PONG,
+		})
 		return nil
-	case "pong":
-		return nil
-	case "map":
+	case 20:
 		return getMapTiles(ctx, &message)
 	}
 
 	return nil
 }
 
-func Send(userId string, message interface{}) error {
+func Send(userId string, message int, data interface{}) error {
 	conn, ok := connections[userId]
 	if !ok {
 		return nil
 	}
 
-	return conn.WriteJSON(message)
+	return conn.WriteJSON(&models.WebSocketResponse{
+		Msg:  message,
+		Data: data,
+	})
 }
 
 func Broadcast(message interface{}) {

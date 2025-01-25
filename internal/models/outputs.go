@@ -1,5 +1,10 @@
 package models
 
+type WebSocketResponse struct {
+	Msg  int         `json:"msg"`
+	Data interface{} `json:"data"`
+}
+
 type LoginUserResponse struct {
 	Token    string `json:"token"`
 	UserId   string `json:"userId"`

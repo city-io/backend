@@ -1,9 +1,8 @@
 package models
 
-type WebSocketMessage struct {
-	Request   string      `json:"req"`
-	Operation string      `json:"op"`
-	Data      interface{} `json:"data"`
+type WebSocketRequest struct {
+	Req  int         `json:"req"`
+	Data interface{} `json:"data"`
 }
 
 type UserClaims struct {
