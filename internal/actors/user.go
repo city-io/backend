@@ -138,5 +138,10 @@ func (state *UserActor) stopPeriodicOperation() {
 }
 
 func (state *UserActor) ws() {
-	ws.Send(state.User.UserId, messages.WS_USER, state.User)
+	ws.Send(state.User.UserId, messages.WS_USER, &models.UserAccountOutput{
+		Username: state.User.Username,
+		Gold:     state.User.Gold,
+		Food:     state.User.Food,
+		Allies:   state.User.Allies,
+	})
 }

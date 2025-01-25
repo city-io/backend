@@ -21,8 +21,6 @@ type ValidateUserResponse struct {
 }
 
 type UserAccountOutput struct {
-	UserId   string   `json:"userId"`
-	Email    string   `json:"email"`
 	Username string   `json:"username"`
 	Gold     int64    `json:"gold"`
 	Food     int64    `json:"food"`

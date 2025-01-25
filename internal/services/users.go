@@ -205,8 +205,6 @@ func GetUserAccount(userId string) (models.UserAccountOutput, error) {
 	}
 
 	return models.UserAccountOutput{
-		UserId:   user.UserId,
-		Email:    user.Email,
 		Username: user.Username,
 		Gold:     user.Gold,
 		Food:     user.Food,
