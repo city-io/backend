@@ -1,10 +1,11 @@
-package ws
+package api
 
 import (
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/services"
+	"cityio/internal/ws"
 
 	"context"
 	"encoding/json"
@@ -58,7 +59,7 @@ func getMapTiles(ctx context.Context, msg *models.WebSocketRequest) error {
 		}
 	}
 
-	Send(claims.UserId, messages.WS_MAP, &tiles)
+	ws.Send(claims.UserId, messages.WS_MAP, &tiles)
 
 	return nil
 }

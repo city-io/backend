@@ -20,6 +20,15 @@ type ValidateUserResponse struct {
 	Capital  *City  `json:"capital"`
 }
 
+type UserAccountOutput struct {
+	UserId   string   `json:"userId"`
+	Email    string   `json:"email"`
+	Username string   `json:"username"`
+	Gold     int64    `json:"gold"`
+	Food     int64    `json:"food"`
+	Allies   []string `json:"allies"`
+}
+
 type MapTileOutput struct {
 	X        int                `json:"x"`
 	Y        int                `json:"y"`

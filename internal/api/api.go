@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/services"
 	"cityio/internal/ws"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/cors"
@@ -75,6 +77,93 @@ func Start() {
 	log.Fatal(server.ListenAndServe())
 }
 
+func ProcessSocketMessage(ctx context.Context, conn *websocket.Conn, messageType int, p []byte) error {
+	var message models.WebSocketRequest
+	if err := json.Unmarshal(p, &message); err != nil {
+		log.Printf("Error decoding WebSocket message: %s", err)
+		return err
+	}
+
+	prefix := message.Req / 100
+	switch prefix {
+	case 10:
+		conn.WriteJSON(&models.WebSocketResponse{
+			Msg: messages.WS_PONG,
+		})
+		return nil
+	case 20:
+		return getMapTiles(ctx, &message)
+	}
+
+	return nil
+}
+
+func HandleWebSocket(response http.ResponseWriter, request *http.Request) {
+	values := request.URL.Query()
+	token := values.Get("token")
+	if token == "" {
+		log.Println("No token is provided")
+		http.Error(response, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	claims, _, err := services.ValidateToken(token)
+	if err != nil {
+		log.Printf("Error parsing JWT: %s", err)
+		http.Error(response, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			// check origin for security
+			return true
+		},
+	}
+
+	conn, err := upgrader.Upgrade(response, request, nil)
+	if err != nil {
+		log.Printf("Error upgrading to WebSocket: %s", err)
+		http.Error(response, "Failed to upgrade to WebSocket", http.StatusInternalServerError)
+		return
+	}
+	defer conn.Close()
+
+	ws.AddConnection(claims.UserId, conn)
+	ctx := context.WithValue(request.Context(), "claims", claims)
+	log.Printf("WebSocket connection established with %s", claims.Username)
+
+	user, err := services.GetUserAccount(claims.UserId)
+	if err != nil {
+		log.Printf("Error getting user: %s", err)
+		return
+	}
+
+	err = ws.Send(claims.UserId, messages.WS_USER, user)
+	if err != nil {
+		log.Printf("Error sending user: %s", err)
+		return
+	}
+
+	for {
+		messageType, p, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				log.Println("Connection closed by client")
+			} else {
+				log.Printf("Error reading WebSocket message: %s", err)
+			}
+			break
+		}
+
+		err = ProcessSocketMessage(ctx, conn, messageType, p)
+		if err != nil {
+			log.Printf("Error processing WebSocket message: %s", err)
+			break
+		}
+	}
+}
+
 func recoverMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -131,7 +220,7 @@ func authHandler(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func addRoutes(router *mux.Router) {
-	router.HandleFunc("/ws", ws.HandleWebSocket).Methods("GET")
+	router.HandleFunc("/ws", HandleWebSocket).Methods("GET")
 
 	userRouter := router.PathPrefix("/users").Subrouter()
 

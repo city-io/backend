@@ -198,6 +198,22 @@ func GetUser(userId string) (models.User, error) {
 	return userResponse.User, nil
 }
 
+func GetUserAccount(userId string) (models.UserAccountOutput, error) {
+	user, err := GetUser(userId)
+	if err != nil {
+		return models.UserAccountOutput{}, err
+	}
+
+	return models.UserAccountOutput{
+		UserId:   user.UserId,
+		Email:    user.Email,
+		Username: user.Username,
+		Gold:     user.Gold,
+		Food:     user.Food,
+		Allies:   user.Allies,
+	}, nil
+}
+
 func DeleteUser(userId string) error {
 	response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
 		UserId: userId,

@@ -4,6 +4,7 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
+	"cityio/internal/ws"
 
 	"log"
 	"time"
@@ -52,6 +53,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 
 	case messages.AddAllyMessage:
 		state.User.Allies = append(state.User.Allies, msg.Ally)
+		state.ws()
 		ctx.Respond(messages.AddAllyResponseMessage{
 			Error: nil,
 		})
@@ -63,18 +65,22 @@ func (state *UserActor) Receive(ctx actor.Context) {
 				break
 			}
 		}
+		state.ws()
 		ctx.Respond(messages.RemoveAllyResponseMessage{
 			Error: nil,
 		})
 
 	case messages.UpdateUserGoldMessage:
 		state.User.Gold += msg.Change
+		state.ws()
+
 		ctx.Respond(messages.UpdateUserGoldResponseMessage{
 			Error: nil,
 		})
 
 	case messages.UpdateUserFoodMessage:
 		state.User.Food += msg.Change
+		state.ws()
 		ctx.Respond(messages.UpdateUserFoodResponseMessage{
 			Error: nil,
 		})
@@ -129,4 +135,8 @@ func (state *UserActor) startPeriodicOperation(ctx actor.Context) {
 func (state *UserActor) stopPeriodicOperation() {
 	close(state.stopTickerCh)
 	state.ticker = nil
+}
+
+func (state *UserActor) ws() {
+	ws.Send(state.User.UserId, messages.WS_USER, state.User)
 }
