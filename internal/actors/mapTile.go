@@ -1,13 +1,13 @@
 package actors
 
 import (
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
 	"log"
 	"sync"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/messages"
+	"cityio/internal/models"
 )
 
 type army struct {
@@ -16,7 +16,7 @@ type army struct {
 }
 
 type MapTileActor struct {
-	BaseActor
+	models.BaseActor
 	Tile models.MapTile
 
 	CityPID     *actor.PID
@@ -33,7 +33,7 @@ func (state *MapTileActor) Receive(ctx actor.Context) {
 		state.Tile = msg.Tile
 		state.Armies = make(map[string][]*army)
 		if !msg.Restore {
-			ctx.Send(state.database, messages.CreateMapTileMessage{
+			ctx.Send(state.Database, messages.CreateMapTileMessage{
 				Tile: state.Tile,
 			})
 		}

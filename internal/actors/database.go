@@ -1,19 +1,19 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
 	"log"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"gorm.io/gorm"
+
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/models"
 )
 
 type DatabaseActor struct {
-	BaseActor
+	models.BaseActor
 	db *gorm.DB
 
 	userBuffer []models.User

@@ -1,14 +1,14 @@
 package services
 
 import (
+	"log"
+
+	"github.com/google/uuid"
+
 	"cityio/internal/actors"
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-
-	"log"
-
-	"github.com/google/uuid"
 )
 
 func RestoreArmy(army models.Army) error {

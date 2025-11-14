@@ -1,19 +1,19 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
 	"log"
 	"sync"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/models"
 )
 
 type ArmyActor struct {
-	BaseActor
+	models.BaseActor
 	Army models.Army
 
 	OwnerPID *actor.PID
@@ -39,7 +39,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 				state.Army.ToY = -1
 			}
 
-			ctx.Send(state.database, messages.CreateArmyMessage{
+			ctx.Send(state.Database, messages.CreateArmyMessage{
 				Army: state.Army,
 			})
 		}
@@ -76,7 +76,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 
 	case messages.UpdateArmyMessage:
 		state.Army = msg.Army
-		ctx.Send(state.database, messages.UpdateArmyMessage{
+		ctx.Send(state.Database, messages.UpdateArmyMessage{
 			Army: state.Army,
 		})
 		ctx.Respond(messages.UpdateArmyResponseMessage{
@@ -84,7 +84,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteArmyMessage:
-		ctx.Send(state.database, messages.DeleteArmyMessage{
+		ctx.Send(state.Database, messages.DeleteArmyMessage{
 			ArmyId: state.Army.ArmyId,
 		})
 		ctx.Respond(messages.DeleteArmyResponseMessage{
@@ -104,7 +104,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 		state.Army.ToY = msg.Y
 		state.Army.MarchActive = true
 
-		ctx.Send(state.database, messages.UpdateArmyMessage{
+		ctx.Send(state.Database, messages.UpdateArmyMessage{
 			Army: state.Army,
 		})
 		state.startTroopMovement(ctx)
@@ -145,7 +145,7 @@ func (state *ArmyActor) Receive(ctx actor.Context) {
 			state.Army.FromY = -1
 			state.Army.ToX = -1
 			state.Army.ToY = -1
-			ctx.Send(state.database, messages.UpdateArmyMessage{
+			ctx.Send(state.Database, messages.UpdateArmyMessage{
 				Army: state.Army,
 			})
 		}
@@ -174,7 +174,7 @@ func (state *ArmyActor) startTroopMovement(ctx actor.Context) {
 				// make periodic backups every 5 updates
 				count++
 				if count%(constants.TROOP_MOVEMENT_BACKUP_FREQUENCY) == 0 {
-					ctx.Send(state.database, messages.UpdateArmyMessage{
+					ctx.Send(state.Database, messages.UpdateArmyMessage{
 						Army: state.Army,
 					})
 				}

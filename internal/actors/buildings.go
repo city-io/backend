@@ -1,19 +1,19 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
 	"log"
 	"sync"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/models"
 )
 
 type BuildingActor struct {
-	BaseActor
+	models.BaseActor
 	Building models.Building
 	OwnerId  string
 
@@ -34,14 +34,14 @@ func (state *BuildingActor) upgradeBuilding(ctx actor.Context) error {
 	state.Building.ConstructionEnd = state.Building.ConstructionEnd.Add(
 		time.Duration(constants.GetBuildingConstructionTime(state.Building.Type, state.Building.Level)) * time.Second,
 	)
-	ctx.Send(state.database, messages.UpdateBuildingMessage{
+	ctx.Send(state.Database, messages.UpdateBuildingMessage{
 		Building: state.Building,
 	})
 	return nil
 }
 
 func (state *BuildingActor) deleteBuilding(ctx actor.Context) {
-	ctx.Send(state.database, messages.DeleteBuildingMessage{
+	ctx.Send(state.Database, messages.DeleteBuildingMessage{
 		BuildingId: state.Building.BuildingId,
 	})
 	ctx.Respond(messages.DeleteBuildingResponseMessage{

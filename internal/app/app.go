@@ -1,14 +1,6 @@
 package app
 
 import (
-	"cityio/internal/actors"
-	"cityio/internal/api"
-	"cityio/internal/constants"
-	"cityio/internal/database"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-	"cityio/internal/services"
-
 	"fmt"
 	"log"
 	"math"
@@ -17,6 +9,14 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"cityio/internal/actors"
+	"cityio/internal/api"
+	"cityio/internal/constants"
+	"cityio/internal/database"
+	"cityio/internal/messages"
+	"cityio/internal/models"
+	"cityio/internal/services"
 )
 
 var db = database.GetDb()

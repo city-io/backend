@@ -1,13 +1,14 @@
 package actors
 
 import (
-	"cityio/internal/messages"
-
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/messages"
+	"cityio/internal/models"
 )
 
 type PIDManagerActor struct {
-	BaseActor
+	models.BaseActor
 	userPIDs     map[string]*actor.PID
 	cityPIDs     map[string]*actor.PID
 	mapTilePIDs  map[int]map[int]*actor.PID

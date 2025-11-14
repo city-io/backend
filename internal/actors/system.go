@@ -1,16 +1,17 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/database"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
 	"log"
 	"sync"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/constants"
+	"cityio/internal/database"
+	"cityio/internal/messages"
+	"cityio/internal/models"
+	"cityio/internal/ports"
 )
 
 var system *actor.ActorSystem
@@ -20,34 +21,6 @@ var databasePID *actor.PID
 var systemOnce sync.Once
 var managerPIDOnce sync.Once
 var databasePIDOnce sync.Once
-
-type BaseActorInterface interface {
-	Receive(ctx actor.Context)
-	SetPIDActor(managerPID *actor.PID)
-	SetDatabaseActor(databasePID *actor.PID)
-}
-
-type BaseActor struct {
-	actor.Actor
-	manager  *actor.PID
-	database *actor.PID
-}
-
-func (b *BaseActor) Receive(ctx actor.Context) {
-	// Should be overridden
-}
-
-func (b *BaseActor) SetPIDActor(managerPID *actor.PID) {
-	b.manager = managerPID
-}
-
-func (b *BaseActor) SetDatabaseActor(databasePID *actor.PID) {
-	b.database = databasePID
-}
-
-type ActorSystem interface {
-	RequestFuture(pid *actor.PID, message interface{}, timeout time.Duration) *actor.Future
-}
 
 func initSystem() {
 	system = actor.NewActorSystem()
@@ -90,7 +63,7 @@ func GetDatabasePID() *actor.PID {
 	return databasePID
 }
 
-func Spawn[T BaseActorInterface](ac T) (*actor.PID, error) {
+func Spawn[T ports.BaseActorInterface](ac T) (*actor.PID, error) {
 	return SpawnBase(func() actor.Actor {
 		return ac
 	})
@@ -99,7 +72,7 @@ func Spawn[T BaseActorInterface](ac T) (*actor.PID, error) {
 func SpawnBase(newActor func() actor.Actor) (*actor.PID, error) {
 	props := actor.PropsFromProducer(func() actor.Actor {
 		a := newActor()
-		if baseActor, ok := a.(BaseActorInterface); ok {
+		if baseActor, ok := a.(ports.BaseActorInterface); ok {
 			baseActor.SetPIDActor(GetManagerPID())
 			baseActor.SetDatabaseActor(GetDatabasePID())
 		}
@@ -109,7 +82,7 @@ func SpawnBase(newActor func() actor.Actor) (*actor.PID, error) {
 	return newPID, nil
 }
 
-func Request[T any](ctx ActorSystem, pid *actor.PID, message interface{}) (*T, error) {
+func Request[T any](ctx ports.ActorSystem, pid *actor.PID, message interface{}) (*T, error) {
 	future := ctx.RequestFuture(pid, message, constants.ACTOR_TIMEOUT_DURATION*time.Second)
 	result, err := future.Result()
 	if err != nil {

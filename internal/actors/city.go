@@ -1,19 +1,19 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
 	"log"
 	"math/rand"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/models"
 )
 
 type CityActor struct {
-	BaseActor
+	models.BaseActor
 	City     models.City
 	TilePIDs map[int]map[int]*actor.PID
 	OwnerPID *actor.PID
@@ -31,7 +31,7 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		state.OwnerPID = msg.OwnerPID
 
 		if !msg.Restore {
-			ctx.Send(state.database, messages.CreateCityMessage{
+			ctx.Send(state.Database, messages.CreateCityMessage{
 				City: state.City,
 			})
 		}
@@ -58,7 +58,7 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteCityMessage:
-		ctx.Send(state.database, messages.DeleteCityMessage{
+		ctx.Send(state.Database, messages.DeleteCityMessage{
 			CityId: state.City.CityId,
 		})
 		ctx.Respond(messages.DeleteCityResponseMessage{
@@ -74,7 +74,7 @@ func (state *CityActor) Receive(ctx actor.Context) {
 
 		newPopulation := currentPopulation + (constants.POPULATION_GROWTH_RATE)*currentPopulation*(1-currentPopulation/populationCap)
 		state.City.Population = newPopulation
-		ctx.Send(state.database, &messages.UpdateCityMessage{
+		ctx.Send(state.Database, &messages.UpdateCityMessage{
 			City: state.City,
 		})
 	}

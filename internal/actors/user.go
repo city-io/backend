@@ -13,7 +13,7 @@ import (
 )
 
 type UserActor struct {
-	BaseActor
+	models.BaseActor
 	User     models.User
 	ArmyPIDs map[string]*actor.PID
 
@@ -28,7 +28,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		state.User = msg.User
 		state.ArmyPIDs = make(map[string]*actor.PID)
 		if !msg.Restore {
-			registerUserResponse, err := Request[messages.RegisterUserResponseMessage](ctx, state.database, messages.RegisterUserMessage{
+			registerUserResponse, err := Request[messages.RegisterUserResponseMessage](ctx, state.Database, messages.RegisterUserMessage{
 				User: state.User,
 			})
 			if err != nil {
@@ -97,7 +97,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteUserMessage:
-		ctx.Send(state.database, messages.DeleteUserMessage{
+		ctx.Send(state.Database, messages.DeleteUserMessage{
 			UserId: state.User.UserId,
 		})
 		ctx.Respond(messages.DeleteUserResponseMessage{
@@ -109,7 +109,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 
 	case messages.PeriodicOperationMessage:
 		// make a backup of the user state
-		ctx.Send(state.database, &messages.UpdateUserMessage{
+		ctx.Send(state.Database, &messages.UpdateUserMessage{
 			User: state.User,
 		})
 	}
