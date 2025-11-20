@@ -97,7 +97,7 @@ func initDb() {
 	psqlDb.SetConnMaxLifetime(0)
 }
 
-func GetDb() *gorm.DB {
+func GetDB() *gorm.DB {
 	once.Do(initDb)
 	return db
 }

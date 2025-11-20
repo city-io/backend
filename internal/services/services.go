@@ -6,4 +6,4 @@ import (
 )
 
 var system = actors.GetSystem()
-var db = database.GetDb()
+var db = database.GetDB()

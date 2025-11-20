@@ -16,6 +16,16 @@ type PIDManagerActor struct {
 	buildingPIDs map[string]*actor.PID
 }
 
+func NewPIDManager() actor.Actor {
+	return &PIDManagerActor{
+		userPIDs:     make(map[string]*actor.PID),
+		cityPIDs:     make(map[string]*actor.PID),
+		mapTilePIDs:  make(map[int]map[int]*actor.PID),
+		armyPIDs:     make(map[string]*actor.PID),
+		buildingPIDs: make(map[string]*actor.PID),
+	}
+}
+
 func (state *PIDManagerActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 

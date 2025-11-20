@@ -21,6 +21,10 @@ type UserActor struct {
 	stopTickerCh chan struct{}
 }
 
+func NewUserActor() actor.Actor {
+	return &UserActor{}
+}
+
 func (state *UserActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 

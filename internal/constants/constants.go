@@ -1,3 +1,4 @@
+// Package constants contains global constants used throughout the game server.
 package constants
 
 const (

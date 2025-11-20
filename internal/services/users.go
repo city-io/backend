@@ -1,12 +1,6 @@
 package services
 
 import (
-	"cityio/internal/actors"
-	"cityio/internal/constants"
-	"cityio/internal/database"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
 	"log"
 	"os"
 	"time"
@@ -14,6 +8,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+
+	"cityio/internal/actors"
+	"cityio/internal/constants"
+	"cityio/internal/database"
+	"cityio/internal/messages"
+	"cityio/internal/models"
 )
 
 func RestoreUser(user models.User) error {
@@ -105,7 +105,7 @@ func RegisterUser(user models.RegisterUserRequest) (string, error) {
 }
 
 func LoginUser(user models.LoginUserRequest) (models.LoginUserResponse, error) {
-	db := database.GetDb()
+	db := database.GetDB()
 	secretKey := []byte(os.Getenv("JWT_SECRET"))
 
 	var account models.User

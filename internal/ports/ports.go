@@ -1,17 +1,10 @@
+// Package ports defines interfaces and abstractions for logging and actor interactions.
 package ports
 
-import (
-	"time"
-
-	"github.com/asynkron/protoactor-go/actor"
-)
-
-type BaseActorInterface interface {
-	Receive(ctx actor.Context)
-	SetPIDActor(managerPID *actor.PID)
-	SetDatabaseActor(databasePID *actor.PID)
-}
-
-type ActorSystem interface {
-	RequestFuture(pid *actor.PID, message interface{}, timeout time.Duration) *actor.Future
+type Logger interface {
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
+	With(args ...any) Logger
 }

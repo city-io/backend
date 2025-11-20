@@ -1,4 +1,4 @@
-package app
+package setup
 
 import (
 	"fmt"
@@ -10,69 +10,18 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"cityio/internal/actors"
-	"cityio/internal/api"
 	"cityio/internal/constants"
-	"cityio/internal/database"
-	"cityio/internal/messages"
 	"cityio/internal/models"
+	"cityio/internal/ports"
 	"cityio/internal/services"
 )
 
-var db = database.GetDb()
-var system = actors.GetSystem()
-
-func Start(reset bool) {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	if reset {
-		Reset()
-	}
-	Init()
-
-	// Migrate this to tests
-	// buildingId, err := services.ConstructBuilding(models.Building{
-	// 	CityId: "c3b81b20-e975-4a2c-ae93-c81bf8e1303d",
-	// 	Type:   "barracks",
-	// 	Level:  1,
-	// 	X:      31,
-	// 	Y:      6,
-	// })
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// time.Sleep(time.Second * 11)
-	// log.Printf("Created barracks with id %s", buildingId)
-
-	// err = services.TrainTroops(models.Training{
-	// 	BarracksId: buildingId,
-	// 	Size:       20,
-	// })
-
-	// time.Sleep(time.Second * (constants.TROOP_TRAINING_DURATION + 1))
-
-	// err = services.TrainTroops(models.Training{
-	// 	BarracksId: buildingId,
-	// 	Size:       10,
-	// 	DeployTo:   "164bab00-3fc7-41a8-bf76-22d6bba42f2a",
-	// })
-
-	api.Start()
-}
-
-func Init() {
+func Run(cl ports.ClusterProvider) {
+	reset(cl.DB())
 	log.SetPrefix("[init]\t")
-	managerPID := actors.GetManagerPID()
-	initResponse, err := actors.Request[messages.InitPIDManagerResponseMessage](system.Root, managerPID, messages.InitPIDManagerMessage{})
-	if err != nil {
-		panic(err)
-	}
-	if initResponse.Error != nil {
-		panic(initResponse.Error)
-	}
 
 	var users []models.User
-	db.Find(&users)
+	cl.DB().Find(&users)
 
 	for _, user := range users {
 		err := services.RestoreUser(user)
@@ -83,7 +32,7 @@ func Init() {
 	log.Printf("Spawned actors for %d users", len(users))
 
 	var mapTiles []models.MapTile
-	db.Find(&mapTiles)
+	cl.DB().Find(&mapTiles)
 
 	for _, mapTile := range mapTiles {
 		err := services.RestoreMapTile(mapTile)
@@ -94,7 +43,7 @@ func Init() {
 	log.Printf("Spawned actors for %d map tiles", len(mapTiles))
 
 	var cities []models.City
-	db.Find(&cities)
+	cl.DB().Find(&cities)
 
 	for _, city := range cities {
 		err := services.RestoreCity(city)
@@ -105,7 +54,7 @@ func Init() {
 	log.Printf("Spawned actors for %d cities", len(cities))
 
 	var armies []models.Army
-	db.Find(&armies)
+	cl.DB().Find(&armies)
 
 	for _, army := range armies {
 		err := services.RestoreArmy(army)
@@ -116,7 +65,7 @@ func Init() {
 	log.Printf("Spawned actors for %d armies", len(armies))
 
 	var buildings []models.Building
-	db.Find(&buildings)
+	cl.DB().Find(&buildings)
 
 	for _, building := range buildings {
 		err := services.RestoreBuilding(building)
@@ -130,7 +79,7 @@ func Init() {
 	log.SetPrefix("[app]\t")
 }
 
-func Reset() {
+func reset(db *gorm.DB) {
 	log.SetPrefix("[reset]\t")
 	err := resetTable(db, &models.Army{})
 	if err != nil {

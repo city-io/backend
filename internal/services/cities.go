@@ -96,7 +96,7 @@ func RestoreCity(city models.City) error {
 }
 
 func CreateCity(city models.CityInput) (*models.City, error) {
-	db := database.GetDb()
+	db := database.GetDB()
 
 	cityPID, err := actors.Spawn(&actors.CityActor{})
 
@@ -238,7 +238,7 @@ func GetCity(cityId string) (models.City, error) {
 }
 
 func DeleteUserCity(userId string) error {
-	db := database.GetDb()
+	db := database.GetDB()
 
 	var city models.City
 	err := db.Where("owner = ? AND type = 'city'", userId).First(&city).Error

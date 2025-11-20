@@ -24,6 +24,16 @@ type DatabaseActor struct {
 	stopTickerCh chan struct{}
 }
 
+func NewDatabaseActor(db *gorm.DB) actor.Actor {
+	return &DatabaseActor{
+		db:           db,
+		userBuffer:   make([]models.User, 0),
+		cityBuffer:   make([]models.City, 0),
+		armyBuffer:   make([]models.Army, 0),
+		stopTickerCh: make(chan struct{}),
+	}
+}
+
 func (state *DatabaseActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 

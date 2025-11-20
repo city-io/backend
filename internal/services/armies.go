@@ -75,6 +75,10 @@ func RestoreArmy(army models.Army) error {
 
 func CreateArmy(army models.Army) (string, error) {
 	armyPID, err := actors.Spawn(&actors.ArmyActor{})
+	if err != nil {
+		log.Printf("Error creating army: %s", err)
+		return "", err
+	}
 
 	getUserPIDResponse, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
 		UserId: army.Owner,
@@ -132,16 +136,16 @@ func CreateArmy(army models.Army) (string, error) {
 	return army.ArmyId, nil
 }
 
-func GetArmy(armyId string) (models.Army, error) {
+func GetArmy(armyID string) (models.Army, error) {
 	getArmyPIDResponse, err := actors.Request[messages.GetArmyPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetArmyPIDMessage{
-		ArmyId: armyId,
+		ArmyId: armyID,
 	})
 	if err != nil {
 		log.Printf("Error getting army: %s", err)
 		return models.Army{}, err
 	}
 	if getArmyPIDResponse.PID == nil {
-		return models.Army{}, &messages.ArmyNotFoundError{ArmyId: armyId}
+		return models.Army{}, &messages.ArmyNotFoundError{ArmyId: armyID}
 	}
 
 	getArmyResponse, err := actors.Request[messages.GetArmyResponseMessage](system.Root, getArmyPIDResponse.PID, messages.GetArmyMessage{})
@@ -153,11 +157,11 @@ func GetArmy(armyId string) (models.Army, error) {
 	return getArmyResponse.Army, nil
 }
 
-func DeleteUserArmies(userId string) error {
-	db := database.GetDb()
+func DeleteUserArmies(userID string) error {
+	db := database.GetDB()
 
 	var armies []models.Army
-	err := db.Where("owner = ?", userId).Find(&armies).Error
+	err := db.Where("owner = ?", userID).Find(&armies).Error
 	if err != nil {
 		return err
 	}
