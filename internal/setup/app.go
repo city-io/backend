@@ -16,12 +16,20 @@ import (
 	"cityio/internal/services"
 )
 
-func Run(log ports.Logger, cl ports.ClusterProvider) {
-	reset(log, cl.DB())
-	log = log.With("phase", "init")
+type Deps struct {
+	Log     ports.Logger
+	DB      *gorm.DB
+	Cluster ports.ClusterProvider
+}
+
+func Run(deps *Deps) {
+	reset(deps)
+	log := deps.Log.With("phase", "init")
+	cl := deps.Cluster
+	db := deps.DB
 
 	var users []models.User
-	cl.DB().Find(&users)
+	db.Find(&users)
 
 	for _, user := range users {
 		err := services.RestoreUser(cl, user)
@@ -29,6 +37,15 @@ func Run(log ports.Logger, cl ports.ClusterProvider) {
 			panic(err)
 		}
 	}
+	userID, err := services.RegisterUser(deps.Cluster, models.RegisterUserRequest{
+		Email:    "test@email.com",
+		Username: "prayujt",
+		Password: "test",
+	})
+	if err != nil {
+		panic(err)
+	}
+	log.Info("Registered test user", "user_id", userID)
 	log.Info("Spawned user actors", "count", len(users))
 
 	// var mapTiles []models.MapTile
@@ -43,7 +60,7 @@ func Run(log ports.Logger, cl ports.ClusterProvider) {
 	// log.Printf("Spawned actors for %d map tiles", len(mapTiles))
 
 	var cities []models.City
-	cl.DB().Find(&cities)
+	db.Find(&cities)
 
 	for _, city := range cities {
 		err := services.RestoreCity(cl, city)
@@ -77,8 +94,12 @@ func Run(log ports.Logger, cl ports.ClusterProvider) {
 	log.Info("Initialization complete!")
 }
 
-func reset(log ports.Logger, db *gorm.DB) error {
-	log = log.With("phase", "reset")
+func reset(deps *Deps) error {
+	log := deps.Log.With("phase", "reset")
+	db := deps.DB
+
+	resetTable(db, &models.User{})
+
 	err := resetTable(db, &models.Army{})
 	if err != nil {
 		log.Error("Error resetting Army table", "error", err)

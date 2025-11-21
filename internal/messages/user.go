@@ -36,9 +36,7 @@ type DeleteUserMessage struct {
 	UserID string
 }
 
-type RegisterUserResponseMessage struct {
-	Error error
-}
+type RegisterUserResponseMessage struct{}
 type AddAllyResponseMessage struct {
 	Error error
 }

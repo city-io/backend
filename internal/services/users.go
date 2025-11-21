@@ -1,6 +1,8 @@
 package services
 
 import (
+	"log"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
@@ -11,7 +13,7 @@ import (
 )
 
 func RestoreUser(cl ports.ClusterProvider, user models.User) error {
-	cl.Request(user.UserId, "user", &messages.RegisterUserMessage{
+	cl.Request("user", user.Username, &messages.RegisterUserMessage{
 		User:    user,
 		Restore: true,
 	})
@@ -26,7 +28,8 @@ func RegisterUser(cl ports.ClusterProvider, user models.RegisterUserRequest) (st
 		return "", err
 	}
 
-	cl.Request(userID, "user", &messages.RegisterUserMessage{
+	log.Println("Registering user:", user.Username, user.Email)
+	cl.Request("user", user.Username, &messages.RegisterUserMessage{
 		User: models.User{
 			UserId:   userID,
 			Username: user.Username,

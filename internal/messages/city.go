@@ -28,9 +28,7 @@ type DeleteCityMessage struct {
 	CityId string
 }
 
-type CreateCityResponseMessage struct {
-	Error error
-}
+type CreateCityResponseMessage struct{}
 type UpdateCityPopulationCapResponseMessage struct {
 	Error error
 }

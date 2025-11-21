@@ -1,7 +1,6 @@
 package actors
 
 import (
-	"log"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -30,14 +29,16 @@ func (state *UserActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case *messages.RegisterUserMessage:
+		state.Log.Info("Registering UserActor", "username", msg.User.Username)
 		state.User = msg.User
 		state.ArmyPIDs = make(map[string]*actor.PID)
 		if !msg.Restore {
-			ctx.Send(state.Database, messages.RegisterUserMessage{
+			ctx.Send(state.Database, &messages.RegisterUserMessage{
 				User: state.User,
 			})
 		}
 		state.startPeriodicOperation(ctx)
+		ctx.Respond(messages.RegisterUserResponseMessage{})
 
 	case messages.AddAllyMessage:
 		state.User.Allies = append(state.User.Allies, msg.Ally)
@@ -74,7 +75,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.GetUserMessage:
-		ctx.Respond(messages.GetUserResponseMessage{
+		ctx.Respond(&messages.GetUserResponseMessage{
 			User: state.User,
 		})
 
@@ -91,7 +92,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.DeleteUserResponseMessage{
 			Error: nil,
 		})
-		log.Printf("Shutting down UserActor for user: %s", state.User.Username)
+		state.Log.Info("Shutting down UserActor", "user_id", state.User.UserId)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 

@@ -10,6 +10,7 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
+	"cityio/internal/ports"
 )
 
 type DatabaseActor struct {
@@ -24,7 +25,7 @@ type DatabaseActor struct {
 	stopTickerCh chan struct{}
 }
 
-func NewDatabaseActor(db *gorm.DB) actor.Actor {
+func NewDatabaseActor(db *gorm.DB) ports.BaseActorInterface {
 	return &DatabaseActor{
 		db:           db,
 		userBuffer:   make([]models.User, 0),
@@ -40,14 +41,11 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 	case messages.InitDatabaseMessage:
 		state.startPeriodicOperation(ctx)
 
-	case messages.RegisterUserMessage:
+	case *messages.RegisterUserMessage:
 		result := state.db.Create(&msg.User)
 		if result.Error != nil {
-			log.Printf("Error creating user in db: %s", result.Error)
+			state.Log.Error("Error creating user in db", "error", result.Error)
 		}
-		ctx.Respond(messages.RegisterUserResponseMessage{
-			Error: result.Error,
-		})
 	case *messages.UpdateUserMessage:
 		state.userBuffer = append(state.userBuffer, msg.User)
 	case messages.DeleteUserMessage:
@@ -132,10 +130,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		cityBatchSize := 5000
 		if len(state.cityBuffer) > 0 {
 			for i := 0; i < len(state.cityBuffer); i += cityBatchSize {
-				end := i + cityBatchSize
-				if end > len(state.cityBuffer) {
-					end = len(state.cityBuffer)
-				}
+				end := min(i+cityBatchSize, len(state.cityBuffer))
 				if result := state.db.Save(state.cityBuffer[i:end]); result.Error != nil {
 					log.Printf("Error creating cities: %s", result.Error)
 				}

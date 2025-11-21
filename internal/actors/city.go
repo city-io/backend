@@ -1,7 +1,6 @@
 package actors
 
 import (
-	"log"
 	"math/rand"
 	"time"
 
@@ -37,16 +36,14 @@ func (state *CityActor) Receive(ctx actor.Context) {
 			})
 		}
 		state.startPeriodicOperation(ctx)
-		ctx.Respond(messages.CreateCityResponseMessage{
-			Error: nil,
-		})
+		ctx.Respond(messages.CreateCityResponseMessage{})
 
 	case messages.UpdateCityOwnerMessage:
 		state.City.Owner = msg.Owner
 
 	case messages.UpdateCityPopulationCapMessage:
 		if state.City.Owner != "" {
-			log.Println("Updating city population cap")
+			state.Log.Debug("Updating population cap", "city_id", state.City.CityId, "owner", state.City.Owner, "change", msg.Change)
 		}
 		state.City.PopulationCap += float64(msg.Change)
 
@@ -80,7 +77,7 @@ func (state *CityActor) startPeriodicOperation(ctx actor.Context) {
 		// sleep for a random duration up to 10 seconds to attempt
 		// creating an even distribution of database writing
 		rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-		time.Sleep(time.Duration(rnd.Intn(10)) * time.Second)
+		time.Sleep(time.Duration(rnd.Intn(constants.CITY_BACKUP_FREQUENCY)) * time.Second)
 
 		state.ticker = time.NewTicker(constants.CITY_BACKUP_FREQUENCY * time.Second)
 		state.stopTickerCh = make(chan struct{})

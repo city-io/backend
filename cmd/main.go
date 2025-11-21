@@ -12,7 +12,11 @@ func main() {
 	log := logger.NewLogger()
 	c := providers.NewClusterProvider(log, database.GetDB())
 
-	setup.Run(log, c)
+	setup.Run(&setup.Deps{
+		Log:     log,
+		DB:      database.GetDB(),
+		Cluster: c,
+	})
 
 	// Migrate this to tests
 	// buildingId, err := services.ConstructBuilding(models.Building{

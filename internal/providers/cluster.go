@@ -1,6 +1,8 @@
 package providers
 
 import (
+	"time"
+
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/cluster"
 	"github.com/asynkron/protoactor-go/cluster/clusterproviders/consul"
@@ -19,22 +21,25 @@ type clusterProvider struct {
 	system      *actor.ActorSystem
 	cluster     *cluster.Cluster
 	databasePID *actor.PID
-	db          *gorm.DB
 }
 
 func NewClusterProvider(log ports.Logger, db *gorm.DB) ports.ClusterProvider {
 	system := actor.NewActorSystem()
 
 	databaseProps := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewDatabaseActor(db)
+		ac := actors.NewDatabaseActor(db)
+		ac.SetLog(log)
+		return ac
 	})
 	databasePID := system.Root.Spawn(databaseProps)
 
+	var cp ports.ClusterProvider
 	spawn := func(newActor func() ports.BaseActorInterface) actor.Producer {
 		return func() actor.Actor {
 			ac := newActor()
 			ac.SetDatabaseActor(databasePID)
 			ac.SetLog(log)
+			ac.SetCluster(cp)
 			return ac
 		}
 	}
@@ -61,27 +66,33 @@ func NewClusterProvider(log ports.Logger, db *gorm.DB) ports.ClusterProvider {
 
 	clusterConfig := cluster.Configure("cityio-cluster", provider, lookup, remoteConfig, cluster.WithKinds(kinds...))
 	cl := cluster.New(system, clusterConfig)
-	cl.StartMember()
 
-	return &clusterProvider{
+	cp = &clusterProvider{
 		log:         log,
 		system:      system,
 		cluster:     cl,
 		databasePID: databasePID,
-		db:          db,
 	}
+	cl.StartMember()
+
+	return cp
 }
 
-func (cp *clusterProvider) DB() *gorm.DB {
-	return cp.db
-}
-
-func (cp *clusterProvider) Request(identity string, kind string, message any) (any, error) {
+func (cp *clusterProvider) Request(kind, identity string, message any) (any, error) {
 	return cp.cluster.Request(identity, kind, message)
 }
 
+func (cp *clusterProvider) RequestFuture(kind, identity string, message any) (*actor.Future, error) {
+	return cp.cluster.RequestFuture(
+		identity,
+		kind,
+		message,
+		cluster.WithTimeout(constants.ACTOR_TIMEOUT_DURATION*time.Second),
+	)
+}
+
 func (cp *clusterProvider) Tell(kind, identity string, msg any) error {
-	pid := cp.cluster.Get(kind, identity)
+	pid := cp.cluster.Get(identity, kind)
 	cp.system.Root.Send(pid, msg)
 	return nil
 }
