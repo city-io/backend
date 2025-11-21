@@ -14,7 +14,7 @@ import (
 )
 
 type DatabaseActor struct {
-	models.BaseActor
+	BaseActor
 	db *gorm.DB
 
 	userBuffer []models.User

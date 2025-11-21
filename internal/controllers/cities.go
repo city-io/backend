@@ -1,4 +1,4 @@
-package services
+package controllers
 
 import (
 	"log"
@@ -13,8 +13,18 @@ import (
 	"cityio/internal/ports"
 )
 
-func RestoreCity(cl ports.ClusterProvider, city models.City) error {
-	_, err := cl.Request("city", city.CityId, &messages.CreateCityMessage{
+type cityController struct {
+	cluster ports.ClusterProvider
+}
+
+func NewCityController(cl ports.ClusterProvider) ports.CityController {
+	return &cityController{
+		cluster: cl,
+	}
+}
+
+func (c *cityController) RestoreCity(city models.City) error {
+	_, err := c.cluster.Request("city", city.CityId, &messages.CreateCityMessage{
 		City:    city,
 		Restore: true,
 	})
@@ -26,7 +36,7 @@ func RestoreCity(cl ports.ClusterProvider, city models.City) error {
 	return nil
 }
 
-func CreateCity(cl ports.ClusterProvider, city models.CityInput) (*models.City, error) {
+func (c *cityController) CreateCity(city models.CityInput) (*models.City, error) {
 	db := database.GetDB()
 
 	cityID := uuid.New().String()
@@ -66,7 +76,7 @@ func CreateCity(cl ports.ClusterProvider, city models.CityInput) (*models.City, 
 		StartY:        startY,
 		Size:          city.Size,
 	}
-	_, err = cl.Request("city", cityID, &messages.CreateCityMessage{
+	_, err = c.cluster.Request("city", cityID, &messages.CreateCityMessage{
 		City:    newCity,
 		Restore: true,
 	})

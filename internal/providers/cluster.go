@@ -13,6 +13,7 @@ import (
 
 	"cityio/internal/actors"
 	"cityio/internal/constants"
+	"cityio/internal/controllers"
 	"cityio/internal/ports"
 )
 
@@ -23,7 +24,7 @@ type clusterProvider struct {
 	databasePID *actor.PID
 }
 
-func NewClusterProvider(log ports.Logger, db *gorm.DB) ports.ClusterProvider {
+func NewRuntime(log ports.Logger, db *gorm.DB) (ports.ClusterProvider, ports.Controllers) {
 	system := actor.NewActorSystem()
 
 	databaseProps := actor.PropsFromProducer(func() actor.Actor {
@@ -33,7 +34,14 @@ func NewClusterProvider(log ports.Logger, db *gorm.DB) ports.ClusterProvider {
 	})
 	databasePID := system.Root.Spawn(databaseProps)
 
-	var cp ports.ClusterProvider
+	cp := &clusterProvider{
+		log:         log,
+		system:      system,
+		cluster:     nil,
+		databasePID: databasePID,
+	}
+	ctrls := controllers.NewControllers(cp)
+
 	spawn := func(newActor func() ports.BaseActorInterface) actor.Producer {
 		return func() actor.Actor {
 			ac := newActor()
@@ -66,16 +74,10 @@ func NewClusterProvider(log ports.Logger, db *gorm.DB) ports.ClusterProvider {
 
 	clusterConfig := cluster.Configure("cityio-cluster", provider, lookup, remoteConfig, cluster.WithKinds(kinds...))
 	cl := cluster.New(system, clusterConfig)
-
-	cp = &clusterProvider{
-		log:         log,
-		system:      system,
-		cluster:     cl,
-		databasePID: databasePID,
-	}
+	cp.cluster = cl
 	cl.StartMember()
 
-	return cp
+	return cp, ctrls
 }
 
 func (cp *clusterProvider) Request(kind, identity string, message any) (any, error) {

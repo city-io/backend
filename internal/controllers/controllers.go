@@ -1,0 +1,21 @@
+// Package controllers initializes the controllers for handling various application functionalities.
+package controllers
+
+import (
+	"cityio/internal/ports"
+)
+
+type controllers struct {
+	user ports.UserController
+	city ports.CityController
+}
+
+func (c *controllers) User() ports.UserController { return c.user }
+func (c *controllers) City() ports.CityController { return c.city }
+
+func NewControllers(cp ports.ClusterProvider) ports.Controllers {
+	return &controllers{
+		user: NewUserController(cp),
+		city: NewCityController(cp),
+	}
+}

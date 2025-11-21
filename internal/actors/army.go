@@ -14,7 +14,7 @@ package actors
 // )
 
 // type ArmyActor struct {
-// 	models.BaseActor
+// 	BaseActor
 // 	Army models.Army
 
 // 	OwnerPID *actor.PID

@@ -13,7 +13,7 @@ import (
 )
 
 type UserActor struct {
-	models.BaseActor
+	BaseActor
 	User     models.User
 	ArmyPIDs map[string]*actor.PID
 

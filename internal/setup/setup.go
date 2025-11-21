@@ -13,31 +13,33 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/models"
 	"cityio/internal/ports"
-	"cityio/internal/services"
 )
 
 type Deps struct {
-	Log     ports.Logger
-	DB      *gorm.DB
-	Cluster ports.ClusterProvider
+	Log         ports.Logger
+	DB          *gorm.DB
+	Controllers ports.Controllers
 }
 
 func Run(deps *Deps) {
 	reset(deps)
 	log := deps.Log.With("phase", "init")
-	cl := deps.Cluster
 	db := deps.DB
+	ctrls := deps.Controllers
 
 	var users []models.User
 	db.Find(&users)
 
 	for _, user := range users {
-		err := services.RestoreUser(cl, user)
+		err := ctrls.User().RestoreUser(user)
 		if err != nil {
 			panic(err)
 		}
 	}
-	userID, err := services.RegisterUser(deps.Cluster, models.RegisterUserRequest{
+	log.Info("Spawned user actors", "count", len(users))
+
+	// TODO: Remove test user registration later
+	userID, err := ctrls.User().RegisterUser(models.RegisterUserRequest{
 		Email:    "test@email.com",
 		Username: "prayujt",
 		Password: "test",
@@ -46,7 +48,6 @@ func Run(deps *Deps) {
 		panic(err)
 	}
 	log.Info("Registered test user", "user_id", userID)
-	log.Info("Spawned user actors", "count", len(users))
 
 	// var mapTiles []models.MapTile
 	// cl.DB().Find(&mapTiles)
@@ -63,7 +64,7 @@ func Run(deps *Deps) {
 	db.Find(&cities)
 
 	for _, city := range cities {
-		err := services.RestoreCity(cl, city)
+		err := ctrls.City().RestoreCity(city)
 		if err != nil {
 			panic(err)
 		}

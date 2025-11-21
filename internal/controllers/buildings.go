@@ -1,4 +1,4 @@
-package services
+package controllers
 
 // import (
 // 	"cityio/internal/actors"

@@ -13,7 +13,7 @@ import (
 )
 
 type CityActor struct {
-	models.BaseActor
+	BaseActor
 	City models.City
 
 	ticker       *time.Ticker

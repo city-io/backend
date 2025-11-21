@@ -1,4 +1,4 @@
-package services
+package controllers
 
 import (
 	"log"
@@ -12,8 +12,18 @@ import (
 	"cityio/internal/ports"
 )
 
-func RestoreUser(cl ports.ClusterProvider, user models.User) error {
-	cl.Request("user", user.Username, &messages.RegisterUserMessage{
+type userController struct {
+	cluster ports.ClusterProvider
+}
+
+func NewUserController(cl ports.ClusterProvider) ports.UserController {
+	return &userController{
+		cluster: cl,
+	}
+}
+
+func (u *userController) RestoreUser(user models.User) error {
+	u.cluster.Request("user", user.Username, &messages.RegisterUserMessage{
 		User:    user,
 		Restore: true,
 	})
@@ -21,7 +31,7 @@ func RestoreUser(cl ports.ClusterProvider, user models.User) error {
 	return nil
 }
 
-func RegisterUser(cl ports.ClusterProvider, user models.RegisterUserRequest) (string, error) {
+func (u *userController) RegisterUser(user models.RegisterUserRequest) (string, error) {
 	userID := uuid.New().String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -29,7 +39,7 @@ func RegisterUser(cl ports.ClusterProvider, user models.RegisterUserRequest) (st
 	}
 
 	log.Println("Registering user:", user.Username, user.Email)
-	cl.Request("user", user.Username, &messages.RegisterUserMessage{
+	u.cluster.Request("user", user.Username, &messages.RegisterUserMessage{
 		User: models.User{
 			UserId:   userID,
 			Username: user.Username,
