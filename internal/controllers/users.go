@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"log"
-
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
@@ -14,11 +12,13 @@ import (
 
 type userController struct {
 	cluster ports.ClusterProvider
+	log     ports.Logger
 }
 
-func NewUserController(cl ports.ClusterProvider) ports.UserController {
+func NewUserController(cl ports.ClusterProvider, l ports.Logger) ports.UserController {
 	return &userController{
 		cluster: cl,
+		log:     l,
 	}
 }
 
@@ -38,7 +38,7 @@ func (u *userController) RegisterUser(user models.RegisterUserRequest) (string, 
 		return "", err
 	}
 
-	log.Println("Registering user:", user.Username, user.Email)
+	u.log.Debug("Registering user", "username", user.Username, "email", user.Email)
 	u.cluster.Request("user", user.Username, &messages.RegisterUserMessage{
 		User: models.User{
 			UserId:   userID,

@@ -40,7 +40,7 @@ func NewRuntime(log ports.Logger, db *gorm.DB) (ports.ClusterProvider, ports.Con
 		cluster:     nil,
 		databasePID: databasePID,
 	}
-	ctrls := controllers.NewControllers(cp)
+	ctrls := controllers.NewControllers(cp, log)
 
 	spawn := func(newActor func() ports.BaseActorInterface) actor.Producer {
 		return func() actor.Actor {

@@ -13,9 +13,9 @@ type controllers struct {
 func (c *controllers) User() ports.UserController { return c.user }
 func (c *controllers) City() ports.CityController { return c.city }
 
-func NewControllers(cp ports.ClusterProvider) ports.Controllers {
+func NewControllers(cp ports.ClusterProvider, l ports.Logger) ports.Controllers {
 	return &controllers{
-		user: NewUserController(cp),
-		city: NewCityController(cp),
+		user: NewUserController(cp, l),
+		city: NewCityController(cp, l),
 	}
 }

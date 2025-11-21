@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"log"
 	"math/rand"
 
 	"github.com/google/uuid"
@@ -15,11 +14,13 @@ import (
 
 type cityController struct {
 	cluster ports.ClusterProvider
+	log     ports.Logger
 }
 
-func NewCityController(cl ports.ClusterProvider) ports.CityController {
+func NewCityController(cl ports.ClusterProvider, l ports.Logger) ports.CityController {
 	return &cityController{
 		cluster: cl,
+		log:     l,
 	}
 }
 
@@ -29,7 +30,7 @@ func (c *cityController) RestoreCity(city models.City) error {
 		Restore: true,
 	})
 	if err != nil {
-		log.Println("Failed to restore city actor:", err)
+		c.log.Error("Failed to restore city actor:", "city_id", city.CityId, "error", err)
 		return err
 	}
 
@@ -58,7 +59,7 @@ func (c *cityController) CreateCity(city models.CityInput) (*models.City, error)
 	// 10000 adds sufficient spacing
 
 	if err != nil {
-		log.Println("Failed to fetch map empty tiles:", err)
+		c.log.Error("Failed to fetch map empty tiles", "error", err)
 		return &models.City{}, err
 	}
 	randomTile := tiles[rand.Intn(len(tiles))]
@@ -81,7 +82,7 @@ func (c *cityController) CreateCity(city models.CityInput) (*models.City, error)
 		Restore: true,
 	})
 	if err != nil {
-		log.Println("Failed to create city actor:", err)
+		c.log.Error("Failed to create city actor", "city_id", cityID, "error", err)
 		return &models.City{}, err
 	}
 
