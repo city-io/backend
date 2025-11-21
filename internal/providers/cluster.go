@@ -1,18 +1,16 @@
 package providers
 
 import (
-	"time"
-
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/cluster"
 	"github.com/asynkron/protoactor-go/cluster/clusterproviders/consul"
+	"github.com/asynkron/protoactor-go/cluster/clusterproviders/test"
 	"github.com/asynkron/protoactor-go/cluster/identitylookup/disthash"
 	"github.com/asynkron/protoactor-go/remote"
 	"gorm.io/gorm"
 
 	"cityio/internal/actors"
 	"cityio/internal/constants"
-	"cityio/internal/messages"
 	"cityio/internal/ports"
 )
 
@@ -20,7 +18,6 @@ type clusterProvider struct {
 	log         ports.Logger
 	system      *actor.ActorSystem
 	cluster     *cluster.Cluster
-	managerPID  *actor.PID
 	databasePID *actor.PID
 	db          *gorm.DB
 }
@@ -28,58 +25,63 @@ type clusterProvider struct {
 func NewClusterProvider(log ports.Logger, db *gorm.DB) ports.ClusterProvider {
 	system := actor.NewActorSystem()
 
-	var kinds []*cluster.Kind
-	kinds = append(kinds, cluster.NewKind("User", actor.PropsFromProducer(NewUserActor)))
-	kinds = append(kinds, cluster.NewKind("City", actor.PropsFromProducer(NewCityActor)))
+	databaseProps := actor.PropsFromProducer(func() actor.Actor {
+		return actors.NewDatabaseActor(db)
+	})
+	databasePID := system.Root.Spawn(databaseProps)
+
+	spawn := func(newActor func() ports.BaseActorInterface) actor.Producer {
+		return func() actor.Actor {
+			ac := newActor()
+			ac.SetDatabaseActor(databasePID)
+			ac.SetLog(log)
+			return ac
+		}
+	}
+	kinds := []*cluster.Kind{
+		cluster.NewKind("user", actor.PropsFromProducer(spawn(actors.NewUserActor))),
+		cluster.NewKind("city", actor.PropsFromProducer(spawn(actors.NewCityActor))),
+	}
 
 	remoteConfig := remote.Configure("127.0.0.1", 8090)
-	provider, err := consul.New()
-	if err != nil {
-		panic(err)
-	}
 	lookup := disthash.New()
+
+	var provider cluster.ClusterProvider
+	if constants.Environment == "development" {
+		testagent := test.NewInMemAgent()
+		provider = test.NewTestProvider(testagent)
+	} else {
+		// TODO: switch to kubernetes provider
+		var err error
+		provider, err = consul.New()
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	clusterConfig := cluster.Configure("cityio-cluster", provider, lookup, remoteConfig, cluster.WithKinds(kinds...))
 	cl := cluster.New(system, clusterConfig)
 	cl.StartMember()
 
-	managerProps := actor.PropsFromProducer(actors.NewPIDManager)
-	databaseProps := actor.PropsFromProducer(func() actor.Actor {
-		return actors.NewDatabaseActor(db)
-	})
 	return &clusterProvider{
 		log:         log,
-		system:      actor.NewActorSystem(),
-		managerPID:  system.Root.Spawn(managerProps),
-		databasePID: system.Root.Spawn(databaseProps),
+		system:      system,
+		cluster:     cl,
+		databasePID: databasePID,
 		db:          db,
 	}
 }
 
-func (a *clusterProvider) DB() *gorm.DB {
-	return a.db
+func (cp *clusterProvider) DB() *gorm.DB {
+	return cp.db
 }
 
-func (a *clusterProvider) Spawn(ac ports.BaseActorInterface) (*actor.PID, error) {
-	props := actor.PropsFromProducer(func() actor.Actor {
-		ac.SetPIDActor(a.managerPID)
-		ac.SetDatabaseActor(a.databasePID)
-		ac.SetLog(a.log)
-		return ac
-	})
-	newPID := a.system.Root.Spawn(props)
-	return newPID, nil
+func (cp *clusterProvider) Request(identity string, kind string, message any) (any, error) {
+	return cp.cluster.Request(identity, kind, message)
 }
 
-func Request[T any](ctx ports.ActorSystem, pid *actor.PID, message any) (*T, error) {
-	future := ctx.RequestFuture(pid, message, constants.ACTOR_TIMEOUT_DURATION*time.Second)
-	result, err := future.Result()
-	if err != nil {
-		return nil, err
-	}
-
-	if response, ok := result.(T); ok {
-		return &response, nil
-	}
-	return nil, &messages.InvalidResponseTypeError{}
+func (cp *clusterProvider) Tell(kind, identity string, msg any) error {
+	pid := cp.cluster.Get(kind, identity)
+	cp.system.Root.Send(pid, msg)
+	return nil
 }

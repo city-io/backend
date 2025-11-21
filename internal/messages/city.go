@@ -17,8 +17,8 @@ type CreateCityMessage struct {
 type UpdateCityMessage struct {
 	City models.City
 }
-type UpdateOwnerPIDMessage struct {
-	PID *actor.PID
+type UpdateCityOwnerMessage struct {
+	Owner string
 }
 type UpdateCityPopulationCapMessage struct {
 	Change float64

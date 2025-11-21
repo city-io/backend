@@ -1,15 +1,16 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-	"cityio/internal/ws"
-
 	"log"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/models"
+	"cityio/internal/ports"
+	"cityio/internal/ws"
 )
 
 type UserActor struct {
@@ -21,7 +22,7 @@ type UserActor struct {
 	stopTickerCh chan struct{}
 }
 
-func NewUserActor() actor.Actor {
+func NewUserActor() ports.BaseActorInterface {
 	return &UserActor{}
 }
 
@@ -32,27 +33,10 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		state.User = msg.User
 		state.ArmyPIDs = make(map[string]*actor.PID)
 		if !msg.Restore {
-			registerUserResponse, err := Request[messages.RegisterUserResponseMessage](ctx, state.Database, messages.RegisterUserMessage{
+			ctx.Send(state.Database, messages.RegisterUserMessage{
 				User: state.User,
 			})
-			if err != nil {
-				log.Printf("Error in register user db operation: %s", err)
-				ctx.Respond(messages.RegisterUserResponseMessage{
-					Error: err,
-				})
-				return
-			}
-			if registerUserResponse.Error != nil {
-				log.Printf("Error in register user db operation: %s", registerUserResponse.Error)
-				ctx.Respond(messages.RegisterUserResponseMessage{
-					Error: registerUserResponse.Error,
-				})
-				return
-			}
 		}
-		ctx.Respond(messages.RegisterUserResponseMessage{
-			Error: nil,
-		})
 		state.startPeriodicOperation(ctx)
 
 	case messages.AddAllyMessage:

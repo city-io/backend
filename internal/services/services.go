@@ -1,9 +1,9 @@
 package services
 
-import (
-	"cityio/internal/actors"
-	"cityio/internal/database"
-)
+// import (
+// 	"cityio/internal/actors"
+// 	"cityio/internal/database"
+// )
 
-var system = actors.GetSystem()
-var db = database.GetDB()
+// var system = actors.GetSystem()
+// var db = database.GetDB()

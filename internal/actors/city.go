@@ -10,47 +10,43 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
+	"cityio/internal/ports"
 )
 
 type CityActor struct {
 	models.BaseActor
-	City     models.City
-	TilePIDs map[int]map[int]*actor.PID
-	OwnerPID *actor.PID
+	City models.City
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
+}
+
+func NewCityActor() ports.BaseActorInterface {
+	return &CityActor{}
 }
 
 func (state *CityActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.CreateCityMessage:
+		state.Log.Info("creating city actor...")
 		state.City = msg.City
-		state.TilePIDs = msg.TilePIDs
-		state.OwnerPID = msg.OwnerPID
 
 		if !msg.Restore {
 			ctx.Send(state.Database, messages.CreateCityMessage{
 				City: state.City,
 			})
 		}
-		ctx.Respond(messages.CreateCityResponseMessage{
-			Error: nil,
-		})
 		state.startPeriodicOperation(ctx)
 
-	case messages.UpdateOwnerPIDMessage:
-		state.OwnerPID = msg.PID
+	case messages.UpdateCityOwnerMessage:
+		state.City.Owner = msg.Owner
 
 	case messages.UpdateCityPopulationCapMessage:
 		if state.City.Owner != "" {
 			log.Println("Updating city population cap")
 		}
 		state.City.PopulationCap += float64(msg.Change)
-		ctx.Respond(messages.UpdateCityPopulationCapResponseMessage{
-			Error: nil,
-		})
 
 	case messages.GetCityMessage:
 		ctx.Respond(messages.GetCityResponseMessage{
@@ -60,9 +56,6 @@ func (state *CityActor) Receive(ctx actor.Context) {
 	case messages.DeleteCityMessage:
 		ctx.Send(state.Database, messages.DeleteCityMessage{
 			CityId: state.City.CityId,
-		})
-		ctx.Respond(messages.DeleteCityResponseMessage{
-			Error: nil,
 		})
 		log.Printf("Shutting down CityActor for city: %s", state.City.Name)
 		state.stopPeriodicOperation()

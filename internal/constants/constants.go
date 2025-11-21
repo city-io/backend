@@ -1,6 +1,10 @@
 // Package constants contains global constants used throughout the game server.
 package constants
 
+import "os"
+
+var Environment string = os.Getenv("ENVIRONMENT")
+
 const (
 	MAP_SIZE  = 128 // generate a map of size MAP_SIZE x MAP_SIZE
 	CITY_SIZE = 5

@@ -1,107 +1,38 @@
 package services
 
 import (
-	"cityio/internal/actors"
+	"log"
+	"math/rand"
+
+	"github.com/google/uuid"
+
 	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-
-	"log"
-	"math/rand"
-
-	"github.com/asynkron/protoactor-go/actor"
-	"github.com/google/uuid"
+	"cityio/internal/ports"
 )
 
-func RestoreCity(city models.City) error {
-	cityPID, err := actors.Spawn(&actors.CityActor{})
-	if err != nil {
-		log.Printf("Error spawning city actor: %s", err)
-		return err
-	}
-
-	tilePIDs := make(map[int]map[int]*actor.PID)
-	for i := 0; i < city.Size; i++ {
-		for j := 0; j < city.Size; j++ {
-			response, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
-				X: city.StartX + i,
-				Y: city.StartY + j,
-			})
-			if err != nil {
-				log.Printf("Error getting map tile pid: %s", err)
-				return err
-			}
-
-			if _, ok := tilePIDs[i]; !ok {
-				tilePIDs[i] = make(map[int]*actor.PID)
-			}
-			tilePIDs[i][j] = response.PID
-
-			addCityResponse, err := actors.Request[messages.AddCityToTileResponseMessage](system.Root, response.PID, messages.AddCityToTileMessage{
-				CityId: city.CityId,
-			})
-			if err != nil {
-				log.Printf("Error adding city to tile: %s", err)
-				return err
-			}
-			if addCityResponse.Error != nil {
-				log.Printf("Error adding city to tile: %s", addCityResponse.Error)
-				return addCityResponse.Error
-			}
-		}
-	}
-
-	var userPID *actor.PID
-	if city.Owner != "" {
-		response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
-			UserId: city.Owner,
-		})
-		if err != nil {
-			log.Printf("Error getting user pid: %s", err)
-			return err
-		}
-		userPID = response.PID
-	}
-
-	createCityResponse, err := actors.Request[messages.CreateCityResponseMessage](system.Root, cityPID, messages.CreateCityMessage{
-		City:     city,
-		TilePIDs: tilePIDs,
-		OwnerPID: userPID,
-		Restore:  true,
+func RestoreCity(cl ports.ClusterProvider, city models.City) error {
+	_, err := cl.Request("city", city.CityId, &messages.CreateCityMessage{
+		City:    city,
+		Restore: true,
 	})
 	if err != nil {
-		log.Printf("Error creating city: %s", err)
+		log.Println("Failed to restore city actor:", err)
 		return err
-	}
-	if createCityResponse.Error != nil {
-		log.Printf("Error creating city: %s", createCityResponse.Error)
-		return createCityResponse.Error
-	}
-
-	addCityPIDResponse, err := actors.Request[messages.AddCityPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddCityPIDMessage{
-		CityId: city.CityId,
-		PID:    cityPID,
-	})
-	if err != nil {
-		log.Printf("Error adding city pid: %s", err)
-		return err
-	}
-	if addCityPIDResponse.Error != nil {
-		log.Printf("Error adding city pid: %s", addCityPIDResponse.Error)
-		return addCityPIDResponse.Error
 	}
 
 	return nil
 }
 
-func CreateCity(city models.CityInput) (*models.City, error) {
+func CreateCity(cl ports.ClusterProvider, city models.CityInput) (*models.City, error) {
 	db := database.GetDB()
 
-	cityPID, err := actors.Spawn(&actors.CityActor{})
+	cityID := uuid.New().String()
 
 	var tiles []models.MapTile
-	err = db.Raw(`
+	err := db.Raw(`
 		SELECT x, y, city_id
 		FROM map_tiles
 		WHERE city_id = ''
@@ -120,58 +51,12 @@ func CreateCity(city models.CityInput) (*models.City, error) {
 		log.Println("Failed to fetch map empty tiles:", err)
 		return &models.City{}, err
 	}
-
-	cityId := uuid.New().String()
-
 	randomTile := tiles[rand.Intn(len(tiles))]
 	startX := randomTile.X
 	startY := randomTile.Y
 
-	tilePIDS := make(map[int]map[int]*actor.PID)
-	for i := 0; i < city.Size; i++ {
-		for j := 0; j < city.Size; j++ {
-			response, err := actors.Request[messages.GetMapTilePIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetMapTilePIDMessage{
-				X: startX + i,
-				Y: startY + j,
-			})
-			if err != nil {
-				log.Printf("Error getting map tile pid: %s", err)
-				return &models.City{}, err
-			}
-			if _, ok := tilePIDS[i]; !ok {
-				tilePIDS[i] = make(map[int]*actor.PID)
-			}
-			tilePIDS[i][j] = response.PID
-
-			addCityResponse, err := actors.Request[messages.AddCityToTileResponseMessage](system.Root, response.PID, messages.AddCityToTileMessage{
-				CityId: cityId,
-			})
-			if err != nil {
-				log.Printf("Error adding city to tile: %s", err)
-				return &models.City{}, err
-			}
-			if addCityResponse.Error != nil {
-				log.Printf("Error adding city to tile: %s", addCityResponse.Error)
-				return &models.City{}, addCityResponse.Error
-			}
-		}
-	}
-
-	response, err := actors.Request[messages.GetUserPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetUserPIDMessage{
-		UserId: city.Owner,
-	})
-	if err != nil {
-		log.Printf("Error getting user pid: %s", err)
-		return &models.City{}, err
-	}
-	if response.PID == nil {
-		return &models.City{}, &messages.UserNotFoundError{
-			UserId: city.Owner,
-		}
-	}
-
 	newCity := models.City{
-		CityId:        cityId,
+		CityId:        cityID,
 		Type:          city.Type,
 		Owner:         city.Owner,
 		Name:          city.Name,
@@ -181,93 +66,70 @@ func CreateCity(city models.CityInput) (*models.City, error) {
 		StartY:        startY,
 		Size:          city.Size,
 	}
-
-	var createCityResponse *messages.CreateCityResponseMessage
-	createCityResponse, err = actors.Request[messages.CreateCityResponseMessage](system.Root, cityPID, messages.CreateCityMessage{
-		City:     newCity,
-		TilePIDs: tilePIDS,
-		OwnerPID: response.PID,
-		Restore:  false,
+	_, err = cl.Request("city", cityID, &messages.CreateCityMessage{
+		City:    newCity,
+		Restore: true,
 	})
 	if err != nil {
-		log.Printf("Error creating city: %s", err)
+		log.Println("Failed to create city actor:", err)
 		return &models.City{}, err
-	}
-	if createCityResponse.Error != nil {
-		log.Printf("Error creating city: %s", createCityResponse.Error)
-		return &models.City{}, createCityResponse.Error
-	}
-
-	log.Printf("Created new city at (%d, %d)", startX, startY)
-
-	addCityPIDResponse, err := actors.Request[messages.AddCityPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.AddCityPIDMessage{
-		CityId: cityId,
-		PID:    cityPID,
-	})
-	if err != nil {
-		log.Printf("Error adding city pid: %s", err)
-		return &models.City{}, err
-	}
-	if addCityPIDResponse.Error != nil {
-		log.Printf("Error adding city pid: %s", addCityPIDResponse.Error)
-		return &models.City{}, addCityPIDResponse.Error
 	}
 
 	return &newCity, nil
 }
 
-func GetCity(cityId string) (models.City, error) {
-	getCityPIDResponse, err := actors.Request[messages.GetCityPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetCityPIDMessage{
-		CityId: cityId,
-	})
-	if err != nil {
-		return models.City{}, err
-	}
-	if getCityPIDResponse.PID == nil {
-		return models.City{}, &messages.CityNotFoundError{
-			CityId: cityId,
-		}
-	}
+// func GetCity(cityId string) (models.City, error) {
+// 	getCityPIDResponse, err := actors.Request[messages.GetCityPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetCityPIDMessage{
+// 		CityId: cityId,
+// 	})
+// 	if err != nil {
+// 		return models.City{}, err
+// 	}
+// 	if getCityPIDResponse.PID == nil {
+// 		return models.City{}, &messages.CityNotFoundError{
+// 			CityId: cityId,
+// 		}
+// 	}
 
-	getCityResponse, err := actors.Request[messages.GetCityResponseMessage](system.Root, getCityPIDResponse.PID, messages.GetCityMessage{})
-	if err != nil {
-		return models.City{}, err
-	}
+// 	getCityResponse, err := actors.Request[messages.GetCityResponseMessage](system.Root, getCityPIDResponse.PID, messages.GetCityMessage{})
+// 	if err != nil {
+// 		return models.City{}, err
+// 	}
 
-	return getCityResponse.City, nil
-}
+// 	return getCityResponse.City, nil
+// }
 
-func DeleteUserCity(userId string) error {
-	db := database.GetDB()
+// func DeleteUserCity(userId string) error {
+// 	db := database.GetDB()
 
-	var city models.City
-	err := db.Where("owner = ? AND type = 'city'", userId).First(&city).Error
-	if err != nil {
-		return err
-	}
+// 	var city models.City
+// 	err := db.Where("owner = ? AND type = 'city'", userId).First(&city).Error
+// 	if err != nil {
+// 		return err
+// 	}
 
-	getCityPIDResponse, err := actors.Request[messages.GetCityPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetCityPIDMessage{
-		CityId: city.CityId,
-	})
-	if err != nil {
-		log.Printf("Error getting city pid: %s", err)
-		return err
-	}
-	if getCityPIDResponse.PID == nil {
-		return &messages.CityNotFoundError{
-			CityId: city.CityId,
-		}
-	}
+// 	getCityPIDResponse, err := actors.Request[messages.GetCityPIDResponseMessage](system.Root, actors.GetManagerPID(), messages.GetCityPIDMessage{
+// 		CityId: city.CityId,
+// 	})
+// 	if err != nil {
+// 		log.Printf("Error getting city pid: %s", err)
+// 		return err
+// 	}
+// 	if getCityPIDResponse.PID == nil {
+// 		return &messages.CityNotFoundError{
+// 			CityId: city.CityId,
+// 		}
+// 	}
 
-	deleteCityResponse, err := actors.Request[messages.DeleteCityResponseMessage](system.Root, getCityPIDResponse.PID, messages.DeleteCityMessage{})
-	if err != nil {
-		log.Printf("Error deleting city: %s", err)
-		return err
-	}
-	if deleteCityResponse.Error != nil {
-		log.Printf("Error deleting city: %s", deleteCityResponse.Error)
-		return deleteCityResponse.Error
-	}
+// 	deleteCityResponse, err := actors.Request[messages.DeleteCityResponseMessage](system.Root, getCityPIDResponse.PID, messages.DeleteCityMessage{})
+// 	if err != nil {
+// 		log.Printf("Error deleting city: %s", err)
+// 		return err
+// 	}
+// 	if deleteCityResponse.Error != nil {
+// 		log.Printf("Error deleting city: %s", deleteCityResponse.Error)
+// 		return deleteCityResponse.Error
+// 	}
 
-	return nil
-}
+// 	return nil
+// }

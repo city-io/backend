@@ -20,7 +20,7 @@ import (
 var db *gorm.DB
 var once sync.Once
 
-func Nullable(v interface{}) interface{} {
+func Nullable(v any) any {
 	switch val := v.(type) {
 	case string:
 		if val != "" {
@@ -37,7 +37,7 @@ func Nullable(v interface{}) interface{} {
 	}
 }
 
-func initDb() {
+func initDB() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found... Using environment variables instead.")
@@ -45,17 +45,17 @@ func initDb() {
 	var dsn string
 	if os.Getenv("ENVIRONMENT") == "production" {
 		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432",
-			os.Getenv("PSQL_HOST"),
-			os.Getenv("PSQL_USERNAME"),
-			os.Getenv("PSQL_PASSWORD"),
-			os.Getenv("PSQL_DATABASE"))
+			os.Getenv("PSQL_HOST_PROD"),
+			os.Getenv("PSQL_USERNAME_PROD"),
+			os.Getenv("PSQL_PASSWORD_PROD"),
+			os.Getenv("PSQL_DATABASE_PROD"))
 	} else {
 		log.Println("Using development environment")
 		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432",
-			os.Getenv("PSQL_HOST"),
-			os.Getenv("PSQL_USERNAME"),
-			os.Getenv("PSQL_PASSWORD"),
-			os.Getenv("PSQL_DATABASE"))
+			os.Getenv("PSQL_HOST_DEV"),
+			os.Getenv("PSQL_USERNAME_DEV"),
+			os.Getenv("PSQL_PASSWORD_DEV"),
+			os.Getenv("PSQL_DATABASE_DEV"))
 	}
 
 	gormLogger := logger.New(
@@ -87,17 +87,17 @@ func initDb() {
 		log.Fatal("Failed to auto-migrate:", err)
 	}
 
-	psqlDb, err := db.DB()
+	psqlDB, err := db.DB()
 	if err != nil {
 		panic(err)
 	}
 
-	psqlDb.SetMaxOpenConns(50)
-	psqlDb.SetMaxIdleConns(25)
-	psqlDb.SetConnMaxLifetime(0)
+	psqlDB.SetMaxOpenConns(50)
+	psqlDB.SetMaxIdleConns(25)
+	psqlDB.SetConnMaxLifetime(0)
 }
 
 func GetDB() *gorm.DB {
-	once.Do(initDb)
+	once.Do(initDB)
 	return db
 }

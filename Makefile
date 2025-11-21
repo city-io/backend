@@ -1,3 +1,5 @@
+include .env
+
 .PHONY: all build
 
 all:
@@ -5,3 +7,6 @@ all:
 
 build:
 	go build -o bin/cityio cmd/*.go
+
+start:
+	bin/cityio
