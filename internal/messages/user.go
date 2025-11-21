@@ -29,11 +29,11 @@ type UpdateUserFoodMessage struct {
 }
 type GetUserMessage struct{}
 type AddUserArmyMessage struct {
-	ArmyId  string
+	ArmyID  string
 	ArmyPID *actor.PID
 }
 type DeleteUserMessage struct {
-	UserId string
+	UserID string
 }
 
 type RegisterUserResponseMessage struct {

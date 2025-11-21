@@ -11,7 +11,7 @@ import (
 )
 
 func RestoreUser(cl ports.ClusterProvider, user models.User) error {
-	cl.Request("user", user.UserId, &messages.RegisterUserMessage{
+	cl.Request(user.UserId, "user", &messages.RegisterUserMessage{
 		User:    user,
 		Restore: true,
 	})
@@ -26,7 +26,7 @@ func RegisterUser(cl ports.ClusterProvider, user models.RegisterUserRequest) (st
 		return "", err
 	}
 
-	cl.Request("user", userID, &messages.RegisterUserMessage{
+	cl.Request(userID, "user", &messages.RegisterUserMessage{
 		User: models.User{
 			UserId:   userID,
 			Username: user.Username,

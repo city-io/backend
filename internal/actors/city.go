@@ -28,8 +28,7 @@ func NewCityActor() ports.BaseActorInterface {
 func (state *CityActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
-	case messages.CreateCityMessage:
-		state.Log.Info("creating city actor...")
+	case *messages.CreateCityMessage:
 		state.City = msg.City
 
 		if !msg.Restore {
@@ -38,6 +37,9 @@ func (state *CityActor) Receive(ctx actor.Context) {
 			})
 		}
 		state.startPeriodicOperation(ctx)
+		ctx.Respond(messages.CreateCityResponseMessage{
+			Error: nil,
+		})
 
 	case messages.UpdateCityOwnerMessage:
 		state.City.Owner = msg.Owner
@@ -49,15 +51,15 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		state.City.PopulationCap += float64(msg.Change)
 
 	case messages.GetCityMessage:
-		ctx.Respond(messages.GetCityResponseMessage{
+		ctx.Respond(&messages.GetCityResponseMessage{
 			City: state.City,
 		})
 
 	case messages.DeleteCityMessage:
-		ctx.Send(state.Database, messages.DeleteCityMessage{
+		ctx.Send(state.Database, &messages.DeleteCityMessage{
 			CityId: state.City.CityId,
 		})
-		log.Printf("Shutting down CityActor for city: %s", state.City.Name)
+		state.Log.Debug("Shutting down CityActor", "city_id", state.City.CityId)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 

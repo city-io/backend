@@ -29,7 +29,7 @@ func NewUserActor() ports.BaseActorInterface {
 func (state *UserActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
-	case messages.RegisterUserMessage:
+	case *messages.RegisterUserMessage:
 		state.User = msg.User
 		state.ArmyPIDs = make(map[string]*actor.PID)
 		if !msg.Restore {
@@ -79,14 +79,14 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.AddUserArmyMessage:
-		state.ArmyPIDs[msg.ArmyId] = msg.ArmyPID
+		state.ArmyPIDs[msg.ArmyID] = msg.ArmyPID
 		ctx.Respond(messages.AddUserArmyResponseMessage{
 			Error: nil,
 		})
 
 	case messages.DeleteUserMessage:
 		ctx.Send(state.Database, messages.DeleteUserMessage{
-			UserId: state.User.UserId,
+			UserID: state.User.UserId,
 		})
 		ctx.Respond(messages.DeleteUserResponseMessage{
 			Error: nil,

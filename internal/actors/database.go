@@ -51,7 +51,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 	case *messages.UpdateUserMessage:
 		state.userBuffer = append(state.userBuffer, msg.User)
 	case messages.DeleteUserMessage:
-		result := state.db.Where("user_id = ?", msg.UserId).Delete(&models.User{})
+		result := state.db.Where("user_id = ?", msg.UserID).Delete(&models.User{})
 		if result.Error != nil {
 			log.Printf("Error deleting user in db: %s", result.Error)
 		}

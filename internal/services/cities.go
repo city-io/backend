@@ -14,7 +14,7 @@ import (
 )
 
 func RestoreCity(cl ports.ClusterProvider, city models.City) error {
-	_, err := cl.Request("city", city.CityId, &messages.CreateCityMessage{
+	_, err := cl.Request(city.CityId, "city", &messages.CreateCityMessage{
 		City:    city,
 		Restore: true,
 	})
@@ -66,7 +66,7 @@ func CreateCity(cl ports.ClusterProvider, city models.CityInput) (*models.City, 
 		StartY:        startY,
 		Size:          city.Size,
 	}
-	_, err = cl.Request("city", cityID, &messages.CreateCityMessage{
+	_, err = cl.Request(cityID, "city", &messages.CreateCityMessage{
 		City:    newCity,
 		Restore: true,
 	})
