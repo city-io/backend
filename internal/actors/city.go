@@ -24,6 +24,10 @@ func NewCityActor() ports.BaseActorInterface {
 	return &CityActor{}
 }
 
+func (state *CityActor) ActorType() string {
+	return "city"
+}
+
 func (state *CityActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
@@ -43,7 +47,7 @@ func (state *CityActor) Receive(ctx actor.Context) {
 
 	case messages.UpdateCityPopulationCapMessage:
 		if state.City.Owner != "" {
-			state.Log.Debug("Updating population cap", "city_id", state.City.CityId, "owner", state.City.Owner, "change", msg.Change)
+			state.Log.Debug("Updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
 		}
 		state.City.PopulationCap += float64(msg.Change)
 
@@ -54,9 +58,9 @@ func (state *CityActor) Receive(ctx actor.Context) {
 
 	case messages.DeleteCityMessage:
 		ctx.Send(state.Database, &messages.DeleteCityMessage{
-			CityId: state.City.CityId,
+			CityID: state.City.CityID,
 		})
-		state.Log.Debug("Shutting down CityActor", "city_id", state.City.CityId)
+		state.Log.Debug("Shutting down CityActor", "city_id", state.City.CityID)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 

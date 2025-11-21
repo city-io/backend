@@ -25,7 +25,7 @@ type UpdateCityPopulationCapMessage struct {
 }
 type GetCityMessage struct{}
 type DeleteCityMessage struct {
-	CityId string
+	CityID string
 }
 
 type CreateCityResponseMessage struct{}

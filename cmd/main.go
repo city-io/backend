@@ -10,11 +10,12 @@ import (
 
 func main() {
 	log := logger.NewLogger()
-	_, ctrls := providers.NewRuntime(log, database.GetDB())
+	db := database.NewDB(log)
+	_, ctrls := providers.NewRuntime(log, db)
 
 	setup.Run(&setup.Deps{
 		Log:         log,
-		DB:          database.GetDB(),
+		DB:          db,
 		Controllers: ctrls,
 	})
 

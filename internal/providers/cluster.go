@@ -9,11 +9,11 @@ import (
 	"github.com/asynkron/protoactor-go/cluster/clusterproviders/test"
 	"github.com/asynkron/protoactor-go/cluster/identitylookup/disthash"
 	"github.com/asynkron/protoactor-go/remote"
-	"gorm.io/gorm"
 
 	"cityio/internal/actors"
 	"cityio/internal/constants"
 	"cityio/internal/controllers"
+	"cityio/internal/database"
 	"cityio/internal/ports"
 )
 
@@ -24,7 +24,7 @@ type clusterProvider struct {
 	databasePID *actor.PID
 }
 
-func NewRuntime(log ports.Logger, db *gorm.DB) (ports.ClusterProvider, ports.Controllers) {
+func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, ports.Controllers) {
 	system := actor.NewActorSystem()
 
 	databaseProps := actor.PropsFromProducer(func() actor.Actor {
@@ -46,7 +46,7 @@ func NewRuntime(log ports.Logger, db *gorm.DB) (ports.ClusterProvider, ports.Con
 		return func() actor.Actor {
 			ac := newActor()
 			ac.SetDatabaseActor(databasePID)
-			ac.SetLog(log)
+			ac.SetLog(log.With("actor", ac.ActorType()))
 			ac.SetCluster(cp)
 			return ac
 		}

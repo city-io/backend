@@ -25,6 +25,10 @@ func NewUserActor() ports.BaseActorInterface {
 	return &UserActor{}
 }
 
+func (state *UserActor) ActorType() string {
+	return "user"
+}
+
 func (state *UserActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
@@ -87,12 +91,12 @@ func (state *UserActor) Receive(ctx actor.Context) {
 
 	case messages.DeleteUserMessage:
 		ctx.Send(state.Database, messages.DeleteUserMessage{
-			UserID: state.User.UserId,
+			UserID: state.User.UserID,
 		})
 		ctx.Respond(messages.DeleteUserResponseMessage{
 			Error: nil,
 		})
-		state.Log.Info("Shutting down UserActor", "user_id", state.User.UserId)
+		state.Log.Info("Shutting down UserActor", "user_id", state.User.UserID)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 
@@ -127,7 +131,7 @@ func (state *UserActor) stopPeriodicOperation() {
 }
 
 func (state *UserActor) ws() {
-	ws.Send(state.User.UserId, messages.WS_USER, &models.UserAccountOutput{
+	ws.Send(state.User.UserID, messages.WS_USER, &models.UserAccountOutput{
 		Username: state.User.Username,
 		Gold:     state.User.Gold,
 		Food:     state.User.Food,

@@ -41,7 +41,7 @@ func (u *userController) RegisterUser(user models.RegisterUserRequest) (string, 
 	u.log.Debug("Registering user", "username", user.Username, "email", user.Email)
 	u.cluster.Request("user", user.Username, &messages.RegisterUserMessage{
 		User: models.User{
-			UserId:   userID,
+			UserID:   userID,
 			Username: user.Username,
 			Email:    user.Email,
 			Password: string(hashedPassword),

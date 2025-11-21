@@ -11,6 +11,7 @@ type ClusterProvider interface {
 }
 
 type BaseActorInterface interface {
+	ActorType() string
 	Receive(ctx actor.Context)
 	SetDatabaseActor(databasePID *actor.PID)
 	SetCluster(cluster ClusterProvider)

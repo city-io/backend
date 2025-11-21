@@ -1,13 +1,14 @@
 package actors
 
 import (
+	"context"
 	"log"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
-	"gorm.io/gorm"
 
 	"cityio/internal/constants"
+	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/ports"
@@ -15,7 +16,7 @@ import (
 
 type DatabaseActor struct {
 	BaseActor
-	db *gorm.DB
+	db database.Querier
 
 	userBuffer []models.User
 	cityBuffer []models.City
@@ -25,7 +26,7 @@ type DatabaseActor struct {
 	stopTickerCh chan struct{}
 }
 
-func NewDatabaseActor(db *gorm.DB) ports.BaseActorInterface {
+func NewDatabaseActor(db database.Querier) ports.BaseActorInterface {
 	return &DatabaseActor{
 		db:           db,
 		userBuffer:   make([]models.User, 0),
@@ -35,6 +36,10 @@ func NewDatabaseActor(db *gorm.DB) ports.BaseActorInterface {
 	}
 }
 
+func (state *DatabaseActor) ActorType() string {
+	return "database"
+}
+
 func (state *DatabaseActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
@@ -42,79 +47,45 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		state.startPeriodicOperation(ctx)
 
 	case *messages.RegisterUserMessage:
-		result := state.db.Create(&msg.User)
-		if result.Error != nil {
-			state.Log.Error("Error creating user in db", "error", result.Error)
+		err := state.db.CreateUser(context.Background(), database.CreateUserParams{
+			UserID:   msg.User.UserID,
+			Email:    msg.User.Email,
+			Username: msg.User.Username,
+			Password: msg.User.Password,
+		})
+		if err != nil {
+			state.Log.Error("Error creating user in db", "error", err)
 		}
 	case *messages.UpdateUserMessage:
 		state.userBuffer = append(state.userBuffer, msg.User)
 	case messages.DeleteUserMessage:
-		result := state.db.Where("user_id = ?", msg.UserID).Delete(&models.User{})
-		if result.Error != nil {
-			log.Printf("Error deleting user in db: %s", result.Error)
-		}
-
-	case messages.CreateMapTileMessage:
-		result := state.db.Create(&msg.Tile)
-		if result.Error != nil {
-			log.Printf("Error creating map tile in db: %s", result.Error)
+		err := state.db.DeleteUser(context.Background(), msg.UserID)
+		if err != nil {
+			state.Log.Error("Error deleting user in db", "error", err)
 		}
 
 	case messages.CreateCityMessage:
-		result := state.db.Create(&msg.City)
-		if result.Error != nil {
-			log.Printf("Error creating city in db: %s", result.Error)
+		err := state.db.CreateCity(context.Background(), database.CreateCityParams{
+			CityID:        msg.City.CityID,
+			Type:          msg.City.Type,
+			Owner:         &msg.City.Owner,
+			Name:          msg.City.Name,
+			Population:    msg.City.Population,
+			PopulationCap: msg.City.PopulationCap,
+			Point:         float64(msg.City.StartX),
+			Point_2:       float64(msg.City.StartY),
+			Size:          int32(msg.City.Size),
+		})
+		if err != nil {
+			state.Log.Error("Error creating city in db", "error", err)
 		}
 	case messages.DeleteCityMessage:
-		result := state.db.Where("city_id = ?", msg.CityId).Delete(&models.City{})
-		if result.Error != nil {
-			log.Printf("Error deleting city in db: %s", result.Error)
+		err := state.db.DeleteCity(context.Background(), msg.CityID)
+		if err != nil {
+			state.Log.Error("Error deleting city in db", "error", err)
 		}
 	case *messages.UpdateCityMessage:
 		state.cityBuffer = append(state.cityBuffer, msg.City)
-
-	case messages.CreateBuildingMessage:
-		result := state.db.Create(&msg.Building)
-		if result.Error != nil {
-			log.Printf("Error creating building in db: %s", result.Error)
-		}
-	case messages.UpdateBuildingMessage:
-		result := state.db.Save(&msg.Building)
-		if result.Error != nil {
-			log.Printf("Error updating building in db: %s", result.Error)
-		}
-	case messages.DeleteBuildingMessage:
-		result := state.db.Where("building_id = ?", msg.BuildingId).Delete(&models.Building{})
-		if result.Error != nil {
-			log.Printf("Error deleting building in db: %s", result.Error)
-		}
-
-	case messages.CreateArmyMessage:
-		result := state.db.Create(&msg.Army)
-		if result.Error != nil {
-			log.Printf("Error creating army in db: %s", result.Error)
-		}
-	case messages.UpdateArmyMessage:
-		result := state.db.Save(&msg.Army)
-		if result.Error != nil {
-			log.Printf("Error updating army in db: %s", result.Error)
-		}
-	case messages.DeleteArmyMessage:
-		result := state.db.Where("army_id = ?", msg.ArmyId).Delete(&models.Army{})
-		if result.Error != nil {
-			log.Printf("Error deleting army in db: %s", result.Error)
-		}
-
-	case messages.TrainTroopsMessage:
-		result := state.db.Create(&msg.Training)
-		if result.Error != nil {
-			log.Printf("Error creating training in db: %s", result.Error)
-		}
-	case messages.DeleteTrainingMessage:
-		result := state.db.Where("barracks_id = ?", msg.BarracksId).Delete(&models.Training{})
-		if result.Error != nil {
-			log.Printf("Error deleting training in db: %s", result.Error)
-		}
 
 	case messages.PeriodicOperationMessage:
 		if len(state.userBuffer) > 0 {

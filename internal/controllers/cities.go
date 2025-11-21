@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"cityio/internal/constants"
-	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/ports"
@@ -25,12 +24,12 @@ func NewCityController(cl ports.ClusterProvider, l ports.Logger) ports.CityContr
 }
 
 func (c *cityController) RestoreCity(city models.City) error {
-	_, err := c.cluster.Request("city", city.CityId, &messages.CreateCityMessage{
+	_, err := c.cluster.Request("city", city.CityID, &messages.CreateCityMessage{
 		City:    city,
 		Restore: true,
 	})
 	if err != nil {
-		c.log.Error("Failed to restore city actor:", "city_id", city.CityId, "error", err)
+		c.log.Error("Failed to restore city actor:", "city_id", city.CityID, "error", err)
 		return err
 	}
 
@@ -38,36 +37,36 @@ func (c *cityController) RestoreCity(city models.City) error {
 }
 
 func (c *cityController) CreateCity(city models.CityInput) (*models.City, error) {
-	db := database.GetDB()
+	// db := database.GetDB()
 
 	cityID := uuid.New().String()
 
 	var tiles []models.MapTile
-	err := db.Raw(`
-		SELECT x, y, city_id
-		FROM map_tiles
-		WHERE city_id = ''
-		  AND NOT EXISTS (
-			SELECT 1
-			FROM map_tiles t2
-			WHERE t2.x BETWEEN map_tiles.x AND map_tiles.x + ?
-			  AND t2.y BETWEEN map_tiles.y AND map_tiles.y + ?
-			  AND t2.city_id != ''
-		  )
-	`, constants.CITY_SIZE, constants.CITY_SIZE).Scan(&tiles).Error
+	// err := db.Raw(`
+	// 	SELECT x, y, city_id
+	// 	FROM map_tiles
+	// 	WHERE city_id = ''
+	// 	  AND NOT EXISTS (
+	// 		SELECT 1
+	// 		FROM map_tiles t2
+	// 		WHERE t2.x BETWEEN map_tiles.x AND map_tiles.x + ?
+	// 		  AND t2.y BETWEEN map_tiles.y AND map_tiles.y + ?
+	// 		  AND t2.city_id != ''
+	// 	  )
+	// `, constants.CITY_SIZE, constants.CITY_SIZE).Scan(&tiles).Error
 	// add limit to this query to spawn new users closer together
 	// 10000 adds sufficient spacing
 
-	if err != nil {
-		c.log.Error("Failed to fetch map empty tiles", "error", err)
-		return &models.City{}, err
-	}
+	// if err != nil {
+	// 	c.log.Error("Failed to fetch map empty tiles", "error", err)
+	// 	return &models.City{}, err
+	// }
 	randomTile := tiles[rand.Intn(len(tiles))]
 	startX := randomTile.X
 	startY := randomTile.Y
 
 	newCity := models.City{
-		CityId:        cityID,
+		CityID:        cityID,
 		Type:          city.Type,
 		Owner:         city.Owner,
 		Name:          city.Name,
@@ -77,7 +76,7 @@ func (c *cityController) CreateCity(city models.CityInput) (*models.City, error)
 		StartY:        startY,
 		Size:          city.Size,
 	}
-	_, err = c.cluster.Request("city", cityID, &messages.CreateCityMessage{
+	_, err := c.cluster.Request("city", cityID, &messages.CreateCityMessage{
 		City:    newCity,
 		Restore: true,
 	})

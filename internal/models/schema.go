@@ -5,7 +5,7 @@ import (
 )
 
 type User struct {
-	UserId   string `json:"userId" gorm:"column:user_id;primaryKey;size:36"`
+	UserID   string `json:"userId" gorm:"column:user_id;primaryKey;size:36"`
 	Email    string `json:"email" gorm:"column:email;size:100;unique;not null"`
 	Username string `json:"username" gorm:"column:username;size:100;unique;not null"`
 	Password string `json:"password" gorm:"column:password;size:64;not null"`
@@ -20,14 +20,14 @@ type User struct {
 type MapTile struct {
 	X          int    `json:"x" gorm:"column:x;primaryKey;not null"`
 	Y          int    `json:"y" gorm:"column:y;primaryKey;not null"`
-	CityId     string `json:"cityId" gorm:"column:city_id;size:36;null"`
-	BuildingId string `json:"buildingId" gorm:"column:building_id;size:36;null"`
+	CityID     string `json:"cityId" gorm:"column:city_id;size:36;null"`
+	BuildingID string `json:"buildingId" gorm:"column:building_id;size:36;null"`
 
 	Armies []Army `json:"-" gorm:"foreignKey:TileX,TileY;references:X,Y"`
 }
 
 type City struct {
-	CityId        string    `json:"cityId" gorm:"column:city_id;primaryKey;size:36"`
+	CityID        string    `json:"cityId" gorm:"column:city_id;primaryKey;size:36"`
 	Type          string    `json:"type" gorm:"column:type;size:100;not null"` // capital or town
 	Owner         string    `json:"owner" gorm:"column:owner;size:36;null"`
 	Name          string    `json:"name" gorm:"column:name;size:100;not null"`
@@ -43,7 +43,7 @@ type City struct {
 }
 
 type Army struct {
-	ArmyId string `json:"armyId" gorm:"column:army_id;primaryKey;size:36"`
+	ArmyID string `json:"armyId" gorm:"column:army_id;primaryKey;size:36"`
 	TileX  int    `json:"tileX" gorm:"column:tile_x;not null"`
 	TileY  int    `json:"tileY" gorm:"column:tile_y;not null"`
 	Owner  string `json:"owner" gorm:"column:owner;size:36;not null"`
@@ -61,8 +61,8 @@ type Army struct {
 }
 
 type Building struct {
-	BuildingId      string    `json:"buildingId" gorm:"column:building_id;primaryKey;size:36"`
-	CityId          string    `json:"cityId" gorm:"column:city_id;size:36;not null"`
+	BuildingID      string    `json:"buildingId" gorm:"column:building_id;primaryKey;size:36"`
+	CityID          string    `json:"cityId" gorm:"column:city_id;size:36;not null"`
 	Type            string    `json:"type" gorm:"column:type;size:100;not null"`
 	Level           int       `json:"level" gorm:"column:level;not null;default:1;check:level >= 0"`
 	X               int       `json:"x" gorm:"column:x;uniqueIndex:compositeindex;not null"`
@@ -73,7 +73,7 @@ type Building struct {
 }
 
 type Training struct {
-	BarracksId string    `json:"barracksId" gorm:"column:barracks_id;primaryKey;size:36"`
+	BarracksID string    `json:"barracksId" gorm:"column:barracks_id;primaryKey;size:36"`
 	Size       int64     `json:"size" gorm:"column:size;not null;check:size > 0"`
 	DeployTo   string    `json:"deployTo" gorm:"column:deploy_to;size:36;null"`
 	End        time.Time `json:"end" gorm:"column:end;not null"`

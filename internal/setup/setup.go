@@ -8,16 +8,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 
 	"cityio/internal/constants"
+	"cityio/internal/database"
 	"cityio/internal/models"
 	"cityio/internal/ports"
 )
 
 type Deps struct {
 	Log         ports.Logger
-	DB          *gorm.DB
+	DB          database.Querier
 	Controllers ports.Controllers
 }
 
@@ -148,9 +148,9 @@ func reset(deps *Deps) error {
 
 		cityID := uuid.New().String()
 		result := db.Create(&models.City{
-			CityId:        cityID,
+			CityID:        cityID,
 			Type:          "capital",
-			Owner:         user.UserId,
+			Owner:         user.UserID,
 			Name:          fmt.Sprintf("%s's City", user.Username),
 			Population:    constants.INITIAL_PLAYER_CITY_POPULATION,
 			PopulationCap: constants.GetBuildingPopulation(constants.BUILDING_TYPE_CITY_CENTER, 1),
@@ -166,8 +166,8 @@ func reset(deps *Deps) error {
 		}
 
 		result = db.Create(&models.Building{
-			BuildingId: uuid.New().String(),
-			CityId:     cityID,
+			BuildingID: uuid.New().String(),
+			CityID:     cityID,
 			Type:       "city_center",
 			Level:      1,
 			X:          startX + int(math.Floor(float64(constants.CITY_SIZE)/2)),
@@ -216,7 +216,7 @@ func reset(deps *Deps) error {
 				if size > 0 && x+size < constants.MAP_SIZE && y+size < constants.MAP_SIZE {
 					cityID := uuid.New().String()
 					cities = append(cities, models.City{
-						CityId:        cityID,
+						CityID:        cityID,
 						Type:          "town",
 						Owner:         "",
 						Name:          fmt.Sprintf("Town %s", cityID),
@@ -227,8 +227,8 @@ func reset(deps *Deps) error {
 						Size:          size,
 					})
 					buildings = append(buildings, models.Building{
-						BuildingId: uuid.New().String(),
-						CityId:     cityID,
+						BuildingID: uuid.New().String(),
+						CityID:     cityID,
 						Type:       "town_center",
 						Level:      1,
 						X:          x + int(math.Floor(float64(size)/2)),
@@ -283,7 +283,7 @@ func reset(deps *Deps) error {
 	return nil
 }
 
-func resetTable(db *gorm.DB, model any) error {
+func resetTable(db database.Querier, model any) error {
 	tableName := db.Migrator().CurrentDatabase()
 	if err := db.Migrator().DropTable(model); err != nil {
 		return fmt.Errorf("failed to drop table %s: %w", tableName, err)
