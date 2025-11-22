@@ -22,16 +22,16 @@ func NewUserController(cl ports.ClusterProvider, l ports.Logger) ports.UserContr
 	}
 }
 
-func (u *userController) RestoreUser(user models.User) error {
+func (u *userController) RestoreUser(user *models.User) error {
 	u.cluster.Request("user", user.Username, &messages.RegisterUserMessage{
-		User:    user,
+		User:    *user,
 		Restore: true,
 	})
 
 	return nil
 }
 
-func (u *userController) RegisterUser(user models.RegisterUserRequest) (string, error) {
+func (u *userController) RegisterUser(user *models.RegisterUserRequest) (string, error) {
 	userID := uuid.New().String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -45,9 +45,8 @@ func (u *userController) RegisterUser(user models.RegisterUserRequest) (string, 
 			Username: user.Username,
 			Email:    user.Email,
 			Password: string(hashedPassword),
-			Gold:     constants.INITIAL_PLAYER_GOLD,
-			Food:     constants.INITIAL_PLAYER_FOOD,
-			Allies:   make([]string, 0),
+			Gold:     constants.InitialPlayerGold,
+			Food:     constants.InitialPlayerFood,
 		},
 		Restore: false,
 	})

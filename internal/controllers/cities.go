@@ -23,9 +23,9 @@ func NewCityController(cl ports.ClusterProvider, l ports.Logger) ports.CityContr
 	}
 }
 
-func (c *cityController) RestoreCity(city models.City) error {
+func (c *cityController) RestoreCity(city *models.City) error {
 	_, err := c.cluster.Request("city", city.CityID, &messages.CreateCityMessage{
-		City:    city,
+		City:    *city,
 		Restore: true,
 	})
 	if err != nil {
@@ -36,7 +36,7 @@ func (c *cityController) RestoreCity(city models.City) error {
 	return nil
 }
 
-func (c *cityController) CreateCity(city models.CityInput) (*models.City, error) {
+func (c *cityController) CreateCity(city *models.CityInput) (*models.City, error) {
 	// db := database.GetDB()
 
 	cityID := uuid.New().String()
@@ -68,10 +68,10 @@ func (c *cityController) CreateCity(city models.CityInput) (*models.City, error)
 	newCity := models.City{
 		CityID:        cityID,
 		Type:          city.Type,
-		Owner:         city.Owner,
+		Owner:         &city.Owner,
 		Name:          city.Name,
-		Population:    constants.INITIAL_PLAYER_CITY_POPULATION,
-		PopulationCap: constants.INITIAL_PLAYER_CITY_POPULATION,
+		Population:    constants.InitialPlayerCityPopulation,
+		PopulationCap: constants.InitialPlayerCityPopulation,
 		StartX:        startX,
 		StartY:        startY,
 		Size:          city.Size,

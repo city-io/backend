@@ -3,15 +3,17 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/pressly/goose/v3"
 
 	"cityio/internal/ports"
 )
 
-func NewDB(log ports.Logger) Querier {
+func NewDB(log ports.Logger) (Querier, *sql.DB) {
 	var dsn string
 	if os.Getenv("ENVIRONMENT") == "production" {
 		log.Info("Using production database")
@@ -36,14 +38,10 @@ func NewDB(log ports.Logger) Querier {
 		os.Exit(1)
 	}
 
-	// if err := db.Ping(); err != nil {
-	// 	log.Error("failed to ping DB", "error", err)
-	// 	os.Exit(1)
-	// }
+	migrations, err := goose.OpenDBWithDriver("postgresql", dsn)
+	if err != nil {
+		log.Error("failed to open goose DB connection", "error", err)
+	}
 
-	// db.SetMaxOpenConns(50)
-	// db.SetMaxIdleConns(25)
-	// db.SetConnMaxLifetime(0)
-
-	return New(db)
+	return New(db), migrations
 }

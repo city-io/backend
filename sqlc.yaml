@@ -1,7 +1,7 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    schema: "db/schema.sql"
+    schema: "db/migrations/"
     queries: "db/queries/"
     gen:
       go:
@@ -12,7 +12,7 @@ sql:
         emit_interface: true
         emit_pointers_for_null_types: true
         overrides:
-          - db_type: "point"
+          - db_type: "coordinates"
             go_type:
               import: "cityio/internal/models"
               type: "Coordinates"

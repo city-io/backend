@@ -89,7 +89,7 @@ func (cp *clusterProvider) RequestFuture(kind, identity string, message any) (*a
 		identity,
 		kind,
 		message,
-		cluster.WithTimeout(constants.ACTOR_TIMEOUT_DURATION*time.Second),
+		cluster.WithTimeout(constants.ActorTimeoutDuration*time.Second),
 	)
 }
 

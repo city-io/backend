@@ -44,39 +44,32 @@ func (state *UserActor) Receive(ctx actor.Context) {
 		state.startPeriodicOperation(ctx)
 		ctx.Respond(messages.RegisterUserResponseMessage{})
 
-	case messages.AddAllyMessage:
-		state.User.Allies = append(state.User.Allies, msg.Ally)
-		state.ws()
-		ctx.Respond(messages.AddAllyResponseMessage{
-			Error: nil,
-		})
+	// case messages.AddAllyMessage:
+	// 	state.User.Allies = append(state.User.Allies, msg.Ally)
+	// 	state.ws()
+	// 	ctx.Respond(messages.AddAllyResponseMessage{
+	// 		Error: nil,
+	// 	})
 
-	case messages.RemoveAllyMessage:
-		for i, ally := range state.User.Allies {
-			if ally == msg.Ally {
-				state.User.Allies = append(state.User.Allies[:i], state.User.Allies[i+1:]...)
-				break
-			}
-		}
-		state.ws()
-		ctx.Respond(messages.RemoveAllyResponseMessage{
-			Error: nil,
-		})
+	// case messages.RemoveAllyMessage:
+	// 	for i, ally := range state.User.Allies {
+	// 		if ally == msg.Ally {
+	// 			state.User.Allies = append(state.User.Allies[:i], state.User.Allies[i+1:]...)
+	// 			break
+	// 		}
+	// 	}
+	// 	state.ws()
+	// 	ctx.Respond(messages.RemoveAllyResponseMessage{
+	// 		Error: nil,
+	// 	})
 
 	case messages.UpdateUserGoldMessage:
 		state.User.Gold += msg.Change
 		state.ws()
 
-		ctx.Respond(messages.UpdateUserGoldResponseMessage{
-			Error: nil,
-		})
-
 	case messages.UpdateUserFoodMessage:
 		state.User.Food += msg.Change
 		state.ws()
-		ctx.Respond(messages.UpdateUserFoodResponseMessage{
-			Error: nil,
-		})
 
 	case messages.GetUserMessage:
 		ctx.Respond(&messages.GetUserResponseMessage{
@@ -109,7 +102,7 @@ func (state *UserActor) Receive(ctx actor.Context) {
 }
 
 func (state *UserActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(constants.USER_BACKUP_FREQUENCY * time.Second)
+	state.ticker = time.NewTicker(constants.UserBackupFrequency * time.Second)
 	state.stopTickerCh = make(chan struct{})
 
 	go func() {
@@ -135,6 +128,5 @@ func (state *UserActor) ws() {
 		Username: state.User.Username,
 		Gold:     state.User.Gold,
 		Food:     state.User.Food,
-		Allies:   state.User.Allies,
 	})
 }

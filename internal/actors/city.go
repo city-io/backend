@@ -43,10 +43,10 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.CreateCityResponseMessage{})
 
 	case messages.UpdateCityOwnerMessage:
-		state.City.Owner = msg.Owner
+		state.City.Owner = &msg.Owner
 
 	case messages.UpdateCityPopulationCapMessage:
-		if state.City.Owner != "" {
+		if state.City.Owner != nil {
 			state.Log.Debug("Updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
 		}
 		state.City.PopulationCap += float64(msg.Change)
@@ -68,7 +68,7 @@ func (state *CityActor) Receive(ctx actor.Context) {
 		currentPopulation := float64(state.City.Population)
 		populationCap := float64(state.City.PopulationCap)
 
-		newPopulation := currentPopulation + (constants.POPULATION_GROWTH_RATE)*currentPopulation*(1-currentPopulation/populationCap)
+		newPopulation := currentPopulation + (constants.PopulationGrowthRate)*currentPopulation*(1-currentPopulation/populationCap)
 		state.City.Population = newPopulation
 		ctx.Send(state.Database, &messages.UpdateCityMessage{
 			City: state.City,
@@ -81,9 +81,9 @@ func (state *CityActor) startPeriodicOperation(ctx actor.Context) {
 		// sleep for a random duration up to 10 seconds to attempt
 		// creating an even distribution of database writing
 		rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-		time.Sleep(time.Duration(rnd.Intn(constants.CITY_BACKUP_FREQUENCY)) * time.Second)
+		time.Sleep(time.Duration(rnd.Intn(constants.CityBackupFrequency)) * time.Second)
 
-		state.ticker = time.NewTicker(constants.CITY_BACKUP_FREQUENCY * time.Second)
+		state.ticker = time.NewTicker(constants.CityBackupFrequency * time.Second)
 		state.stopTickerCh = make(chan struct{})
 
 		for {

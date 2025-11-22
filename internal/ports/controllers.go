@@ -8,11 +8,11 @@ type Controllers interface {
 }
 
 type UserController interface {
-	RestoreUser(user models.User) error
-	RegisterUser(user models.RegisterUserRequest) (string, error)
+	RestoreUser(user *models.User) error
+	RegisterUser(user *models.RegisterUserRequest) (string, error)
 }
 
 type CityController interface {
-	RestoreCity(city models.City) error
-	CreateCity(city models.CityInput) (*models.City, error)
+	RestoreCity(city *models.City) error
+	CreateCity(city *models.CityInput) (*models.City, error)
 }

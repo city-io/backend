@@ -2,7 +2,6 @@ package actors
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -20,7 +19,7 @@ type DatabaseActor struct {
 
 	userBuffer []models.User
 	cityBuffer []models.City
-	armyBuffer []models.Army
+	// armyBuffer []models.Army
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -28,10 +27,10 @@ type DatabaseActor struct {
 
 func NewDatabaseActor(db database.Querier) ports.BaseActorInterface {
 	return &DatabaseActor{
-		db:           db,
-		userBuffer:   make([]models.User, 0),
-		cityBuffer:   make([]models.City, 0),
-		armyBuffer:   make([]models.Army, 0),
+		db:         db,
+		userBuffer: make([]models.User, 0),
+		cityBuffer: make([]models.City, 0),
+		// armyBuffer:   make([]models.Army, 0),
 		stopTickerCh: make(chan struct{}),
 	}
 }
@@ -57,7 +56,15 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			state.Log.Error("Error creating user in db", "error", err)
 		}
 	case *messages.UpdateUserMessage:
-		state.userBuffer = append(state.userBuffer, msg.User)
+		err := state.db.UpdateUser(context.Background(), database.UpdateUserParams{
+			UserID:   msg.User.UserID,
+			Username: msg.User.Username,
+			Gold:     msg.User.Gold,
+			Food:     msg.User.Food,
+		})
+		if err != nil {
+			state.Log.Error("Error updating user in db", "error", err)
+		}
 	case messages.DeleteUserMessage:
 		err := state.db.DeleteUser(context.Background(), msg.UserID)
 		if err != nil {
@@ -68,12 +75,12 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		err := state.db.CreateCity(context.Background(), database.CreateCityParams{
 			CityID:        msg.City.CityID,
 			Type:          msg.City.Type,
-			Owner:         &msg.City.Owner,
+			Owner:         msg.City.Owner,
 			Name:          msg.City.Name,
 			Population:    msg.City.Population,
 			PopulationCap: msg.City.PopulationCap,
-			Point:         float64(msg.City.StartX),
-			Point_2:       float64(msg.City.StartY),
+			Coordinates:   msg.City.StartX,
+			Coordinates_2: msg.City.StartY,
 			Size:          int32(msg.City.Size),
 		})
 		if err != nil {
@@ -88,23 +95,14 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 		state.cityBuffer = append(state.cityBuffer, msg.City)
 
 	case messages.PeriodicOperationMessage:
-		if len(state.userBuffer) > 0 {
-			for _, user := range state.userBuffer {
-				result := state.db.Save(&user)
-				if result.Error != nil {
-					log.Printf("Error updating user in db: %s", result.Error)
-				}
-			}
-			state.userBuffer = make([]models.User, 0)
-		}
-
 		cityBatchSize := 5000
 		if len(state.cityBuffer) > 0 {
 			for i := 0; i < len(state.cityBuffer); i += cityBatchSize {
-				end := min(i+cityBatchSize, len(state.cityBuffer))
-				if result := state.db.Save(state.cityBuffer[i:end]); result.Error != nil {
-					log.Printf("Error creating cities: %s", result.Error)
-				}
+				// end := min(i+cityBatchSize, len(state.cityBuffer))
+				// err := state.db.BatchUpdateCities(context.Background(), database.BatchUpdateCitiesParams{})
+				// if result := state.db.Save(state.cityBuffer[i:end]); result.Error != nil {
+				// log.Printf("Error creating cities: %s", result.Error)
+				// }
 			}
 			state.cityBuffer = make([]models.City, 0)
 		}
@@ -112,7 +110,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 }
 
 func (state *DatabaseActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(constants.DB_BACKUP_FREQUENCY * time.Second)
+	state.ticker = time.NewTicker(constants.DBBackupFrequency * time.Second)
 
 	go func() {
 		for {

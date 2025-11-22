@@ -1,10 +1,13 @@
+-- name: GetAllCities :many
+SELECT * FROM cities;
+
 -- name: CreateCity :exec
 INSERT INTO cities (
     city_id, type, owner, name, population, population_cap,
     start_coord, size
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6, POINT($7, $8), $9
+    $1, $2, $3, $4, $5, $6, COORDINATES($7, $8), $9
 );
 
 -- name: DeleteCity :exec
@@ -19,7 +22,7 @@ SET
     name            = $4,
     population      = $5,
     population_cap  = $6,
-    start_coord     = POINT($7, $8),
+    start_coord     = COORDINATES($7, $8),
     size            = $9,
     updated_at      = NOW()
 WHERE city_id = $1;
@@ -32,7 +35,7 @@ SET
     name            = v.name,
     population      = v.population,
     population_cap  = v.population_cap,
-    start_coord     = POINT(v.start_x, v.start_y),
+    start_coord     = COORDINATES(v.start_x, v.start_y),
     size            = v.size,
     updated_at      = NOW()
 FROM (

@@ -1,6 +1,10 @@
--- ============================================
--- USERS
--- ============================================
+-- +goose Up
+-- +goose StatementBegin
+CREATE TYPE COORDINATES AS (
+    x int,
+    y int
+);
+
 CREATE TABLE users (
     user_id     VARCHAR(36) PRIMARY KEY,
     email       VARCHAR(100) NOT NULL UNIQUE,
@@ -13,9 +17,6 @@ CREATE TABLE users (
 );
 
 
--- ============================================
--- CITIES
--- ============================================
 CREATE TABLE cities (
     city_id         VARCHAR(36) PRIMARY KEY,
     type            VARCHAR(100) NOT NULL,
@@ -23,20 +24,25 @@ CREATE TABLE cities (
     name            VARCHAR(100) NOT NULL,
     population      DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (population >= 0),
     population_cap  DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (population_cap >= 0),
-    start_coords    POINT NOT NULL,
+    start_coords    COORDINATES NOT NULL,
     size            INTEGER NOT NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 
--- ============================================
--- MAP TILES
--- ============================================
 CREATE TABLE map_tiles (
-	coords       POINT PRIMARY KEY,
+	coords       COORDINATES PRIMARY KEY,
     city_id      VARCHAR(36),
-    building_id  VARCHAR(36),
-
-    PRIMARY KEY (x, y)
+    building_id  VARCHAR(36)
 );
+-- +goose StatementEnd
+
+
+-- +goose Down
+-- +goose StatementBegin
+DROP TABLE map_tiles;
+DROP TABLE cities;
+DROP TABLE users;
+DROP TYPE COORDINATES;
+-- +goose StatementEnd
