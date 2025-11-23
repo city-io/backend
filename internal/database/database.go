@@ -3,17 +3,17 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
 	"cityio/internal/ports"
 )
 
-func NewDB(log ports.Logger) (Querier, *sql.DB) {
+func NewDB(log ports.Logger) Querier {
 	var dsn string
 	if os.Getenv("ENVIRONMENT") == "production" {
 		log.Info("Using production database")
@@ -31,17 +31,38 @@ func NewDB(log ports.Logger) (Querier, *sql.DB) {
 			os.Getenv("PSQL_DATABASE_DEV"))
 	}
 
-	var err error
-	db, err := pgx.Connect(context.Background(), dsn)
+	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
-		log.Error("failed to open DB connection", "error", err)
+		log.Error("failed to create pgx pool", "error", err)
 		os.Exit(1)
 	}
 
-	migrations, err := goose.OpenDBWithDriver("postgresql", dsn)
+	migrations, err := goose.OpenDBWithDriver("pgx", dsn)
 	if err != nil {
 		log.Error("failed to open goose DB connection", "error", err)
+		os.Exit(1)
 	}
 
-	return New(db), migrations
+	if err := goose.RunContext(
+		context.Background(),
+		"down-to",
+		migrations,
+		"db/migrations",
+		"0",
+	); err != nil {
+		log.Error("failed to open goose reset migration", "error", err)
+		os.Exit(1)
+	}
+
+	if err := goose.RunContext(
+		context.Background(),
+		"up",
+		migrations,
+		"db/migrations",
+	); err != nil {
+		log.Error("failed to open goose apply migration", "error", err)
+		os.Exit(1)
+	}
+
+	return New(pool)
 }

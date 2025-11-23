@@ -84,7 +84,7 @@ func (cp *clusterProvider) Request(kind, identity string, message any) (any, err
 	return cp.cluster.Request(identity, kind, message)
 }
 
-func (cp *clusterProvider) RequestFuture(kind, identity string, message any) (*actor.Future, error) {
+func (cp *clusterProvider) RequestFuture(kind, identity string, message any) (actor.Future, error) {
 	return cp.cluster.RequestFuture(
 		identity,
 		kind,

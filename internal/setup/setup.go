@@ -3,13 +3,13 @@ package setup
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pressly/goose/v3"
+
+	// "github.com/pressly/goose/v3"
 
 	"cityio/internal/constants"
 	"cityio/internal/database"
@@ -20,7 +20,6 @@ import (
 type Deps struct {
 	Log         ports.Logger
 	DB          database.Querier
-	DBConn      *sql.DB
 	Controllers ports.Controllers
 }
 
@@ -31,6 +30,9 @@ func Run(deps *Deps) {
 	ctrls := deps.Controllers
 
 	users, err := db.GetAllUsers(context.Background())
+	if err != nil {
+		panic(err)
+	}
 
 	for _, user := range users {
 		err := ctrls.User().RestoreUser(user.ToModel())
@@ -63,6 +65,9 @@ func Run(deps *Deps) {
 	// log.Printf("Spawned actors for %d map tiles", len(mapTiles))
 
 	cities, err := db.GetAllCities(context.Background())
+	if err != nil {
+		panic(err)
+	}
 
 	for _, city := range cities {
 		err := ctrls.City().RestoreCity(city.ToModel())
@@ -100,15 +105,6 @@ func reset(deps *Deps) error {
 	log := deps.Log.With("phase", "reset")
 	db := deps.DB
 
-	if err := goose.RunContext(
-		context.Background(),
-		"down-to 0",
-		deps.DBConn,
-		"db/migrations",
-	); err != nil {
-		log.Error("failed to run goose reset migration", "error", err)
-		return err
-	}
 	// resetTable(db, &models.User{})
 
 	// err := resetTable(db, &models.Army{})
