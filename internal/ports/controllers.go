@@ -19,6 +19,6 @@ type CityController interface {
 }
 
 type TileController interface {
-	Restore(tile *models.Tile) error
-	Create(city *models.Tile) error
+	// Restore(tile *models.Tile) error
+	// Create(city *models.Tile) error
 }

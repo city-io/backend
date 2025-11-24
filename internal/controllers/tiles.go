@@ -1,10 +1,7 @@
 package controllers
 
 import (
-	"cityio/internal/messages"
-	"cityio/internal/models"
 	"cityio/internal/ports"
-	"cityio/internal/utils"
 )
 
 type tileController struct {
@@ -19,33 +16,33 @@ func NewTileController(cl ports.ClusterProvider, l ports.Logger) ports.TileContr
 	}
 }
 
-func (c *tileController) Restore(tile *models.Tile) error {
-	idx := utils.GetTileIndex(tile.X, tile.Y)
-	_, err := c.cluster.Request("tile", idx, &messages.CreateTileMessage{
-		Tile:    *tile,
-		Restore: true,
-	})
-	if err != nil {
-		c.log.Error("Failed to restore tile actor:", "tile", idx, "error", err)
-		return err
-	}
+// func (c *tileController) Restore(tile *models.Tile) error {
+// 	idx := utils.GetTileIndex(tile.X, tile.Y)
+// 	_, err := c.cluster.Request("tile", idx, &messages.CreateTileMessage{
+// 		Tile:    *tile,
+// 		Restore: true,
+// 	})
+// 	if err != nil {
+// 		c.log.Error("Failed to restore tile actor:", "tile", idx, "error", err)
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func (c *tileController) Create(tile *models.Tile) error {
-	idx := utils.GetTileIndex(tile.X, tile.Y)
-	_, err := c.cluster.Request("tile", idx, &messages.CreateTileMessage{
-		Tile:    *tile,
-		Restore: true,
-	})
-	if err != nil {
-		c.log.Error("Failed to restore tile actor:", "tile", idx, "error", err)
-		return err
-	}
+// func (c *tileController) Create(tile *models.Tile) error {
+// 	idx := utils.GetTileIndex(tile.X, tile.Y)
+// 	_, err := c.cluster.Request("tile", idx, &messages.CreateTileMessage{
+// 		Tile:    *tile,
+// 		Restore: true,
+// 	})
+// 	if err != nil {
+// 		c.log.Error("Failed to restore tile actor:", "tile", idx, "error", err)
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // import (
 // 	"cityio/internal/actors"

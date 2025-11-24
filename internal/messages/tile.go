@@ -2,12 +2,6 @@ package messages
 
 import "cityio/internal/models"
 
-type CreateTileMessage struct {
-	Tile    models.Tile
-	Restore bool
-}
-type CreateTileResponseMessage struct{}
-
 type UpdateTileCityMessage struct {
 	CityID string
 }
@@ -17,7 +11,6 @@ type UpdateTileBuildingMessage struct {
 
 type GetTileMessage struct{}
 type GetTileResponseMessage struct {
-	Tile models.Tile
 	City *models.City
 }
 

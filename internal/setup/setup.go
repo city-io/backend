@@ -43,27 +43,27 @@ func Run(deps *Deps) {
 
 	// TODO: Remove test user registration later
 	userID, err := ctrls.User().Create(&models.CreateUserRequest{
-		Email:    "test@email.com",
-		Username: "prayujt",
-		Password: "test",
+		Email:    "cityio@example.com",
+		Username: "cityio",
+		Password: "cityio",
 	})
 	if err != nil {
 		panic(err)
 	}
 	log.Info("registered test user", "user_id", userID)
 
-	tiles, err := db.GetAllTiles(ctx)
-	if err != nil {
-		panic(err)
-	}
+	// tiles, err := db.GetAllTiles(ctx)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	for _, tile := range tiles {
-		err := ctrls.Tile().Restore(tile.ToModel())
-		if err != nil {
-			panic(err)
-		}
-	}
-	log.Info("spawned map tile actors", "count", len(tiles))
+	// for _, tile := range tiles {
+	// 	err := ctrls.Tile().Restore(tile.ToModel())
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// }
+	// log.Info("spawned map tile actors", "count", len(tiles))
 
 	cities, err := db.GetAllCities(ctx)
 	if err != nil {

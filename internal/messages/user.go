@@ -10,7 +10,6 @@ type CreateUserMessage struct {
 	User    models.User
 	Restore bool
 }
-type CreateUserResponseMessage struct{}
 
 type UpdateUserMessage struct {
 	User models.User

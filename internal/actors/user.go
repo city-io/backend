@@ -40,7 +40,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 			})
 		}
 		state.startPeriodicOperation(ctx)
-		ctx.Respond(messages.CreateUserResponseMessage{})
+		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateUserGoldMessage:
 		state.User.Gold += msg.Change

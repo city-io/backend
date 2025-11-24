@@ -1,11 +1,11 @@
 package messages
 
 import (
-	"cityio/internal/models"
-
 	"fmt"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/models"
 )
 
 type CreateCityMessage struct {
@@ -14,7 +14,6 @@ type CreateCityMessage struct {
 	OwnerPID *actor.PID
 	Restore  bool
 }
-type CreateCityResponseMessage struct{}
 
 type UpdateCityMessage struct {
 	City models.City
@@ -27,13 +26,12 @@ type UpdateCityPopulationCapMessage struct {
 }
 
 type GetCityMessage struct{}
+type GetCityResponseMessage struct {
+	City models.City
+}
 
 type DeleteCityMessage struct {
 	CityID string
-}
-
-type GetCityResponseMessage struct {
-	City models.City
 }
 
 // Errors

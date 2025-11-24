@@ -39,7 +39,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			ctx.Send(state.Cluster.DB(), msg)
 		}
 		state.startPeriodicOperation(ctx)
-		ctx.Respond(messages.CreateCityResponseMessage{})
+		ctx.Respond(messages.Ack{})
 
 		startX := msg.City.StartX
 		startY := msg.City.StartY
