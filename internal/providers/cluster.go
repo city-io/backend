@@ -104,3 +104,12 @@ func (cp *clusterProvider) Tell(kind, identity string, msg any) error {
 func (cp *clusterProvider) DB() *actor.PID {
 	return cp.databasePID
 }
+
+func (cp *clusterProvider) RequestDBFuture(message any) actor.Future {
+	return cp.system.Root.RequestFuture(cp.databasePID, message, constants.ActorTimeoutDuration*time.Second)
+}
+
+// shouldn't generally be used
+func (cp *clusterProvider) SendDB(message any) {
+	cp.system.Root.Send(cp.databasePID, message)
+}

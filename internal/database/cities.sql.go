@@ -189,6 +189,45 @@ func (q *Queries) DeleteCity(ctx context.Context, cityID string) error {
 	return err
 }
 
+const findEmptyCityBlock = `-- name: FindEmptyCityBlock :one
+SELECT
+  x::int4 AS x,
+  y::int4 AS y
+FROM generate_series(0, $1::int4  - $2::int4)  AS x
+CROSS JOIN generate_series(0, $3::int4 - $2::int4) AS y
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM cities c
+  WHERE
+    -- X overlap
+    (c.start_coords).x + c.size - 1 >= x
+    AND (c.start_coords).x <= x + $2::int4 - 1
+    -- Y overlap
+    AND (c.start_coords).y + c.size - 1 >= y
+    AND (c.start_coords).y <= y + $2::int4 - 1
+)
+ORDER BY random()
+LIMIT 1
+`
+
+type FindEmptyCityBlockParams struct {
+	MapWidth  int32 `json:"map_width"`
+	Size      int32 `json:"size"`
+	MapHeight int32 `json:"map_height"`
+}
+
+type FindEmptyCityBlockRow struct {
+	X int32 `json:"x"`
+	Y int32 `json:"y"`
+}
+
+func (q *Queries) FindEmptyCityBlock(ctx context.Context, arg FindEmptyCityBlockParams) (FindEmptyCityBlockRow, error) {
+	row := q.db.QueryRow(ctx, findEmptyCityBlock, arg.MapWidth, arg.Size, arg.MapHeight)
+	var i FindEmptyCityBlockRow
+	err := row.Scan(&i.X, &i.Y)
+	return i, err
+}
+
 const getAllCities = `-- name: GetAllCities :many
 SELECT
     city_id,

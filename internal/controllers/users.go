@@ -42,7 +42,6 @@ func (u *userController) Create(user *models.CreateUserRequest) (string, error) 
 		return "", err
 	}
 
-	u.log.Debug("Registering user", "username", user.Username, "email", user.Email)
 	u.cluster.Request("user", user.Username, &messages.CreateUserMessage{
 		User: models.User{
 			UserID:   userID,

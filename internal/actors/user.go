@@ -32,7 +32,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case *messages.CreateUserMessage:
-		state.Log.Info("Registering UserActor", "username", msg.User.Username)
+		state.Log.Info("registering UserActor", "username", msg.User.Username)
 		state.User = msg.User
 		if !msg.Restore {
 			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
@@ -60,7 +60,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 			UserID: state.User.UserID,
 		})
 
-		state.Log.Info("Shutting down UserActor", "user_id", state.User.UserID)
+		state.Log.Info("shutting down UserActor", "user_id", state.User.UserID)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 

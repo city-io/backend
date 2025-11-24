@@ -78,6 +78,16 @@ func Run(deps *Deps) {
 	}
 	log.Info("spawned city actors", "count", len(cities))
 
+	city, err := ctrls.City().Create(&models.CityInput{
+		Type:  "city",
+		Owner: userID,
+		Name:  "New City",
+		Size:  5,
+	})
+	if err != nil {
+		log.Error("failed to make custom city", "error", err)
+	}
+	log.Info("created new city", "city_id", city.CityID)
 	// var armies []models.Army
 	// cl.DB().Find(&armies)
 
@@ -116,7 +126,7 @@ func reset(deps *Deps) error {
 
 	users, err := db.GetAllUsers(context.Background())
 	if err != nil {
-		log.Error("Error fetching existing users", "error", err)
+		log.Error("error fetching existing users", "error", err)
 	}
 
 	for _, user := range users {
@@ -149,9 +159,8 @@ func reset(deps *Deps) error {
 		if err != nil {
 			log.Error("error creating city in db", "error", err)
 			return err
-		} else {
-			log.Debug("created city in db", "cityId", cityID, "user", user.Username, "x", startX, "y", startY)
 		}
+		log.Debug("created city in db", "city_id", cityID, "user", user.Username, "x", startX, "y", startY)
 
 		// result = db.Create(&models.Building{
 		// 	BuildingID: uuid.New().String(),
@@ -175,7 +184,6 @@ func reset(deps *Deps) error {
 
 	cities := make([]models.City, 0)
 	// buildings := make([]models.Building, 0)
-	tiles := make([]models.Tile, 0)
 	for x := range constants.MapSize {
 		for y := range constants.MapSize {
 			open := true
@@ -230,30 +238,12 @@ func reset(deps *Deps) error {
 					}
 				}
 			}
-
-			tiles = append(tiles, models.Tile{
-				X: x,
-				Y: y,
-			})
 		}
 	}
 
-	// tileBatchSize := 15000
-	// for i := 0; i < len(mapTiles); i += tileBatchSize {
-	// 	end := min(i+tileBatchSize, len(mapTiles))
-	// 	if result := db.Create(mapTiles[i:end]); result.Error != nil {
-	// 		log.Error("Error creating map tiles", "error", result.Error)
-	// 		return result.Error
-	// 	}
-	// }
-	// log.Debug("Created map tiles", "count", len(mapTiles))
-
 	cityBatchSize := 5000
 	for i := 0; i < len(cities); i += cityBatchSize {
-		end := i + cityBatchSize
-		if end > len(cities) {
-			end = len(cities)
-		}
+		end := min(i+cityBatchSize, len(cities))
 		chunk := cities[i:end]
 
 		params := database.BatchCreateCitiesParams{
@@ -288,12 +278,12 @@ func reset(deps *Deps) error {
 		}
 
 		if err := db.BatchCreateCities(context.Background(), params); err != nil {
-			log.Error("Error creating cities batch", "start_idx", i, "end_idx", end, "error", err)
+			log.Error("error batch creating cities", "start_idx", i, "end_idx", end, "error", err)
 			return err
 		}
 	}
 
-	log.Debug("Created cities", "count", len(cities))
+	log.Debug("created cities", "count", len(cities))
 
 	// buildingBatchSize := 5000
 	// for i := 0; i < len(buildings); i += buildingBatchSize {
@@ -304,6 +294,6 @@ func reset(deps *Deps) error {
 	// 	}
 	// }
 	// log.Debug("Created buildings", "count", len(buildings))
-	log.Debug("Reset complete")
+	log.Debug("reset complete")
 	return nil
 }

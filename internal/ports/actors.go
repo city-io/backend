@@ -9,6 +9,8 @@ type ClusterProvider interface {
 	RequestFuture(kind, identity string, message any) (actor.Future, error)
 	Tell(kind, identity string, msg any) error
 	DB() *actor.PID
+	RequestDBFuture(message any) actor.Future
+	SendDB(message any) // shouldn't need to be used
 }
 
 type BaseActorInterface interface {

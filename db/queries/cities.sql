@@ -52,6 +52,26 @@ SET
     updated_at      = NOW()
 WHERE city_id = sqlc.arg(city_id);
 
+-- name: FindEmptyCityBlock :one
+SELECT
+  x::int4 AS x,
+  y::int4 AS y
+FROM generate_series(0, sqlc.arg(map_width)::int4  - sqlc.arg(size)::int4)  AS x
+CROSS JOIN generate_series(0, sqlc.arg(map_height)::int4 - sqlc.arg(size)::int4) AS y
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM cities c
+  WHERE
+    -- X overlap
+    (c.start_coords).x + c.size - 1 >= x
+    AND (c.start_coords).x <= x + sqlc.arg(size)::int4 - 1
+    -- Y overlap
+    AND (c.start_coords).y + c.size - 1 >= y
+    AND (c.start_coords).y <= y + sqlc.arg(size)::int4 - 1
+)
+ORDER BY random()
+LIMIT 1;
+
 -- name: BatchCreateCities :exec
 INSERT INTO cities (
     city_id,

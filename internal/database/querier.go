@@ -16,8 +16,8 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteCity(ctx context.Context, cityID string) error
 	DeleteUser(ctx context.Context, userID string) error
+	FindEmptyCityBlock(ctx context.Context, arg FindEmptyCityBlockParams) (FindEmptyCityBlockRow, error)
 	GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error)
-	GetAllTiles(ctx context.Context) ([]Tile, error)
 	GetAllUsers(ctx context.Context) ([]User, error)
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error

@@ -52,15 +52,15 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			Password: msg.User.Password,
 		})
 		if err != nil {
-			state.Log.Error("Error creating user in db", "error", err)
+			state.Log.Error("error creating user in db", "error", err)
 		}
 	case *messages.UpdateUserMessage:
-		state.Log.Info("Backing up user", "username", msg.User.Username)
+		state.Log.Info("backing up user", "username", msg.User.Username)
 		state.userBuffer[msg.User.UserID] = msg.User
 	case messages.DeleteUserMessage:
 		err := state.db.DeleteUser(context.Background(), msg.UserID)
 		if err != nil {
-			state.Log.Error("Error deleting user in db", "error", err)
+			state.Log.Error("error deleting user in db", "error", err)
 		}
 
 	case *messages.CreateCityMessage:
@@ -76,15 +76,30 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			Size:          int32(msg.City.Size),
 		})
 		if err != nil {
-			state.Log.Error("Error creating city in db", "error", err)
+			state.Log.Error("error creating city in db", "error", err)
 		}
 	case messages.DeleteCityMessage:
 		err := state.db.DeleteCity(context.Background(), msg.CityID)
 		if err != nil {
-			state.Log.Error("Error deleting city in db", "error", err)
+			state.Log.Error("error deleting city in db", "error", err)
 		}
 	case *messages.UpdateCityMessage:
 		state.cityBuffer[msg.City.CityID] = msg.City
+
+	case messages.GetEmptyCityBlockMessage:
+		row, err := state.db.FindEmptyCityBlock(context.Background(), database.FindEmptyCityBlockParams{
+			MapWidth:  constants.MapSize,
+			MapHeight: constants.MapSize,
+			Size:      int32(msg.Size),
+		})
+		if err != nil {
+			state.Log.Error("error fetching empty city block from db", "error", err)
+			return
+		}
+		ctx.Respond(messages.GetEmptyCityBlockResponseMessage{
+			X: int(row.X),
+			Y: int(row.Y),
+		})
 
 	case messages.PeriodicOperationMessage:
 		cityBatchSize := 5000
@@ -128,7 +143,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			}
 
 			if err := state.db.BatchUpdateCities(context.Background(), params); err != nil {
-				state.Log.Error("Error batch updating cities", "idx", i, "error", err)
+				state.Log.Error("error batch updating cities", "idx", i, "error", err)
 			}
 		}
 
@@ -154,7 +169,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			}
 
 			if err := state.db.BatchUpdateUsers(context.Background(), params); err != nil {
-				state.Log.Error("Error batch updating users", "idx", i, "error", err)
+				state.Log.Error("error batch updating users", "idx", i, "error", err)
 			}
 		}
 

@@ -30,18 +30,17 @@ CREATE TABLE cities (
     updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-
-CREATE TABLE tiles (
-	coords       COORDINATES PRIMARY KEY,
-    city_id      VARCHAR(36),
-    building_id  VARCHAR(36)
+CREATE UNIQUE INDEX unique_city_start_coords
+ON cities (
+    ((start_coords).x),
+    ((start_coords).y)
 );
 -- +goose StatementEnd
 
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE tiles;
+DROP INDEX IF EXISTS unique_city_start_coords;
 DROP TABLE cities;
 DROP TABLE users;
 DROP TYPE coordinates;

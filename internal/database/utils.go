@@ -44,12 +44,3 @@ func (u User) ToModel() *models.User {
 		UpdatedAt: u.UpdatedAt.Time,
 	}
 }
-
-func (t Tile) ToModel() *models.Tile {
-	return &models.Tile{
-		X:          t.Coords.X,
-		Y:          t.Coords.Y,
-		CityID:     t.CityID,
-		BuildingID: t.BuildingID,
-	}
-}
