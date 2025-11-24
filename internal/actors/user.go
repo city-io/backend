@@ -40,7 +40,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 				User: state.User,
 			})
 			state.Ctrls.City().Create(&models.CityInput{
-				Type:  "city",
+				Type:  constants.CityTypeCity,
 				Owner: &state.User.UserID,
 				Name:  fmt.Sprintf("%s's City", state.User.Username),
 				Size:  constants.CitySize,

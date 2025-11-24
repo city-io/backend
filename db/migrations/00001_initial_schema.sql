@@ -16,7 +16,6 @@ CREATE TABLE users (
     updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-
 CREATE TABLE cities (
     city_id         VARCHAR(36) PRIMARY KEY,
     type            VARCHAR(100) NOT NULL,
@@ -27,20 +26,35 @@ CREATE TABLE cities (
     start_coords    COORDINATES NOT NULL,
     size            INTEGER NOT NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT city_xy_unique UNIQUE (start_coords)
 );
 
-CREATE UNIQUE INDEX unique_city_start_coords
-ON cities (
-    ((start_coords).x),
-    ((start_coords).y)
+CREATE TABLE buildings (
+    building_id         VARCHAR(36) PRIMARY KEY,
+    city_id             VARCHAR(36) NOT NULL,
+    type                VARCHAR(100) NOT NULL,
+    level               INTEGER NOT NULL DEFAULT 0 CHECK (level >= 0),
+    target_level        INTEGER NOT NULL DEFAULT 1 CHECK (target_level >= 1),
+    coords              COORDINATES NOT NULL,
+    construction_start  TIMESTAMP NULL,
+    construction_end    TIMESTAMP NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT buildings_coords_unique UNIQUE (coords),
+
+    CONSTRAINT buildings_city_fk
+        FOREIGN KEY (city_id) REFERENCES cities (city_id)
+        ON DELETE CASCADE
 );
 -- +goose StatementEnd
 
 
 -- +goose Down
 -- +goose StatementBegin
-DROP INDEX IF EXISTS unique_city_start_coords;
+DROP TABLE buildings;
 DROP TABLE cities;
 DROP TABLE users;
 DROP TYPE coordinates;

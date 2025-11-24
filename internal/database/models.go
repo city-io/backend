@@ -9,6 +9,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Building struct {
+	BuildingID        string             `json:"building_id"`
+	CityID            string             `json:"city_id"`
+	Type              string             `json:"type"`
+	Level             int32              `json:"level"`
+	TargetLevel       int32              `json:"target_level"`
+	Coords            models.Coordinates `json:"coords"`
+	ConstructionStart pgtype.Timestamp   `json:"construction_start"`
+	ConstructionEnd   pgtype.Timestamp   `json:"construction_end"`
+	CreatedAt         pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp   `json:"updated_at"`
+}
+
 type City struct {
 	CityID        string             `json:"city_id"`
 	Type          string             `json:"type"`
