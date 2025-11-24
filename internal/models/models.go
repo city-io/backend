@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+type CityType string
 type BuildingType string
 
 type Coordinates struct {
@@ -33,7 +34,7 @@ type Tile struct {
 
 type City struct {
 	CityID        string    `json:"cityId"`
-	Type          string    `json:"type"`
+	Type          CityType  `json:"type"`
 	Owner         *string   `json:"owner"`
 	Name          string    `json:"name"`
 	Population    float64   `json:"population"`

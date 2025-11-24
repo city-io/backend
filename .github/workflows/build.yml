@@ -1,8 +1,9 @@
-name: Build and Deploy Docker Image
+name: Build Docker Image
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
   workflow_dispatch:
 
@@ -25,12 +26,13 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 -t docker.prayujt.com/cityio-backend --push .
-
-      - name: Request Redeployment
-        run: |
-          sleep 5; curl -X POST https://deploy.prayujt.com \
-          -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d '{"namespace":"cityio", "deploymentName":"cityio-backend"}'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            docker.prayujt.com/cityio-backend:latest
+            docker.prayujt.com/cityio-backend:${{ github.sha }}
+          cache-from: type=registry,ref=docker.prayujt.com/cityio-backend:cache
+          cache-to: type=registry,ref=docker.prayujt.com/cityio-backend:cache,mode=max

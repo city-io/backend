@@ -49,6 +49,7 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 			ac := newActor()
 			ac.SetLog(log.With("actor", ac.ActorType()))
 			ac.SetCluster(cp)
+			ac.SetControllers(ctrls)
 			return ac
 		}
 	}

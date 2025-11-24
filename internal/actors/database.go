@@ -66,7 +66,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 	case *messages.CreateCityMessage:
 		err := state.db.CreateCity(context.Background(), database.CreateCityParams{
 			CityID:        msg.City.CityID,
-			Type:          msg.City.Type,
+			Type:          string(msg.City.Type),
 			Owner:         msg.City.Owner,
 			Name:          msg.City.Name,
 			Population:    msg.City.Population,
@@ -125,7 +125,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 
 			for _, city := range chunk {
 				params.CityIds = append(params.CityIds, city.CityID)
-				params.Types = append(params.Types, city.Type)
+				params.Types = append(params.Types, string(city.Type))
 
 				// sqlc will parse "" into NULL
 				if city.Owner == nil {

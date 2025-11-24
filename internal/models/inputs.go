@@ -1,8 +1,8 @@
 package models
 
 type WebSocketRequest struct {
-	Req  int         `json:"req"`
-	Data interface{} `json:"data"`
+	Req  int `json:"req"`
+	Data any `json:"data"`
 }
 
 type UserClaims struct {
@@ -23,10 +23,10 @@ type LoginUserRequest struct {
 }
 
 type CityInput struct {
-	Type  string `json:"type"`
-	Owner string `json:"owner"`
-	Name  string `json:"name"`
-	Size  int    `json:"size"`
+	Type  CityType `json:"type"`
+	Owner *string  `json:"owner"`
+	Name  string   `json:"name"`
+	Size  int      `json:"size"`
 }
 
 type MapTileRequest struct {

@@ -35,6 +35,7 @@ func (c *cityController) Restore(city *models.City) error {
 }
 
 func (c *cityController) Create(city *models.CityInput) (*models.City, error) {
+	c.log.Info("creating new city actor", "name", city.Name)
 	cityID := uuid.New().String()
 
 	tileFuture := c.cluster.RequestDBFuture(messages.GetEmptyCityBlockMessage{
@@ -49,11 +50,10 @@ func (c *cityController) Create(city *models.CityInput) (*models.City, error) {
 
 	startX := randomTile.X
 	startY := randomTile.Y
-
 	newCity := models.City{
 		CityID:        cityID,
 		Type:          city.Type,
-		Owner:         &city.Owner,
+		Owner:         city.Owner,
 		Name:          city.Name,
 		Population:    constants.InitialPlayerCityPopulation,
 		PopulationCap: constants.InitialPlayerCityPopulation,
@@ -66,7 +66,7 @@ func (c *cityController) Create(city *models.CityInput) (*models.City, error) {
 		Restore: false,
 	})
 	if err != nil {
-		c.log.Error("Failed to create city actor", "city_id", cityID, "error", err)
+		c.log.Error("failed to create city actor", "city_id", cityID, "error", err)
 		return &models.City{}, err
 	}
 

@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -37,6 +38,12 @@ func (state *userActor) Receive(ctx actor.Context) {
 		if !msg.Restore {
 			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
 				User: state.User,
+			})
+			state.Ctrls.City().Create(&models.CityInput{
+				Type:  "city",
+				Owner: &state.User.UserID,
+				Name:  fmt.Sprintf("%s's City", state.User.Username),
+				Size:  constants.CitySize,
 			})
 		}
 		state.startPeriodicOperation(ctx)

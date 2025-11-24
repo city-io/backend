@@ -16,6 +16,7 @@ type ClusterProvider interface {
 type BaseActorInterface interface {
 	ActorType() string
 	Receive(ctx actor.Context)
-	SetCluster(cluster ClusterProvider)
 	SetLog(log Logger)
+	SetCluster(cluster ClusterProvider)
+	SetControllers(ctrls Controllers)
 }

@@ -78,16 +78,17 @@ func Run(deps *Deps) {
 	}
 	log.Info("spawned city actors", "count", len(cities))
 
-	city, err := ctrls.City().Create(&models.CityInput{
-		Type:  "city",
-		Owner: userID,
-		Name:  "New City",
-		Size:  5,
-	})
-	if err != nil {
-		log.Error("failed to make custom city", "error", err)
-	}
-	log.Info("created new city", "city_id", city.CityID)
+	// city, err := ctrls.City().Create(&models.CityInput{
+	// 	Type:  "city",
+	// 	Owner: &userID,
+	// 	Name:  "New City",
+	// 	Size:  5,
+	// })
+	// if err != nil {
+	// 	log.Error("failed to make custom city", "error", err)
+	// }
+	// log.Info("created new city", "city_id", city.CityID)
+
 	// var armies []models.Army
 	// cl.DB().Find(&armies)
 
@@ -260,7 +261,7 @@ func reset(deps *Deps) error {
 
 		for _, city := range chunk {
 			params.CityIds = append(params.CityIds, city.CityID)
-			params.Types = append(params.Types, city.Type)
+			params.Types = append(params.Types, string(city.Type))
 
 			// sqlc will parse "" into NULL
 			if city.Owner == nil {

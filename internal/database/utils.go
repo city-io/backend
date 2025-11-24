@@ -7,7 +7,7 @@ import (
 func (c City) ToModel() *models.City {
 	return &models.City{
 		CityID:        c.CityID,
-		Type:          c.Type,
+		Type:          models.CityType(c.Type),
 		Owner:         c.Owner,
 		Name:          c.Name,
 		Population:    c.Population,
@@ -21,7 +21,7 @@ func (c City) ToModel() *models.City {
 func (c GetAllCitiesRow) ToModel() *models.City {
 	return &models.City{
 		CityID:        c.CityID,
-		Type:          c.Type,
+		Type:          models.CityType(c.Type),
 		Owner:         c.Owner,
 		Name:          c.Name,
 		Population:    c.Population,
