@@ -22,7 +22,7 @@ type City struct {
 	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
 }
 
-type MapTile struct {
+type Tile struct {
 	Coords     models.Coordinates `json:"coords"`
 	CityID     *string            `json:"city_id"`
 	BuildingID *string            `json:"building_id"`

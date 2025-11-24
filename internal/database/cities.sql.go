@@ -7,7 +7,74 @@ package database
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const batchCreateCities = `-- name: BatchCreateCities :exec
+INSERT INTO cities (
+    city_id,
+    type,
+    owner,
+    name,
+    population,
+    population_cap,
+    start_coords,
+    size,
+    created_at,
+    updated_at
+)
+SELECT
+    v.city_id,
+    v.type,
+    NULLIF(v.owner, ''),
+    v.name,
+    v.population,
+    v.population_cap,
+    ROW(v.start_x, v.start_y)::coordinates,
+    v.size,
+    NOW(),
+    NOW()
+FROM (
+    SELECT
+        UNNEST($1::text[])           AS city_id,
+        UNNEST($2::text[])              AS type,
+        UNNEST($3::text[])             AS owner,
+        UNNEST($4::text[])              AS name,
+        UNNEST($5::float8[])      AS population,
+        UNNEST($6::float8[])  AS population_cap,
+        UNNEST($7::int[])            AS start_x,
+        UNNEST($8::int[])            AS start_y,
+        UNNEST($9::int[])               AS size
+) AS v
+`
+
+type BatchCreateCitiesParams struct {
+	CityIds        []string  `json:"city_ids"`
+	Types          []string  `json:"types"`
+	Owners         []string  `json:"owners"`
+	Names          []string  `json:"names"`
+	Populations    []float64 `json:"populations"`
+	PopulationCaps []float64 `json:"population_caps"`
+	StartXs        []int32   `json:"start_xs"`
+	StartYs        []int32   `json:"start_ys"`
+	Sizes          []int32   `json:"sizes"`
+}
+
+func (q *Queries) BatchCreateCities(ctx context.Context, arg BatchCreateCitiesParams) error {
+	_, err := q.db.Exec(ctx, batchCreateCities,
+		arg.CityIds,
+		arg.Types,
+		arg.Owners,
+		arg.Names,
+		arg.Populations,
+		arg.PopulationCaps,
+		arg.StartXs,
+		arg.StartYs,
+		arg.Sizes,
+	)
+	return err
+}
 
 const batchUpdateCities = `-- name: BatchUpdateCities :exec
 UPDATE cities AS c
@@ -17,7 +84,7 @@ SET
     name            = v.name,
     population      = v.population,
     population_cap  = v.population_cap,
-    start_coord     = POINT(v.start_x, v.start_y),
+    start_coords    = ROW(v.start_x, v.start_y)::coordinates,
     size            = v.size,
     updated_at      = NOW()
 FROM (
@@ -64,24 +131,37 @@ func (q *Queries) BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesPa
 
 const createCity = `-- name: CreateCity :exec
 INSERT INTO cities (
-    city_id, type, owner, name, population, population_cap,
-    start_coord, size
+    city_id,
+    type,
+    owner,
+    name,
+    population,
+    population_cap,
+    start_coords,
+    size
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6, COORDINATES($7, $8), $9
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    ROW($7::int4, $8::int4)::coordinates,
+    $9
 )
 `
 
 type CreateCityParams struct {
-	CityID        string      `json:"city_id"`
-	Type          string      `json:"type"`
-	Owner         *string     `json:"owner"`
-	Name          string      `json:"name"`
-	Population    float64     `json:"population"`
-	PopulationCap float64     `json:"population_cap"`
-	Coordinates   interface{} `json:"coordinates"`
-	Coordinates_2 interface{} `json:"coordinates_2"`
-	Size          int32       `json:"size"`
+	CityID        string  `json:"city_id"`
+	Type          string  `json:"type"`
+	Owner         *string `json:"owner"`
+	Name          string  `json:"name"`
+	Population    float64 `json:"population"`
+	PopulationCap float64 `json:"population_cap"`
+	StartX        int32   `json:"start_x"`
+	StartY        int32   `json:"start_y"`
+	Size          int32   `json:"size"`
 }
 
 func (q *Queries) CreateCity(ctx context.Context, arg CreateCityParams) error {
@@ -92,8 +172,8 @@ func (q *Queries) CreateCity(ctx context.Context, arg CreateCityParams) error {
 		arg.Name,
 		arg.Population,
 		arg.PopulationCap,
-		arg.Coordinates,
-		arg.Coordinates_2,
+		arg.StartX,
+		arg.StartY,
 		arg.Size,
 	)
 	return err
@@ -110,18 +190,44 @@ func (q *Queries) DeleteCity(ctx context.Context, cityID string) error {
 }
 
 const getAllCities = `-- name: GetAllCities :many
-SELECT city_id, type, owner, name, population, population_cap, start_coords, size, created_at, updated_at FROM cities
+SELECT
+    city_id,
+    type,
+    owner,
+    name,
+    population,
+    population_cap,
+    (start_coords).x::int4 AS start_x,
+    (start_coords).y::int4 AS start_y,
+    size,
+    created_at,
+    updated_at
+FROM cities
 `
 
-func (q *Queries) GetAllCities(ctx context.Context) ([]City, error) {
+type GetAllCitiesRow struct {
+	CityID        string           `json:"city_id"`
+	Type          string           `json:"type"`
+	Owner         *string          `json:"owner"`
+	Name          string           `json:"name"`
+	Population    float64          `json:"population"`
+	PopulationCap float64          `json:"population_cap"`
+	StartX        int32            `json:"start_x"`
+	StartY        int32            `json:"start_y"`
+	Size          int32            `json:"size"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error) {
 	rows, err := q.db.Query(ctx, getAllCities)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []City
+	var items []GetAllCitiesRow
 	for rows.Next() {
-		var i City
+		var i GetAllCitiesRow
 		if err := rows.Scan(
 			&i.CityID,
 			&i.Type,
@@ -129,7 +235,8 @@ func (q *Queries) GetAllCities(ctx context.Context) ([]City, error) {
 			&i.Name,
 			&i.Population,
 			&i.PopulationCap,
-			&i.StartCoords,
+			&i.StartX,
+			&i.StartY,
 			&i.Size,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -147,40 +254,40 @@ func (q *Queries) GetAllCities(ctx context.Context) ([]City, error) {
 const updateCity = `-- name: UpdateCity :exec
 UPDATE cities
 SET
-    type            = $2,
-    owner           = $3,
-    name            = $4,
-    population      = $5,
-    population_cap  = $6,
-    start_coord     = COORDINATES($7, $8),
-    size            = $9,
+    type            = $1,
+    owner           = $2,
+    name            = $3,
+    population      = $4,
+    population_cap  = $5,
+    start_coords    = ROW($6::int4, $7::int4)::coordinates,
+    size            = $8,
     updated_at      = NOW()
-WHERE city_id = $1
+WHERE city_id = $9
 `
 
 type UpdateCityParams struct {
-	CityID        string      `json:"city_id"`
-	Type          string      `json:"type"`
-	Owner         *string     `json:"owner"`
-	Name          string      `json:"name"`
-	Population    float64     `json:"population"`
-	PopulationCap float64     `json:"population_cap"`
-	Coordinates   interface{} `json:"coordinates"`
-	Coordinates_2 interface{} `json:"coordinates_2"`
-	Size          int32       `json:"size"`
+	Type          string  `json:"type"`
+	Owner         *string `json:"owner"`
+	Name          string  `json:"name"`
+	Population    float64 `json:"population"`
+	PopulationCap float64 `json:"population_cap"`
+	StartX        int32   `json:"start_x"`
+	StartY        int32   `json:"start_y"`
+	Size          int32   `json:"size"`
+	CityID        string  `json:"city_id"`
 }
 
 func (q *Queries) UpdateCity(ctx context.Context, arg UpdateCityParams) error {
 	_, err := q.db.Exec(ctx, updateCity,
-		arg.CityID,
 		arg.Type,
 		arg.Owner,
 		arg.Name,
 		arg.Population,
 		arg.PopulationCap,
-		arg.Coordinates,
-		arg.Coordinates_2,
+		arg.StartX,
+		arg.StartY,
 		arg.Size,
+		arg.CityID,
 	)
 	return err
 }

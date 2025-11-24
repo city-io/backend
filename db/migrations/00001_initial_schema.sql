@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TYPE COORDINATES AS (
+CREATE TYPE coordinates AS (
     x int,
     y int
 );
@@ -31,7 +31,7 @@ CREATE TABLE cities (
 );
 
 
-CREATE TABLE map_tiles (
+CREATE TABLE tiles (
 	coords       COORDINATES PRIMARY KEY,
     city_id      VARCHAR(36),
     building_id  VARCHAR(36)
@@ -41,8 +41,8 @@ CREATE TABLE map_tiles (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE map_tiles;
+DROP TABLE tiles;
 DROP TABLE cities;
 DROP TABLE users;
-DROP TYPE COORDINATES;
+DROP TYPE coordinates;
 -- +goose StatementEnd

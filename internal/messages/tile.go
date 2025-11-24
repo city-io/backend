@@ -1,23 +1,26 @@
 package messages
 
-// import (
-// 	"cityio/internal/models"
+import "cityio/internal/models"
 
-// 	"fmt"
+type CreateTileMessage struct {
+	Tile    models.Tile
+	Restore bool
+}
+type CreateTileResponseMessage struct{}
 
-// 	"github.com/asynkron/protoactor-go/actor"
-// )
+type UpdateTileCityMessage struct {
+	CityID string
+}
+type UpdateTileBuildingMessage struct {
+	BuildingID string
+}
 
-// type CreateMapTileMessage struct {
-// 	Tile    models.MapTile
-// 	Restore bool
-// }
-// type AddCityToTileMessage struct {
-// 	CityId string
-// }
-// type AddBuildingToTileMessage struct {
-// 	BuildingId string
-// }
+type GetTileMessage struct{}
+type GetTileResponseMessage struct {
+	Tile models.Tile
+	City *models.City
+}
+
 // type AddTileArmyMessage struct {
 // 	ArmyPID *actor.PID
 // 	Army    models.Army
@@ -26,12 +29,8 @@ package messages
 // 	Owner  string
 // 	ArmyId string
 // }
-// type GetMapTileMessage struct{}
 // type GetMapTileArmiesMessage struct{}
 
-// type CreateMapTileResponseMessage struct {
-// 	Error error
-// }
 // type AddCityToTileResponseMessage struct {
 // 	Error error
 // }
@@ -43,12 +42,6 @@ package messages
 // }
 // type RemoveTileArmyResponseMessage struct {
 // 	Error error
-// }
-// type GetMapTileResponseMessage struct {
-// 	Tile     models.MapTile
-// 	City     *models.City
-// 	Building *models.Building
-// 	Armies   map[string][]*models.Army
 // }
 // type GetMapTileArmiesResponseMessage struct {
 // 	Armies map[string][]*models.Army

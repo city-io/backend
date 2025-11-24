@@ -9,8 +9,6 @@ import (
 
 	"github.com/google/uuid"
 
-	// "github.com/pressly/goose/v3"
-
 	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/models"
@@ -28,22 +26,23 @@ func Run(deps *Deps) {
 	log := deps.Log.With("phase", "init")
 	db := deps.DB
 	ctrls := deps.Controllers
+	ctx := context.Background()
 
-	users, err := db.GetAllUsers(context.Background())
+	users, err := db.GetAllUsers(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	for _, user := range users {
-		err := ctrls.User().RestoreUser(user.ToModel())
+		err := ctrls.User().Restore(user.ToModel())
 		if err != nil {
 			panic(err)
 		}
 	}
-	log.Info("Spawned user actors", "count", len(users))
+	log.Info("spawned user actors", "count", len(users))
 
 	// TODO: Remove test user registration later
-	userID, err := ctrls.User().RegisterUser(&models.RegisterUserRequest{
+	userID, err := ctrls.User().Create(&models.CreateUserRequest{
 		Email:    "test@email.com",
 		Username: "prayujt",
 		Password: "test",
@@ -51,31 +50,33 @@ func Run(deps *Deps) {
 	if err != nil {
 		panic(err)
 	}
-	log.Info("Registered test user", "user_id", userID)
+	log.Info("registered test user", "user_id", userID)
 
-	// var mapTiles []models.MapTile
-	// cl.DB().Find(&mapTiles)
+	tiles, err := db.GetAllTiles(ctx)
+	if err != nil {
+		panic(err)
+	}
 
-	// for _, mapTile := range mapTiles {
-	// 	err := services.RestoreMapTile(mapTile)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-	// log.Printf("Spawned actors for %d map tiles", len(mapTiles))
+	for _, tile := range tiles {
+		err := ctrls.Tile().Restore(tile.ToModel())
+		if err != nil {
+			panic(err)
+		}
+	}
+	log.Info("spawned map tile actors", "count", len(tiles))
 
-	cities, err := db.GetAllCities(context.Background())
+	cities, err := db.GetAllCities(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	for _, city := range cities {
-		err := ctrls.City().RestoreCity(city.ToModel())
+		err := ctrls.City().Restore(city.ToModel())
 		if err != nil {
 			panic(err)
 		}
 	}
-	log.Info("Spawned city actors", "count", len(cities))
+	log.Info("spawned city actors", "count", len(cities))
 
 	// var armies []models.Army
 	// cl.DB().Find(&armies)
@@ -98,38 +99,12 @@ func Run(deps *Deps) {
 	// 	}
 	// }
 	// log.Printf("Spawned actors for %d buildings", len(buildings))
-	log.Info("Initialization complete")
+	log.Info("initialization complete")
 }
 
 func reset(deps *Deps) error {
 	log := deps.Log.With("phase", "reset")
 	db := deps.DB
-
-	// resetTable(db, &models.User{})
-
-	// err := resetTable(db, &models.Army{})
-	// if err != nil {
-	// 	log.Error("Error resetting Army table", "error", err)
-	// 	return err
-	// }
-
-	// err = resetTable(db, &models.MapTile{})
-	// if err != nil {
-	// 	log.Error("Error resetting MapTile table", "error", err)
-	// 	return err
-	// }
-
-	// err = resetTable(db, &models.Building{})
-	// if err != nil {
-	// 	log.Error("Error resetting Building table", "error", err)
-	// 	return err
-	// }
-
-	// err = resetTable(db, &models.City{})
-	// if err != nil {
-	// 	log.Error("Error resetting City table", "error", err)
-	// 	return err
-	// }
 
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
@@ -152,7 +127,7 @@ func reset(deps *Deps) error {
 			Food: user.Food,
 		})
 		if err != nil {
-			log.Error("Error resetting user fields", "error", err)
+			log.Error("error resetting user fields", "error", err)
 		}
 
 		src := rand.NewSource(time.Now().UnixNano())
@@ -168,14 +143,14 @@ func reset(deps *Deps) error {
 			Name:          fmt.Sprintf("%s's City", user.Username),
 			Population:    constants.InitialPlayerCityPopulation,
 			PopulationCap: constants.GetBuildingPopulation(constants.BuildingTypeCityCenter, 1),
-			Coordinates:   startX,
-			Coordinates_2: startY,
+			StartX:        int32(startX),
+			StartY:        int32(startY),
 		})
 		if err != nil {
-			log.Error("Error creating city in db", "error", err)
+			log.Error("error creating city in db", "error", err)
 			return err
 		} else {
-			log.Debug("Created city in db", "cityId", cityID, "user", user.Username, "x", startX, "y", startY)
+			log.Debug("created city in db", "cityId", cityID, "user", user.Username, "x", startX, "y", startY)
 		}
 
 		// result = db.Create(&models.Building{
@@ -191,8 +166,8 @@ func reset(deps *Deps) error {
 		// 	return result.Error
 		// }
 
-		for i := 0; i < constants.CitySize; i++ {
-			for j := 0; j < constants.CitySize; j++ {
+		for i := range constants.CitySize {
+			for j := range constants.CitySize {
 				occupied[startX+i][startY+j] = true
 			}
 		}
@@ -200,9 +175,9 @@ func reset(deps *Deps) error {
 
 	cities := make([]models.City, 0)
 	// buildings := make([]models.Building, 0)
-	mapTiles := make([]models.MapTile, 0)
-	for x := 0; x < constants.MapSize; x++ {
-		for y := 0; y < constants.MapSize; y++ {
+	tiles := make([]models.Tile, 0)
+	for x := range constants.MapSize {
+		for y := range constants.MapSize {
 			open := true
 			// TODO: optimize random city placement
 			for i := -1; i < 6; i++ {
@@ -256,7 +231,7 @@ func reset(deps *Deps) error {
 				}
 			}
 
-			mapTiles = append(mapTiles, models.MapTile{
+			tiles = append(tiles, models.Tile{
 				X: x,
 				Y: y,
 			})
@@ -273,15 +248,52 @@ func reset(deps *Deps) error {
 	// }
 	// log.Debug("Created map tiles", "count", len(mapTiles))
 
-	// cityBatchSize := 5000
-	// for i := 0; i < len(cities); i += cityBatchSize {
-	// 	end := min(i+cityBatchSize, len(cities))
-	// 	if result := db.Create(cities[i:end]); result.Error != nil {
-	// 		log.Error("Error creating cities", "error", result.Error)
-	// 		return result.Error
-	// 	}
-	// }
-	// log.Debug("Created cities", "count", len(cities))
+	cityBatchSize := 5000
+	for i := 0; i < len(cities); i += cityBatchSize {
+		end := i + cityBatchSize
+		if end > len(cities) {
+			end = len(cities)
+		}
+		chunk := cities[i:end]
+
+		params := database.BatchCreateCitiesParams{
+			CityIds:        make([]string, 0, len(chunk)),
+			Types:          make([]string, 0, len(chunk)),
+			Owners:         make([]string, 0, len(chunk)),
+			Names:          make([]string, 0, len(chunk)),
+			Populations:    make([]float64, 0, len(chunk)),
+			PopulationCaps: make([]float64, 0, len(chunk)),
+			StartXs:        make([]int32, 0, len(chunk)),
+			StartYs:        make([]int32, 0, len(chunk)),
+			Sizes:          make([]int32, 0, len(chunk)),
+		}
+
+		for _, city := range chunk {
+			params.CityIds = append(params.CityIds, city.CityID)
+			params.Types = append(params.Types, city.Type)
+
+			// sqlc will parse "" into NULL
+			if city.Owner == nil {
+				params.Owners = append(params.Owners, "")
+			} else {
+				params.Owners = append(params.Owners, *city.Owner)
+			}
+
+			params.Names = append(params.Names, city.Name)
+			params.Populations = append(params.Populations, city.Population)
+			params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
+			params.StartXs = append(params.StartXs, int32(city.StartX))
+			params.StartYs = append(params.StartYs, int32(city.StartY))
+			params.Sizes = append(params.Sizes, int32(city.Size))
+		}
+
+		if err := db.BatchCreateCities(context.Background(), params); err != nil {
+			log.Error("Error creating cities batch", "start_idx", i, "end_idx", end, "error", err)
+			return err
+		}
+	}
+
+	log.Debug("Created cities", "count", len(cities))
 
 	// buildingBatchSize := 5000
 	// for i := 0; i < len(buildings); i += buildingBatchSize {
@@ -295,14 +307,3 @@ func reset(deps *Deps) error {
 	log.Debug("Reset complete")
 	return nil
 }
-
-// func resetTable(db database.Querier, model any) error {
-// 	tableName := db.Migrator().CurrentDatabase()
-// 	if err := db.Migrator().DropTable(model); err != nil {
-// 		return fmt.Errorf("failed to drop table %s: %w", tableName, err)
-// 	}
-// 	if err := db.AutoMigrate(model); err != nil {
-// 		return fmt.Errorf("failed to recreate table %s: %w", tableName, err)
-// 	}
-// 	return nil
-// }

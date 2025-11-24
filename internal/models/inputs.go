@@ -11,7 +11,7 @@ type UserClaims struct {
 	UserId   string `json:"userId"`
 }
 
-type RegisterUserRequest struct {
+type CreateUserRequest struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Password string `json:"password"`

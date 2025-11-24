@@ -24,11 +24,11 @@ type User struct {
 	UpdatedAt time.Time `json:"-"`
 }
 
-type MapTile struct {
-	X          int    `json:"x"`
-	Y          int    `json:"y"`
-	CityID     string `json:"cityId"`
-	BuildingID string `json:"buildingId"`
+type Tile struct {
+	X          int     `json:"x"`
+	Y          int     `json:"y"`
+	CityID     *string `json:"cityId"`
+	BuildingID *string `json:"buildingId"`
 }
 
 type City struct {

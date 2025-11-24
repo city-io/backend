@@ -22,16 +22,20 @@ func NewUserController(cl ports.ClusterProvider, l ports.Logger) ports.UserContr
 	}
 }
 
-func (u *userController) RestoreUser(user *models.User) error {
-	u.cluster.Request("user", user.Username, &messages.RegisterUserMessage{
+func (u *userController) Restore(user *models.User) error {
+	_, err := u.cluster.Request("user", user.Username, &messages.CreateUserMessage{
 		User:    *user,
 		Restore: true,
 	})
+	if err != nil {
+		u.log.Error("failed to restore user actor", "username", user.Username, "error", err)
+		return err
+	}
 
 	return nil
 }
 
-func (u *userController) RegisterUser(user *models.RegisterUserRequest) (string, error) {
+func (u *userController) Create(user *models.CreateUserRequest) (string, error) {
 	userID := uuid.New().String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -39,7 +43,7 @@ func (u *userController) RegisterUser(user *models.RegisterUserRequest) (string,
 	}
 
 	u.log.Debug("Registering user", "username", user.Username, "email", user.Email)
-	u.cluster.Request("user", user.Username, &messages.RegisterUserMessage{
+	u.cluster.Request("user", user.Username, &messages.CreateUserMessage{
 		User: models.User{
 			UserID:   userID,
 			Username: user.Username,

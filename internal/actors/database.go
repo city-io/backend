@@ -44,7 +44,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 	case messages.InitDatabaseMessage:
 		state.startPeriodicOperation(ctx)
 
-	case *messages.RegisterUserMessage:
+	case *messages.CreateUserMessage:
 		err := state.db.CreateUser(context.Background(), database.CreateUserParams{
 			UserID:   msg.User.UserID,
 			Email:    msg.User.Email,
@@ -63,7 +63,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			state.Log.Error("Error deleting user in db", "error", err)
 		}
 
-	case messages.CreateCityMessage:
+	case *messages.CreateCityMessage:
 		err := state.db.CreateCity(context.Background(), database.CreateCityParams{
 			CityID:        msg.City.CityID,
 			Type:          msg.City.Type,
@@ -71,8 +71,8 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			Name:          msg.City.Name,
 			Population:    msg.City.Population,
 			PopulationCap: msg.City.PopulationCap,
-			Coordinates:   msg.City.StartX,
-			Coordinates_2: msg.City.StartY,
+			StartX:        int32(msg.City.StartX),
+			StartY:        int32(msg.City.StartY),
 			Size:          int32(msg.City.Size),
 		})
 		if err != nil {

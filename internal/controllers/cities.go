@@ -23,25 +23,23 @@ func NewCityController(cl ports.ClusterProvider, l ports.Logger) ports.CityContr
 	}
 }
 
-func (c *cityController) RestoreCity(city *models.City) error {
+func (c *cityController) Restore(city *models.City) error {
 	_, err := c.cluster.Request("city", city.CityID, &messages.CreateCityMessage{
 		City:    *city,
 		Restore: true,
 	})
 	if err != nil {
-		c.log.Error("Failed to restore city actor:", "city_id", city.CityID, "error", err)
+		c.log.Error("failed to restore city actor", "city_id", city.CityID, "error", err)
 		return err
 	}
 
 	return nil
 }
 
-func (c *cityController) CreateCity(city *models.CityInput) (*models.City, error) {
-	// db := database.GetDB()
-
+func (c *cityController) Create(city *models.CityInput) (*models.City, error) {
 	cityID := uuid.New().String()
 
-	var tiles []models.MapTile
+	var tiles []models.Tile
 	// err := db.Raw(`
 	// 	SELECT x, y, city_id
 	// 	FROM map_tiles

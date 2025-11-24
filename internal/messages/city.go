@@ -14,6 +14,8 @@ type CreateCityMessage struct {
 	OwnerPID *actor.PID
 	Restore  bool
 }
+type CreateCityResponseMessage struct{}
+
 type UpdateCityMessage struct {
 	City models.City
 }
@@ -23,21 +25,15 @@ type UpdateCityOwnerMessage struct {
 type UpdateCityPopulationCapMessage struct {
 	Change float64
 }
+
 type GetCityMessage struct{}
+
 type DeleteCityMessage struct {
 	CityID string
 }
 
-type CreateCityResponseMessage struct{}
-type UpdateCityPopulationCapResponseMessage struct {
-	Error error
-}
-
 type GetCityResponseMessage struct {
 	City models.City
-}
-type DeleteCityResponseMessage struct {
-	Error error
 }
 
 // Errors

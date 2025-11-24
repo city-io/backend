@@ -12,56 +12,35 @@ import (
 	"cityio/internal/ws"
 )
 
-type UserActor struct {
+type userActor struct {
 	BaseActor
-	User     models.User
-	ArmyPIDs map[string]*actor.PID
+	User models.User
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
 
 func NewUserActor() ports.BaseActorInterface {
-	return &UserActor{}
+	return &userActor{}
 }
 
-func (state *UserActor) ActorType() string {
+func (state *userActor) ActorType() string {
 	return "user"
 }
 
-func (state *UserActor) Receive(ctx actor.Context) {
+func (state *userActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
-	case *messages.RegisterUserMessage:
+	case *messages.CreateUserMessage:
 		state.Log.Info("Registering UserActor", "username", msg.User.Username)
 		state.User = msg.User
-		state.ArmyPIDs = make(map[string]*actor.PID)
 		if !msg.Restore {
-			ctx.Send(state.Database, &messages.RegisterUserMessage{
+			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
 				User: state.User,
 			})
 		}
 		state.startPeriodicOperation(ctx)
-		ctx.Respond(messages.RegisterUserResponseMessage{})
-
-	// case messages.AddAllyMessage:
-	// 	state.User.Allies = append(state.User.Allies, msg.Ally)
-	// 	state.ws()
-	// 	ctx.Respond(messages.AddAllyResponseMessage{
-	// 		Error: nil,
-	// 	})
-
-	// case messages.RemoveAllyMessage:
-	// 	for i, ally := range state.User.Allies {
-	// 		if ally == msg.Ally {
-	// 			state.User.Allies = append(state.User.Allies[:i], state.User.Allies[i+1:]...)
-	// 			break
-	// 		}
-	// 	}
-	// 	state.ws()
-	// 	ctx.Respond(messages.RemoveAllyResponseMessage{
-	// 		Error: nil,
-	// 	})
+		ctx.Respond(messages.CreateUserResponseMessage{})
 
 	case messages.UpdateUserGoldMessage:
 		state.User.Gold += msg.Change
@@ -76,32 +55,24 @@ func (state *UserActor) Receive(ctx actor.Context) {
 			User: state.User,
 		})
 
-	case messages.AddUserArmyMessage:
-		state.ArmyPIDs[msg.ArmyID] = msg.ArmyPID
-		ctx.Respond(messages.AddUserArmyResponseMessage{
-			Error: nil,
-		})
-
 	case messages.DeleteUserMessage:
-		ctx.Send(state.Database, messages.DeleteUserMessage{
+		ctx.Send(state.Cluster.DB(), messages.DeleteUserMessage{
 			UserID: state.User.UserID,
 		})
-		ctx.Respond(messages.DeleteUserResponseMessage{
-			Error: nil,
-		})
+
 		state.Log.Info("Shutting down UserActor", "user_id", state.User.UserID)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 
 	case messages.PeriodicOperationMessage:
 		// make a backup of the user state
-		ctx.Send(state.Database, &messages.UpdateUserMessage{
+		ctx.Send(state.Cluster.DB(), &messages.UpdateUserMessage{
 			User: state.User,
 		})
 	}
 }
 
-func (state *UserActor) startPeriodicOperation(ctx actor.Context) {
+func (state *userActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.UserBackupFrequency * time.Second)
 	state.stopTickerCh = make(chan struct{})
 
@@ -118,12 +89,12 @@ func (state *UserActor) startPeriodicOperation(ctx actor.Context) {
 	}()
 }
 
-func (state *UserActor) stopPeriodicOperation() {
+func (state *userActor) stopPeriodicOperation() {
 	close(state.stopTickerCh)
 	state.ticker = nil
 }
 
-func (state *UserActor) ws() {
+func (state *userActor) ws() {
 	ws.Send(state.User.UserID, messages.WS_USER, &models.UserAccountOutput{
 		Username: state.User.Username,
 		Gold:     state.User.Gold,

@@ -9,13 +9,15 @@ import (
 )
 
 type Querier interface {
+	BatchCreateCities(ctx context.Context, arg BatchCreateCitiesParams) error
 	BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesParams) error
 	BatchUpdateUsers(ctx context.Context, arg BatchUpdateUsersParams) error
 	CreateCity(ctx context.Context, arg CreateCityParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteCity(ctx context.Context, cityID string) error
 	DeleteUser(ctx context.Context, userID string) error
-	GetAllCities(ctx context.Context) ([]City, error)
+	GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error)
+	GetAllTiles(ctx context.Context) ([]Tile, error)
 	GetAllUsers(ctx context.Context) ([]User, error)
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error

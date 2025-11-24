@@ -5,14 +5,20 @@ import "cityio/internal/models"
 type Controllers interface {
 	User() UserController
 	City() CityController
+	Tile() TileController
 }
 
 type UserController interface {
-	RestoreUser(user *models.User) error
-	RegisterUser(user *models.RegisterUserRequest) (string, error)
+	Restore(user *models.User) error
+	Create(user *models.CreateUserRequest) (string, error)
 }
 
 type CityController interface {
-	RestoreCity(city *models.City) error
-	CreateCity(city *models.CityInput) (*models.City, error)
+	Restore(city *models.City) error
+	Create(city *models.CityInput) (*models.City, error)
+}
+
+type TileController interface {
+	Restore(tile *models.Tile) error
+	Create(city *models.Tile) error
 }

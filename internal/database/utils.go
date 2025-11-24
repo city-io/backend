@@ -12,6 +12,23 @@ func (c City) ToModel() *models.City {
 		Name:          c.Name,
 		Population:    c.Population,
 		PopulationCap: c.PopulationCap,
+		StartX:        c.StartCoords.X,
+		StartY:        c.StartCoords.Y,
+		Size:          int(c.Size),
+	}
+}
+
+func (c GetAllCitiesRow) ToModel() *models.City {
+	return &models.City{
+		CityID:        c.CityID,
+		Type:          c.Type,
+		Owner:         c.Owner,
+		Name:          c.Name,
+		Population:    c.Population,
+		PopulationCap: c.PopulationCap,
+		StartX:        int(c.StartX),
+		StartY:        int(c.StartY),
+		Size:          int(c.Size),
 	}
 }
 
@@ -25,5 +42,14 @@ func (u User) ToModel() *models.User {
 		Food:      u.Food,
 		CreatedAt: u.CreatedAt.Time,
 		UpdatedAt: u.UpdatedAt.Time,
+	}
+}
+
+func (t Tile) ToModel() *models.Tile {
+	return &models.Tile{
+		X:          t.Coords.X,
+		Y:          t.Coords.Y,
+		CityID:     t.CityID,
+		BuildingID: t.BuildingID,
 	}
 }

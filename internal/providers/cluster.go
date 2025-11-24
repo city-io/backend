@@ -47,7 +47,6 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 	spawn := func(newActor func() ports.BaseActorInterface) actor.Producer {
 		return func() actor.Actor {
 			ac := newActor()
-			ac.SetDatabaseActor(databasePID)
 			ac.SetLog(log.With("actor", ac.ActorType()))
 			ac.SetCluster(cp)
 			return ac
@@ -56,6 +55,7 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 	kinds := []*cluster.Kind{
 		cluster.NewKind("user", actor.PropsFromProducer(spawn(actors.NewUserActor))),
 		cluster.NewKind("city", actor.PropsFromProducer(spawn(actors.NewCityActor))),
+		cluster.NewKind("tile", actor.PropsFromProducer(spawn(actors.NewTileActor))),
 	}
 
 	remoteConfig := remote.Configure("127.0.0.1", 8090)
@@ -99,4 +99,8 @@ func (cp *clusterProvider) Tell(kind, identity string, msg any) error {
 	pid := cp.cluster.Get(identity, kind)
 	cp.system.Root.Send(pid, msg)
 	return nil
+}
+
+func (cp *clusterProvider) DB() *actor.PID {
+	return cp.databasePID
 }

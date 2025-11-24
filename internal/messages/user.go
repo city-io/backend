@@ -4,22 +4,16 @@ import (
 	"cityio/internal/models"
 
 	"fmt"
-
-	"github.com/asynkron/protoactor-go/actor"
 )
 
-type RegisterUserMessage struct {
+type CreateUserMessage struct {
 	User    models.User
 	Restore bool
 }
+type CreateUserResponseMessage struct{}
+
 type UpdateUserMessage struct {
 	User models.User
-}
-type AddAllyMessage struct {
-	Ally string
-}
-type RemoveAllyMessage struct {
-	Ally string
 }
 type UpdateUserGoldMessage struct {
 	Change int64
@@ -27,45 +21,23 @@ type UpdateUserGoldMessage struct {
 type UpdateUserFoodMessage struct {
 	Change int64
 }
+
 type GetUserMessage struct{}
-type AddUserArmyMessage struct {
-	ArmyID  string
-	ArmyPID *actor.PID
+type GetUserResponseMessage struct {
+	User models.User
 }
+
 type DeleteUserMessage struct {
 	UserID string
 }
 
-type RegisterUserResponseMessage struct{}
-type AddAllyResponseMessage struct {
-	Error error
-}
-type RemoveAllyResponseMessage struct {
-	Error error
-}
-type UpdateUserGoldResponseMessage struct {
-	Error error
-}
-type UpdateUserFoodResponseMessage struct {
-	Error error
-}
-type GetUserResponseMessage struct {
-	User models.User
-}
-type AddUserArmyResponseMessage struct {
-	Error error
-}
-type DeleteUserResponseMessage struct {
-	Error error
-}
-
 // Errors
 type UserNotFoundError struct {
-	UserId string
+	UserID string
 }
 
 func (e *UserNotFoundError) Error() string {
-	return fmt.Sprintf("User not found: %s", e.UserId)
+	return fmt.Sprintf("User not found: %s", e.UserID)
 }
 
 type InvalidPasswordError struct {
@@ -83,9 +55,9 @@ func (e *InvalidTokenError) Error() string {
 }
 
 type UserCreationError struct {
-	UserId string
+	UserID string
 }
 
 func (e *UserCreationError) Error() string {
-	return fmt.Sprintf("Error creating user: %s", e.UserId)
+	return fmt.Sprintf("Error creating user: %s", e.UserID)
 }

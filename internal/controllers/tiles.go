@@ -1,5 +1,52 @@
 package controllers
 
+import (
+	"cityio/internal/messages"
+	"cityio/internal/models"
+	"cityio/internal/ports"
+	"cityio/internal/utils"
+)
+
+type tileController struct {
+	cluster ports.ClusterProvider
+	log     ports.Logger
+}
+
+func NewTileController(cl ports.ClusterProvider, l ports.Logger) ports.TileController {
+	return &tileController{
+		cluster: cl,
+		log:     l,
+	}
+}
+
+func (c *tileController) Restore(tile *models.Tile) error {
+	idx := utils.GetTileIndex(tile.X, tile.Y)
+	_, err := c.cluster.Request("tile", idx, &messages.CreateTileMessage{
+		Tile:    *tile,
+		Restore: true,
+	})
+	if err != nil {
+		c.log.Error("Failed to restore tile actor:", "tile", idx, "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *tileController) Create(tile *models.Tile) error {
+	idx := utils.GetTileIndex(tile.X, tile.Y)
+	_, err := c.cluster.Request("tile", idx, &messages.CreateTileMessage{
+		Tile:    *tile,
+		Restore: true,
+	})
+	if err != nil {
+		c.log.Error("Failed to restore tile actor:", "tile", idx, "error", err)
+		return err
+	}
+
+	return nil
+}
+
 // import (
 // 	"cityio/internal/actors"
 // 	"cityio/internal/messages"

@@ -1,6 +1,6 @@
 include .env
 
-.PHONY: all build
+.PHONY: all build start generate
 
 all:
 	go run cmd/*.go
@@ -10,3 +10,6 @@ build:
 
 start:
 	bin/cityio
+
+generate:
+	sqlc generate
