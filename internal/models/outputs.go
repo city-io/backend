@@ -1,8 +1,8 @@
 package models
 
 type WebSocketResponse struct {
-	Msg  int         `json:"msg"`
-	Data interface{} `json:"data"`
+	Msg  int `json:"msg"`
+	Data any `json:"data"`
 }
 
 type LoginUserResponse struct {
@@ -21,16 +21,15 @@ type ValidateUserResponse struct {
 }
 
 type UserAccountOutput struct {
-	Username string   `json:"username"`
-	Gold     int64    `json:"gold"`
-	Food     int64    `json:"food"`
-	Allies   []string `json:"allies"`
+	Username string `json:"username"`
+	Gold     int64  `json:"gold"`
+	Food     int64  `json:"food"`
 }
 
-type MapTileOutput struct {
-	X        int                `json:"x"`
-	Y        int                `json:"y"`
-	City     *City              `json:"city"`
-	Building *Building          `json:"building"`
-	Armies   map[string][]*Army `json:"armies"`
-}
+// type MapTileOutput struct {
+// 	X        int                `json:"x"`
+// 	Y        int                `json:"y"`
+// 	City     *City              `json:"city"`
+// 	Building *Building          `json:"building"`
+// 	Armies   map[string][]*Army `json:"armies"`
+// }

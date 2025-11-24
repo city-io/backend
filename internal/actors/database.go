@@ -1,27 +1,41 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/messages"
-	"cityio/internal/models"
-
-	"log"
+	"context"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
-	"gorm.io/gorm"
+
+	"cityio/internal/constants"
+	"cityio/internal/database"
+	"cityio/internal/messages"
+	"cityio/internal/models"
+	"cityio/internal/ports"
 )
 
 type DatabaseActor struct {
 	BaseActor
-	db *gorm.DB
+	db database.Querier
 
-	userBuffer []models.User
-	cityBuffer []models.City
-	armyBuffer []models.Army
+	// use map to only preserve latest update
+	userBuffer map[string]models.User
+	cityBuffer map[string]models.City
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
+}
+
+func NewDatabaseActor(db database.Querier) ports.BaseActorInterface {
+	return &DatabaseActor{
+		db:           db,
+		userBuffer:   make(map[string]models.User),
+		cityBuffer:   make(map[string]models.City),
+		stopTickerCh: make(chan struct{}),
+	}
+}
+
+func (state *DatabaseActor) ActorType() string {
+	return "database"
 }
 
 func (state *DatabaseActor) Receive(ctx actor.Context) {
@@ -30,113 +44,142 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 	case messages.InitDatabaseMessage:
 		state.startPeriodicOperation(ctx)
 
-	case messages.RegisterUserMessage:
-		result := state.db.Create(&msg.User)
-		if result.Error != nil {
-			log.Printf("Error creating user in db: %s", result.Error)
-		}
-		ctx.Respond(messages.RegisterUserResponseMessage{
-			Error: result.Error,
+	case *messages.CreateUserMessage:
+		err := state.db.CreateUser(context.Background(), database.CreateUserParams{
+			UserID:   msg.User.UserID,
+			Email:    msg.User.Email,
+			Username: msg.User.Username,
+			Password: msg.User.Password,
 		})
+		if err != nil {
+			state.Log.Error("error creating user in db", "error", err)
+		}
 	case *messages.UpdateUserMessage:
-		state.userBuffer = append(state.userBuffer, msg.User)
+		state.Log.Info("backing up user", "username", msg.User.Username)
+		state.userBuffer[msg.User.UserID] = msg.User
 	case messages.DeleteUserMessage:
-		result := state.db.Where("user_id = ?", msg.UserId).Delete(&models.User{})
-		if result.Error != nil {
-			log.Printf("Error deleting user in db: %s", result.Error)
+		err := state.db.DeleteUser(context.Background(), msg.UserID)
+		if err != nil {
+			state.Log.Error("error deleting user in db", "error", err)
 		}
 
-	case messages.CreateMapTileMessage:
-		result := state.db.Create(&msg.Tile)
-		if result.Error != nil {
-			log.Printf("Error creating map tile in db: %s", result.Error)
-		}
-
-	case messages.CreateCityMessage:
-		result := state.db.Create(&msg.City)
-		if result.Error != nil {
-			log.Printf("Error creating city in db: %s", result.Error)
+	case *messages.CreateCityMessage:
+		err := state.db.CreateCity(context.Background(), database.CreateCityParams{
+			CityID:        msg.City.CityID,
+			Type:          msg.City.Type,
+			Owner:         msg.City.Owner,
+			Name:          msg.City.Name,
+			Population:    msg.City.Population,
+			PopulationCap: msg.City.PopulationCap,
+			StartX:        int32(msg.City.StartX),
+			StartY:        int32(msg.City.StartY),
+			Size:          int32(msg.City.Size),
+		})
+		if err != nil {
+			state.Log.Error("error creating city in db", "error", err)
 		}
 	case messages.DeleteCityMessage:
-		result := state.db.Where("city_id = ?", msg.CityId).Delete(&models.City{})
-		if result.Error != nil {
-			log.Printf("Error deleting city in db: %s", result.Error)
+		err := state.db.DeleteCity(context.Background(), msg.CityID)
+		if err != nil {
+			state.Log.Error("error deleting city in db", "error", err)
 		}
 	case *messages.UpdateCityMessage:
-		state.cityBuffer = append(state.cityBuffer, msg.City)
+		state.cityBuffer[msg.City.CityID] = msg.City
 
-	case messages.CreateBuildingMessage:
-		result := state.db.Create(&msg.Building)
-		if result.Error != nil {
-			log.Printf("Error creating building in db: %s", result.Error)
+	case messages.GetEmptyCityBlockMessage:
+		row, err := state.db.FindEmptyCityBlock(context.Background(), database.FindEmptyCityBlockParams{
+			MapWidth:  constants.MapSize,
+			MapHeight: constants.MapSize,
+			Size:      int32(msg.Size),
+		})
+		if err != nil {
+			state.Log.Error("error fetching empty city block from db", "error", err)
+			return
 		}
-	case messages.UpdateBuildingMessage:
-		result := state.db.Save(&msg.Building)
-		if result.Error != nil {
-			log.Printf("Error updating building in db: %s", result.Error)
-		}
-	case messages.DeleteBuildingMessage:
-		result := state.db.Where("building_id = ?", msg.BuildingId).Delete(&models.Building{})
-		if result.Error != nil {
-			log.Printf("Error deleting building in db: %s", result.Error)
-		}
-
-	case messages.CreateArmyMessage:
-		result := state.db.Create(&msg.Army)
-		if result.Error != nil {
-			log.Printf("Error creating army in db: %s", result.Error)
-		}
-	case messages.UpdateArmyMessage:
-		result := state.db.Save(&msg.Army)
-		if result.Error != nil {
-			log.Printf("Error updating army in db: %s", result.Error)
-		}
-	case messages.DeleteArmyMessage:
-		result := state.db.Where("army_id = ?", msg.ArmyId).Delete(&models.Army{})
-		if result.Error != nil {
-			log.Printf("Error deleting army in db: %s", result.Error)
-		}
-
-	case messages.TrainTroopsMessage:
-		result := state.db.Create(&msg.Training)
-		if result.Error != nil {
-			log.Printf("Error creating training in db: %s", result.Error)
-		}
-	case messages.DeleteTrainingMessage:
-		result := state.db.Where("barracks_id = ?", msg.BarracksId).Delete(&models.Training{})
-		if result.Error != nil {
-			log.Printf("Error deleting training in db: %s", result.Error)
-		}
+		ctx.Respond(messages.GetEmptyCityBlockResponseMessage{
+			X: int(row.X),
+			Y: int(row.Y),
+		})
 
 	case messages.PeriodicOperationMessage:
-		if len(state.userBuffer) > 0 {
-			for _, user := range state.userBuffer {
-				result := state.db.Save(&user)
-				if result.Error != nil {
-					log.Printf("Error updating user in db: %s", result.Error)
-				}
+		cityBatchSize := 5000
+		cities := make([]models.City, 0, len(state.cityBuffer))
+		for _, c := range state.cityBuffer {
+			cities = append(cities, c)
+		}
+		for i := 0; i < len(cities); i += cityBatchSize {
+			end := min(i+cityBatchSize, len(cities))
+			chunk := cities[i:end]
+
+			params := database.BatchUpdateCitiesParams{
+				CityIds:        make([]string, 0, len(chunk)),
+				Types:          make([]string, 0, len(chunk)),
+				Owners:         make([]string, 0, len(chunk)),
+				Names:          make([]string, 0, len(chunk)),
+				Populations:    make([]float64, 0, len(chunk)),
+				PopulationCaps: make([]float64, 0, len(chunk)),
+				StartXs:        make([]int32, 0, len(chunk)),
+				StartYs:        make([]int32, 0, len(chunk)),
+				Sizes:          make([]int32, 0, len(chunk)),
 			}
-			state.userBuffer = make([]models.User, 0)
+
+			for _, city := range chunk {
+				params.CityIds = append(params.CityIds, city.CityID)
+				params.Types = append(params.Types, city.Type)
+
+				// sqlc will parse "" into NULL
+				if city.Owner == nil {
+					params.Owners = append(params.Owners, "")
+				} else {
+					params.Owners = append(params.Owners, *city.Owner)
+				}
+
+				params.Names = append(params.Names, city.Name)
+				params.Populations = append(params.Populations, city.Population)
+				params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
+				params.StartXs = append(params.StartXs, int32(city.StartX))
+				params.StartYs = append(params.StartYs, int32(city.StartY))
+				params.Sizes = append(params.Sizes, int32(city.Size))
+			}
+
+			if err := state.db.BatchUpdateCities(context.Background(), params); err != nil {
+				state.Log.Error("error batch updating cities", "idx", i, "error", err)
+			}
 		}
 
-		cityBatchSize := 5000
-		if len(state.cityBuffer) > 0 {
-			for i := 0; i < len(state.cityBuffer); i += cityBatchSize {
-				end := i + cityBatchSize
-				if end > len(state.cityBuffer) {
-					end = len(state.cityBuffer)
-				}
-				if result := state.db.Save(state.cityBuffer[i:end]); result.Error != nil {
-					log.Printf("Error creating cities: %s", result.Error)
-				}
-			}
-			state.cityBuffer = make([]models.City, 0)
+		userBatchSize := 5000
+		users := make([]models.User, 0, len(state.userBuffer))
+		for _, u := range state.userBuffer {
+			users = append(users, u)
 		}
+		for i := 0; i < len(users); i += userBatchSize {
+			end := min(i+userBatchSize, len(users))
+			chunk := users[i:end]
+
+			params := database.BatchUpdateUsersParams{
+				UserIds: make([]string, 0, len(chunk)),
+				Foods:   make([]int64, 0, len(chunk)),
+				Golds:   make([]int64, 0, len(chunk)),
+			}
+
+			for _, user := range chunk {
+				params.UserIds = append(params.UserIds, user.UserID)
+				params.Foods = append(params.Foods, user.Food)
+				params.Golds = append(params.Golds, user.Gold)
+			}
+
+			if err := state.db.BatchUpdateUsers(context.Background(), params); err != nil {
+				state.Log.Error("error batch updating users", "idx", i, "error", err)
+			}
+		}
+
+		state.cityBuffer = make(map[string]models.City)
+		state.userBuffer = make(map[string]models.User)
 	}
 }
 
 func (state *DatabaseActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(constants.DB_BACKUP_FREQUENCY * time.Second)
+	state.ticker = time.NewTicker(constants.DBBackupFrequency * time.Second)
 
 	go func() {
 		for {

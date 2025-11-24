@@ -24,4 +24,7 @@ go.work.sum
 # env file
 .env
 
-bin/cityio
+!bin/cityio
+bin/*
+
+.DS_Store

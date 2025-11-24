@@ -4,6 +4,7 @@ import "fmt"
 
 type InitDatabaseMessage struct{}
 type PeriodicOperationMessage struct{}
+type Ack struct{}
 
 type InternalError struct{}
 

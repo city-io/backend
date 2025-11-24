@@ -1,27 +1,32 @@
+// Package constants contains global constants used throughout the game server.
 package constants
 
+import "os"
+
+var Environment string = os.Getenv("ENVIRONMENT")
+
 const (
-	MAP_SIZE  = 128 // generate a map of size MAP_SIZE x MAP_SIZE
-	CITY_SIZE = 5
+	MapSize  = 128 // generate a map of size MapSize x MapSize
+	CitySize = 5
 
-	POPULATION_GROWTH_RATE = 0.001
+	PopulationGrowthRate = 0.001
 
-	INITIAL_TOWN_POPULATION = 100
+	InitialTownPopulation = 100
 
-	INITIAL_PLAYER_CITY_POPULATION = 250
-	INITIAL_PLAYER_GOLD            = 100000
-	INITIAL_PLAYER_FOOD            = 100000
+	InitialPlayerCityPopulation = 250
+	InitialPlayerGold           = 100000
+	InitialPlayerFood           = 100000
 
-	TROOP_MOVEMENT_BACKUP_FREQUENCY = 5 // number of tile movements before state saved to db
+	TroopMovementBackupFrequency = 5 // number of tile movements before state saved to db
 
 	// in seconds
-	DB_BACKUP_FREQUENCY           = 2  // frequency of database flushing buffer queue and writing to database
-	USER_BACKUP_FREQUENCY         = 10 // frequency of user state being sent to update queue
-	CITY_BACKUP_FREQUENCY         = 10 // frequency of population growth event and city state being sent to update queue
-	BUILDING_PRODUCTION_FREQUENCY = 3  // frequency of building production
+	DBBackupFrequency           = 2  // frequency of database flushing buffer queue and writing to database
+	UserBackupFrequency         = 10 // frequency of user state being sent to update queue
+	CityBackupFrequency         = 10 // frequency of population growth event and city state being sent to update queue
+	BuildingProductionFrequency = 3  // frequency of building production
 
-	ACTOR_TIMEOUT_DURATION = 1 // timeout on actor response await
+	ActorTimeoutDuration = 2 // timeout on actor response await
 
-	TROOP_TRAINING_DURATION = 5
-	TROOP_MOVEMENT_DURATION = 1 // time it takes to cross 1 tile
+	TroopTrainingDuration = 5
+	TroopMovementDuration = 1 // time it takes to cross 1 tile
 )
