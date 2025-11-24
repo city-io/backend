@@ -9,6 +9,32 @@ import (
 	"context"
 )
 
+const batchUpdateUsers = `-- name: BatchUpdateUsers :exec
+UPDATE users AS u
+SET
+    gold        = v.gold,
+    food        = v.food,
+    updated_at  = NOW()
+FROM (
+    SELECT
+        UNNEST($1::text[])  AS user_id,
+        UNNEST($2::int8[])     AS gold,
+        UNNEST($3::int8[])     AS food
+) AS v
+WHERE u.user_id = v.user_id
+`
+
+type BatchUpdateUsersParams struct {
+	UserIds []string `json:"user_ids"`
+	Golds   []int64  `json:"golds"`
+	Foods   []int64  `json:"foods"`
+}
+
+func (q *Queries) BatchUpdateUsers(ctx context.Context, arg BatchUpdateUsersParams) error {
+	_, err := q.db.Exec(ctx, batchUpdateUsers, arg.UserIds, arg.Golds, arg.Foods)
+	return err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (
     user_id, email, username, password, gold, food, created_at, updated_at

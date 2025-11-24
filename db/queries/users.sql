@@ -29,3 +29,17 @@ SET
     food       = $4,
     updated_at = NOW()
 WHERE user_id = $1;
+
+-- name: BatchUpdateUsers :exec
+UPDATE users AS u
+SET
+    gold        = v.gold,
+    food        = v.food,
+    updated_at  = NOW()
+FROM (
+    SELECT
+        UNNEST(sqlc.arg(user_ids)::text[])  AS user_id,
+        UNNEST(sqlc.arg(golds)::int8[])     AS gold,
+        UNNEST(sqlc.arg(foods)::int8[])     AS food
+) AS v
+WHERE u.user_id = v.user_id;

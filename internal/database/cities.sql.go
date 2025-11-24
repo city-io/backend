@@ -13,51 +13,51 @@ const batchUpdateCities = `-- name: BatchUpdateCities :exec
 UPDATE cities AS c
 SET
     type            = v.type,
-    owner           = v.owner,
+    owner           = NULLIF(v.owner, ''),
     name            = v.name,
     population      = v.population,
     population_cap  = v.population_cap,
-    start_coord     = COORDINATES(v.start_x, v.start_y),
+    start_coord     = POINT(v.start_x, v.start_y),
     size            = v.size,
     updated_at      = NOW()
 FROM (
     SELECT
-        unnest($1::text[])          AS city_id,
-        unnest($2::text[])          AS type,
-        unnest($3::text[])          AS owner,
-        unnest($4::text[])          AS name,
-        unnest($5::float8[])        AS population,
-        unnest($6::float8[])        AS population_cap,
-        unnest($7::int[])           AS start_x,
-        unnest($8::int[])           AS start_y,
-        unnest($9::int[])           AS size
+        UNNEST($1::text[])         AS city_id,
+        UNNEST($2::text[])            AS type,
+        UNNEST($3::text[])           AS owner,
+        UNNEST($4::text[])            AS name,
+        UNNEST($5::float8[])    AS population,
+        UNNEST($6::float8[]) AS population_cap,
+        UNNEST($7::int[])          AS start_x,
+        UNNEST($8::int[])          AS start_y,
+        UNNEST($9::int[])             AS size
 ) AS v
 WHERE c.city_id = v.city_id
 `
 
 type BatchUpdateCitiesParams struct {
-	Column1 []string  `json:"column_1"`
-	Column2 []string  `json:"column_2"`
-	Column3 []string  `json:"column_3"`
-	Column4 []string  `json:"column_4"`
-	Column5 []float64 `json:"column_5"`
-	Column6 []float64 `json:"column_6"`
-	Column7 []int32   `json:"column_7"`
-	Column8 []int32   `json:"column_8"`
-	Column9 []int32   `json:"column_9"`
+	CityIds        []string  `json:"city_ids"`
+	Types          []string  `json:"types"`
+	Owners         []string  `json:"owners"`
+	Names          []string  `json:"names"`
+	Populations    []float64 `json:"populations"`
+	PopulationCaps []float64 `json:"population_caps"`
+	StartXs        []int32   `json:"start_xs"`
+	StartYs        []int32   `json:"start_ys"`
+	Sizes          []int32   `json:"sizes"`
 }
 
 func (q *Queries) BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesParams) error {
 	_, err := q.db.Exec(ctx, batchUpdateCities,
-		arg.Column1,
-		arg.Column2,
-		arg.Column3,
-		arg.Column4,
-		arg.Column5,
-		arg.Column6,
-		arg.Column7,
-		arg.Column8,
-		arg.Column9,
+		arg.CityIds,
+		arg.Types,
+		arg.Owners,
+		arg.Names,
+		arg.Populations,
+		arg.PopulationCaps,
+		arg.StartXs,
+		arg.StartYs,
+		arg.Sizes,
 	)
 	return err
 }

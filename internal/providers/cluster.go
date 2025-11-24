@@ -14,6 +14,7 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/controllers"
 	"cityio/internal/database"
+	"cityio/internal/messages"
 	"cityio/internal/ports"
 )
 
@@ -33,6 +34,7 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 		return ac
 	})
 	databasePID := system.Root.Spawn(databaseProps)
+	system.Root.Send(databasePID, messages.InitDatabaseMessage{})
 
 	cp := &clusterProvider{
 		log:         log,

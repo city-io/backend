@@ -98,7 +98,7 @@ func Run(deps *Deps) {
 	// 	}
 	// }
 	// log.Printf("Spawned actors for %d buildings", len(buildings))
-	log.Info("Initialization complete!")
+	log.Info("Initialization complete")
 }
 
 func reset(deps *Deps) error {
@@ -292,7 +292,7 @@ func reset(deps *Deps) error {
 	// 	}
 	// }
 	// log.Debug("Created buildings", "count", len(buildings))
-	log.Debug("Reset complete!")
+	log.Debug("Reset complete")
 	return nil
 }
 

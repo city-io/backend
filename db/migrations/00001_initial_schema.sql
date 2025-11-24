@@ -20,7 +20,7 @@ CREATE TABLE users (
 CREATE TABLE cities (
     city_id         VARCHAR(36) PRIMARY KEY,
     type            VARCHAR(100) NOT NULL,
-    owner           VARCHAR(36),
+    owner           VARCHAR(36) NULL,
     name            VARCHAR(100) NOT NULL,
     population      DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (population >= 0),
     population_cap  DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (population_cap >= 0),

@@ -31,23 +31,23 @@ WHERE city_id = $1;
 UPDATE cities AS c
 SET
     type            = v.type,
-    owner           = v.owner,
+    owner           = NULLIF(v.owner, ''),
     name            = v.name,
     population      = v.population,
     population_cap  = v.population_cap,
-    start_coord     = COORDINATES(v.start_x, v.start_y),
+    start_coord     = POINT(v.start_x, v.start_y),
     size            = v.size,
     updated_at      = NOW()
 FROM (
     SELECT
-        unnest($1::text[])          AS city_id,
-        unnest($2::text[])          AS type,
-        unnest($3::text[])          AS owner,
-        unnest($4::text[])          AS name,
-        unnest($5::float8[])        AS population,
-        unnest($6::float8[])        AS population_cap,
-        unnest($7::int[])           AS start_x,
-        unnest($8::int[])           AS start_y,
-        unnest($9::int[])           AS size
+        UNNEST(sqlc.arg(city_ids)::text[])         AS city_id,
+        UNNEST(sqlc.arg(types)::text[])            AS type,
+        UNNEST(sqlc.arg(owners)::text[])           AS owner,
+        UNNEST(sqlc.arg(names)::text[])            AS name,
+        UNNEST(sqlc.arg(populations)::float8[])    AS population,
+        UNNEST(sqlc.arg(population_caps)::float8[]) AS population_cap,
+        UNNEST(sqlc.arg(start_xs)::int[])          AS start_x,
+        UNNEST(sqlc.arg(start_ys)::int[])          AS start_y,
+        UNNEST(sqlc.arg(sizes)::int[])             AS size
 ) AS v
 WHERE c.city_id = v.city_id;
