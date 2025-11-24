@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . .
 
 RUN apk update && apk add make
-RUN make build
+RUN go build -o bin/cityio cmd/*.go
 
 FROM alpine:latest
 
