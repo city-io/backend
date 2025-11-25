@@ -101,6 +101,22 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 			Y: int(row.Y),
 		})
 
+	case messages.CreateBuildingMessage:
+		err := state.db.CreateBuilding(context.Background(), database.CreateBuildingParams{
+			BuildingID:        msg.Building.BuildingID,
+			CityID:            msg.Building.CityID,
+			Type:              msg.Building.Type,
+			Level:             int32(msg.Building.Level),
+			TargetLevel:       int32(msg.Building.TargetLevel),
+			X:                 int32(msg.Building.X),
+			Y:                 int32(msg.Building.Y),
+			ConstructionStart: msg.Building.ConstructionStart.ToPG(),
+			ConstructionEnd:   msg.Building.ConstructionEnd.ToPG(),
+		})
+		if err != nil {
+			state.Log.Error("error creating building in db", "error", err)
+		}
+
 	case messages.PeriodicOperationMessage:
 		cityBatchSize := 5000
 		cities := make([]models.City, 0, len(state.cityBuffer))

@@ -3,16 +3,12 @@ package messages
 import (
 	"fmt"
 
-	"github.com/asynkron/protoactor-go/actor"
-
 	"cityio/internal/models"
 )
 
 type CreateCityMessage struct {
-	City     models.City
-	TilePIDs map[int]map[int]*actor.PID
-	OwnerPID *actor.PID
-	Restore  bool
+	City    models.City
+	Restore bool
 }
 
 type UpdateCityMessage struct {

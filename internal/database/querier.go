@@ -12,6 +12,7 @@ type Querier interface {
 	BatchCreateCities(ctx context.Context, arg BatchCreateCitiesParams) error
 	BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesParams) error
 	BatchUpdateUsers(ctx context.Context, arg BatchUpdateUsersParams) error
+	CreateBuilding(ctx context.Context, arg CreateBuildingParams) error
 	CreateCity(ctx context.Context, arg CreateCityParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteCity(ctx context.Context, cityID string) error
