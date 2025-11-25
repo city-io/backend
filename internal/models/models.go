@@ -45,3 +45,21 @@ type City struct {
 	CreatedAt     time.Time `json:"-"`
 	UpdatedAt     time.Time `json:"-"`
 }
+
+type Building struct {
+	BuildingID        string     `json:"building_id"`
+	CityID            string     `json:"city_id"`
+	Type              string     `json:"type"`
+	Level             int        `json:"level"`
+	TargetLevel       int        `json:"target_level"`
+	X                 int        `json:"x"`
+	Y                 int        `json:"y"`
+	ConstructionStart *time.Time `json:"construction_start"`
+	ConstructionEnd   *time.Time `json:"construction_end"`
+	CreatedAt         time.Time  `json:"-"`
+	UpdatedAt         time.Time  `json:"-"`
+}
+
+func (b Building) BuildingType() BuildingType {
+	return BuildingType(b.Type)
+}

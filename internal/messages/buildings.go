@@ -1,23 +1,26 @@
 package messages
 
-// import (
-// 	"cityio/internal/models"
+import (
+	"fmt"
 
-// 	"fmt"
-// )
+	"cityio/internal/models"
+)
 
-// type CreateBuildingMessage struct {
-// 	Building models.Building
-// 	Restore  bool
-// }
-// type UpgradeBuildingMessage struct{}
-// type GetBuildingMessage struct{}
-// type UpdateBuildingMessage struct {
-// 	Building models.Building
-// }
-// type DeleteBuildingMessage struct {
-// 	BuildingId string
-// }
+type CreateBuildingMessage struct {
+	Building models.Building
+	Restore  bool
+}
+type UpgradeBuildingMessage struct{}
+
+type GetBuildingMessage struct{}
+
+type UpdateBuildingMessage struct {
+	Building models.Building
+}
+type DeleteBuildingMessage struct {
+	BuildingID string
+}
+
 // type TrainTroopsMessage struct {
 // 	Training models.Training
 // }
@@ -28,24 +31,9 @@ package messages
 // 	BarracksId string
 // }
 
-// type CreateBuildingResponseMessage struct {
-// 	Error error
-// }
-// type UpgradeBuildingResponseMessage struct {
-// 	Error error
-// }
-// type GetBuildingResponseMessage struct {
-// 	Building models.Building
-// }
-// type DeleteBuildingResponseMessage struct {
-// 	Error error
-// }
-// type TrainTroopsResponseMessage struct {
-// 	Error error
-// }
-// type RestoreTrainingResponseMessage struct {
-// 	Error error
-// }
+type GetBuildingResponseMessage struct {
+	Building models.Building
+}
 
 // // Errors
 // type BuildingTypeNotFoundError struct {
@@ -72,10 +60,18 @@ package messages
 // 	return fmt.Sprintf("Training already exists for barracks: %s", e.BarracksId)
 // }
 
-// type MaxLevelReachedError struct {
-// 	BuildingId string
-// }
+type ConstructionInProgressError struct {
+	BuildingID string
+}
 
-// func (e *MaxLevelReachedError) Error() string {
-// 	return fmt.Sprintf("Max level reached for building: %s", e.BuildingId)
-// }
+func (e *ConstructionInProgressError) Error() string {
+	return fmt.Sprintf("Construction already active for building: %s", e.BuildingID)
+}
+
+type MaxLevelReachedError struct {
+	BuildingID string
+}
+
+func (e *MaxLevelReachedError) Error() string {
+	return fmt.Sprintf("Max level reached for building: %s", e.BuildingID)
+}

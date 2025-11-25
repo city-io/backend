@@ -60,6 +60,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 
 	case messages.UpdateCityOwnerMessage:
 		state.City.Owner = &msg.Owner
+		// pass to buildings
 
 	case messages.UpdateCityPopulationCapMessage:
 		if state.City.Owner != nil {

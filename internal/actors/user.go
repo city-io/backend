@@ -57,6 +57,15 @@ func (state *userActor) Receive(ctx actor.Context) {
 		state.User.Food += msg.Change
 		state.ws()
 
+	case messages.CheckAndDeductGoldMessage:
+		if missing := msg.Amount - state.User.Gold; missing > 0 {
+			ctx.Respond(messages.InsufficientGoldError{
+				Missing: missing,
+			})
+		}
+		state.ws()
+		ctx.Respond(messages.Ack{})
+
 	case messages.GetUserMessage:
 		ctx.Respond(&messages.GetUserResponseMessage{
 			User: state.User,

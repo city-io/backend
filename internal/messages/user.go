@@ -1,9 +1,9 @@
 package messages
 
 import (
-	"cityio/internal/models"
-
 	"fmt"
+
+	"cityio/internal/models"
 )
 
 type CreateUserMessage struct {
@@ -19,6 +19,10 @@ type UpdateUserGoldMessage struct {
 }
 type UpdateUserFoodMessage struct {
 	Change int64
+}
+
+type CheckAndDeductGoldMessage struct {
+	Amount int64
 }
 
 type GetUserMessage struct{}
@@ -59,4 +63,12 @@ type UserCreationError struct {
 
 func (e *UserCreationError) Error() string {
 	return fmt.Sprintf("Error creating user: %s", e.UserID)
+}
+
+type InsufficientGoldError struct {
+	Missing int64
+}
+
+func (e *InsufficientGoldError) Error() string {
+	return fmt.Sprintf("User has insufficient gold: %d", e.Missing)
 }
