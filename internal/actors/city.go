@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/google/uuid"
 
 	"cityio/internal/constants"
 	"cityio/internal/messages"
@@ -37,15 +38,33 @@ func (state *cityActor) Receive(ctx actor.Context) {
 
 		if !msg.Restore {
 			ctx.Send(state.Cluster.DB(), msg)
+			buildingID := uuid.New().String()
+			buildingType := constants.BuildingTypeCityCenter
+			if msg.City.Type == constants.CityTypeTown {
+				buildingType = constants.BuildingTypeTownCenter
+			}
+			buildingX := msg.City.StartX + msg.City.Size/2
+			buildingY := msg.City.StartY + msg.City.Size/2
+			building := models.Building{
+				BuildingID: buildingID,
+				CityID:     msg.City.CityID,
+				Type:       string(buildingType),
+				X:          buildingX,
+				Y:          buildingY,
+			}
+			state.Cluster.Request("building", buildingID, &messages.CreateBuildingMessage{
+				Building: building,
+				Restore:  false,
+			})
 		}
 		state.startPeriodicOperation(ctx)
 
 		startX := msg.City.StartX
 		startY := msg.City.StartY
 		size := msg.City.Size
-		for x := startX; x <= startX+size; x++ {
-			for y := startY; y <= startY+size; y++ {
-				idx := utils.GetTileIndex(x, y)
+		for dx := range size {
+			for dy := range size {
+				idx := utils.GetTileIndex(startX+dx, startY+dy)
 
 				_, err := state.Cluster.Request("tile", idx, messages.UpdateTileCityMessage{
 					CityID: msg.City.CityID,
@@ -55,12 +74,23 @@ func (state *cityActor) Receive(ctx actor.Context) {
 				}
 			}
 		}
-		// TODO: spawn city / town center building actor
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateCityOwnerMessage:
-		state.City.Owner = &msg.Owner
-		// TODO: pass to buildings on tiles
+		state.City.Owner = msg.Owner
+
+		for dx := range state.City.Size {
+			for dy := range state.City.Size {
+				idx := utils.GetTileIndex(
+					state.City.StartX+dx,
+					state.City.StartY+dy,
+				)
+				_, err := state.Cluster.Request("tile", idx, messages.UpdateTileOwnerMessage(msg))
+				if err != nil {
+					state.Log.Error("failed to signal tiles of city ownership change", "error", err)
+				}
+			}
+		}
 
 	case messages.UpdateCityPopulationCapMessage:
 		state.Log.Debug("updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
@@ -72,9 +102,10 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteCityMessage:
-		ctx.Send(state.Cluster.DB(), &messages.DeleteCityMessage{
-			CityID: state.City.CityID,
-		})
+		// TODO: should a city be able to be fully removed?
+		// ctx.Send(state.Cluster.DB(), messages.DeleteCityMessage{
+		// CityID: state.City.CityID,
+		// })
 		state.Log.Debug("shutting down CityActor", "city_id", state.City.CityID)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())

@@ -101,7 +101,7 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			Y: int(row.Y),
 		})
 
-	case messages.CreateBuildingMessage:
+	case *messages.CreateBuildingMessage:
 		err := state.db.CreateBuilding(context.Background(), database.CreateBuildingParams{
 			BuildingID:        msg.Building.BuildingID,
 			CityID:            msg.Building.CityID,

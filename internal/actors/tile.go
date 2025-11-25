@@ -36,7 +36,7 @@ func (state *tileActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateTileBuildingMessage:
-		state.BuildingID = &msg.BuildingID
+		state.BuildingID = msg.BuildingID
 		ctx.Respond(messages.Ack{})
 
 	case messages.GetTileMessage:

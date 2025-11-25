@@ -3,13 +3,13 @@ package messages
 import "cityio/internal/models"
 
 type UpdateTileOwnerMessage struct {
-	Owner string
+	Owner *string
 }
 type UpdateTileCityMessage struct {
 	CityID string
 }
 type UpdateTileBuildingMessage struct {
-	BuildingID string
+	BuildingID *string
 }
 
 type GetTileMessage struct{}
