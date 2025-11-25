@@ -1,22 +1,31 @@
 package actors
 
 import (
-	"cityio/internal/constants"
-	"cityio/internal/messages"
-
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/ports"
 )
 
-type MineActor struct {
+type mineActor struct {
 	BuildingActor
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
 
-func (state *MineActor) Receive(ctx actor.Context) {
+func NewMineActor() ports.BaseActorInterface {
+	return &mineActor{}
+}
+
+func (state *mineActor) ActorType() string {
+	return string(constants.BuildingTypeMine)
+}
+
+func (state *mineActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.CreateBuildingMessage:
@@ -55,7 +64,7 @@ func (state *MineActor) Receive(ctx actor.Context) {
 	}
 }
 
-func (state *MineActor) startPeriodicOperation(ctx actor.Context) {
+func (state *mineActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.BuildingProductionFrequency * time.Second)
 	state.stopTickerCh = make(chan struct{})
 
@@ -72,7 +81,7 @@ func (state *MineActor) startPeriodicOperation(ctx actor.Context) {
 	}()
 }
 
-func (state *MineActor) stopPeriodicOperation() {
+func (state *mineActor) stopPeriodicOperation() {
 	select {
 	case <-state.stopTickerCh:
 	default:

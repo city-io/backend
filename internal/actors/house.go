@@ -1,61 +1,92 @@
 package actors
 
-// import (
-// 	"cityio/internal/constants"
-// 	"cityio/internal/messages"
+import (
+	"time"
 
-// 	"log"
+	"github.com/asynkron/protoactor-go/actor"
 
-// 	"github.com/asynkron/protoactor-go/actor"
-// )
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/ports"
+)
 
-// type HouseActor struct {
-// 	BuildingActor
-// }
+type houseActor struct {
+	BuildingActor
 
-// func (state *HouseActor) Receive(ctx actor.Context) {
-// 	switch msg := ctx.Message().(type) {
+	ticker       *time.Ticker
+	stopTickerCh chan struct{}
+}
 
-// 	case messages.CreateBuildingMessage:
-// 		state.Building = msg.Building
-// 		if !msg.Restore {
-// 			ctx.Send(state.Database, messages.CreateBuildingMessage{
-// 				Building: state.Building,
-// 			})
+func NewHouseActor() ports.BaseActorInterface {
+	return &houseActor{}
+}
 
-// 			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getCityPID(), messages.UpdateCityPopulationCapMessage{
-// 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_HOUSE, state.Building.Level),
-// 			})
-// 			if err != nil {
-// 				log.Printf("Error updating city population cap: %s", err)
-// 				ctx.Respond(messages.CreateBuildingResponseMessage{
-// 					Error: err,
-// 				})
-// 				return
-// 			}
-// 			if response.Error != nil {
-// 				log.Printf("Error updating city population cap: %s", response.Error)
-// 				ctx.Respond(messages.CreateBuildingResponseMessage{
-// 					Error: response.Error,
-// 				})
-// 				return
-// 			}
-// 		}
-// 		ctx.Respond(messages.CreateBuildingResponseMessage{
-// 			Error: nil,
-// 		})
+func (state *houseActor) ActorType() string {
+	return string(constants.BuildingTypeHouse)
+}
 
-// 	case messages.UpgradeBuildingMessage:
-// 		ctx.Respond(messages.UpgradeBuildingResponseMessage{
-// 			Error: state.upgradeBuilding(ctx),
-// 		})
+func (state *houseActor) Receive(ctx actor.Context) {
+	switch msg := ctx.Message().(type) {
 
-// 	case messages.GetBuildingMessage:
-// 		ctx.Respond(messages.GetBuildingResponseMessage{
-// 			Building: state.Building,
-// 		})
+	case messages.CreateBuildingMessage:
+		state.Building = msg.Building
+		if !msg.Restore {
+			ctx.Send(state.Cluster.DB(), messages.CreateBuildingMessage{
+				Building: state.Building,
+			})
 
-// 	case messages.DeleteBuildingMessage:
-// 		state.deleteBuilding(ctx)
-// 	}
-// }
+			// TODO: move this to happen on construction complete
+			err := state.Cluster.Tell("city", state.Building.CityID, messages.UpdateCityPopulationCapMessage{
+				Change: constants.GetBuildingPopulation(constants.BuildingTypeHouse, 1),
+			})
+			if err != nil {
+				state.Log.Error("failed to increment city population cap from house construction", "error", err)
+			}
+		}
+		state.startPeriodicOperation(ctx)
+		ctx.Respond(messages.Ack{})
+
+	case messages.UpgradeBuildingMessage:
+		state.upgrade(ctx)
+
+	case messages.PeriodicOperationMessage:
+		if state.constructionActive() || state.Owner == nil {
+			return
+		}
+		// TODO: do houses have any periodic activity?
+
+	case messages.GetBuildingMessage:
+		ctx.Respond(messages.GetBuildingResponseMessage{
+			Building: state.Building,
+		})
+
+	case messages.DeleteBuildingMessage:
+		state.stopPeriodicOperation()
+		state.destroy(ctx)
+	}
+}
+
+func (state *houseActor) startPeriodicOperation(ctx actor.Context) {
+	state.ticker = time.NewTicker(constants.BuildingProductionFrequency * time.Second)
+	state.stopTickerCh = make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-state.ticker.C:
+				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
+			case <-state.stopTickerCh:
+				state.ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (state *houseActor) stopPeriodicOperation() {
+	select {
+	case <-state.stopTickerCh:
+	default:
+		close(state.stopTickerCh)
+	}
+}

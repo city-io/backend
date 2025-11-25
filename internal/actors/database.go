@@ -13,8 +13,8 @@ import (
 	"cityio/internal/ports"
 )
 
-type DatabaseActor struct {
-	BaseActor
+type databaseActor struct {
+	baseActor
 	db database.Querier
 
 	// use map to only preserve latest update
@@ -26,7 +26,7 @@ type DatabaseActor struct {
 }
 
 func NewDatabaseActor(db database.Querier) ports.BaseActorInterface {
-	return &DatabaseActor{
+	return &databaseActor{
 		db:           db,
 		userBuffer:   make(map[string]models.User),
 		cityBuffer:   make(map[string]models.City),
@@ -34,11 +34,11 @@ func NewDatabaseActor(db database.Querier) ports.BaseActorInterface {
 	}
 }
 
-func (state *DatabaseActor) ActorType() string {
+func (state *databaseActor) ActorType() string {
 	return "database"
 }
 
-func (state *DatabaseActor) Receive(ctx actor.Context) {
+func (state *databaseActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case messages.InitDatabaseMessage:
@@ -194,7 +194,7 @@ func (state *DatabaseActor) Receive(ctx actor.Context) {
 	}
 }
 
-func (state *DatabaseActor) startPeriodicOperation(ctx actor.Context) {
+func (state *databaseActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.DBBackupFrequency * time.Second)
 
 	go func() {

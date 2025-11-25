@@ -14,7 +14,7 @@ import (
 )
 
 type cityActor struct {
-	BaseActor
+	baseActor
 	City models.City
 
 	ticker       *time.Ticker
@@ -55,17 +55,15 @@ func (state *cityActor) Receive(ctx actor.Context) {
 				}
 			}
 		}
-		// spawn city / town center building actor
+		// TODO: spawn city / town center building actor
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateCityOwnerMessage:
 		state.City.Owner = &msg.Owner
-		// pass to buildings
+		// TODO: pass to buildings on tiles
 
 	case messages.UpdateCityPopulationCapMessage:
-		if state.City.Owner != nil {
-			state.Log.Debug("updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
-		}
+		state.Log.Debug("updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
 		state.City.PopulationCap += float64(msg.Change)
 
 	case messages.GetCityMessage:

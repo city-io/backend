@@ -10,20 +10,33 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
+	"cityio/internal/ports"
 )
 
-type BuildingActor struct {
-	BaseActor
+type buildingActor struct {
+	baseActor
 	Building models.Building
 
 	Owner *string
+	Impl  ports.BuildingActorImpl
+
+	ticker       *time.Ticker
+	stopTickerCh chan struct{}
 }
 
-func (state *BuildingActor) constructionActive() bool {
+func NewBuildingActor() ports.BaseActorInterface {
+	return &buildingActor{}
+}
+
+func (state *buildingActor) ActorType() string {
+	return string(constants.BuildingTypeCityCenter)
+}
+
+func (state *buildingActor) constructionActive() bool {
 	return (state.Building.Level != state.Building.TargetLevel) || (state.Building.ConstructionStart.Time != nil && state.Building.ConstructionEnd.Time != nil)
 }
 
-func (state *BuildingActor) upgrade(ctx actor.Context) error {
+func (state *buildingActor) upgrade(ctx actor.Context) error {
 	if state.Owner == nil {
 		return errors.New("cannot upgrade building without owner")
 	}
@@ -63,13 +76,16 @@ func (state *BuildingActor) upgrade(ctx actor.Context) error {
 	state.Building.TargetLevel++
 	state.Building.ConstructionStart = models.NullTime{Time: &now}
 	state.Building.ConstructionEnd = models.NullTime{Time: &end}
+
+	// TODO: spawn a blocking goroutine that sends a message upon completion
+	// ensure that it gets an ACK back for processing
 	ctx.Send(state.Cluster.DB(), messages.UpdateBuildingMessage{
 		Building: state.Building,
 	})
 	return nil
 }
 
-func (state *BuildingActor) destroy(ctx actor.Context) {
+func (state *buildingActor) destroy(ctx actor.Context) {
 	ctx.Send(state.Cluster.DB(), messages.DeleteBuildingMessage{
 		BuildingID: state.Building.BuildingID,
 	})

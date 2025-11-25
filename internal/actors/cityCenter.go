@@ -1,120 +1,91 @@
 package actors
 
-// import (
-// 	"cityio/internal/constants"
-// 	"cityio/internal/messages"
+import (
+	"time"
 
-// 	"log"
-// 	"time"
+	"github.com/asynkron/protoactor-go/actor"
 
-// 	"github.com/asynkron/protoactor-go/actor"
-// )
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/ports"
+)
 
-// type CityCenterActor struct {
-// 	BuildingActor
+type cityCenterActor struct {
+	BuildingActor
 
-// 	ticker       *time.Ticker
-// 	stopTickerCh chan struct{}
-// }
+	ticker       *time.Ticker
+	stopTickerCh chan struct{}
+}
 
-// func (state *CityCenterActor) Receive(ctx actor.Context) {
-// 	switch msg := ctx.Message().(type) {
+func NewCityCenterActor() ports.BaseActorInterface {
+	return &cityCenterActor{}
+}
 
-// 	case messages.CreateBuildingMessage:
-// 		state.Building = msg.Building
-// 		if !msg.Restore {
-// 			ctx.Send(state.Database, messages.CreateBuildingMessage{
-// 				Building: state.Building,
-// 			})
+func (state *cityCenterActor) ActorType() string {
+	return string(constants.BuildingTypeCityCenter)
+}
 
-// 			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getCityPID(), messages.UpdateCityPopulationCapMessage{
-// 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
-// 			})
-// 			if err != nil {
-// 				log.Printf("Error updating city population cap: %s", err)
-// 				ctx.Respond(messages.CreateBuildingResponseMessage{
-// 					Error: err,
-// 				})
-// 				return
-// 			}
-// 			if response.Error != nil {
-// 				log.Printf("Error updating city population cap: %s", response.Error)
-// 				ctx.Respond(messages.CreateBuildingResponseMessage{
-// 					Error: response.Error,
-// 				})
-// 				return
-// 			}
-// 		}
-// 		ctx.Respond(messages.CreateBuildingResponseMessage{
-// 			Error: nil,
-// 		})
-// 		state.startPeriodicOperation(ctx)
+func (state *cityCenterActor) Receive(ctx actor.Context) {
+	switch msg := ctx.Message().(type) {
 
-// 	case messages.UpgradeBuildingMessage:
-// 		ctx.Respond(messages.UpgradeBuildingResponseMessage{
-// 			Error: state.upgradeBuilding(ctx),
-// 		})
+	case messages.CreateBuildingMessage:
+		state.Building = msg.Building
+		if !msg.Restore {
+			ctx.Send(state.Cluster.DB(), messages.CreateBuildingMessage{
+				Building: state.Building,
+			})
+		}
+		// TODO: signal tile actor of building
+		state.startPeriodicOperation(ctx)
+		ctx.Respond(messages.Ack{})
 
-// 	case messages.PeriodicOperationMessage:
-// 		if state.Building.ConstructionEnd.After(time.Now()) {
-// 			return
-// 		}
+	case messages.UpgradeBuildingMessage:
+		state.upgrade(ctx)
 
-// 		userPID := state.getUserPID()
-// 		if userPID == nil {
-// 			// not owned by a player, don't update production balance
-// 			return
-// 		}
-// 		updateGoldResponse, err := Request[messages.UpdateUserGoldResponseMessage](ctx, userPID, messages.UpdateUserGoldMessage{
-// 			Change: constants.GetBuildingProduction(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
-// 		})
-// 		if err != nil {
-// 			log.Printf("Error updating user gold: %s", err)
-// 		}
-// 		if updateGoldResponse.Error != nil {
-// 			log.Printf("Error updating user gold: %s", updateGoldResponse.Error)
-// 		}
+	case messages.PeriodicOperationMessage:
+		if state.constructionActive() || state.Owner == nil {
+			return
+		}
 
-// 		var updateFoodResponse *messages.UpdateUserFoodResponseMessage
-// 		updateFoodResponse, err = Request[messages.UpdateUserFoodResponseMessage](ctx, userPID, messages.UpdateUserFoodMessage{
-// 			Change: constants.GetBuildingProduction(constants.BUILDING_TYPE_CITY_CENTER, state.Building.Level),
-// 		})
-// 		if err != nil {
-// 			log.Printf("Error updating user gold: %s", err)
-// 		}
-// 		if updateFoodResponse.Error != nil {
-// 			log.Printf("Error updating user gold: %s", updateFoodResponse.Error)
-// 		}
+		err := state.Cluster.Tell("user", *state.Owner, messages.UpdateUserGoldMessage{
+			Change: constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level),
+		})
+		if err != nil {
+			state.Log.Error("failed to send city center production back to user", "error", err)
+		}
 
-// 	case messages.GetBuildingMessage:
-// 		ctx.Respond(messages.GetBuildingResponseMessage{
-// 			Building: state.Building,
-// 		})
+	case messages.GetBuildingMessage:
+		ctx.Respond(messages.GetBuildingResponseMessage{
+			Building: state.Building,
+		})
 
-// 	case messages.DeleteBuildingMessage:
-// 		state.stopPeriodicOperation()
-// 		state.deleteBuilding(ctx)
-// 	}
-// }
+	case messages.DeleteBuildingMessage:
+		state.stopPeriodicOperation()
+		state.destroy(ctx)
+	}
+}
 
-// func (state *CityCenterActor) startPeriodicOperation(ctx actor.Context) {
-// 	state.ticker = time.NewTicker(constants.BUILDING_PRODUCTION_FREQUENCY * time.Second)
-// 	state.stopTickerCh = make(chan struct{})
+func (state *cityCenterActor) startPeriodicOperation(ctx actor.Context) {
+	state.ticker = time.NewTicker(constants.BuildingProductionFrequency * time.Second)
+	state.stopTickerCh = make(chan struct{})
 
-// 	go func() {
-// 		for {
-// 			select {
-// 			case <-state.ticker.C:
-// 				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
-// 			case <-state.stopTickerCh:
-// 				state.ticker.Stop()
-// 				return
-// 			}
-// 		}
-// 	}()
-// }
+	go func() {
+		for {
+			select {
+			case <-state.ticker.C:
+				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
+			case <-state.stopTickerCh:
+				state.ticker.Stop()
+				return
+			}
+		}
+	}()
+}
 
-// func (state *CityCenterActor) stopPeriodicOperation() {
-// 	close(state.stopTickerCh)
-// 	state.ticker = nil
-// }
+func (state *cityCenterActor) stopPeriodicOperation() {
+	select {
+	case <-state.stopTickerCh:
+	default:
+		close(state.stopTickerCh)
+	}
+}

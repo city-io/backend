@@ -7,13 +7,13 @@ import (
 	"cityio/internal/ports"
 )
 
-type BaseActor struct {
+type baseActor struct {
 	actor.Actor
 	Log     ports.Logger
 	Cluster ports.ClusterProvider
 	Ctrls   ports.Controllers
 }
 
-func (b *BaseActor) SetLog(log ports.Logger)                  { b.Log = log }
-func (b *BaseActor) SetCluster(cluster ports.ClusterProvider) { b.Cluster = cluster }
-func (b *BaseActor) SetControllers(ctrls ports.Controllers)   { b.Ctrls = ctrls }
+func (b *baseActor) SetLog(log ports.Logger)                  { b.Log = log }
+func (b *baseActor) SetCluster(cluster ports.ClusterProvider) { b.Cluster = cluster }
+func (b *baseActor) SetControllers(ctrls ports.Controllers)   { b.Ctrls = ctrls }

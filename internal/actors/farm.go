@@ -1,97 +1,90 @@
 package actors
 
-// import (
-// 	"cityio/internal/constants"
-// 	"cityio/internal/messages"
+import (
+	"time"
 
-// 	"log"
-// 	"time"
+	"github.com/asynkron/protoactor-go/actor"
 
-// 	"github.com/asynkron/protoactor-go/actor"
-// )
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+	"cityio/internal/ports"
+)
 
-// type FarmActor struct {
-// 	BuildingActor
+type farmActor struct {
+	BuildingActor
 
-// 	ticker       *time.Ticker
-// 	stopTickerCh chan struct{}
-// }
+	ticker       *time.Ticker
+	stopTickerCh chan struct{}
+}
 
-// func (state *FarmActor) Receive(ctx actor.Context) {
-// 	switch msg := ctx.Message().(type) {
+func NewFarmActor() ports.BaseActorInterface {
+	return &farmActor{}
+}
 
-// 	case messages.CreateBuildingMessage:
-// 		state.Building = msg.Building
-// 		if !msg.Restore {
-// 			ctx.Send(state.Database, messages.CreateBuildingMessage{
-// 				Building: state.Building,
-// 			})
-// 			ctx.Send(state.Database, messages.CreateBuildingMessage{
-// 				Building: state.Building,
-// 			})
-// 		}
-// 		ctx.Respond(messages.CreateBuildingResponseMessage{
-// 			Error: nil,
-// 		})
-// 		state.startPeriodicOperation(ctx)
+func (state *farmActor) ActorType() string {
+	return string(constants.BuildingTypeFarm)
+}
 
-// 	case messages.UpgradeBuildingMessage:
-// 		ctx.Respond(messages.UpgradeBuildingResponseMessage{
-// 			Error: state.upgradeBuilding(ctx),
-// 		})
+func (state *farmActor) Receive(ctx actor.Context) {
+	switch msg := ctx.Message().(type) {
 
-// 	case messages.PeriodicOperationMessage:
-// 		if state.Building.ConstructionEnd.After(time.Now()) {
-// 			return
-// 		}
+	case messages.CreateBuildingMessage:
+		state.Building = msg.Building
+		if !msg.Restore {
+			ctx.Send(state.Cluster.DB(), messages.CreateBuildingMessage{
+				Building: state.Building,
+			})
+		}
+		state.startPeriodicOperation(ctx)
+		ctx.Respond(messages.Ack{})
 
-// 		userPID := state.getUserPID()
-// 		if userPID == nil {
-// 			// not owned by a player
-// 			return
-// 		}
-// 		response, err := Request[messages.UpdateUserGoldResponseMessage](ctx, userPID, messages.UpdateUserGoldMessage{
-// 			Change: constants.GetBuildingProduction(state.Building.Type, state.Building.Level),
-// 		})
-// 		if err != nil {
-// 			log.Printf("Error updating user gold: %s", err)
-// 		}
-// 		if response.Error != nil {
-// 			log.Printf("Error updating user gold: %s", response.Error)
-// 		}
+	case messages.UpgradeBuildingMessage:
+		state.upgrade(ctx)
 
-// 	case messages.GetBuildingMessage:
-// 		ctx.Respond(messages.GetBuildingResponseMessage{
-// 			Building: state.Building,
-// 		})
+	case messages.PeriodicOperationMessage:
+		if state.constructionActive() || state.Owner == nil {
+			return
+		}
 
-// 	case messages.DeleteBuildingMessage:
-// 		state.stopPeriodicOperation()
-// 		state.deleteBuilding(ctx)
-// 	}
-// }
+		err := state.Cluster.Tell("user", *state.Owner, messages.UpdateUserFoodMessage{
+			Change: constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level),
+		})
+		if err != nil {
+			state.Log.Error("failed to send farm production back to user", "error", err)
+		}
 
-// func (state *FarmActor) startPeriodicOperation(ctx actor.Context) {
-// 	state.ticker = time.NewTicker(constants.BUILDING_PRODUCTION_FREQUENCY * time.Second)
-// 	state.stopTickerCh = make(chan struct{})
+	case messages.GetBuildingMessage:
+		ctx.Respond(messages.GetBuildingResponseMessage{
+			Building: state.Building,
+		})
 
-// 	go func() {
-// 		for {
-// 			select {
-// 			case <-state.ticker.C:
-// 				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
-// 			case <-state.stopTickerCh:
-// 				state.ticker.Stop()
-// 				return
-// 			}
-// 		}
-// 	}()
-// }
+	case messages.DeleteBuildingMessage:
+		state.stopPeriodicOperation()
+		state.destroy(ctx)
+	}
+}
 
-// func (state *FarmActor) stopPeriodicOperation() {
-// 	select {
-// 	case <-state.stopTickerCh:
-// 	default:
-// 		close(state.stopTickerCh)
-// 	}
-// }
+func (state *farmActor) startPeriodicOperation(ctx actor.Context) {
+	state.ticker = time.NewTicker(constants.BuildingProductionFrequency * time.Second)
+	state.stopTickerCh = make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-state.ticker.C:
+				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
+			case <-state.stopTickerCh:
+				state.ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (state *farmActor) stopPeriodicOperation() {
+	select {
+	case <-state.stopTickerCh:
+	default:
+		close(state.stopTickerCh)
+	}
+}
