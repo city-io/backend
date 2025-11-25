@@ -14,6 +14,9 @@ type UpgradeBuildingMessage struct{}
 
 type GetBuildingMessage struct{}
 
+type UpdateBuildingOwnerMessage struct {
+	Owner *string
+}
 type UpdateBuildingMessage struct {
 	Building models.Building
 }

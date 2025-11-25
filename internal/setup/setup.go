@@ -41,7 +41,7 @@ func Run(deps *Deps) {
 	}
 	log.Info("spawned user actors", "count", len(users))
 
-	// TODO: Remove test user registration later
+	// TODO: remove test user registration later
 	userID, err := ctrls.User().Create(&models.CreateUserRequest{
 		Email:    "cityio@example.com",
 		Username: "cityio",

@@ -57,6 +57,7 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 		cluster.NewKind("user", actor.PropsFromProducer(spawn(actors.NewUserActor))),
 		cluster.NewKind("city", actor.PropsFromProducer(spawn(actors.NewCityActor))),
 		cluster.NewKind("tile", actor.PropsFromProducer(spawn(actors.NewTileActor))),
+		cluster.NewKind("building", actor.PropsFromProducer(spawn(actors.NewBuildingActor))),
 	}
 
 	remoteConfig := remote.Configure("127.0.0.1", 8090)

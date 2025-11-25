@@ -1,61 +1,36 @@
 package actors
 
-// import (
-// 	"cityio/internal/constants"
-// 	"cityio/internal/messages"
+import (
+	"github.com/asynkron/protoactor-go/actor"
 
-// 	"log"
+	"cityio/internal/constants"
+	"cityio/internal/messages"
+)
 
-// 	"github.com/asynkron/protoactor-go/actor"
-// )
+type houseImpl struct{}
 
-// type HouseActor struct {
-// 	BuildingActor
-// }
+func newHouseImpl() buildingActorImpl {
+	return &houseImpl{}
+}
 
-// func (state *HouseActor) Receive(ctx actor.Context) {
-// 	switch msg := ctx.Message().(type) {
+func (c *houseImpl) Create(ctx actor.Context, state *buildingActor) {
+	// TODO: switch this to an on-upgrade/construction complete hook
+	err := state.Cluster.Tell("city", state.Building.CityID, messages.UpdateCityPopulationCapMessage{
+		Change: constants.GetBuildingPopulation(constants.BuildingTypeHouse, 1),
+	})
+	if err != nil {
+		state.Log.Error("failed to increment city population cap from house construction", "error", err)
+	}
+}
 
-// 	case messages.CreateBuildingMessage:
-// 		state.Building = msg.Building
-// 		if !msg.Restore {
-// 			ctx.Send(state.Database, messages.CreateBuildingMessage{
-// 				Building: state.Building,
-// 			})
+func (c *houseImpl) Destroy(ctx actor.Context, state *buildingActor) {}
 
-// 			response, err := Request[messages.UpdateCityPopulationCapResponseMessage](ctx, state.getCityPID(), messages.UpdateCityPopulationCapMessage{
-// 				Change: constants.GetBuildingPopulation(constants.BUILDING_TYPE_HOUSE, state.Building.Level),
-// 			})
-// 			if err != nil {
-// 				log.Printf("Error updating city population cap: %s", err)
-// 				ctx.Respond(messages.CreateBuildingResponseMessage{
-// 					Error: err,
-// 				})
-// 				return
-// 			}
-// 			if response.Error != nil {
-// 				log.Printf("Error updating city population cap: %s", response.Error)
-// 				ctx.Respond(messages.CreateBuildingResponseMessage{
-// 					Error: response.Error,
-// 				})
-// 				return
-// 			}
-// 		}
-// 		ctx.Respond(messages.CreateBuildingResponseMessage{
-// 			Error: nil,
-// 		})
+func (c *houseImpl) Handle(ctx actor.Context, state *buildingActor) {
+	switch ctx.Message().(type) {
 
-// 	case messages.UpgradeBuildingMessage:
-// 		ctx.Respond(messages.UpgradeBuildingResponseMessage{
-// 			Error: state.upgradeBuilding(ctx),
-// 		})
-
-// 	case messages.GetBuildingMessage:
-// 		ctx.Respond(messages.GetBuildingResponseMessage{
-// 			Building: state.Building,
-// 		})
-
-// 	case messages.DeleteBuildingMessage:
-// 		state.deleteBuilding(ctx)
-// 	}
-// }
+	case messages.PeriodicOperationMessage:
+		if state.constructionActive() || state.Owner == nil {
+			return
+		}
+	}
+}

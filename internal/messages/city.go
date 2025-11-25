@@ -15,7 +15,7 @@ type UpdateCityMessage struct {
 	City models.City
 }
 type UpdateCityOwnerMessage struct {
-	Owner string
+	Owner *string
 }
 type UpdateCityPopulationCapMessage struct {
 	Change float64

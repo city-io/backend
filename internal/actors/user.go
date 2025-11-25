@@ -14,7 +14,7 @@ import (
 )
 
 type userActor struct {
-	BaseActor
+	baseActor
 	User models.User
 
 	ticker       *time.Ticker
