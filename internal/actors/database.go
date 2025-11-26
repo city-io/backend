@@ -55,7 +55,6 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			state.Log.Error("error creating user in db", "error", err)
 		}
 	case *messages.UpdateUserMessage:
-		state.Log.Info("backing up user", "username", msg.User.Username)
 		state.userBuffer[msg.User.UserID] = msg.User
 	case messages.DeleteUserMessage:
 		err := state.db.DeleteUser(context.Background(), msg.UserID)

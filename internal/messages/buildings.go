@@ -7,8 +7,10 @@ import (
 )
 
 type CreateBuildingMessage struct {
-	Building models.Building
-	Restore  bool
+	Building  models.Building
+	Owner     *string
+	Restore   bool
+	Construct bool
 }
 type UpgradeBuildingMessage struct{}
 

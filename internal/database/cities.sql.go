@@ -20,9 +20,7 @@ INSERT INTO cities (
     population,
     population_cap,
     start_coords,
-    size,
-    created_at,
-    updated_at
+    size
 )
 SELECT
     v.city_id,
@@ -32,9 +30,7 @@ SELECT
     v.population,
     v.population_cap,
     ROW(v.start_x, v.start_y)::coordinates,
-    v.size,
-    NOW(),
-    NOW()
+    v.size
 FROM (
     SELECT
         UNNEST($1::text[])           AS city_id,

@@ -6,19 +6,22 @@ import (
 )
 
 type controllers struct {
-	user ports.UserController
-	city ports.CityController
-	tile ports.TileController
+	user     ports.UserController
+	city     ports.CityController
+	tile     ports.TileController
+	building ports.BuildingController
 }
 
-func (c *controllers) User() ports.UserController { return c.user }
-func (c *controllers) City() ports.CityController { return c.city }
-func (c *controllers) Tile() ports.TileController { return c.tile }
+func (c *controllers) User() ports.UserController         { return c.user }
+func (c *controllers) City() ports.CityController         { return c.city }
+func (c *controllers) Tile() ports.TileController         { return c.tile }
+func (c *controllers) Building() ports.BuildingController { return c.building }
 
 func NewControllers(cp ports.ClusterProvider, l ports.Logger) ports.Controllers {
 	return &controllers{
-		user: NewUserController(cp, l),
-		city: NewCityController(cp, l),
-		tile: NewTileController(cp, l),
+		user:     NewUserController(cp, l),
+		city:     NewCityController(cp, l),
+		tile:     NewTileController(cp, l),
+		building: NewBuildingController(cp, l),
 	}
 }

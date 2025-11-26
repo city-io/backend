@@ -37,10 +37,10 @@ func (q *Queries) BatchUpdateUsers(ctx context.Context, arg BatchUpdateUsersPara
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (
-    user_id, email, username, password, gold, food, created_at, updated_at
+    user_id, email, username, password, gold, food
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6
 )
 `
 

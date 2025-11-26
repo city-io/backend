@@ -11,6 +11,67 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const batchCreateBuildings = `-- name: BatchCreateBuildings :exec
+INSERT INTO buildings (
+    building_id,
+    city_id,
+    type,
+    level,
+    target_level,
+    coords,
+    construction_start,
+    construction_end
+)
+SELECT
+    v.building_id,
+    v.city_id,
+    v.type,
+    v.level,
+    v.target_level,
+    ROW(v.x, v.y)::coordinates,
+    v.construction_start,
+    v.construction_end
+FROM (
+    SELECT
+        UNNEST($1::text[])              AS building_id,
+        UNNEST($2::text[])                  AS city_id,
+        UNNEST($3::text[])                     AS type,
+        UNNEST($4::int[])                     AS level,
+        UNNEST($5::int[])              AS target_level,
+        UNNEST($6::int[])                         AS x,
+        UNNEST($7::int[])                         AS y,
+        UNNEST($8::timestamp[]) AS construction_start,
+        UNNEST($9::timestamp[])   AS construction_end
+) AS v
+`
+
+type BatchCreateBuildingsParams struct {
+	BuildingIds        []string           `json:"building_ids"`
+	CityIds            []string           `json:"city_ids"`
+	Types              []string           `json:"types"`
+	Levels             []int32            `json:"levels"`
+	TargetLevels       []int32            `json:"target_levels"`
+	Xs                 []int32            `json:"xs"`
+	Ys                 []int32            `json:"ys"`
+	ConstructionStarts []pgtype.Timestamp `json:"construction_starts"`
+	ConstructionEnds   []pgtype.Timestamp `json:"construction_ends"`
+}
+
+func (q *Queries) BatchCreateBuildings(ctx context.Context, arg BatchCreateBuildingsParams) error {
+	_, err := q.db.Exec(ctx, batchCreateBuildings,
+		arg.BuildingIds,
+		arg.CityIds,
+		arg.Types,
+		arg.Levels,
+		arg.TargetLevels,
+		arg.Xs,
+		arg.Ys,
+		arg.ConstructionStarts,
+		arg.ConstructionEnds,
+	)
+	return err
+}
+
 const createBuilding = `-- name: CreateBuilding :exec
 INSERT INTO buildings (
     building_id,
@@ -59,4 +120,60 @@ func (q *Queries) CreateBuilding(ctx context.Context, arg CreateBuildingParams) 
 		arg.ConstructionEnd,
 	)
 	return err
+}
+
+const getAllBuildings = `-- name: GetAllBuildings :many
+SELECT
+    building_id,
+    city_id,
+    type,
+    level,
+    target_level,
+    (coords).x::int4 AS x,
+    (coords).y::int4 AS y,
+    construction_start,
+    construction_end
+FROM buildings
+`
+
+type GetAllBuildingsRow struct {
+	BuildingID        string           `json:"building_id"`
+	CityID            string           `json:"city_id"`
+	Type              string           `json:"type"`
+	Level             int32            `json:"level"`
+	TargetLevel       int32            `json:"target_level"`
+	X                 int32            `json:"x"`
+	Y                 int32            `json:"y"`
+	ConstructionStart pgtype.Timestamp `json:"construction_start"`
+	ConstructionEnd   pgtype.Timestamp `json:"construction_end"`
+}
+
+func (q *Queries) GetAllBuildings(ctx context.Context) ([]GetAllBuildingsRow, error) {
+	rows, err := q.db.Query(ctx, getAllBuildings)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllBuildingsRow
+	for rows.Next() {
+		var i GetAllBuildingsRow
+		if err := rows.Scan(
+			&i.BuildingID,
+			&i.CityID,
+			&i.Type,
+			&i.Level,
+			&i.TargetLevel,
+			&i.X,
+			&i.Y,
+			&i.ConstructionStart,
+			&i.ConstructionEnd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

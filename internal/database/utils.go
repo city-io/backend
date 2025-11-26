@@ -44,3 +44,31 @@ func (u User) ToModel() *models.User {
 		UpdatedAt: u.UpdatedAt.Time,
 	}
 }
+
+func (b Building) ToModel() *models.Building {
+	return &models.Building{
+		BuildingID:        b.BuildingID,
+		CityID:            b.CityID,
+		Type:              b.Type,
+		Level:             int(b.Level),
+		TargetLevel:       int(b.TargetLevel),
+		X:                 b.Coords.X,
+		Y:                 b.Coords.Y,
+		ConstructionStart: models.NullTime{Time: &b.ConstructionStart.Time},
+		ConstructionEnd:   models.NullTime{Time: &b.ConstructionEnd.Time},
+	}
+}
+
+func (b GetAllBuildingsRow) ToModel() *models.Building {
+	return &models.Building{
+		BuildingID:        b.BuildingID,
+		CityID:            b.CityID,
+		Type:              b.Type,
+		Level:             int(b.Level),
+		TargetLevel:       int(b.TargetLevel),
+		X:                 int(b.X),
+		Y:                 int(b.Y),
+		ConstructionStart: models.NullTime{Time: &b.ConstructionStart.Time},
+		ConstructionEnd:   models.NullTime{Time: &b.ConstructionEnd.Time},
+	}
+}

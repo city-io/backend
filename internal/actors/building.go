@@ -43,18 +43,21 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *messages.CreateBuildingMessage:
 		state.Building = msg.Building
+		state.Owner = msg.Owner
 		if !msg.Restore {
-			now := time.Now()
-			end := now.Add(
-				time.Duration(constants.GetBuildingConstructionTime(
-					state.Building.BuildingType(),
-					1,
-				)) * time.Second,
-			)
-			state.Building.ConstructionStart = models.NullTime{Time: &now}
-			state.Building.ConstructionEnd = models.NullTime{Time: &end}
-			state.Building.Level = 0
-			state.Building.TargetLevel = 1
+			if msg.Construct {
+				now := time.Now()
+				end := now.Add(
+					time.Duration(constants.GetBuildingConstructionTime(
+						state.Building.BuildingType(),
+						1,
+					)) * time.Second,
+				)
+				state.Building.ConstructionStart = models.NullTime{Time: &now}
+				state.Building.ConstructionEnd = models.NullTime{Time: &end}
+				state.Building.Level = 0
+				state.Building.TargetLevel = 1
+			}
 
 			// TODO: trigger construction complete message
 			ctx.Send(state.Cluster.DB(), &messages.CreateBuildingMessage{

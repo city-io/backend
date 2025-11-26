@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	BatchCreateBuildings(ctx context.Context, arg BatchCreateBuildingsParams) error
 	BatchCreateCities(ctx context.Context, arg BatchCreateCitiesParams) error
 	BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesParams) error
 	BatchUpdateUsers(ctx context.Context, arg BatchUpdateUsersParams) error
@@ -18,6 +19,7 @@ type Querier interface {
 	DeleteCity(ctx context.Context, cityID string) error
 	DeleteUser(ctx context.Context, userID string) error
 	FindEmptyCityBlock(ctx context.Context, arg FindEmptyCityBlockParams) (FindEmptyCityBlockRow, error)
+	GetAllBuildings(ctx context.Context) ([]GetAllBuildingsRow, error)
 	GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error)
 	GetAllUsers(ctx context.Context) ([]User, error)
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error

@@ -14,7 +14,7 @@ func AddConnection(userId string, conn *websocket.Conn) {
 	connections[userId] = conn
 }
 
-func Send(userId string, message int, data interface{}) error {
+func Send(userId string, message int, data any) error {
 	conn, ok := connections[userId]
 	if !ok {
 		return nil

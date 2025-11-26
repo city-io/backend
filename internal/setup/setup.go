@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"cityio/internal/constants"
 	"cityio/internal/database"
@@ -89,16 +90,22 @@ func Run(deps *Deps) {
 	// }
 	// log.Printf("Spawned actors for %d armies", len(armies))
 
-	// var buildings []models.Building
-	// cl.DB().Find(&buildings)
+	buildings, err := db.GetAllBuildings(ctx)
+	if err != nil {
+		panic(err)
+	}
 
-	// for _, building := range buildings {
-	// 	err := services.RestoreBuilding(building)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-	// log.Printf("Spawned actors for %d buildings", len(buildings))
+	for _, building := range buildings {
+		// city and town center will get restored by city actor
+		if building.Type == string(constants.BuildingTypeCityCenter) || building.Type == string(constants.BuildingTypeTownCenter) {
+			continue
+		}
+		err := ctrls.Building().Restore(building.ToModel())
+		if err != nil {
+			panic(err)
+		}
+	}
+	log.Info("spawned building actors", "count", len(buildings))
 	log.Info("initialization complete")
 }
 
@@ -152,18 +159,21 @@ func reset(deps *Deps) error {
 		}
 		log.Debug("created city in db", "city_id", cityID, "user", user.Username, "x", startX, "y", startY)
 
-		// result = db.Create(&models.Building{
-		// 	BuildingID: uuid.New().String(),
-		// 	CityID:     cityID,
-		// 	Type:       "city_center",
-		// 	Level:      1,
-		// 	X:          startX + int(math.Floor(float64(constants.CitySize)/2)),
-		// 	Y:          startY + int(math.Floor(float64(constants.CitySize)/2)),
-		// })
-		// if result.Error != nil {
-		// 	log.Error("Error creating building in db", "error", result.Error)
-		// 	return result.Error
-		// }
+		err = db.CreateBuilding(context.Background(), database.CreateBuildingParams{
+			BuildingID:        uuid.New().String(),
+			CityID:            cityID,
+			Type:              string(constants.BuildingTypeCityCenter),
+			Level:             1,
+			TargetLevel:       1,
+			X:                 int32(startX + constants.CitySize/2),
+			Y:                 int32(startY + constants.CitySize/2),
+			ConstructionStart: pgtype.Timestamp{Valid: false},
+			ConstructionEnd:   pgtype.Timestamp{Valid: false},
+		})
+		if err != nil {
+			log.Error("error creating building in db", "error", err)
+			return err
+		}
 
 		for i := range constants.CitySize {
 			for j := range constants.CitySize {
@@ -173,7 +183,7 @@ func reset(deps *Deps) error {
 	}
 
 	cities := make([]models.City, 0)
-	// buildings := make([]models.Building, 0)
+	buildings := make([]models.Building, 0)
 	for x := range constants.MapSize {
 		for y := range constants.MapSize {
 			open := true
@@ -212,14 +222,17 @@ func reset(deps *Deps) error {
 						StartY:        y,
 						Size:          size,
 					})
-					// buildings = append(buildings, models.Building{
-					// 	BuildingID: uuid.New().String(),
-					// 	CityID:     cityID,
-					// 	Type:       "town_center",
-					// 	Level:      1,
-					// 	X:          x + int(math.Floor(float64(size)/2)),
-					// 	Y:          y + int(math.Floor(float64(size)/2)),
-					// })
+					buildings = append(buildings, models.Building{
+						BuildingID:        uuid.New().String(),
+						CityID:            cityID,
+						Type:              string(constants.BuildingTypeTownCenter),
+						Level:             1,
+						TargetLevel:       1,
+						X:                 x + size/2,
+						Y:                 y + size/2,
+						ConstructionStart: models.NullTime{Time: nil},
+						ConstructionEnd:   models.NullTime{Time: nil},
+					})
 					occupied[x][y] = true
 					for i := 0; i < size; i++ {
 						for j := 0; j < size; j++ {
@@ -275,15 +288,41 @@ func reset(deps *Deps) error {
 
 	log.Debug("created cities", "count", len(cities))
 
-	// buildingBatchSize := 5000
-	// for i := 0; i < len(buildings); i += buildingBatchSize {
-	// 	end := min(i+buildingBatchSize, len(buildings))
-	// 	if result := db.Create(buildings[i:end]); result.Error != nil {
-	// 		log.Error("Error creating buildings", "error", result.Error)
-	// 		return result.Error
-	// 	}
-	// }
-	// log.Debug("Created buildings", "count", len(buildings))
+	buildingBatchSize := 5000
+	for i := 0; i < len(buildings); i += buildingBatchSize {
+		end := min(i+buildingBatchSize, len(buildings))
+		chunk := buildings[i:end]
+
+		params := database.BatchCreateBuildingsParams{
+			BuildingIds:        make([]string, 0, len(chunk)),
+			CityIds:            make([]string, 0, len(chunk)),
+			Types:              make([]string, 0, len(chunk)),
+			Levels:             make([]int32, 0, len(chunk)),
+			TargetLevels:       make([]int32, 0, len(chunk)),
+			Xs:                 make([]int32, 0, len(chunk)),
+			Ys:                 make([]int32, 0, len(chunk)),
+			ConstructionStarts: make([]pgtype.Timestamp, 0, len(chunk)),
+			ConstructionEnds:   make([]pgtype.Timestamp, 0, len(chunk)),
+		}
+
+		for _, b := range chunk {
+			params.BuildingIds = append(params.BuildingIds, b.BuildingID)
+			params.CityIds = append(params.CityIds, b.CityID)
+			params.Types = append(params.Types, string(b.Type))
+			params.Levels = append(params.Levels, int32(b.Level))
+			params.TargetLevels = append(params.TargetLevels, int32(b.TargetLevel))
+			params.Xs = append(params.Xs, int32(b.X))
+			params.Ys = append(params.Ys, int32(b.Y))
+			params.ConstructionStarts = append(params.ConstructionStarts, b.ConstructionStart.ToPG())
+			params.ConstructionEnds = append(params.ConstructionEnds, b.ConstructionEnd.ToPG())
+		}
+
+		if err := db.BatchCreateBuildings(context.Background(), params); err != nil {
+			log.Error("error batch creating buildings", "start_idx", i, "end_idx", end, "error", err)
+			return err
+		}
+	}
+
 	log.Debug("reset complete")
 	return nil
 }

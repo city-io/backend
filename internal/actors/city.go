@@ -46,15 +46,21 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			buildingX := msg.City.StartX + msg.City.Size/2
 			buildingY := msg.City.StartY + msg.City.Size/2
 			building := models.Building{
-				BuildingID: buildingID,
-				CityID:     msg.City.CityID,
-				Type:       string(buildingType),
-				X:          buildingX,
-				Y:          buildingY,
+				BuildingID:        buildingID,
+				CityID:            msg.City.CityID,
+				Type:              string(buildingType),
+				Level:             1,
+				TargetLevel:       1,
+				X:                 buildingX,
+				Y:                 buildingY,
+				ConstructionStart: models.NullTime{Time: nil},
+				ConstructionEnd:   models.NullTime{Time: nil},
 			}
 			state.Cluster.Request("building", buildingID, &messages.CreateBuildingMessage{
-				Building: building,
-				Restore:  false,
+				Building:  building,
+				Owner:     msg.City.Owner,
+				Restore:   false,
+				Construct: false,
 			})
 		}
 		state.startPeriodicOperation(ctx)

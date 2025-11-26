@@ -23,7 +23,7 @@ func NewUserController(cl ports.ClusterProvider, l ports.Logger) ports.UserContr
 }
 
 func (u *userController) Restore(user *models.User) error {
-	_, err := u.cluster.Request("user", user.Username, &messages.CreateUserMessage{
+	_, err := u.cluster.Request("user", user.UserID, &messages.CreateUserMessage{
 		User:    *user,
 		Restore: true,
 	})
@@ -42,7 +42,7 @@ func (u *userController) Create(user *models.CreateUserRequest) (string, error) 
 		return "", err
 	}
 
-	u.cluster.Request("user", user.Username, &messages.CreateUserMessage{
+	u.cluster.Request("user", userID, &messages.CreateUserMessage{
 		User: models.User{
 			UserID:   userID,
 			Username: user.Username,

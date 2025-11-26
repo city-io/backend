@@ -6,6 +6,7 @@ type Controllers interface {
 	User() UserController
 	City() CityController
 	Tile() TileController
+	Building() BuildingController
 }
 
 type UserController interface {
@@ -18,7 +19,9 @@ type CityController interface {
 	Create(city *models.CityInput) (*models.City, error)
 }
 
-type TileController interface {
-	// Restore(tile *models.Tile) error
-	// Create(city *models.Tile) error
+type TileController interface{}
+
+type BuildingController interface {
+	Restore(building *models.Building) error
+	Create(building *models.Building) (*models.Building, error)
 }

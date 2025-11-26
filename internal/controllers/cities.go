@@ -67,7 +67,7 @@ func (c *cityController) Create(city *models.CityInput) (*models.City, error) {
 	})
 	if err != nil {
 		c.log.Error("failed to create city actor", "city_id", cityID, "error", err)
-		return &models.City{}, err
+		return nil, err
 	}
 
 	return &newCity, nil
