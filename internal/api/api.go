@@ -46,8 +46,6 @@ func GetClaims(request *http.Request) models.UserClaims {
 }
 
 func Start() {
-	log.Printf("Serving at 0.0.0.0:%s...", os.Getenv("API_PORT"))
-
 	router := mux.NewRouter()
 	// router.Use(recoverMiddleware)
 	// addRoutes(router)

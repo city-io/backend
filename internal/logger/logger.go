@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/lmittmann/tint"
+
 	"cityio/internal/ports"
 )
 
@@ -13,7 +15,7 @@ type Logger struct {
 }
 
 func NewLogger() ports.Logger {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	logger := slog.New(tint.NewHandler(os.Stderr, &tint.Options{
 		Level: slog.LevelDebug,
 	}))
 	return &Logger{l: logger}
