@@ -23,5 +23,5 @@ type TileController interface{}
 
 type BuildingController interface {
 	Restore(building *models.Building) error
-	Create(building *models.Building) (*models.Building, error)
+	Create(building *models.BuildingInput) (*models.Building, error)
 }

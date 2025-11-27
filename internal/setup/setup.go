@@ -106,6 +106,7 @@ func Run(deps *Deps) {
 		}
 	}
 	log.Info("spawned building actors", "count", len(buildings))
+
 	log.Info("initialization complete")
 }
 

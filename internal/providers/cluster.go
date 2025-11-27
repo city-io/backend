@@ -76,7 +76,7 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 		}
 	}
 
-	clusterConfig := cluster.Configure("cityio-cluster", provider, lookup, remoteConfig, cluster.WithKinds(kinds...))
+	clusterConfig := cluster.Configure("cityio-cluster", provider, lookup, remoteConfig, cluster.WithKinds(kinds...), cluster.WithRequestLog(false))
 	cl := cluster.New(system, clusterConfig)
 	cp.cluster = cl
 	cl.StartMember()

@@ -33,18 +33,24 @@ func (b *buildingController) Restore(building *models.Building) error {
 	return nil
 }
 
-func (b *buildingController) Create(building *models.Building) (*models.Building, error) {
+func (b *buildingController) Create(building *models.BuildingInput) (*models.Building, error) {
 	b.log.Info("creating new building actor", "type", building.Type)
 
-	newBuilding := *building
-	newBuilding.BuildingID = uuid.New().String()
-	_, err := b.cluster.Request("building", newBuilding.BuildingID, &messages.CreateBuildingMessage{
+	buildingID := uuid.New().String()
+	newBuilding := models.Building{
+		BuildingID: buildingID,
+		CityID:     building.CityID,
+		Type:       string(building.Type),
+		X:          building.X,
+		Y:          building.Y,
+	}
+	_, err := b.cluster.Request("building", buildingID, &messages.CreateBuildingMessage{
 		Building:  newBuilding,
 		Restore:   false,
 		Construct: true,
 	})
 	if err != nil {
-		b.log.Error("failed to create building actor", "building_id", building.BuildingID, "error", err)
+		b.log.Error("failed to create building actor", "building_id", buildingID, "error", err)
 		return nil, err
 	}
 

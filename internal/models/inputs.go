@@ -29,6 +29,13 @@ type CityInput struct {
 	Size  int      `json:"size"`
 }
 
+type BuildingInput struct {
+	CityID string       `json:"city_id"`
+	Type   BuildingType `json:"type"`
+	X      int          `json:"x"`
+	Y      int          `json:"y"`
+}
+
 type MapTileRequest struct {
 	X      int `json:"x"`
 	Y      int `json:"y"`
