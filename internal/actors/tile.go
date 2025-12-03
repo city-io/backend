@@ -4,7 +4,6 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/messages"
-	"cityio/internal/ports"
 )
 
 type tileActor struct {
@@ -14,7 +13,7 @@ type tileActor struct {
 	BuildingID *string
 }
 
-func NewTileActor() ports.BaseActorInterface {
+func NewTileActor() BaseActorInterface {
 	return &tileActor{}
 }
 

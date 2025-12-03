@@ -3,24 +3,25 @@ package controllers
 import (
 	"github.com/google/uuid"
 
+	"cityio/internal/logger"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/ports"
 )
 
-type buildingController struct {
+type BuildingController struct {
 	cluster ports.ClusterProvider
-	log     ports.Logger
+	log     logger.Logger
 }
 
-func NewBuildingController(cl ports.ClusterProvider, l ports.Logger) ports.BuildingController {
-	return &buildingController{
+func NewBuildingController(cl ports.ClusterProvider, l logger.Logger) *BuildingController {
+	return &BuildingController{
 		cluster: cl,
 		log:     l,
 	}
 }
 
-func (b *buildingController) Restore(building *models.Building) error {
+func (b *BuildingController) Restore(building *models.Building) error {
 	_, err := b.cluster.Request("building", building.BuildingID, &messages.CreateBuildingMessage{
 		Building: *building,
 		Restore:  true,
@@ -33,7 +34,7 @@ func (b *buildingController) Restore(building *models.Building) error {
 	return nil
 }
 
-func (b *buildingController) Create(building *models.BuildingInput) (*models.Building, error) {
+func (b *BuildingController) Create(building *models.BuildingInput) (*models.Building, error) {
 	b.log.Info("creating new building actor", "type", building.Type)
 
 	buildingID := uuid.New().String()

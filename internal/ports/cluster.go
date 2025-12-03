@@ -1,8 +1,6 @@
 package ports
 
-import (
-	"github.com/asynkron/protoactor-go/actor"
-)
+import "github.com/asynkron/protoactor-go/actor"
 
 type ClusterProvider interface {
 	Request(kind, identity string, message any) (any, error)
@@ -10,13 +8,5 @@ type ClusterProvider interface {
 	Tell(kind, identity string, msg any) error
 	DB() *actor.PID
 	RequestDBFuture(message any) actor.Future
-	SendDB(message any) // shouldn't need to be used
-}
-
-type BaseActorInterface interface {
-	ActorType() string
-	Receive(ctx actor.Context)
-	SetLog(log Logger)
-	SetCluster(cluster ClusterProvider)
-	SetControllers(ctrls Controllers)
+	SendDB(message any)
 }

@@ -10,7 +10,6 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-	"cityio/internal/ports"
 	"cityio/internal/utils"
 )
 
@@ -31,7 +30,7 @@ type buildingActor struct {
 	stopTickerCh chan struct{}
 }
 
-func NewBuildingActor() ports.BaseActorInterface {
+func NewBuildingActor() BaseActorInterface {
 	return &buildingActor{}
 }
 

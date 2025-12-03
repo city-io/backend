@@ -10,7 +10,6 @@ import (
 	"cityio/internal/database"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-	"cityio/internal/ports"
 )
 
 type databaseActor struct {
@@ -25,7 +24,7 @@ type databaseActor struct {
 	stopTickerCh chan struct{}
 }
 
-func NewDatabaseActor(db database.Querier) ports.BaseActorInterface {
+func NewDatabaseActor(db database.Querier) BaseActorInterface {
 	return &databaseActor{
 		db:           db,
 		userBuffer:   make(map[string]models.User),

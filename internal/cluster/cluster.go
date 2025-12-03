@@ -1,4 +1,4 @@
-package providers
+package cluster
 
 import (
 	"time"
@@ -14,18 +14,18 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/controllers"
 	"cityio/internal/database"
+	"cityio/internal/logger"
 	"cityio/internal/messages"
-	"cityio/internal/ports"
 )
 
-type clusterProvider struct {
-	log         ports.Logger
+type ClusterProvider struct {
+	log         logger.Logger
 	system      *actor.ActorSystem
 	cluster     *cluster.Cluster
 	databasePID *actor.PID
 }
 
-func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, ports.Controllers) {
+func NewRuntime(log logger.Logger, db database.Querier) (*ClusterProvider, *controllers.Controllers) {
 	system := actor.NewActorSystem()
 
 	databaseProps := actor.PropsFromProducer(func() actor.Actor {
@@ -36,7 +36,7 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 	databasePID := system.Root.Spawn(databaseProps)
 	system.Root.Send(databasePID, messages.InitDatabaseMessage{})
 
-	cp := &clusterProvider{
+	cp := &ClusterProvider{
 		log:         log,
 		system:      system,
 		cluster:     nil,
@@ -44,7 +44,7 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 	}
 	ctrls := controllers.NewControllers(cp, log)
 
-	spawn := func(newActor func() ports.BaseActorInterface) actor.Producer {
+	spawn := func(newActor func() actors.BaseActorInterface) actor.Producer {
 		return func() actor.Actor {
 			ac := newActor()
 			ac.SetLog(log.With("actor", ac.ActorType()))
@@ -84,11 +84,11 @@ func NewRuntime(log ports.Logger, db database.Querier) (ports.ClusterProvider, p
 	return cp, ctrls
 }
 
-func (cp *clusterProvider) Request(kind, identity string, message any) (any, error) {
+func (cp *ClusterProvider) Request(kind, identity string, message any) (any, error) {
 	return cp.cluster.Request(identity, kind, message)
 }
 
-func (cp *clusterProvider) RequestFuture(kind, identity string, message any) (actor.Future, error) {
+func (cp *ClusterProvider) RequestFuture(kind, identity string, message any) (actor.Future, error) {
 	return cp.cluster.RequestFuture(
 		identity,
 		kind,
@@ -97,21 +97,21 @@ func (cp *clusterProvider) RequestFuture(kind, identity string, message any) (ac
 	)
 }
 
-func (cp *clusterProvider) Tell(kind, identity string, msg any) error {
+func (cp *ClusterProvider) Tell(kind, identity string, msg any) error {
 	pid := cp.cluster.Get(identity, kind)
 	cp.system.Root.Send(pid, msg)
 	return nil
 }
 
-func (cp *clusterProvider) DB() *actor.PID {
+func (cp *ClusterProvider) DB() *actor.PID {
 	return cp.databasePID
 }
 
-func (cp *clusterProvider) RequestDBFuture(message any) actor.Future {
+func (cp *ClusterProvider) RequestDBFuture(message any) actor.Future {
 	return cp.system.Root.RequestFuture(cp.databasePID, message, constants.ActorTimeoutDuration*time.Second)
 }
 
 // shouldn't generally be used
-func (cp *clusterProvider) SendDB(message any) {
+func (cp *ClusterProvider) SendDB(message any) {
 	cp.system.Root.Send(cp.databasePID, message)
 }

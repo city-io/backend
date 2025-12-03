@@ -11,15 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"cityio/internal/constants"
+	"cityio/internal/controllers"
 	"cityio/internal/database"
+	"cityio/internal/logger"
 	"cityio/internal/models"
-	"cityio/internal/ports"
 )
 
 type Deps struct {
-	Log         ports.Logger
+	Log         logger.Logger
 	DB          database.Querier
-	Controllers ports.Controllers
+	Controllers *controllers.Controllers
 }
 
 func Run(deps *Deps) {
@@ -35,7 +36,7 @@ func Run(deps *Deps) {
 	}
 
 	for _, user := range users {
-		err := ctrls.User().Restore(user.ToModel())
+		err := ctrls.User.Restore(user.ToModel())
 		if err != nil {
 			panic(err)
 		}
@@ -43,7 +44,7 @@ func Run(deps *Deps) {
 	log.Info("spawned user actors", "count", len(users))
 
 	// TODO: remove test user registration later
-	userID, err := ctrls.User().Create(&models.CreateUserRequest{
+	userID, err := ctrls.User.Create(&models.CreateUserRequest{
 		Email:    "cityio@example.com",
 		Username: "cityio",
 		Password: "cityio",
@@ -72,7 +73,7 @@ func Run(deps *Deps) {
 	}
 
 	for _, city := range cities {
-		err := ctrls.City().Restore(city.ToModel())
+		err := ctrls.City.Restore(city.ToModel())
 		if err != nil {
 			panic(err)
 		}
@@ -100,7 +101,7 @@ func Run(deps *Deps) {
 		if building.Type == string(constants.BuildingTypeCityCenter) || building.Type == string(constants.BuildingTypeTownCenter) {
 			continue
 		}
-		err := ctrls.Building().Restore(building.ToModel())
+		err := ctrls.Building.Restore(building.ToModel())
 		if err != nil {
 			panic(err)
 		}

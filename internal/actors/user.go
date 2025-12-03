@@ -9,7 +9,6 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/messages"
 	"cityio/internal/models"
-	"cityio/internal/ports"
 	"cityio/internal/ws"
 )
 
@@ -21,7 +20,7 @@ type userActor struct {
 	stopTickerCh chan struct{}
 }
 
-func NewUserActor() ports.BaseActorInterface {
+func NewUserActor() BaseActorInterface {
 	return &userActor{}
 }
 
@@ -39,7 +38,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
 				User: state.User,
 			})
-			state.Ctrls.City().Create(&models.CityInput{
+			state.Ctrls.City.Create(&models.CityInput{
 				Type:  constants.CityTypeCity,
 				Owner: &state.User.UserID,
 				Name:  fmt.Sprintf("%s's City", state.User.Username),

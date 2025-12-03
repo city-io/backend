@@ -10,10 +10,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
-	"cityio/internal/ports"
+	"cityio/internal/logger"
 )
 
-func NewDB(log ports.Logger) Querier {
+func NewDB(log logger.Logger) Querier {
 	var dsn string
 	if os.Getenv("ENVIRONMENT") == "production" {
 		log.Info("Using production database")

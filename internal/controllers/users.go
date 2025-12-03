@@ -5,24 +5,25 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/constants"
+	"cityio/internal/logger"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/ports"
 )
 
-type userController struct {
+type UserController struct {
 	cluster ports.ClusterProvider
-	log     ports.Logger
+	log     logger.Logger
 }
 
-func NewUserController(cl ports.ClusterProvider, l ports.Logger) ports.UserController {
-	return &userController{
+func NewUserController(cl ports.ClusterProvider, l logger.Logger) *UserController {
+	return &UserController{
 		cluster: cl,
 		log:     l,
 	}
 }
 
-func (u *userController) Restore(user *models.User) error {
+func (u *UserController) Restore(user *models.User) error {
 	_, err := u.cluster.Request("user", user.UserID, &messages.CreateUserMessage{
 		User:    *user,
 		Restore: true,
@@ -35,7 +36,7 @@ func (u *userController) Restore(user *models.User) error {
 	return nil
 }
 
-func (u *userController) Create(user *models.CreateUserRequest) (string, error) {
+func (u *UserController) Create(user *models.CreateUserRequest) (string, error) {
 	userID := uuid.New().String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {

@@ -4,24 +4,25 @@ import (
 	"github.com/google/uuid"
 
 	"cityio/internal/constants"
+	"cityio/internal/logger"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/ports"
 )
 
-type cityController struct {
+type CityController struct {
 	cluster ports.ClusterProvider
-	log     ports.Logger
+	log     logger.Logger
 }
 
-func NewCityController(cl ports.ClusterProvider, l ports.Logger) ports.CityController {
-	return &cityController{
+func NewCityController(cl ports.ClusterProvider, l logger.Logger) *CityController {
+	return &CityController{
 		cluster: cl,
 		log:     l,
 	}
 }
 
-func (c *cityController) Restore(city *models.City) error {
+func (c *CityController) Restore(city *models.City) error {
 	_, err := c.cluster.Request("city", city.CityID, &messages.CreateCityMessage{
 		City:    *city,
 		Restore: true,
@@ -34,7 +35,7 @@ func (c *cityController) Restore(city *models.City) error {
 	return nil
 }
 
-func (c *cityController) Create(city *models.CityInput) (*models.City, error) {
+func (c *CityController) Create(city *models.CityInput) (*models.City, error) {
 	c.log.Info("creating new city actor", "name", city.Name)
 	cityID := uuid.New().String()
 

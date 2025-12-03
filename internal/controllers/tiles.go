@@ -1,16 +1,17 @@
 package controllers
 
 import (
+	"cityio/internal/logger"
 	"cityio/internal/ports"
 )
 
-type tileController struct {
+type TileController struct {
 	cluster ports.ClusterProvider
-	log     ports.Logger
+	log     logger.Logger
 }
 
-func NewTileController(cl ports.ClusterProvider, l ports.Logger) ports.TileController {
-	return &tileController{
+func NewTileController(cl ports.ClusterProvider, l logger.Logger) *TileController {
+	return &TileController{
 		cluster: cl,
 		log:     l,
 	}
