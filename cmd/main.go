@@ -11,12 +11,12 @@ import (
 func main() {
 	log := logger.NewLogger()
 	db := database.NewDB(log)
-	_, ctrls := cluster.NewRuntime(log, db)
+	cl := cluster.NewRuntime(log, db)
 
 	setup.Run(&setup.Deps{
-		Log:         log,
-		DB:          db,
-		Controllers: ctrls,
+		Log:     log,
+		DB:      db,
+		Cluster: cl,
 	})
 
 	api.Start()

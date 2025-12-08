@@ -12,7 +12,6 @@ import (
 
 	"cityio/internal/actors"
 	"cityio/internal/constants"
-	"cityio/internal/controllers"
 	"cityio/internal/database"
 	"cityio/internal/logger"
 	"cityio/internal/messages"
@@ -25,7 +24,7 @@ type ClusterProvider struct {
 	databasePID *actor.PID
 }
 
-func NewRuntime(log logger.Logger, db database.Querier) (*ClusterProvider, *controllers.Controllers) {
+func NewRuntime(log logger.Logger, db database.Querier) *ClusterProvider {
 	system := actor.NewActorSystem()
 
 	databaseProps := actor.PropsFromProducer(func() actor.Actor {
@@ -42,14 +41,12 @@ func NewRuntime(log logger.Logger, db database.Querier) (*ClusterProvider, *cont
 		cluster:     nil,
 		databasePID: databasePID,
 	}
-	ctrls := controllers.NewControllers(cp, log)
 
 	spawn := func(newActor func() actors.BaseActorInterface) actor.Producer {
 		return func() actor.Actor {
 			ac := newActor()
 			ac.SetLog(log.With("actor", ac.ActorType()))
 			ac.SetCluster(cp)
-			ac.SetControllers(ctrls)
 			return ac
 		}
 	}
@@ -81,7 +78,7 @@ func NewRuntime(log logger.Logger, db database.Querier) (*ClusterProvider, *cont
 	cp.cluster = cl
 	cl.StartMember()
 
-	return cp, ctrls
+	return cp
 }
 
 func (cp *ClusterProvider) Request(kind, identity string, message any) (any, error) {

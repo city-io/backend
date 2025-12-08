@@ -11,24 +11,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"cityio/internal/constants"
-	"cityio/internal/controllers"
 	"cityio/internal/database"
 	"cityio/internal/logger"
 	"cityio/internal/models"
+	"cityio/internal/ports"
+	"cityio/internal/services"
 )
 
 type Deps struct {
-	Log         logger.Logger
-	DB          database.Querier
-	Controllers *controllers.Controllers
+	Log     logger.Logger
+	DB      database.Querier
+	Cluster ports.ClusterProvider
 }
 
 func Run(deps *Deps) {
 	reset(deps)
 	log := deps.Log.With("phase", "init")
 	db := deps.DB
-	ctrls := deps.Controllers
-	ctx := context.Background()
+	cluster := deps.Cluster
+	ctx := logger.WithContext(context.Background(), log)
 
 	users, err := db.GetAllUsers(ctx)
 	if err != nil {
@@ -36,7 +37,7 @@ func Run(deps *Deps) {
 	}
 
 	for _, user := range users {
-		err := ctrls.User.Restore(user.ToModel())
+		err := services.RestoreUser(ctx, cluster, user.ToModel())
 		if err != nil {
 			panic(err)
 		}
@@ -44,7 +45,7 @@ func Run(deps *Deps) {
 	log.Info("spawned user actors", "count", len(users))
 
 	// TODO: remove test user registration later
-	userID, err := ctrls.User.Create(&models.CreateUserRequest{
+	userID, err := services.CreateUser(ctx, cluster, &models.CreateUserRequest{
 		Email:    "cityio@example.com",
 		Username: "cityio",
 		Password: "cityio",
@@ -73,7 +74,7 @@ func Run(deps *Deps) {
 	}
 
 	for _, city := range cities {
-		err := ctrls.City.Restore(city.ToModel())
+		err := services.RestoreCity(ctx, cluster, city.ToModel())
 		if err != nil {
 			panic(err)
 		}
@@ -101,7 +102,7 @@ func Run(deps *Deps) {
 		if building.Type == string(constants.BuildingTypeCityCenter) || building.Type == string(constants.BuildingTypeTownCenter) {
 			continue
 		}
-		err := ctrls.Building.Restore(building.ToModel())
+		err := services.RestoreBuilding(ctx, cluster, building.ToModel())
 		if err != nil {
 			panic(err)
 		}

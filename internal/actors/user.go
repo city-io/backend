@@ -1,14 +1,17 @@
 package actors
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
+	"cityio/internal/logger"
 	"cityio/internal/messages"
 	"cityio/internal/models"
+	"cityio/internal/services"
 	"cityio/internal/ws"
 )
 
@@ -38,7 +41,8 @@ func (state *userActor) Receive(ctx actor.Context) {
 			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
 				User: state.User,
 			})
-			state.Ctrls.City.Create(&models.CityInput{
+			serviceCtx := logger.WithContext(context.Background(), state.Log)
+			services.CreateCity(serviceCtx, state.Cluster, &models.CityInput{
 				Type:  constants.CityTypeCity,
 				Owner: &state.User.UserID,
 				Name:  fmt.Sprintf("%s's City", state.User.Username),
