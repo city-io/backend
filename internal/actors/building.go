@@ -245,12 +245,13 @@ func (state *buildingActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.BuildingProductionFrequency * time.Second)
 	state.stopTickerCh = make(chan struct{})
 
-	// TODO: update this to send from root, not ctx
+	pid := ctx.Self()
+	system := ctx.ActorSystem()
 	go func() {
 		for {
 			select {
 			case <-state.ticker.C:
-				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
+				system.Root.Send(pid, messages.PeriodicOperationMessage{})
 			case <-state.stopTickerCh:
 				state.ticker.Stop()
 				return

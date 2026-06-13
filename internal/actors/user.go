@@ -91,11 +91,13 @@ func (state *userActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.UserBackupFrequency * time.Second)
 	state.stopTickerCh = make(chan struct{})
 
+	pid := ctx.Self()
+	system := ctx.ActorSystem()
 	go func() {
 		for {
 			select {
 			case <-state.ticker.C:
-				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
+				system.Root.Send(pid, messages.PeriodicOperationMessage{})
 			case <-state.stopTickerCh:
 				state.ticker.Stop()
 				return
