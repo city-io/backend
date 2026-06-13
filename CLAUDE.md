@@ -5,7 +5,7 @@ Guidance for AI agents working in this repository. Read this fully before making
 ## What this is
 
 `cityio` is the Go backend for **city.io**, a real-time, tick-based multiplayer city-building
-game. The world is a 128×128 grid of tiles. Players own cities; cities contain buildings;
+game. The world is a 75×75 grid of tiles. Players own cities; cities contain buildings;
 buildings produce resources and grow population on a timer. Almost all game state lives in
 memory as **actors** (Proto-Actor), with PostgreSQL used as a periodic write-behind backup
 rather than the source of truth during runtime.
