@@ -25,4 +25,6 @@ const (
 
 	TroopTrainingDuration = 5
 	TroopMovementDuration = 1 // time it takes to cross 1 tile
+
+	VisionRadius = 3 // Chebyshev distance beyond owned city edges that a player can see
 )

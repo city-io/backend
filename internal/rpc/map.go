@@ -6,6 +6,8 @@ import (
 
 	"connectrpc.com/connect"
 
+	"cityio/internal/constants"
+	"cityio/internal/domain"
 	pb "cityio/internal/gen/cityio/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -17,6 +19,11 @@ type mapHandler struct {
 }
 
 func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[pb.GetMapRequest]) (*connect.Response[pb.GetMapResponse], error) {
+	owned, err := h.srv.ownedCities(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
 	cityList, err := h.srv.store.GetAllCities(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -25,6 +32,9 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[pb.GetMapR
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	cityList = domain.FilterCities(owned, cityList, constants.VisionRadius)
+	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
 
 	cities := make([]*pb.City, 0, len(cityList))
 	for _, c := range cityList {
@@ -41,6 +51,15 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[pb.GetMapR
 func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[pb.GetTileRequest]) (*connect.Response[pb.GetTileResponse], error) {
 	x := int(req.Msg.GetCoords().GetX())
 	y := int(req.Msg.GetCoords().GetY())
+
+	owned, err := h.srv.ownedCities(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !domain.PointVisible(owned, x, y, constants.VisionRadius) {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
+	}
+
 	res, err := h.srv.cluster.Request("tile", utils.GetTileIndex(x, y), messages.GetTileMessage{})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
