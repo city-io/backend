@@ -1,7 +1,7 @@
 package actors
 
 import (
-	"context"
+	"log/slog"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -44,25 +44,25 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 		state.startPeriodicOperation(ctx)
 
 	case *messages.CreateUserMessage:
-		err := state.db.CreateUser(context.Background(), database.CreateUserParams{
+		err := state.db.CreateUser(state.Ctx(), database.CreateUserParams{
 			UserID:   msg.User.UserID,
 			Email:    msg.User.Email,
 			Username: msg.User.Username,
 			Password: msg.User.Password,
 		})
 		if err != nil {
-			state.Log.Error("error creating user in db", "error", err)
+			slog.ErrorContext(state.Ctx(), "error creating user in db", "error", err)
 		}
 	case *messages.UpdateUserMessage:
 		state.userBuffer[msg.User.UserID] = msg.User
 	case messages.DeleteUserMessage:
-		err := state.db.DeleteUser(context.Background(), msg.UserID)
+		err := state.db.DeleteUser(state.Ctx(), msg.UserID)
 		if err != nil {
-			state.Log.Error("error deleting user in db", "error", err)
+			slog.ErrorContext(state.Ctx(), "error deleting user in db", "error", err)
 		}
 
 	case *messages.CreateCityMessage:
-		err := state.db.CreateCity(context.Background(), database.CreateCityParams{
+		err := state.db.CreateCity(state.Ctx(), database.CreateCityParams{
 			CityID:        msg.City.CityID,
 			Type:          string(msg.City.Type),
 			Owner:         msg.City.Owner,
@@ -74,24 +74,24 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			Size:          int32(msg.City.Size),
 		})
 		if err != nil {
-			state.Log.Error("error creating city in db", "error", err)
+			slog.ErrorContext(state.Ctx(), "error creating city in db", "error", err)
 		}
 	case messages.DeleteCityMessage:
-		err := state.db.DeleteCity(context.Background(), msg.CityID)
+		err := state.db.DeleteCity(state.Ctx(), msg.CityID)
 		if err != nil {
-			state.Log.Error("error deleting city in db", "error", err)
+			slog.ErrorContext(state.Ctx(), "error deleting city in db", "error", err)
 		}
 	case *messages.UpdateCityMessage:
 		state.cityBuffer[msg.City.CityID] = msg.City
 
 	case messages.GetEmptyCityBlockMessage:
-		row, err := state.db.FindEmptyCityBlock(context.Background(), database.FindEmptyCityBlockParams{
+		row, err := state.db.FindEmptyCityBlock(state.Ctx(), database.FindEmptyCityBlockParams{
 			MapWidth:  constants.MapSize,
 			MapHeight: constants.MapSize,
 			Size:      int32(msg.Size),
 		})
 		if err != nil {
-			state.Log.Error("error fetching empty city block from db", "error", err)
+			slog.ErrorContext(state.Ctx(), "error fetching empty city block from db", "error", err)
 			return
 		}
 		ctx.Respond(messages.GetEmptyCityBlockResponseMessage{
@@ -100,7 +100,7 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 		})
 
 	case *messages.CreateBuildingMessage:
-		err := state.db.CreateBuilding(context.Background(), database.CreateBuildingParams{
+		err := state.db.CreateBuilding(state.Ctx(), database.CreateBuildingParams{
 			BuildingID:        msg.Building.BuildingID,
 			CityID:            msg.Building.CityID,
 			Type:              msg.Building.Type,
@@ -112,7 +112,7 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			ConstructionEnd:   msg.Building.ConstructionEnd.ToPG(),
 		})
 		if err != nil {
-			state.Log.Error("error creating building in db", "error", err)
+			slog.ErrorContext(state.Ctx(), "error creating building in db", "error", err)
 		}
 
 	case messages.PeriodicOperationMessage:
@@ -156,8 +156,8 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 				params.Sizes = append(params.Sizes, int32(city.Size))
 			}
 
-			if err := state.db.BatchUpdateCities(context.Background(), params); err != nil {
-				state.Log.Error("error batch updating cities", "idx", i, "error", err)
+			if err := state.db.BatchUpdateCities(state.Ctx(), params); err != nil {
+				slog.ErrorContext(state.Ctx(), "error batch updating cities", "idx", i, "error", err)
 			}
 		}
 
@@ -182,8 +182,8 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 				params.Golds = append(params.Golds, user.Gold)
 			}
 
-			if err := state.db.BatchUpdateUsers(context.Background(), params); err != nil {
-				state.Log.Error("error batch updating users", "idx", i, "error", err)
+			if err := state.db.BatchUpdateUsers(state.Ctx(), params); err != nil {
+				slog.ErrorContext(state.Ctx(), "error batch updating users", "idx", i, "error", err)
 			}
 		}
 

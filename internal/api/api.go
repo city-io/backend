@@ -3,7 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -20,7 +20,7 @@ func DecodeBody[T any](request *http.Request) (T, error) {
 	decoder := json.NewDecoder(request.Body)
 
 	if err := decoder.Decode(&obj); err != nil {
-		log.Printf("Error decoding request body: %s", err)
+		slog.Error("error decoding request body", "error", err)
 		return obj, err
 	}
 
@@ -45,7 +45,7 @@ func GetClaims(request *http.Request) models.UserClaims {
 	return claims
 }
 
-func Start() {
+func Start(port string) {
 	router := mux.NewRouter()
 	// router.Use(recoverMiddleware)
 	// addRoutes(router)
@@ -60,12 +60,15 @@ func Start() {
 
 	server := &http.Server{
 		Handler:      handler,
-		Addr:         fmt.Sprintf("0.0.0.0:%s", os.Getenv("API_PORT")),
+		Addr:         fmt.Sprintf("0.0.0.0:%s", port),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
-	log.Fatal(server.ListenAndServe())
+	if err := server.ListenAndServe(); err != nil {
+		slog.Error("api server stopped", "error", err)
+		os.Exit(1)
+	}
 }
 
 // func ProcessSocketMessage(ctx context.Context, conn *websocket.Conn, messageType int, p []byte) error {

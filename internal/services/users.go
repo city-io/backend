@@ -2,12 +2,12 @@ package services
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/constants"
-	"cityio/internal/logger"
 	"cityio/internal/messages"
 	"cityio/internal/models"
 	"cityio/internal/ports"
@@ -15,9 +15,7 @@ import (
 
 func RestoreUser(ctx context.Context, cluster ports.ClusterProvider, user *models.User) error {
 	if _, err := cluster.Request("user", user.UserID, &messages.CreateUserMessage{User: *user, Restore: true}); err != nil {
-		if log := logger.FromContext(ctx); log != nil {
-			log.Error("failed to restore user actor", "username", user.Username, "error", err)
-		}
+		slog.ErrorContext(ctx, "failed to restore user actor", "username", user.Username, "error", err)
 		return err
 	}
 

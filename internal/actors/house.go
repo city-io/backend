@@ -1,6 +1,8 @@
 package actors
 
 import (
+	"log/slog"
+
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
@@ -19,7 +21,7 @@ func (c *houseImpl) Create(ctx actor.Context, state *buildingActor) {
 		Change: constants.GetBuildingPopulation(constants.BuildingTypeHouse, 1),
 	})
 	if err != nil {
-		state.Log.Error("failed to increment city population cap from house construction", "error", err)
+		slog.ErrorContext(state.Ctx(), "failed to increment city population cap from house construction", "error", err)
 	}
 }
 

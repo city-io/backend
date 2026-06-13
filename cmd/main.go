@@ -1,23 +1,41 @@
 package main
 
 import (
+	"context"
+	"log/slog"
+	"os"
+
 	"cityio/internal/api"
 	"cityio/internal/cluster"
+	"cityio/internal/config"
 	"cityio/internal/database"
 	"cityio/internal/logger"
 	"cityio/internal/setup"
 )
 
 func main() {
-	log := logger.NewLogger()
-	db := database.NewDB(log)
-	cl := cluster.NewRuntime(log, db)
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("failed to load configuration", "error", err)
+		os.Exit(1)
+	}
 
-	setup.Run(&setup.Deps{
-		Log:     log,
+	level := slog.LevelDebug
+	if cfg.IsProduction() {
+		level = slog.LevelInfo
+	}
+	logger.Setup(level)
+
+	ctx := logger.With(context.Background(), "environment", cfg.Environment)
+	slog.InfoContext(ctx, "starting cityio backend")
+
+	db := database.NewDB(ctx, cfg.DatabaseDSN())
+	cl := cluster.NewRuntime(ctx, db, cfg.Environment)
+
+	setup.Run(ctx, &setup.Deps{
 		DB:      db,
 		Cluster: cl,
 	})
 
-	api.Start()
+	api.Start(cfg.APIPort)
 }

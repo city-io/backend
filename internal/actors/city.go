@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -75,7 +76,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 					CityID: msg.City.CityID,
 				})
 				if err != nil {
-					state.Log.Error("failed to signal tile of city presence", "city_id", msg.City.CityID, "tile", idx, "error", err)
+					slog.ErrorContext(state.Ctx(), "failed to signal tile of city presence", "city_id", msg.City.CityID, "tile", idx, "error", err)
 				}
 			}
 		}
@@ -92,13 +93,13 @@ func (state *cityActor) Receive(ctx actor.Context) {
 				)
 				_, err := state.Cluster.Request("tile", idx, messages.UpdateTileOwnerMessage(msg))
 				if err != nil {
-					state.Log.Error("failed to signal tiles of city ownership change", "error", err)
+					slog.ErrorContext(state.Ctx(), "failed to signal tiles of city ownership change", "error", err)
 				}
 			}
 		}
 
 	case messages.UpdateCityPopulationCapMessage:
-		state.Log.Debug("updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
+		slog.DebugContext(state.Ctx(), "updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
 		state.City.PopulationCap += float64(msg.Change)
 
 	case messages.GetCityMessage:
@@ -111,7 +112,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		// ctx.Send(state.Cluster.DB(), messages.DeleteCityMessage{
 		// CityID: state.City.CityID,
 		// })
-		state.Log.Debug("shutting down CityActor", "city_id", state.City.CityID)
+		slog.DebugContext(state.Ctx(), "shutting down CityActor", "city_id", state.City.CityID)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 

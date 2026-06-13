@@ -4,6 +4,7 @@ package setup
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -19,17 +20,15 @@ import (
 )
 
 type Deps struct {
-	Log     logger.Logger
 	DB      database.Querier
 	Cluster ports.ClusterProvider
 }
 
-func Run(deps *Deps) {
-	reset(deps)
-	log := deps.Log.With("phase", "init")
+func Run(ctx context.Context, deps *Deps) {
+	reset(ctx, deps)
+	ctx = logger.With(ctx, "phase", "init")
 	db := deps.DB
 	cluster := deps.Cluster
-	ctx := logger.WithContext(context.Background(), log)
 
 	users, err := db.GetAllUsers(ctx)
 	if err != nil {
@@ -42,7 +41,7 @@ func Run(deps *Deps) {
 			panic(err)
 		}
 	}
-	log.Info("spawned user actors", "count", len(users))
+	slog.InfoContext(ctx, "spawned user actors", "count", len(users))
 
 	// TODO: remove test user registration later
 	userID, err := services.CreateUser(ctx, cluster, &models.CreateUserRequest{
@@ -53,7 +52,7 @@ func Run(deps *Deps) {
 	if err != nil {
 		panic(err)
 	}
-	log.Info("registered test user", "user_id", userID)
+	slog.InfoContext(ctx, "registered test user", "user_id", userID)
 
 	// tiles, err := db.GetAllTiles(ctx)
 	// if err != nil {
@@ -79,7 +78,7 @@ func Run(deps *Deps) {
 			panic(err)
 		}
 	}
-	log.Info("spawned city actors", "count", len(cities))
+	slog.InfoContext(ctx, "spawned city actors", "count", len(cities))
 
 	// var armies []models.Army
 	// cl.DB().Find(&armies)
@@ -107,13 +106,13 @@ func Run(deps *Deps) {
 			panic(err)
 		}
 	}
-	log.Info("spawned building actors", "count", len(buildings))
+	slog.InfoContext(ctx, "spawned building actors", "count", len(buildings))
 
-	log.Info("initialization complete")
+	slog.InfoContext(ctx, "initialization complete")
 }
 
-func reset(deps *Deps) error {
-	log := deps.Log.With("phase", "reset")
+func reset(ctx context.Context, deps *Deps) error {
+	ctx = logger.With(ctx, "phase", "reset")
 	db := deps.DB
 
 	src := rand.NewSource(time.Now().UnixNano())
@@ -124,20 +123,20 @@ func reset(deps *Deps) error {
 		occupied[i] = make([]bool, constants.MapSize)
 	}
 
-	users, err := db.GetAllUsers(context.Background())
+	users, err := db.GetAllUsers(ctx)
 	if err != nil {
-		log.Error("error fetching existing users", "error", err)
+		slog.ErrorContext(ctx, "error fetching existing users", "error", err)
 	}
 
 	for _, user := range users {
 		user.Gold = constants.InitialPlayerGold
 		user.Food = constants.InitialPlayerFood
-		err := db.UpdateUserStats(context.Background(), database.UpdateUserStatsParams{
+		err := db.UpdateUserStats(ctx, database.UpdateUserStatsParams{
 			Gold: user.Gold,
 			Food: user.Food,
 		})
 		if err != nil {
-			log.Error("error resetting user fields", "error", err)
+			slog.ErrorContext(ctx, "error resetting user fields", "error", err)
 		}
 
 		src := rand.NewSource(time.Now().UnixNano())
@@ -146,7 +145,7 @@ func reset(deps *Deps) error {
 		startY := r.Intn(constants.MapSize - constants.CitySize)
 
 		cityID := uuid.New().String()
-		err = db.CreateCity(context.Background(), database.CreateCityParams{
+		err = db.CreateCity(ctx, database.CreateCityParams{
 			CityID:        cityID,
 			Type:          "capital",
 			Owner:         &user.UserID,
@@ -157,12 +156,12 @@ func reset(deps *Deps) error {
 			StartY:        int32(startY),
 		})
 		if err != nil {
-			log.Error("error creating city in db", "error", err)
+			slog.ErrorContext(ctx, "error creating city in db", "error", err)
 			return err
 		}
-		log.Debug("created city in db", "city_id", cityID, "user", user.Username, "x", startX, "y", startY)
+		slog.DebugContext(ctx, "created city in db", "city_id", cityID, "user", user.Username, "x", startX, "y", startY)
 
-		err = db.CreateBuilding(context.Background(), database.CreateBuildingParams{
+		err = db.CreateBuilding(ctx, database.CreateBuildingParams{
 			BuildingID:        uuid.New().String(),
 			CityID:            cityID,
 			Type:              string(constants.BuildingTypeCityCenter),
@@ -174,7 +173,7 @@ func reset(deps *Deps) error {
 			ConstructionEnd:   pgtype.Timestamp{Valid: false},
 		})
 		if err != nil {
-			log.Error("error creating building in db", "error", err)
+			slog.ErrorContext(ctx, "error creating building in db", "error", err)
 			return err
 		}
 
@@ -283,13 +282,13 @@ func reset(deps *Deps) error {
 			params.Sizes = append(params.Sizes, int32(city.Size))
 		}
 
-		if err := db.BatchCreateCities(context.Background(), params); err != nil {
-			log.Error("error batch creating cities", "start_idx", i, "end_idx", end, "error", err)
+		if err := db.BatchCreateCities(ctx, params); err != nil {
+			slog.ErrorContext(ctx, "error batch creating cities", "start_idx", i, "end_idx", end, "error", err)
 			return err
 		}
 	}
 
-	log.Debug("created cities", "count", len(cities))
+	slog.DebugContext(ctx, "created cities", "count", len(cities))
 
 	buildingBatchSize := 5000
 	for i := 0; i < len(buildings); i += buildingBatchSize {
@@ -320,12 +319,12 @@ func reset(deps *Deps) error {
 			params.ConstructionEnds = append(params.ConstructionEnds, b.ConstructionEnd.ToPG())
 		}
 
-		if err := db.BatchCreateBuildings(context.Background(), params); err != nil {
-			log.Error("error batch creating buildings", "start_idx", i, "end_idx", end, "error", err)
+		if err := db.BatchCreateBuildings(ctx, params); err != nil {
+			slog.ErrorContext(ctx, "error batch creating buildings", "start_idx", i, "end_idx", end, "error", err)
 			return err
 		}
 	}
 
-	log.Debug("reset complete")
+	slog.DebugContext(ctx, "reset complete")
 	return nil
 }

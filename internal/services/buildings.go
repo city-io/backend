@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -13,9 +14,7 @@ import (
 
 func RestoreBuilding(ctx context.Context, cluster ports.ClusterProvider, building *models.Building) error {
 	if _, err := cluster.Request("building", building.BuildingID, &messages.CreateBuildingMessage{Building: *building, Restore: true}); err != nil {
-		if log := logger.FromContext(ctx); log != nil {
-			log.Error("failed to restore building actor", "building_id", building.BuildingID, "error", err)
-		}
+		slog.ErrorContext(ctx, "failed to restore building actor", "building_id", building.BuildingID, "error", err)
 		return err
 	}
 
@@ -23,11 +22,10 @@ func RestoreBuilding(ctx context.Context, cluster ports.ClusterProvider, buildin
 }
 
 func CreateBuilding(ctx context.Context, cluster ports.ClusterProvider, building *models.BuildingInput) (*models.Building, error) {
-	if log := logger.FromContext(ctx); log != nil {
-		log.Info("creating new building actor", "type", building.Type)
-	}
-
 	buildingID := uuid.New().String()
+	ctx = logger.With(ctx, "building_id", buildingID)
+	slog.InfoContext(ctx, "creating new building actor", "type", building.Type)
+
 	newBuilding := models.Building{
 		BuildingID: buildingID,
 		CityID:     building.CityID,
@@ -37,9 +35,7 @@ func CreateBuilding(ctx context.Context, cluster ports.ClusterProvider, building
 	}
 
 	if _, err := cluster.Request("building", buildingID, &messages.CreateBuildingMessage{Building: newBuilding, Restore: false, Construct: true}); err != nil {
-		if log := logger.FromContext(ctx); log != nil {
-			log.Error("failed to create building actor", "building_id", buildingID, "error", err)
-		}
+		slog.ErrorContext(ctx, "failed to create building actor", "error", err)
 		return nil, err
 	}
 

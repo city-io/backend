@@ -2,12 +2,8 @@
 package constants
 
 import (
-	"os"
-
 	"cityio/internal/models"
 )
-
-var Environment string = os.Getenv("ENVIRONMENT")
 
 const (
 	CityTypeCity models.CityType = "city"
