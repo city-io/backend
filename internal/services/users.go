@@ -8,12 +8,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/constants"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/models"
 	"cityio/internal/ports"
 )
 
-func RestoreUser(ctx context.Context, cluster ports.ClusterProvider, user *models.User) error {
+func RestoreUser(ctx context.Context, cluster ports.ClusterProvider, user *domain.User) error {
 	if _, err := cluster.Request("user", user.UserID, &messages.CreateUserMessage{User: *user, Restore: true}); err != nil {
 		slog.ErrorContext(ctx, "failed to restore user actor", "username", user.Username, "error", err)
 		return err
@@ -22,7 +22,7 @@ func RestoreUser(ctx context.Context, cluster ports.ClusterProvider, user *model
 	return nil
 }
 
-func CreateUser(ctx context.Context, cluster ports.ClusterProvider, user *models.CreateUserRequest) (string, error) {
+func CreateUser(ctx context.Context, cluster ports.ClusterProvider, user *CreateUserRequest) (string, error) {
 	userID := uuid.New().String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -30,7 +30,7 @@ func CreateUser(ctx context.Context, cluster ports.ClusterProvider, user *models
 	}
 
 	cluster.Request("user", userID, &messages.CreateUserMessage{ //nolint:errcheck // fire-and-forget
-		User: models.User{
+		User: domain.User{
 			UserID:   userID,
 			Username: user.Username,
 			Email:    user.Email,

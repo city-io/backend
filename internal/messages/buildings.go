@@ -3,11 +3,11 @@ package messages
 import (
 	"fmt"
 
-	"cityio/internal/models"
+	"cityio/internal/domain"
 )
 
 type CreateBuildingMessage struct {
-	Building  models.Building
+	Building  domain.Building
 	Owner     *string
 	Restore   bool
 	Construct bool
@@ -20,24 +20,24 @@ type UpdateBuildingOwnerMessage struct {
 	Owner *string
 }
 type UpdateBuildingMessage struct {
-	Building models.Building
+	Building domain.Building
 }
 type DeleteBuildingMessage struct {
 	BuildingID string
 }
 
 // type TrainTroopsMessage struct {
-// 	Training models.Training
+// 	Training domain.Training
 // }
 // type RestoreTrainingMessage struct {
-// 	Training models.Training
+// 	Training domain.Training
 // }
 // type DeleteTrainingMessage struct {
 // 	BarracksId string
 // }
 
 type GetBuildingResponseMessage struct {
-	Building models.Building
+	Building domain.Building
 }
 
 // // Errors

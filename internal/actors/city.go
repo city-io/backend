@@ -9,14 +9,14 @@ import (
 	"github.com/google/uuid"
 
 	"cityio/internal/constants"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/models"
 	"cityio/internal/utils"
 )
 
 type cityActor struct {
 	baseActor
-	City models.City
+	City domain.City
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -39,13 +39,13 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		if !msg.Restore {
 			ctx.Send(state.Cluster.DB(), msg)
 			buildingID := uuid.New().String()
-			buildingType := constants.BuildingTypeCityCenter
-			if msg.City.Type == constants.CityTypeTown {
-				buildingType = constants.BuildingTypeTownCenter
+			buildingType := domain.BuildingTypeCityCenter
+			if msg.City.Type == domain.CityTypeTown {
+				buildingType = domain.BuildingTypeTownCenter
 			}
 			buildingX := msg.City.StartX + msg.City.Size/2
 			buildingY := msg.City.StartY + msg.City.Size/2
-			building := models.Building{
+			building := domain.Building{
 				BuildingID:        buildingID,
 				CityID:            msg.City.CityID,
 				Type:              string(buildingType),
@@ -53,8 +53,8 @@ func (state *cityActor) Receive(ctx actor.Context) {
 				TargetLevel:       1,
 				X:                 buildingX,
 				Y:                 buildingY,
-				ConstructionStart: models.NullTime{Time: nil},
-				ConstructionEnd:   models.NullTime{Time: nil},
+				ConstructionStart: domain.NullTime{Time: nil},
+				ConstructionEnd:   domain.NullTime{Time: nil},
 			}
 			state.Cluster.Request("building", buildingID, &messages.CreateBuildingMessage{
 				Building:  building,

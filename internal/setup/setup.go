@@ -13,8 +13,8 @@ import (
 
 	"cityio/internal/constants"
 	"cityio/internal/database"
+	"cityio/internal/domain"
 	"cityio/internal/logger"
-	"cityio/internal/models"
 	"cityio/internal/ports"
 	"cityio/internal/services"
 )
@@ -44,7 +44,7 @@ func Run(ctx context.Context, deps *Deps) {
 	slog.InfoContext(ctx, "spawned user actors", "count", len(users))
 
 	// TODO: remove test user registration later
-	userID, err := services.CreateUser(ctx, cluster, &models.CreateUserRequest{
+	userID, err := services.CreateUser(ctx, cluster, &services.CreateUserRequest{
 		Email:    "cityio@example.com",
 		Username: "cityio",
 		Password: "cityio",
@@ -98,7 +98,7 @@ func Run(ctx context.Context, deps *Deps) {
 
 	for _, building := range buildings {
 		// city and town center will get restored by city actor
-		if building.Type == string(constants.BuildingTypeCityCenter) || building.Type == string(constants.BuildingTypeTownCenter) {
+		if building.Type == string(domain.BuildingTypeCityCenter) || building.Type == string(domain.BuildingTypeTownCenter) {
 			continue
 		}
 		err := services.RestoreBuilding(ctx, cluster, building.ToModel())
@@ -151,7 +151,7 @@ func reset(ctx context.Context, deps *Deps) error {
 			Owner:         &user.UserID,
 			Name:          fmt.Sprintf("%s's City", user.Username),
 			Population:    constants.InitialPlayerCityPopulation,
-			PopulationCap: constants.GetBuildingPopulation(constants.BuildingTypeCityCenter, 1),
+			PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeCityCenter, 1),
 			StartX:        int32(startX),
 			StartY:        int32(startY),
 		})
@@ -164,7 +164,7 @@ func reset(ctx context.Context, deps *Deps) error {
 		err = db.CreateBuilding(ctx, database.CreateBuildingParams{
 			BuildingID:        uuid.New().String(),
 			CityID:            cityID,
-			Type:              string(constants.BuildingTypeCityCenter),
+			Type:              string(domain.BuildingTypeCityCenter),
 			Level:             1,
 			TargetLevel:       1,
 			X:                 int32(startX + constants.CitySize/2),
@@ -184,8 +184,8 @@ func reset(ctx context.Context, deps *Deps) error {
 		}
 	}
 
-	cities := make([]models.City, 0)
-	buildings := make([]models.Building, 0)
+	cities := make([]domain.City, 0)
+	buildings := make([]domain.Building, 0)
 	for x := range constants.MapSize {
 		for y := range constants.MapSize {
 			open := true
@@ -213,27 +213,27 @@ func reset(ctx context.Context, deps *Deps) error {
 				}
 				if size > 0 && x+size < constants.MapSize && y+size < constants.MapSize {
 					cityID := uuid.New().String()
-					cities = append(cities, models.City{
+					cities = append(cities, domain.City{
 						CityID:        cityID,
 						Type:          "town",
 						Owner:         nil,
 						Name:          fmt.Sprintf("Town %s", cityID),
 						Population:    constants.InitialTownPopulation,
-						PopulationCap: constants.GetBuildingPopulation(constants.BuildingTypeTownCenter, 1),
+						PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, 1),
 						StartX:        x,
 						StartY:        y,
 						Size:          size,
 					})
-					buildings = append(buildings, models.Building{
+					buildings = append(buildings, domain.Building{
 						BuildingID:        uuid.New().String(),
 						CityID:            cityID,
-						Type:              string(constants.BuildingTypeTownCenter),
+						Type:              string(domain.BuildingTypeTownCenter),
 						Level:             1,
 						TargetLevel:       1,
 						X:                 x + size/2,
 						Y:                 y + size/2,
-						ConstructionStart: models.NullTime{Time: nil},
-						ConstructionEnd:   models.NullTime{Time: nil},
+						ConstructionStart: domain.NullTime{Time: nil},
+						ConstructionEnd:   domain.NullTime{Time: nil},
 					})
 					occupied[x][y] = true
 					for i := 0; i < size; i++ {
@@ -315,8 +315,8 @@ func reset(ctx context.Context, deps *Deps) error {
 			params.TargetLevels = append(params.TargetLevels, int32(b.TargetLevel))
 			params.Xs = append(params.Xs, int32(b.X))
 			params.Ys = append(params.Ys, int32(b.Y))
-			params.ConstructionStarts = append(params.ConstructionStarts, b.ConstructionStart.ToPG())
-			params.ConstructionEnds = append(params.ConstructionEnds, b.ConstructionEnd.ToPG())
+			params.ConstructionStarts = append(params.ConstructionStarts, database.ToPGTimestamp(b.ConstructionStart.Time))
+			params.ConstructionEnds = append(params.ConstructionEnds, database.ToPGTimestamp(b.ConstructionEnd.Time))
 		}
 
 		if err := db.BatchCreateBuildings(ctx, params); err != nil {

@@ -4,8 +4,6 @@ import (
 	"log/slog"
 
 	"github.com/gorilla/websocket"
-
-	"cityio/internal/models"
 )
 
 var connections = make(map[string]*websocket.Conn)
@@ -20,7 +18,7 @@ func Send(userId string, message int, data any) error {
 		return nil
 	}
 
-	return conn.WriteJSON(&models.WebSocketResponse{
+	return conn.WriteJSON(&WebSocketResponse{
 		Msg:  message,
 		Data: data,
 	})

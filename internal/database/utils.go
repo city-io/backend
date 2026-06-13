@@ -1,13 +1,26 @@
 package database
 
 import (
-	"cityio/internal/models"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"cityio/internal/domain"
 )
 
-func (c City) ToModel() *models.City {
-	return &models.City{
+// ToPGTimestamp converts an optional time into a pgx timestamp, keeping
+// pgx-specific concerns out of the domain layer.
+func ToPGTimestamp(t *time.Time) pgtype.Timestamp {
+	if t == nil {
+		return pgtype.Timestamp{Valid: false}
+	}
+	return pgtype.Timestamp{Time: *t, Valid: true}
+}
+
+func (c City) ToModel() *domain.City {
+	return &domain.City{
 		CityID:        c.CityID,
-		Type:          models.CityType(c.Type),
+		Type:          domain.CityType(c.Type),
 		Owner:         c.Owner,
 		Name:          c.Name,
 		Population:    c.Population,
@@ -18,10 +31,10 @@ func (c City) ToModel() *models.City {
 	}
 }
 
-func (c GetAllCitiesRow) ToModel() *models.City {
-	return &models.City{
+func (c GetAllCitiesRow) ToModel() *domain.City {
+	return &domain.City{
 		CityID:        c.CityID,
-		Type:          models.CityType(c.Type),
+		Type:          domain.CityType(c.Type),
 		Owner:         c.Owner,
 		Name:          c.Name,
 		Population:    c.Population,
@@ -32,8 +45,8 @@ func (c GetAllCitiesRow) ToModel() *models.City {
 	}
 }
 
-func (u User) ToModel() *models.User {
-	return &models.User{
+func (u User) ToModel() *domain.User {
+	return &domain.User{
 		UserID:    u.UserID,
 		Email:     u.Email,
 		Username:  u.Username,
@@ -45,8 +58,8 @@ func (u User) ToModel() *models.User {
 	}
 }
 
-func (b Building) ToModel() *models.Building {
-	return &models.Building{
+func (b Building) ToModel() *domain.Building {
+	return &domain.Building{
 		BuildingID:        b.BuildingID,
 		CityID:            b.CityID,
 		Type:              b.Type,
@@ -54,13 +67,13 @@ func (b Building) ToModel() *models.Building {
 		TargetLevel:       int(b.TargetLevel),
 		X:                 b.Coords.X,
 		Y:                 b.Coords.Y,
-		ConstructionStart: models.NullTime{Time: &b.ConstructionStart.Time},
-		ConstructionEnd:   models.NullTime{Time: &b.ConstructionEnd.Time},
+		ConstructionStart: domain.NullTime{Time: &b.ConstructionStart.Time},
+		ConstructionEnd:   domain.NullTime{Time: &b.ConstructionEnd.Time},
 	}
 }
 
-func (b GetAllBuildingsRow) ToModel() *models.Building {
-	return &models.Building{
+func (b GetAllBuildingsRow) ToModel() *domain.Building {
+	return &domain.Building{
 		BuildingID:        b.BuildingID,
 		CityID:            b.CityID,
 		Type:              b.Type,
@@ -68,7 +81,7 @@ func (b GetAllBuildingsRow) ToModel() *models.Building {
 		TargetLevel:       int(b.TargetLevel),
 		X:                 int(b.X),
 		Y:                 int(b.Y),
-		ConstructionStart: models.NullTime{Time: &b.ConstructionStart.Time},
-		ConstructionEnd:   models.NullTime{Time: &b.ConstructionEnd.Time},
+		ConstructionStart: domain.NullTime{Time: &b.ConstructionStart.Time},
+		ConstructionEnd:   domain.NullTime{Time: &b.ConstructionEnd.Time},
 	}
 }

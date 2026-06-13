@@ -3,16 +3,16 @@ package messages
 import (
 	"fmt"
 
-	"cityio/internal/models"
+	"cityio/internal/domain"
 )
 
 type CreateUserMessage struct {
-	User    models.User
+	User    domain.User
 	Restore bool
 }
 
 type UpdateUserMessage struct {
-	User models.User
+	User domain.User
 }
 type UpdateUserGoldMessage struct {
 	Change int64
@@ -27,7 +27,7 @@ type CheckAndDeductGoldMessage struct {
 
 type GetUserMessage struct{}
 type GetUserResponseMessage struct {
-	User models.User
+	User domain.User
 }
 
 type DeleteUserMessage struct {

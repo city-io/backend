@@ -11,8 +11,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-
-	"cityio/internal/models"
 )
 
 func DecodeBody[T any](request *http.Request) (T, error) {
@@ -27,9 +25,9 @@ func DecodeBody[T any](request *http.Request) (T, error) {
 	return obj, nil
 }
 
-func GetClaims(request *http.Request) models.UserClaims {
+func GetClaims(request *http.Request) UserClaims {
 	ctxClaims := request.Context().Value("claims").(jwt.MapClaims)
-	var claims models.UserClaims
+	var claims UserClaims
 
 	if username, ok := ctxClaims["username"].(string); ok {
 		claims.Username = username

@@ -9,8 +9,8 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/models"
 	"cityio/internal/utils"
 )
 
@@ -22,7 +22,7 @@ type buildingActorImpl interface {
 
 type buildingActor struct {
 	baseActor
-	Building models.Building
+	Building domain.Building
 
 	Owner *string
 	Impl  buildingActorImpl
@@ -36,7 +36,7 @@ func NewBuildingActor() BaseActorInterface {
 }
 
 func (state *buildingActor) ActorType() string {
-	return string(constants.BuildingTypeCityCenter)
+	return string(domain.BuildingTypeCityCenter)
 }
 
 func (state *buildingActor) Receive(ctx actor.Context) {
@@ -53,8 +53,8 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 						1,
 					)) * time.Second,
 				)
-				state.Building.ConstructionStart = models.NullTime{Time: &now}
-				state.Building.ConstructionEnd = models.NullTime{Time: &end}
+				state.Building.ConstructionStart = domain.NullTime{Time: &now}
+				state.Building.ConstructionEnd = domain.NullTime{Time: &end}
 				state.Building.Level = 0
 				state.Building.TargetLevel = 1
 			}
@@ -65,15 +65,15 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			})
 		}
 		switch state.Building.BuildingType() {
-		case constants.BuildingTypeCityCenter:
+		case domain.BuildingTypeCityCenter:
 			state.Impl = newCityCenterImpl()
-		case constants.BuildingTypeTownCenter:
+		case domain.BuildingTypeTownCenter:
 			state.Impl = newTownCenterImpl()
-		case constants.BuildingTypeMine:
+		case domain.BuildingTypeMine:
 			state.Impl = newMineImpl()
-		case constants.BuildingTypeFarm:
+		case domain.BuildingTypeFarm:
 			state.Impl = newFarmImpl()
-		case constants.BuildingTypeHouse:
+		case domain.BuildingTypeHouse:
 			state.Impl = newHouseImpl()
 		}
 
@@ -152,8 +152,8 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 		)) * time.Second,
 	)
 	state.Building.TargetLevel++
-	state.Building.ConstructionStart = models.NullTime{Time: &now}
-	state.Building.ConstructionEnd = models.NullTime{Time: &end}
+	state.Building.ConstructionStart = domain.NullTime{Time: &now}
+	state.Building.ConstructionEnd = domain.NullTime{Time: &end}
 
 	// TODO: spawn a blocking goroutine that sends a message upon completion
 	// ensure that it gets an ACK back for processing

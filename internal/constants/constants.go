@@ -1,15 +1,6 @@
 // Package constants contains global constants used throughout the game server.
 package constants
 
-import (
-	"cityio/internal/models"
-)
-
-const (
-	CityTypeCity models.CityType = "city"
-	CityTypeTown models.CityType = "town"
-)
-
 const (
 	MapSize  = 128 // generate a map of size MapSize x MapSize
 	CitySize = 5

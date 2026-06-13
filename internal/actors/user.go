@@ -8,15 +8,15 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/models"
 	"cityio/internal/services"
 	"cityio/internal/ws"
 )
 
 type userActor struct {
 	baseActor
-	User models.User
+	User domain.User
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -40,8 +40,8 @@ func (state *userActor) Receive(ctx actor.Context) {
 			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
 				User: state.User,
 			})
-			services.CreateCity(state.Ctx(), state.Cluster, &models.CityInput{ //nolint:errcheck // fire-and-forget
-				Type:  constants.CityTypeCity,
+			services.CreateCity(state.Ctx(), state.Cluster, &services.CityInput{ //nolint:errcheck // fire-and-forget
+				Type:  domain.CityTypeCity,
 				Owner: &state.User.UserID,
 				Name:  fmt.Sprintf("%s's City", state.User.Username),
 				Size:  constants.CitySize,
@@ -112,7 +112,7 @@ func (state *userActor) stopPeriodicOperation() {
 }
 
 func (state *userActor) ws() {
-	ws.Send(state.User.UserID, messages.WS_USER, &models.UserAccountOutput{
+	ws.Send(state.User.UserID, messages.WS_USER, &ws.UserAccountOutput{
 		Username: state.User.Username,
 		Gold:     state.User.Gold,
 		Food:     state.User.Food,

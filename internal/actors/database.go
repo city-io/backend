@@ -8,8 +8,8 @@ import (
 
 	"cityio/internal/constants"
 	"cityio/internal/database"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/models"
 )
 
 type databaseActor struct {
@@ -17,8 +17,8 @@ type databaseActor struct {
 	db database.Querier
 
 	// use map to only preserve latest update
-	userBuffer map[string]models.User
-	cityBuffer map[string]models.City
+	userBuffer map[string]domain.User
+	cityBuffer map[string]domain.City
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -27,8 +27,8 @@ type databaseActor struct {
 func NewDatabaseActor(db database.Querier) BaseActorInterface {
 	return &databaseActor{
 		db:           db,
-		userBuffer:   make(map[string]models.User),
-		cityBuffer:   make(map[string]models.City),
+		userBuffer:   make(map[string]domain.User),
+		cityBuffer:   make(map[string]domain.City),
 		stopTickerCh: make(chan struct{}),
 	}
 }
@@ -108,8 +108,8 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			TargetLevel:       int32(msg.Building.TargetLevel),
 			X:                 int32(msg.Building.X),
 			Y:                 int32(msg.Building.Y),
-			ConstructionStart: msg.Building.ConstructionStart.ToPG(),
-			ConstructionEnd:   msg.Building.ConstructionEnd.ToPG(),
+			ConstructionStart: database.ToPGTimestamp(msg.Building.ConstructionStart.Time),
+			ConstructionEnd:   database.ToPGTimestamp(msg.Building.ConstructionEnd.Time),
 		})
 		if err != nil {
 			slog.ErrorContext(state.Ctx(), "error creating building in db", "error", err)
@@ -117,7 +117,7 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 
 	case messages.PeriodicOperationMessage:
 		cityBatchSize := 5000
-		cities := make([]models.City, 0, len(state.cityBuffer))
+		cities := make([]domain.City, 0, len(state.cityBuffer))
 		for _, c := range state.cityBuffer {
 			cities = append(cities, c)
 		}
@@ -162,7 +162,7 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 		}
 
 		userBatchSize := 5000
-		users := make([]models.User, 0, len(state.userBuffer))
+		users := make([]domain.User, 0, len(state.userBuffer))
 		for _, u := range state.userBuffer {
 			users = append(users, u)
 		}
@@ -187,8 +187,8 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			}
 		}
 
-		state.cityBuffer = make(map[string]models.City)
-		state.userBuffer = make(map[string]models.User)
+		state.cityBuffer = make(map[string]domain.City)
+		state.userBuffer = make(map[string]domain.User)
 	}
 }
 
