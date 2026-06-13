@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -13,32 +14,21 @@ import (
 
 	"cityio/internal/actors"
 	"cityio/internal/constants"
-	"cityio/internal/database"
 	"cityio/internal/logger"
-	"cityio/internal/messages"
+	"cityio/internal/ports"
 )
 
 type ClusterProvider struct {
-	system      *actor.ActorSystem
-	cluster     *cluster.Cluster
-	databasePID *actor.PID
+	system  *actor.ActorSystem
+	cluster *cluster.Cluster
 }
 
-func NewRuntime(ctx context.Context, db database.Querier, environment string) *ClusterProvider {
+func NewRuntime(ctx context.Context, store ports.Store, environment string) *ClusterProvider {
 	system := actor.NewActorSystem()
 
-	databaseProps := actor.PropsFromProducer(func() actor.Actor {
-		ac := actors.NewDatabaseActor(db)
-		ac.SetContext(logger.With(ctx, "actor", ac.ActorType()))
-		return ac
-	})
-	databasePID := system.Root.Spawn(databaseProps)
-	system.Root.Send(databasePID, messages.InitDatabaseMessage{})
-
 	cp := &ClusterProvider{
-		system:      system,
-		cluster:     nil,
-		databasePID: databasePID,
+		system:  system,
+		cluster: nil,
 	}
 
 	spawn := func(newActor func() actors.BaseActorInterface) actor.Producer {
@@ -46,6 +36,7 @@ func NewRuntime(ctx context.Context, db database.Querier, environment string) *C
 			ac := newActor()
 			ac.SetContext(logger.With(ctx, "actor", ac.ActorType()))
 			ac.SetCluster(cp)
+			ac.SetStore(store)
 			return ac
 		}
 	}
@@ -95,19 +86,9 @@ func (cp *ClusterProvider) RequestFuture(kind, identity string, message any) (ac
 
 func (cp *ClusterProvider) Tell(kind, identity string, msg any) error {
 	pid := cp.cluster.Get(identity, kind)
+	if pid == nil {
+		return fmt.Errorf("could not resolve actor %s/%s", kind, identity)
+	}
 	cp.system.Root.Send(pid, msg)
 	return nil
-}
-
-func (cp *ClusterProvider) DB() *actor.PID {
-	return cp.databasePID
-}
-
-func (cp *ClusterProvider) RequestDBFuture(message any) actor.Future {
-	return cp.system.Root.RequestFuture(cp.databasePID, message, constants.ActorTimeoutDuration*time.Second)
-}
-
-// shouldn't generally be used
-func (cp *ClusterProvider) SendDB(message any) {
-	cp.system.Root.Send(cp.databasePID, message)
 }

@@ -19,13 +19,16 @@ rather than the source of truth during runtime.
 ## Architecture at a glance
 
 ```
-HTTP (api)  ──▶  services  ──▶  cluster (ports.ClusterProvider)  ──▶  actors  ──▶  databaseActor  ──▶  Postgres
-                                                                         │
-                                                       per-entity in-memory state + tickers
+Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvider)  ──▶  actors  ──┐
+                                                                         │             │
+                                                       per-entity in-memory state      │
+                                                       + tickers                       ▼
+                                                                         persistence.Store (ports.Store)  ──▶  Postgres
 ```
 
 - **`cmd/main.go`** — composition root. Loads config, sets up logging, connects the DB,
-  builds the cluster runtime, runs world setup, then starts the HTTP server.
+  builds the persistence store and cluster runtime, runs world setup, then serves Connect
+  RPC over h2c + CORS.
 - **`internal/domain`** — pure domain entities and enums (`User`, `City`, `Building`, `Tile`,
   `Coordinates`, `NullTime`, plus `CityType`/`BuildingType`). **No framework imports.** This
   package must stay dependency-free; the sqlc-generated `database` package imports it for the
@@ -35,19 +38,32 @@ HTTP (api)  ──▶  services  ──▶  cluster (ports.ClusterProvider)  ─
   - `buildingActor` delegates type-specific behavior to a `buildingActorImpl`
     (`cityCenter.go`, `townCenter.go`, `house.go`, `farm.go`, `mine.go`, `barracks.go`) via
     `Create` / `Destroy` / `Handle` hooks.
-  - `databaseActor` (`database.go`) is the single sink for persistence: it buffers
-    `Update*` messages in maps (latest-write-wins) and batch-flushes them to Postgres on a
-    ticker. Create/Delete/queries pass through immediately.
-- **`internal/services`** — thin orchestration layer called by the API/setup. Functions take
-  `(ctx, cluster, input)` and translate requests into actor messages. DTOs that callers send
-  in live here (`inputs.go`: `CreateUserRequest`, `CityInput`, `BuildingInput`).
+  - Actors persist through the injected `ports.Store` (`state.Store`): reads/creates/deletes
+    hit the DB immediately; `Enqueue*` coalesces updates for the background writer.
+- **`internal/persistence`** — `Store` (implements `ports.Store`), the single sink for
+  persistence. Reads, creates and deletes go straight to the `database.Querier` (the pgx pool
+  is concurrency-safe). `Enqueue*` buffers updates per entity in mutex-guarded maps
+  (latest-write-wins); a background goroutine started by `Start` flushes them to Postgres on a
+  ticker via snapshot-and-swap (so enqueues never block on a flush). `Stop` does a final flush.
+- **`internal/services`** — thin orchestration layer called by the rpc/setup layers. Functions
+  take `(ctx, cluster, ...)` (and the `store` where needed) and translate requests into actor
+  messages. DTOs that callers send in live here (`inputs.go`: `CreateUserRequest`, `CityInput`,
+  `BuildingInput`).
 - **`internal/messages`** — the actor message types (the protocol). Plain structs, grouped by
-  domain (`user.go`, `city.go`, `buildings.go`, `tile.go`, `database.go`, `general.go`).
-- **`internal/cluster`** — implements `ports.ClusterProvider`. Registers actor "kinds",
-  spawns the database actor, wires the logging context onto each actor. Uses the in-memory
-  test cluster provider in non-prod and consul in prod.
-- **`internal/ports`** — interfaces that decouple layers (notably `ClusterProvider`), so
-  `services`/`actors` depend on an interface rather than the concrete `cluster` package.
+  domain (`user.go`, `city.go`, `buildings.go`, `tile.go`, `general.go`).
+- **`internal/cluster`** — implements `ports.ClusterProvider`. Registers actor "kinds", injects
+  the `ports.Store` and logging context onto each actor. Uses the in-memory test cluster
+  provider in non-prod and consul in prod.
+- **`internal/ports`** — interfaces that decouple layers (`ClusterProvider`, `Store`), so
+  `services`/`actors`/`rpc` depend on an interface rather than the concrete package.
+- **`internal/rpc`** — Connect RPC handlers (one file per service) over the generated code in
+  `internal/gen`. `NewServer(cluster, store, jwtSecret)` builds the handler; a JWT interceptor
+  (`internal/auth`) guards authenticated methods.
+- **`internal/auth`** — JWT issuing/verification and the Connect auth interceptor.
+- **`internal/mapping`** — domain↔proto conversion helpers used by `rpc`.
+- **`internal/stream`** — per-user pub/sub registry backing the server-streaming `StreamState`
+  RPC (replaces the old websocket loop).
+- **`internal/gen`** — generated Connect/protobuf code (from `buf`). Do not hand-edit.
 - **`internal/database`** — `sqlc`-generated query code (`*.sql.go`, `models.go`, `querier.go`,
   `db.go`) plus hand-written `database.go` (`NewDB`) and `utils.go` (row→domain `ToModel`
   converters and `ToPGTimestamp`). **Do not hand-edit generated files**; change the SQL in
@@ -56,11 +72,9 @@ HTTP (api)  ──▶  services  ──▶  cluster (ports.ClusterProvider)  ─
 - **`internal/logger`** — global slog setup (`Setup`) and a context-aware handler. `With(ctx,
   k, v, ...)` attaches attributes to a context; any `slog.*Context(ctx, ...)` call then emits
   them automatically. This is how actor type, environment, phase, etc. ride along on logs.
-- **`internal/ws`** — websocket connection registry and outbound payload types (`types.go`).
 - **`internal/constants`** — tunables (map size, tick frequencies, costs) and the building
   stat tables (`buildings.go`).
 - **`internal/setup`** — `Run()` seeds/restores the world on boot (see gotcha below).
-- **`internal/api`** — HTTP layer (gorilla/mux + cors + JWT). **Currently mostly disabled.**
 
 ## How data flows (typical patterns)
 
@@ -69,8 +83,9 @@ HTTP (api)  ──▶  services  ──▶  cluster (ports.ClusterProvider)  ─
   ack is needed (e.g. gold deduction before an upgrade).
 - **Fire-and-forget:** `cluster.Tell(kind, identity, msg)` or `ctx.Send(...)`. Used for state
   nudges (resource production, population cap changes). Errors are only logged, not propagated.
-- **Persistence:** actors send `Create*/Update*/Delete*` messages to `cluster.DB()` (the
-  database actor). `Update*` are buffered and batched; everything else is immediate.
+- **Persistence:** actors call the injected `ports.Store` directly — `Create*`/`Delete*`/reads
+  hit Postgres immediately; `Enqueue*` buffers updates that the store's background writer
+  batch-flushes.
 - **Timers:** most actors start a `time.Ticker` goroutine that sends themselves a
   `PeriodicOperationMessage` every N seconds (frequencies in `constants`).
 
@@ -127,9 +142,9 @@ goose -dir db/migrations up
   all tables) then `up`, and `setup.Run()` then regenerates ~490 random towns + a capital per
   user and registers a hardcoded test user (`cityio@example.com`). Restarting the app wipes
   state. Treat persistence as a backup, not durable storage, until this is gated.
-- **The HTTP API is effectively disabled.** In `internal/api/api.go`, `addRoutes` is commented
-  out and the router is empty, so every endpoint returns 404. Most handlers, auth middleware,
-  and the websocket loop are commented out. Wiring these back up is expected future work.
+- **The API is Connect RPC, served over h2c.** Handlers live in `internal/rpc`; auth is a JWT
+  Connect interceptor. Live state is pushed to clients via the server-streaming `StreamState`
+  RPC (backed by `internal/stream`), not websockets.
 - **Create writes are fire-and-forget.** Failures to persist a create are logged but not
   surfaced to the caller (the actor exists in memory regardless).
 - **Generated code:** `internal/database/*.sql.go`, `db.go`, `models.go`, `querier.go` are

@@ -13,6 +13,7 @@ type baseActor struct {
 	actor.Actor
 	ctx     context.Context
 	Cluster ports.ClusterProvider
+	Store   ports.Store
 }
 
 // SetContext stores the base logging context for the actor. Attributes carried
@@ -20,6 +21,7 @@ type baseActor struct {
 // actor makes.
 func (b *baseActor) SetContext(ctx context.Context)           { b.ctx = ctx }
 func (b *baseActor) SetCluster(cluster ports.ClusterProvider) { b.Cluster = cluster }
+func (b *baseActor) SetStore(store ports.Store)               { b.Store = store }
 
 // Ctx returns the actor's base logging context, falling back to a background
 // context when none has been set.
@@ -35,4 +37,5 @@ type BaseActorInterface interface {
 	Receive(ctx actor.Context)
 	SetContext(ctx context.Context)
 	SetCluster(cluster ports.ClusterProvider)
+	SetStore(store ports.Store)
 }
