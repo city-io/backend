@@ -5,7 +5,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -13,25 +12,21 @@ import (
 // Config is the application configuration, populated from environment
 // variables.
 type Config struct {
-	Environment string `env:"ENVIRONMENT" envDefault:"development"`
-	APIPort     string `env:"API_PORT" envDefault:"8080"`
-	JWTSecret   string `env:"JWT_SECRET"`
-
-	// ProdDB and DevDB are populated manually in Load because the underlying
-	// environment variables use a _PROD/_DEV suffix that env prefixes cannot
-	// express.
-	ProdDB DatabaseConfig `env:"-"`
-	DevDB  DatabaseConfig `env:"-"`
+	Environment string         `env:"ENVIRONMENT" envDefault:"development"`
+	APIPort     string         `env:"API_PORT" envDefault:"8080"`
+	JWTSecret   string         `env:"JWT_SECRET"`
+	DB          DatabaseConfig `envPrefix:"PSQL_"`
 }
 
-// DatabaseConfig holds the connection settings for a single PostgreSQL
-// database.
+// DatabaseConfig holds the connection settings for the PostgreSQL database.
+// A single set of values is provided per environment; deployments supply the
+// appropriate values rather than the app selecting between baked-in blocks.
 type DatabaseConfig struct {
-	Host     string
-	Database string
-	Username string
-	Password string
-	Port     string
+	Host     string `env:"HOST" envDefault:"localhost"`
+	Port     string `env:"PORT" envDefault:"5432"`
+	Database string `env:"DATABASE"`
+	Username string `env:"USERNAME"`
+	Password string `env:"PASSWORD"`
 }
 
 // Load parses the environment into a Config.
@@ -40,22 +35,6 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	cfg.ProdDB = DatabaseConfig{
-		Host:     os.Getenv("PSQL_HOST_PROD"),
-		Database: os.Getenv("PSQL_DATABASE_PROD"),
-		Username: os.Getenv("PSQL_USERNAME_PROD"),
-		Password: os.Getenv("PSQL_PASSWORD_PROD"),
-		Port:     getOr("PSQL_PORT_PROD", "5432"),
-	}
-	cfg.DevDB = DatabaseConfig{
-		Host:     os.Getenv("PSQL_HOST_DEV"),
-		Database: os.Getenv("PSQL_DATABASE_DEV"),
-		Username: os.Getenv("PSQL_USERNAME_DEV"),
-		Password: os.Getenv("PSQL_PASSWORD_DEV"),
-		Port:     getOr("PSQL_PORT_DEV", "5432"),
-	}
-
 	return &cfg, nil
 }
 
@@ -65,24 +44,8 @@ func (c *Config) IsProduction() bool {
 	return c.Environment == "production"
 }
 
-// Database returns the database settings for the active environment.
-func (c *Config) Database() DatabaseConfig {
-	if c.IsProduction() {
-		return c.ProdDB
-	}
-	return c.DevDB
-}
-
-// DatabaseDSN returns the libpq connection string for the active environment.
+// DatabaseDSN returns the libpq connection string for the database.
 func (c *Config) DatabaseDSN() string {
-	db := c.Database()
 	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s",
-		db.Host, db.Username, db.Password, db.Database, db.Port)
-}
-
-func getOr(key, fallback string) string {
-	if v, ok := os.LookupEnv(key); ok {
-		return v
-	}
-	return fallback
+		c.DB.Host, c.DB.Username, c.DB.Password, c.DB.Database, c.DB.Port)
 }
