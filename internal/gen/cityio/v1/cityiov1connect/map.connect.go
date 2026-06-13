@@ -35,11 +35,14 @@ const (
 const (
 	// MapServiceGetMapProcedure is the fully-qualified name of the MapService's GetMap RPC.
 	MapServiceGetMapProcedure = "/cityio.v1.MapService/GetMap"
+	// MapServiceGetTileProcedure is the fully-qualified name of the MapService's GetTile RPC.
+	MapServiceGetTileProcedure = "/cityio.v1.MapService/GetTile"
 )
 
 // MapServiceClient is a client for the cityio.v1.MapService service.
 type MapServiceClient interface {
 	GetMap(context.Context, *connect.Request[v1.GetMapRequest]) (*connect.Response[v1.GetMapResponse], error)
+	GetTile(context.Context, *connect.Request[v1.GetTileRequest]) (*connect.Response[v1.GetTileResponse], error)
 }
 
 // NewMapServiceClient constructs a client for the cityio.v1.MapService service. By default, it uses
@@ -59,12 +62,19 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("GetMap")),
 			connect.WithClientOptions(opts...),
 		),
+		getTile: connect.NewClient[v1.GetTileRequest, v1.GetTileResponse](
+			httpClient,
+			baseURL+MapServiceGetTileProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("GetTile")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // mapServiceClient implements MapServiceClient.
 type mapServiceClient struct {
-	getMap *connect.Client[v1.GetMapRequest, v1.GetMapResponse]
+	getMap  *connect.Client[v1.GetMapRequest, v1.GetMapResponse]
+	getTile *connect.Client[v1.GetTileRequest, v1.GetTileResponse]
 }
 
 // GetMap calls cityio.v1.MapService.GetMap.
@@ -72,9 +82,15 @@ func (c *mapServiceClient) GetMap(ctx context.Context, req *connect.Request[v1.G
 	return c.getMap.CallUnary(ctx, req)
 }
 
+// GetTile calls cityio.v1.MapService.GetTile.
+func (c *mapServiceClient) GetTile(ctx context.Context, req *connect.Request[v1.GetTileRequest]) (*connect.Response[v1.GetTileResponse], error) {
+	return c.getTile.CallUnary(ctx, req)
+}
+
 // MapServiceHandler is an implementation of the cityio.v1.MapService service.
 type MapServiceHandler interface {
 	GetMap(context.Context, *connect.Request[v1.GetMapRequest]) (*connect.Response[v1.GetMapResponse], error)
+	GetTile(context.Context, *connect.Request[v1.GetTileRequest]) (*connect.Response[v1.GetTileResponse], error)
 }
 
 // NewMapServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -90,10 +106,18 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("GetMap")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceGetTileHandler := connect.NewUnaryHandler(
+		MapServiceGetTileProcedure,
+		svc.GetTile,
+		connect.WithSchema(mapServiceMethods.ByName("GetTile")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cityio.v1.MapService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MapServiceGetMapProcedure:
 			mapServiceGetMapHandler.ServeHTTP(w, r)
+		case MapServiceGetTileProcedure:
+			mapServiceGetTileHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -105,4 +129,8 @@ type UnimplementedMapServiceHandler struct{}
 
 func (UnimplementedMapServiceHandler) GetMap(context.Context, *connect.Request[v1.GetMapRequest]) (*connect.Response[v1.GetMapResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.MapService.GetMap is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) GetTile(context.Context, *connect.Request[v1.GetTileRequest]) (*connect.Response[v1.GetTileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.MapService.GetTile is not implemented"))
 }

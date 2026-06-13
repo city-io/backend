@@ -36,15 +36,27 @@ const (
 	// BuildingServiceCreateBuildingProcedure is the fully-qualified name of the BuildingService's
 	// CreateBuilding RPC.
 	BuildingServiceCreateBuildingProcedure = "/cityio.v1.BuildingService/CreateBuilding"
+	// BuildingServiceGetBuildingProcedure is the fully-qualified name of the BuildingService's
+	// GetBuilding RPC.
+	BuildingServiceGetBuildingProcedure = "/cityio.v1.BuildingService/GetBuilding"
 	// BuildingServiceUpgradeBuildingProcedure is the fully-qualified name of the BuildingService's
 	// UpgradeBuilding RPC.
 	BuildingServiceUpgradeBuildingProcedure = "/cityio.v1.BuildingService/UpgradeBuilding"
+	// BuildingServiceDeleteBuildingProcedure is the fully-qualified name of the BuildingService's
+	// DeleteBuilding RPC.
+	BuildingServiceDeleteBuildingProcedure = "/cityio.v1.BuildingService/DeleteBuilding"
+	// BuildingServiceListBuildingsProcedure is the fully-qualified name of the BuildingService's
+	// ListBuildings RPC.
+	BuildingServiceListBuildingsProcedure = "/cityio.v1.BuildingService/ListBuildings"
 )
 
 // BuildingServiceClient is a client for the cityio.v1.BuildingService service.
 type BuildingServiceClient interface {
 	CreateBuilding(context.Context, *connect.Request[v1.CreateBuildingRequest]) (*connect.Response[v1.CreateBuildingResponse], error)
+	GetBuilding(context.Context, *connect.Request[v1.GetBuildingRequest]) (*connect.Response[v1.GetBuildingResponse], error)
 	UpgradeBuilding(context.Context, *connect.Request[v1.UpgradeBuildingRequest]) (*connect.Response[v1.UpgradeBuildingResponse], error)
+	DeleteBuilding(context.Context, *connect.Request[v1.DeleteBuildingRequest]) (*connect.Response[v1.DeleteBuildingResponse], error)
+	ListBuildings(context.Context, *connect.Request[v1.ListBuildingsRequest]) (*connect.Response[v1.ListBuildingsResponse], error)
 }
 
 // NewBuildingServiceClient constructs a client for the cityio.v1.BuildingService service. By
@@ -64,10 +76,28 @@ func NewBuildingServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(buildingServiceMethods.ByName("CreateBuilding")),
 			connect.WithClientOptions(opts...),
 		),
+		getBuilding: connect.NewClient[v1.GetBuildingRequest, v1.GetBuildingResponse](
+			httpClient,
+			baseURL+BuildingServiceGetBuildingProcedure,
+			connect.WithSchema(buildingServiceMethods.ByName("GetBuilding")),
+			connect.WithClientOptions(opts...),
+		),
 		upgradeBuilding: connect.NewClient[v1.UpgradeBuildingRequest, v1.UpgradeBuildingResponse](
 			httpClient,
 			baseURL+BuildingServiceUpgradeBuildingProcedure,
 			connect.WithSchema(buildingServiceMethods.ByName("UpgradeBuilding")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteBuilding: connect.NewClient[v1.DeleteBuildingRequest, v1.DeleteBuildingResponse](
+			httpClient,
+			baseURL+BuildingServiceDeleteBuildingProcedure,
+			connect.WithSchema(buildingServiceMethods.ByName("DeleteBuilding")),
+			connect.WithClientOptions(opts...),
+		),
+		listBuildings: connect.NewClient[v1.ListBuildingsRequest, v1.ListBuildingsResponse](
+			httpClient,
+			baseURL+BuildingServiceListBuildingsProcedure,
+			connect.WithSchema(buildingServiceMethods.ByName("ListBuildings")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -76,7 +106,10 @@ func NewBuildingServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 // buildingServiceClient implements BuildingServiceClient.
 type buildingServiceClient struct {
 	createBuilding  *connect.Client[v1.CreateBuildingRequest, v1.CreateBuildingResponse]
+	getBuilding     *connect.Client[v1.GetBuildingRequest, v1.GetBuildingResponse]
 	upgradeBuilding *connect.Client[v1.UpgradeBuildingRequest, v1.UpgradeBuildingResponse]
+	deleteBuilding  *connect.Client[v1.DeleteBuildingRequest, v1.DeleteBuildingResponse]
+	listBuildings   *connect.Client[v1.ListBuildingsRequest, v1.ListBuildingsResponse]
 }
 
 // CreateBuilding calls cityio.v1.BuildingService.CreateBuilding.
@@ -84,15 +117,33 @@ func (c *buildingServiceClient) CreateBuilding(ctx context.Context, req *connect
 	return c.createBuilding.CallUnary(ctx, req)
 }
 
+// GetBuilding calls cityio.v1.BuildingService.GetBuilding.
+func (c *buildingServiceClient) GetBuilding(ctx context.Context, req *connect.Request[v1.GetBuildingRequest]) (*connect.Response[v1.GetBuildingResponse], error) {
+	return c.getBuilding.CallUnary(ctx, req)
+}
+
 // UpgradeBuilding calls cityio.v1.BuildingService.UpgradeBuilding.
 func (c *buildingServiceClient) UpgradeBuilding(ctx context.Context, req *connect.Request[v1.UpgradeBuildingRequest]) (*connect.Response[v1.UpgradeBuildingResponse], error) {
 	return c.upgradeBuilding.CallUnary(ctx, req)
 }
 
+// DeleteBuilding calls cityio.v1.BuildingService.DeleteBuilding.
+func (c *buildingServiceClient) DeleteBuilding(ctx context.Context, req *connect.Request[v1.DeleteBuildingRequest]) (*connect.Response[v1.DeleteBuildingResponse], error) {
+	return c.deleteBuilding.CallUnary(ctx, req)
+}
+
+// ListBuildings calls cityio.v1.BuildingService.ListBuildings.
+func (c *buildingServiceClient) ListBuildings(ctx context.Context, req *connect.Request[v1.ListBuildingsRequest]) (*connect.Response[v1.ListBuildingsResponse], error) {
+	return c.listBuildings.CallUnary(ctx, req)
+}
+
 // BuildingServiceHandler is an implementation of the cityio.v1.BuildingService service.
 type BuildingServiceHandler interface {
 	CreateBuilding(context.Context, *connect.Request[v1.CreateBuildingRequest]) (*connect.Response[v1.CreateBuildingResponse], error)
+	GetBuilding(context.Context, *connect.Request[v1.GetBuildingRequest]) (*connect.Response[v1.GetBuildingResponse], error)
 	UpgradeBuilding(context.Context, *connect.Request[v1.UpgradeBuildingRequest]) (*connect.Response[v1.UpgradeBuildingResponse], error)
+	DeleteBuilding(context.Context, *connect.Request[v1.DeleteBuildingRequest]) (*connect.Response[v1.DeleteBuildingResponse], error)
+	ListBuildings(context.Context, *connect.Request[v1.ListBuildingsRequest]) (*connect.Response[v1.ListBuildingsResponse], error)
 }
 
 // NewBuildingServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -108,18 +159,42 @@ func NewBuildingServiceHandler(svc BuildingServiceHandler, opts ...connect.Handl
 		connect.WithSchema(buildingServiceMethods.ByName("CreateBuilding")),
 		connect.WithHandlerOptions(opts...),
 	)
+	buildingServiceGetBuildingHandler := connect.NewUnaryHandler(
+		BuildingServiceGetBuildingProcedure,
+		svc.GetBuilding,
+		connect.WithSchema(buildingServiceMethods.ByName("GetBuilding")),
+		connect.WithHandlerOptions(opts...),
+	)
 	buildingServiceUpgradeBuildingHandler := connect.NewUnaryHandler(
 		BuildingServiceUpgradeBuildingProcedure,
 		svc.UpgradeBuilding,
 		connect.WithSchema(buildingServiceMethods.ByName("UpgradeBuilding")),
 		connect.WithHandlerOptions(opts...),
 	)
+	buildingServiceDeleteBuildingHandler := connect.NewUnaryHandler(
+		BuildingServiceDeleteBuildingProcedure,
+		svc.DeleteBuilding,
+		connect.WithSchema(buildingServiceMethods.ByName("DeleteBuilding")),
+		connect.WithHandlerOptions(opts...),
+	)
+	buildingServiceListBuildingsHandler := connect.NewUnaryHandler(
+		BuildingServiceListBuildingsProcedure,
+		svc.ListBuildings,
+		connect.WithSchema(buildingServiceMethods.ByName("ListBuildings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cityio.v1.BuildingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BuildingServiceCreateBuildingProcedure:
 			buildingServiceCreateBuildingHandler.ServeHTTP(w, r)
+		case BuildingServiceGetBuildingProcedure:
+			buildingServiceGetBuildingHandler.ServeHTTP(w, r)
 		case BuildingServiceUpgradeBuildingProcedure:
 			buildingServiceUpgradeBuildingHandler.ServeHTTP(w, r)
+		case BuildingServiceDeleteBuildingProcedure:
+			buildingServiceDeleteBuildingHandler.ServeHTTP(w, r)
+		case BuildingServiceListBuildingsProcedure:
+			buildingServiceListBuildingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -133,6 +208,18 @@ func (UnimplementedBuildingServiceHandler) CreateBuilding(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.BuildingService.CreateBuilding is not implemented"))
 }
 
+func (UnimplementedBuildingServiceHandler) GetBuilding(context.Context, *connect.Request[v1.GetBuildingRequest]) (*connect.Response[v1.GetBuildingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.BuildingService.GetBuilding is not implemented"))
+}
+
 func (UnimplementedBuildingServiceHandler) UpgradeBuilding(context.Context, *connect.Request[v1.UpgradeBuildingRequest]) (*connect.Response[v1.UpgradeBuildingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.BuildingService.UpgradeBuilding is not implemented"))
+}
+
+func (UnimplementedBuildingServiceHandler) DeleteBuilding(context.Context, *connect.Request[v1.DeleteBuildingRequest]) (*connect.Response[v1.DeleteBuildingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.BuildingService.DeleteBuilding is not implemented"))
+}
+
+func (UnimplementedBuildingServiceHandler) ListBuildings(context.Context, *connect.Request[v1.ListBuildingsRequest]) (*connect.Response[v1.ListBuildingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.BuildingService.ListBuildings is not implemented"))
 }

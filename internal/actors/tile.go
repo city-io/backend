@@ -34,7 +34,8 @@ func (state *tileActor) Receive(ctx actor.Context) {
 
 	case messages.GetTileMessage:
 		ctx.Respond(messages.GetTileResponseMessage{
-			City: nil,
+			CityID:     state.CityID,
+			BuildingID: state.BuildingID,
 		})
 	}
 }

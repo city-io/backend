@@ -240,3 +240,60 @@ func (q *Queries) GetAllBuildings(ctx context.Context) ([]GetAllBuildingsRow, er
 	}
 	return items, nil
 }
+
+const getBuildingsByCity = `-- name: GetBuildingsByCity :many
+SELECT
+    building_id,
+    city_id,
+    type,
+    level,
+    target_level,
+    (coords).x::int4 AS x,
+    (coords).y::int4 AS y,
+    construction_start,
+    construction_end
+FROM buildings
+WHERE city_id = $1
+`
+
+type GetBuildingsByCityRow struct {
+	BuildingID        string           `json:"building_id"`
+	CityID            string           `json:"city_id"`
+	Type              string           `json:"type"`
+	Level             int32            `json:"level"`
+	TargetLevel       int32            `json:"target_level"`
+	X                 int32            `json:"x"`
+	Y                 int32            `json:"y"`
+	ConstructionStart pgtype.Timestamp `json:"construction_start"`
+	ConstructionEnd   pgtype.Timestamp `json:"construction_end"`
+}
+
+func (q *Queries) GetBuildingsByCity(ctx context.Context, cityID string) ([]GetBuildingsByCityRow, error) {
+	rows, err := q.db.Query(ctx, getBuildingsByCity, cityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBuildingsByCityRow
+	for rows.Next() {
+		var i GetBuildingsByCityRow
+		if err := rows.Scan(
+			&i.BuildingID,
+			&i.CityID,
+			&i.Type,
+			&i.Level,
+			&i.TargetLevel,
+			&i.X,
+			&i.Y,
+			&i.ConstructionStart,
+			&i.ConstructionEnd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

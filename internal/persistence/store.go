@@ -125,6 +125,30 @@ func (s *Store) GetAllBuildings(ctx context.Context) ([]domain.Building, error) 
 	return buildings, nil
 }
 
+func (s *Store) GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error) {
+	rows, err := s.db.GetCitiesByOwner(ctx, &owner)
+	if err != nil {
+		return nil, err
+	}
+	cities := make([]domain.City, 0, len(rows))
+	for _, c := range rows {
+		cities = append(cities, *c.ToModel())
+	}
+	return cities, nil
+}
+
+func (s *Store) GetBuildingsByCity(ctx context.Context, cityID string) ([]domain.Building, error) {
+	rows, err := s.db.GetBuildingsByCity(ctx, cityID)
+	if err != nil {
+		return nil, err
+	}
+	buildings := make([]domain.Building, 0, len(rows))
+	for _, b := range rows {
+		buildings = append(buildings, *b.ToModel())
+	}
+	return buildings, nil
+}
+
 func (s *Store) CreateUser(ctx context.Context, user domain.User) error {
 	return s.db.CreateUser(ctx, database.CreateUserParams{
 		UserID:   user.UserID,
