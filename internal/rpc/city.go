@@ -29,7 +29,7 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[pb.GetCi
 }
 
 func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[pb.CreateCityRequest]) (*connect.Response[pb.CreateCityResponse], error) {
-	city, err := services.CreateCity(ctx, h.srv.cluster, &services.CityInput{
+	city, err := services.CreateCity(ctx, h.srv.cluster, h.srv.store, &services.CityInput{
 		Type:  mapping.CityTypeFromProto(req.Msg.GetType()),
 		Owner: req.Msg.Owner,
 		Name:  req.Msg.GetName(),

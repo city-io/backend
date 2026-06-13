@@ -37,10 +37,10 @@ func (state *userActor) Receive(ctx actor.Context) {
 		slog.DebugContext(state.Ctx(), "registering user actor", "username", msg.User.Username)
 		state.User = msg.User
 		if !msg.Restore {
-			if err := state.persistCreate(&messages.CreateUserMessage{User: state.User}); err != nil {
+			if err := state.Store.CreateUser(state.Ctx(), state.User); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist user create", "user_id", state.User.UserID, "error", err)
 			}
-			services.CreateCity(state.Ctx(), state.Cluster, &services.CityInput{ //nolint:errcheck // fire-and-forget
+			services.CreateCity(state.Ctx(), state.Cluster, state.Store, &services.CityInput{ //nolint:errcheck // fire-and-forget
 				Type:  domain.CityTypeCity,
 				Owner: &state.User.UserID,
 				Name:  fmt.Sprintf("%s's City", state.User.Username),
@@ -73,9 +73,9 @@ func (state *userActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteUserMessage:
-		ctx.Send(state.Cluster.DB(), messages.DeleteUserMessage{
-			UserID: state.User.UserID,
-		})
+		if err := state.Store.DeleteUser(state.Ctx(), state.User.UserID); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to delete user", "user_id", state.User.UserID, "error", err)
+		}
 
 		slog.DebugContext(state.Ctx(), "shutting down user actor", "user_id", state.User.UserID)
 		state.stopPeriodicOperation()
@@ -83,9 +83,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 
 	case messages.PeriodicOperationMessage:
 		// make a backup of the user state
-		ctx.Send(state.Cluster.DB(), &messages.UpdateUserMessage{
-			User: state.User,
-		})
+		state.Store.EnqueueUser(state.User)
 	}
 }
 

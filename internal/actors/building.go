@@ -63,7 +63,7 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			}
 
 			// TODO: trigger construction complete message
-			if err := state.persistCreate(&messages.CreateBuildingMessage{Building: state.Building}); err != nil {
+			if err := state.Store.CreateBuilding(state.Ctx(), state.Building); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist building create", "building_id", state.Building.BuildingID, "error", err)
 			}
 		}
@@ -178,16 +178,14 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 
 	// TODO: spawn a blocking goroutine that sends a message upon completion
 	// ensure that it gets an ACK back for processing
-	ctx.Send(state.Cluster.DB(), &messages.UpdateBuildingMessage{
-		Building: state.Building,
-	})
+	state.Store.EnqueueBuilding(state.Building)
 	return nil
 }
 
 func (state *buildingActor) destroy(ctx actor.Context) {
-	ctx.Send(state.Cluster.DB(), messages.DeleteBuildingMessage{
-		BuildingID: state.Building.BuildingID,
-	})
+	if err := state.Store.DeleteBuilding(state.Ctx(), state.Building.BuildingID); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to delete building", "building_id", state.Building.BuildingID, "error", err)
+	}
 	if _, err := state.Cluster.Request("tile", utils.GetTileIndex(state.Building.X, state.Building.Y), messages.UpdateTileBuildingMessage{
 		BuildingID: nil,
 	}); err != nil {

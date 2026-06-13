@@ -11,6 +11,7 @@ import (
 	pb "cityio/internal/gen/cityio/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
+	"cityio/internal/persistence"
 	"cityio/internal/services"
 	"cityio/internal/stream"
 )
@@ -42,22 +43,19 @@ func (h *userHandler) Register(ctx context.Context, req *connect.Request[pb.Regi
 }
 
 func (h *userHandler) Login(ctx context.Context, req *connect.Request[pb.LoginRequest]) (*connect.Response[pb.LoginResponse], error) {
-	res, err := h.srv.cluster.RequestDBFuture(messages.GetUserByIdentifierMessage{
-		Identifier: req.Msg.GetIdentifier(),
-	}).Result()
+	found, err := h.srv.store.GetUserByIdentifier(ctx, req.Msg.GetIdentifier())
+	if errors.Is(err, persistence.ErrNotFound) {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	lookup, ok := res.(messages.GetUserByIdentifierResponseMessage)
-	if !ok || !lookup.Found {
+
+	if err := bcrypt.CompareHashAndPassword([]byte(found.Password), []byte(req.Msg.GetPassword())); err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(lookup.User.Password), []byte(req.Msg.GetPassword())); err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
-	}
-
-	user := lookup.User
+	user := *found
 	if live, err := h.srv.cluster.Request("user", user.UserID, messages.GetUserMessage{}); err == nil {
 		if resp, ok := live.(*messages.GetUserResponseMessage); ok {
 			user = resp.User

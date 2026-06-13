@@ -2,13 +2,11 @@ package rpc
 
 import (
 	"context"
-	"errors"
 
 	"connectrpc.com/connect"
 
 	pb "cityio/internal/gen/cityio/v1"
 	"cityio/internal/mapping"
-	"cityio/internal/messages"
 )
 
 type mapHandler struct {
@@ -16,21 +14,21 @@ type mapHandler struct {
 }
 
 func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[pb.GetMapRequest]) (*connect.Response[pb.GetMapResponse], error) {
-	res, err := h.srv.cluster.RequestDBFuture(messages.GetMapMessage{}).Result()
+	cityList, err := h.srv.store.GetAllCities(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	snapshot, ok := res.(messages.GetMapResponseMessage)
-	if !ok {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("unexpected map response"))
+	buildingList, err := h.srv.store.GetAllBuildings(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	cities := make([]*pb.City, 0, len(snapshot.Cities))
-	for _, c := range snapshot.Cities {
+	cities := make([]*pb.City, 0, len(cityList))
+	for _, c := range cityList {
 		cities = append(cities, mapping.CityToProto(c))
 	}
-	buildings := make([]*pb.Building, 0, len(snapshot.Buildings))
-	for _, b := range snapshot.Buildings {
+	buildings := make([]*pb.Building, 0, len(buildingList))
+	for _, b := range buildingList {
 		buildings = append(buildings, mapping.BuildingToProto(b))
 	}
 

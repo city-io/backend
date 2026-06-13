@@ -43,7 +43,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.populationContributions = make(map[string]float64)
 
 		if !msg.Restore {
-			if err := state.persistCreate(msg); err != nil {
+			if err := state.Store.CreateCity(state.Ctx(), msg.City); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist city create", "city_id", msg.City.CityID, "error", err)
 			}
 			buildingID := uuid.New().String()
@@ -166,9 +166,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			newPopulation := currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)
 			state.City.Population = newPopulation
 		}
-		ctx.Send(state.Cluster.DB(), &messages.UpdateCityMessage{
-			City: state.City,
-		})
+		state.Store.EnqueueCity(state.City)
 	}
 }
 

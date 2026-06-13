@@ -11,10 +11,6 @@ type CreateUserMessage struct {
 	Restore bool
 }
 
-type UpdateUserMessage struct {
-	User domain.User
-}
-
 // CreditUserMessage adds gold and/or food to a user in a single atomic update.
 type CreditUserMessage struct {
 	Gold int64

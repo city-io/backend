@@ -2,7 +2,6 @@ package messages
 
 import "fmt"
 
-type InitDatabaseMessage struct{}
 type PeriodicOperationMessage struct{}
 type Ack struct{}
 

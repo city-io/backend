@@ -15,9 +15,6 @@ type UpgradeBuildingMessage struct{}
 
 type GetBuildingMessage struct{}
 
-type UpdateBuildingMessage struct {
-	Building domain.Building
-}
 type DeleteBuildingMessage struct {
 	BuildingID string
 }

@@ -22,23 +22,19 @@ func RestoreCity(ctx context.Context, cluster ports.ClusterProvider, city *domai
 	return nil
 }
 
-func CreateCity(ctx context.Context, cluster ports.ClusterProvider, city *CityInput) (*domain.City, error) {
+func CreateCity(ctx context.Context, cluster ports.ClusterProvider, store ports.Store, city *CityInput) (*domain.City, error) {
 	cityID := uuid.New().String()
 	ctx = logger.With(ctx, "city_id", cityID)
 	slog.InfoContext(ctx, "creating new city actor", "name", city.Name)
 
-	tileFuture := cluster.RequestDBFuture(messages.GetEmptyCityBlockMessage{
-		Size: constants.CitySize,
-	})
-	resp, err := tileFuture.Result()
+	block, err := store.FindEmptyCityBlock(ctx, constants.CitySize)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to fetch empty city block", "error", err)
 		return nil, err
 	}
-	randomTile := resp.(messages.GetEmptyCityBlockResponseMessage)
 
-	startX := randomTile.X
-	startY := randomTile.Y
+	startX := block.X
+	startY := block.Y
 	newCity := domain.City{
 		CityID:        cityID,
 		Type:          city.Type,

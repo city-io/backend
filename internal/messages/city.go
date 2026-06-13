@@ -11,9 +11,6 @@ type CreateCityMessage struct {
 	Restore bool
 }
 
-type UpdateCityMessage struct {
-	City domain.City
-}
 type UpdateCityOwnerMessage struct {
 	Owner *string
 }

@@ -12,15 +12,16 @@ import (
 	"cityio/internal/ports"
 )
 
-// Server wires the Connect services to the actor cluster.
+// Server wires the Connect services to the actor cluster and persistence store.
 type Server struct {
 	cluster   ports.ClusterProvider
+	store     ports.Store
 	jwtSecret string
 }
 
-// NewServer constructs an RPC server backed by the given cluster.
-func NewServer(cluster ports.ClusterProvider, jwtSecret string) *Server {
-	return &Server{cluster: cluster, jwtSecret: jwtSecret}
+// NewServer constructs an RPC server backed by the given cluster and store.
+func NewServer(cluster ports.ClusterProvider, store ports.Store, jwtSecret string) *Server {
+	return &Server{cluster: cluster, store: store, jwtSecret: jwtSecret}
 }
 
 // Handler returns the HTTP handler serving every Connect service with the auth
