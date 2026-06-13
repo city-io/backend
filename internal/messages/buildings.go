@@ -8,7 +8,6 @@ import (
 
 type CreateBuildingMessage struct {
 	Building  domain.Building
-	Owner     *string
 	Restore   bool
 	Construct bool
 }
@@ -16,9 +15,6 @@ type UpgradeBuildingMessage struct{}
 
 type GetBuildingMessage struct{}
 
-type UpdateBuildingOwnerMessage struct {
-	Owner *string
-}
 type UpdateBuildingMessage struct {
 	Building domain.Building
 }

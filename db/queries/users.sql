@@ -1,6 +1,10 @@
 -- name: GetAllUsers :many
 SELECT * FROM users;
 
+-- name: GetUserByIdentifier :one
+SELECT * FROM users
+WHERE email = $1 OR username = $1;
+
 -- name: CreateUser :exec
 INSERT INTO users (
     user_id, email, username, password, gold, food

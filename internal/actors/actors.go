@@ -3,9 +3,11 @@ package actors
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/asynkron/protoactor-go/actor"
 
+	"cityio/internal/messages"
 	"cityio/internal/ports"
 )
 
@@ -13,6 +15,20 @@ type baseActor struct {
 	actor.Actor
 	ctx     context.Context
 	Cluster ports.ClusterProvider
+}
+
+// persistCreate sends a create message to the database actor and waits for its
+// acknowledgement, so a failed create surfaces at the originator rather than
+// being silently dropped.
+func (b *baseActor) persistCreate(msg any) error {
+	res, err := b.Cluster.RequestDBFuture(msg).Result()
+	if err != nil {
+		return err
+	}
+	if _, ok := res.(messages.Ack); !ok {
+		return fmt.Errorf("database rejected create: %T", res)
+	}
+	return nil
 }
 
 // SetContext stores the base logging context for the actor. Attributes carried

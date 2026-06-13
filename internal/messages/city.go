@@ -17,8 +17,27 @@ type UpdateCityMessage struct {
 type UpdateCityOwnerMessage struct {
 	Owner *string
 }
-type UpdateCityPopulationCapMessage struct {
-	Change float64
+
+// SetBuildingPopulationMessage reports a building's absolute contribution to its
+// city's population cap. Keyed by building so resends are idempotent and the cap
+// can be fully rebuilt from its buildings.
+type SetBuildingPopulationMessage struct {
+	BuildingID string
+	Population float64
+}
+
+// CreditProductionMessage routes a building's produced resources to its city,
+// which forwards them to the city's owner (if any). The city owns the owner, so
+// buildings never cache it.
+type CreditProductionMessage struct {
+	Gold int64
+	Food int64
+}
+
+// DeductOwnerGoldMessage asks a city to deduct gold from its owner (e.g. for a
+// building upgrade), relaying the owner's Ack or InsufficientGoldError.
+type DeductOwnerGoldMessage struct {
+	Amount int64
 }
 
 type GetCityMessage struct{}

@@ -18,6 +18,11 @@ type cityActor struct {
 	baseActor
 	City domain.City
 
+	// populationContributions holds each building's absolute contribution to the
+	// population cap, keyed by building ID. The cap is derived as their sum, so it
+	// is idempotent under resends and fully rebuilt from buildings on restore.
+	populationContributions map[string]float64
+
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
@@ -35,9 +40,12 @@ func (state *cityActor) Receive(ctx actor.Context) {
 
 	case *messages.CreateCityMessage:
 		state.City = msg.City
+		state.populationContributions = make(map[string]float64)
 
 		if !msg.Restore {
-			ctx.Send(state.Cluster.DB(), msg)
+			if err := state.persistCreate(msg); err != nil {
+				slog.ErrorContext(state.Ctx(), "failed to persist city create", "city_id", msg.City.CityID, "error", err)
+			}
 			buildingID := uuid.New().String()
 			buildingType := domain.BuildingTypeCityCenter
 			if msg.City.Type == domain.CityTypeTown {
@@ -58,7 +66,6 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			}
 			state.Cluster.Request("building", buildingID, &messages.CreateBuildingMessage{
 				Building:  building,
-				Owner:     msg.City.Owner,
 				Restore:   false,
 				Construct: false,
 			})
@@ -83,24 +90,60 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateCityOwnerMessage:
+		// The city is the sole authority for ownership; buildings and tiles no
+		// longer cache it, so there is nothing to propagate.
 		state.City.Owner = msg.Owner
 
+	case messages.SetBuildingPopulationMessage:
+		if state.populationContributions == nil {
+			state.populationContributions = make(map[string]float64)
+		}
+		state.populationContributions[msg.BuildingID] = msg.Population
+		var cap float64
+		for _, p := range state.populationContributions {
+			cap += p
+		}
+		state.City.PopulationCap = cap
+
+	case messages.CreditProductionMessage:
+		if state.City.Owner == nil {
+			ctx.Respond(messages.Ack{})
+			return
+		}
+		if _, err := state.Cluster.Request("user", *state.City.Owner, messages.CreditUserMessage{
+			Gold: msg.Gold,
+			Food: msg.Food,
+		}); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to credit production to owner", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		ctx.Respond(messages.Ack{})
+
+	case messages.DeductOwnerGoldMessage:
+		if state.City.Owner == nil {
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		res, err := state.Cluster.Request("user", *state.City.Owner, messages.CheckAndDeductGoldMessage{
+			Amount: msg.Amount,
+		})
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to deduct gold from owner", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		ctx.Respond(res)
+
+	case messages.ReconcileTilesMessage:
 		for dx := range state.City.Size {
 			for dy := range state.City.Size {
-				idx := utils.GetTileIndex(
-					state.City.StartX+dx,
-					state.City.StartY+dy,
-				)
-				_, err := state.Cluster.Request("tile", idx, messages.UpdateTileOwnerMessage(msg))
-				if err != nil {
-					slog.ErrorContext(state.Ctx(), "failed to signal tiles of city ownership change", "error", err)
+				idx := utils.GetTileIndex(state.City.StartX+dx, state.City.StartY+dy)
+				if err := state.Cluster.Tell("tile", idx, messages.UpdateTileCityMessage{CityID: state.City.CityID}); err != nil {
+					slog.ErrorContext(state.Ctx(), "failed to reconcile tile city index", "tile", idx, "error", err)
 				}
 			}
 		}
-
-	case messages.UpdateCityPopulationCapMessage:
-		slog.DebugContext(state.Ctx(), "updating population cap", "city_id", state.City.CityID, "owner", state.City.Owner, "change", msg.Change)
-		state.City.PopulationCap += float64(msg.Change)
 
 	case messages.GetCityMessage:
 		ctx.Respond(&messages.GetCityResponseMessage{
@@ -117,11 +160,12 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		ctx.Stop(ctx.Self())
 
 	case messages.PeriodicOperationMessage:
-		currentPopulation := float64(state.City.Population)
-		populationCap := float64(state.City.PopulationCap)
-
-		newPopulation := currentPopulation + (constants.PopulationGrowthRate)*currentPopulation*(1-currentPopulation/populationCap)
-		state.City.Population = newPopulation
+		currentPopulation := state.City.Population
+		populationCap := state.City.PopulationCap
+		if populationCap > 0 {
+			newPopulation := currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)
+			state.City.Population = newPopulation
+		}
 		ctx.Send(state.Cluster.DB(), &messages.UpdateCityMessage{
 			City: state.City,
 		})

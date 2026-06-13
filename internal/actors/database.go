@@ -1,10 +1,13 @@
 package actors
 
 import (
+	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"cityio/internal/constants"
 	"cityio/internal/database"
@@ -17,8 +20,9 @@ type databaseActor struct {
 	db database.Querier
 
 	// use map to only preserve latest update
-	userBuffer map[string]domain.User
-	cityBuffer map[string]domain.City
+	userBuffer     map[string]domain.User
+	cityBuffer     map[string]domain.City
+	buildingBuffer map[string]domain.Building
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -26,10 +30,11 @@ type databaseActor struct {
 
 func NewDatabaseActor(db database.Querier) BaseActorInterface {
 	return &databaseActor{
-		db:           db,
-		userBuffer:   make(map[string]domain.User),
-		cityBuffer:   make(map[string]domain.City),
-		stopTickerCh: make(chan struct{}),
+		db:             db,
+		userBuffer:     make(map[string]domain.User),
+		cityBuffer:     make(map[string]domain.City),
+		buildingBuffer: make(map[string]domain.Building),
+		stopTickerCh:   make(chan struct{}),
 	}
 }
 
@@ -52,7 +57,10 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 		})
 		if err != nil {
 			slog.ErrorContext(state.Ctx(), "error creating user in db", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
 		}
+		ctx.Respond(messages.Ack{})
 	case *messages.UpdateUserMessage:
 		state.userBuffer[msg.User.UserID] = msg.User
 	case messages.DeleteUserMessage:
@@ -75,7 +83,10 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 		})
 		if err != nil {
 			slog.ErrorContext(state.Ctx(), "error creating city in db", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
 		}
+		ctx.Respond(messages.Ack{})
 	case messages.DeleteCityMessage:
 		err := state.db.DeleteCity(state.Ctx(), msg.CityID)
 		if err != nil {
@@ -99,6 +110,42 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			Y: int(row.Y),
 		})
 
+	case messages.GetUserByIdentifierMessage:
+		row, err := state.db.GetUserByIdentifier(state.Ctx(), msg.Identifier)
+		if errors.Is(err, pgx.ErrNoRows) {
+			ctx.Respond(messages.GetUserByIdentifierResponseMessage{Found: false})
+			return
+		}
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "error fetching user by identifier from db", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		ctx.Respond(messages.GetUserByIdentifierResponseMessage{User: *row.ToModel(), Found: true})
+
+	case messages.GetMapMessage:
+		cityRows, err := state.db.GetAllCities(state.Ctx())
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "error fetching cities from db", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		buildingRows, err := state.db.GetAllBuildings(state.Ctx())
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "error fetching buildings from db", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		cities := make([]domain.City, 0, len(cityRows))
+		for _, c := range cityRows {
+			cities = append(cities, *c.ToModel())
+		}
+		buildings := make([]domain.Building, 0, len(buildingRows))
+		for _, b := range buildingRows {
+			buildings = append(buildings, *b.ToModel())
+		}
+		ctx.Respond(messages.GetMapResponseMessage{Cities: cities, Buildings: buildings})
+
 	case *messages.CreateBuildingMessage:
 		err := state.db.CreateBuilding(state.Ctx(), database.CreateBuildingParams{
 			BuildingID:        msg.Building.BuildingID,
@@ -113,6 +160,17 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 		})
 		if err != nil {
 			slog.ErrorContext(state.Ctx(), "error creating building in db", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		ctx.Respond(messages.Ack{})
+	case *messages.UpdateBuildingMessage:
+		state.buildingBuffer[msg.Building.BuildingID] = msg.Building
+	case messages.DeleteBuildingMessage:
+		delete(state.buildingBuffer, msg.BuildingID)
+		err := state.db.DeleteBuilding(state.Ctx(), msg.BuildingID)
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "error deleting building in db", "error", err)
 		}
 
 	case messages.PeriodicOperationMessage:
@@ -187,8 +245,47 @@ func (state *databaseActor) Receive(ctx actor.Context) {
 			}
 		}
 
+		buildingBatchSize := 5000
+		buildings := make([]domain.Building, 0, len(state.buildingBuffer))
+		for _, b := range state.buildingBuffer {
+			buildings = append(buildings, b)
+		}
+		for i := 0; i < len(buildings); i += buildingBatchSize {
+			end := min(i+buildingBatchSize, len(buildings))
+			chunk := buildings[i:end]
+
+			params := database.BatchUpdateBuildingsParams{
+				BuildingIds:        make([]string, 0, len(chunk)),
+				CityIds:            make([]string, 0, len(chunk)),
+				Types:              make([]string, 0, len(chunk)),
+				Levels:             make([]int32, 0, len(chunk)),
+				TargetLevels:       make([]int32, 0, len(chunk)),
+				Xs:                 make([]int32, 0, len(chunk)),
+				Ys:                 make([]int32, 0, len(chunk)),
+				ConstructionStarts: make([]pgtype.Timestamp, 0, len(chunk)),
+				ConstructionEnds:   make([]pgtype.Timestamp, 0, len(chunk)),
+			}
+
+			for _, b := range chunk {
+				params.BuildingIds = append(params.BuildingIds, b.BuildingID)
+				params.CityIds = append(params.CityIds, b.CityID)
+				params.Types = append(params.Types, b.Type)
+				params.Levels = append(params.Levels, int32(b.Level))
+				params.TargetLevels = append(params.TargetLevels, int32(b.TargetLevel))
+				params.Xs = append(params.Xs, int32(b.X))
+				params.Ys = append(params.Ys, int32(b.Y))
+				params.ConstructionStarts = append(params.ConstructionStarts, database.ToPGTimestamp(b.ConstructionStart.Time))
+				params.ConstructionEnds = append(params.ConstructionEnds, database.ToPGTimestamp(b.ConstructionEnd.Time))
+			}
+
+			if err := state.db.BatchUpdateBuildings(state.Ctx(), params); err != nil {
+				slog.ErrorContext(state.Ctx(), "error batch updating buildings", "idx", i, "error", err)
+			}
+		}
+
 		state.cityBuffer = make(map[string]domain.City)
 		state.userBuffer = make(map[string]domain.User)
+		state.buildingBuffer = make(map[string]domain.Building)
 	}
 }
 

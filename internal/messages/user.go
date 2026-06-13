@@ -14,11 +14,11 @@ type CreateUserMessage struct {
 type UpdateUserMessage struct {
 	User domain.User
 }
-type UpdateUserGoldMessage struct {
-	Change int64
-}
-type UpdateUserFoodMessage struct {
-	Change int64
+
+// CreditUserMessage adds gold and/or food to a user in a single atomic update.
+type CreditUserMessage struct {
+	Gold int64
+	Food int64
 }
 
 type CheckAndDeductGoldMessage struct {

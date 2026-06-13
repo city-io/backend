@@ -24,12 +24,6 @@ func (*tileActor) ActorType() string {
 func (state *tileActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
-	case messages.UpdateTileOwnerMessage:
-		if state.BuildingID != nil {
-			state.Cluster.Tell("building", *state.BuildingID, messages.UpdateBuildingOwnerMessage(msg))
-		}
-		ctx.Respond(messages.Ack{})
-
 	case messages.UpdateTileCityMessage:
 		state.CityID = &msg.CityID
 		ctx.Respond(messages.Ack{})

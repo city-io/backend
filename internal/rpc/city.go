@@ -1,0 +1,42 @@
+package rpc
+
+import (
+	"context"
+	"errors"
+
+	"connectrpc.com/connect"
+
+	pb "cityio/internal/gen/cityio/v1"
+	"cityio/internal/mapping"
+	"cityio/internal/messages"
+	"cityio/internal/services"
+)
+
+type cityHandler struct {
+	srv *Server
+}
+
+func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[pb.GetCityRequest]) (*connect.Response[pb.GetCityResponse], error) {
+	res, err := h.srv.cluster.Request("city", req.Msg.GetCityId(), messages.GetCityMessage{})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	resp, ok := res.(*messages.GetCityResponseMessage)
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
+	}
+	return connect.NewResponse(&pb.GetCityResponse{City: mapping.CityToProto(resp.City)}), nil
+}
+
+func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[pb.CreateCityRequest]) (*connect.Response[pb.CreateCityResponse], error) {
+	city, err := services.CreateCity(ctx, h.srv.cluster, &services.CityInput{
+		Type:  mapping.CityTypeFromProto(req.Msg.GetType()),
+		Owner: req.Msg.Owner,
+		Name:  req.Msg.GetName(),
+		Size:  int(req.Msg.GetSize()),
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&pb.CreateCityResponse{City: mapping.CityToProto(*city)}), nil
+}

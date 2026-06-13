@@ -11,7 +11,7 @@ import (
 	"cityio/internal/domain"
 	"cityio/internal/messages"
 	"cityio/internal/services"
-	"cityio/internal/ws"
+	"cityio/internal/stream"
 )
 
 type userActor struct {
@@ -37,9 +37,9 @@ func (state *userActor) Receive(ctx actor.Context) {
 		slog.DebugContext(state.Ctx(), "registering user actor", "username", msg.User.Username)
 		state.User = msg.User
 		if !msg.Restore {
-			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
-				User: state.User,
-			})
+			if err := state.persistCreate(&messages.CreateUserMessage{User: state.User}); err != nil {
+				slog.ErrorContext(state.Ctx(), "failed to persist user create", "user_id", state.User.UserID, "error", err)
+			}
 			services.CreateCity(state.Ctx(), state.Cluster, &services.CityInput{ //nolint:errcheck // fire-and-forget
 				Type:  domain.CityTypeCity,
 				Owner: &state.User.UserID,
@@ -50,20 +50,20 @@ func (state *userActor) Receive(ctx actor.Context) {
 		state.startPeriodicOperation(ctx)
 		ctx.Respond(messages.Ack{})
 
-	case messages.UpdateUserGoldMessage:
-		state.User.Gold += msg.Change
+	case messages.CreditUserMessage:
+		state.User.Gold += msg.Gold
+		state.User.Food += msg.Food
 		state.ws()
-
-	case messages.UpdateUserFoodMessage:
-		state.User.Food += msg.Change
-		state.ws()
+		ctx.Respond(messages.Ack{})
 
 	case messages.CheckAndDeductGoldMessage:
 		if missing := msg.Amount - state.User.Gold; missing > 0 {
 			ctx.Respond(messages.InsufficientGoldError{
 				Missing: missing,
 			})
+			return
 		}
+		state.User.Gold -= msg.Amount
 		state.ws()
 		ctx.Respond(messages.Ack{})
 
@@ -112,9 +112,8 @@ func (state *userActor) stopPeriodicOperation() {
 }
 
 func (state *userActor) ws() {
-	ws.Send(state.User.UserID, messages.WS_USER, &ws.UserAccountOutput{
-		Username: state.User.Username,
-		Gold:     state.User.Gold,
-		Food:     state.User.Food,
+	stream.Publish(state.User.UserID, stream.UserState{
+		Gold: state.User.Gold,
+		Food: state.User.Food,
 	})
 }

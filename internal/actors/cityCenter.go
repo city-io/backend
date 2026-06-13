@@ -1,11 +1,10 @@
 package actors
 
 import (
-	"log/slog"
-
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
 )
 
@@ -15,21 +14,18 @@ func newCityCenterImpl() buildingActorImpl {
 	return &cityCenterImpl{}
 }
 
-func (c *cityCenterImpl) Create(ctx actor.Context, state *buildingActor)  {}
+func (c *cityCenterImpl) Create(ctx actor.Context, state *buildingActor) {
+	state.reportPopulation(constants.GetBuildingPopulation(domain.BuildingTypeCityCenter, state.populationLevel()))
+}
 func (c *cityCenterImpl) Destroy(ctx actor.Context, state *buildingActor) {}
 func (c *cityCenterImpl) Handle(ctx actor.Context, state *buildingActor) {
 	switch ctx.Message().(type) {
 
 	case messages.PeriodicOperationMessage:
-		if state.constructionActive() || state.Owner == nil {
+		if state.constructionActive() {
 			return
 		}
-
-		err := state.Cluster.Tell("user", *state.Owner, messages.UpdateUserGoldMessage{
-			Change: constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level),
-		})
-		if err != nil {
-			slog.ErrorContext(state.Ctx(), "failed to send city center production back to user", "error", err)
-		}
+		state.reportPopulation(constants.GetBuildingPopulation(domain.BuildingTypeCityCenter, state.populationLevel()))
+		state.creditProduction(constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level), 0)
 	}
 }

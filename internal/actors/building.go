@@ -1,7 +1,6 @@
 package actors
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -24,8 +23,13 @@ type buildingActor struct {
 	baseActor
 	Building domain.Building
 
-	Owner *string
-	Impl  buildingActorImpl
+	Impl buildingActorImpl
+
+	// pending production not yet acknowledged by the city. Accumulated each tick
+	// and only cleared once the city acks, so a dropped tick is retried rather
+	// than lost.
+	pendingGold int64
+	pendingFood int64
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -43,7 +47,6 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *messages.CreateBuildingMessage:
 		state.Building = msg.Building
-		state.Owner = msg.Owner
 		if !msg.Restore {
 			if msg.Construct {
 				now := time.Now()
@@ -60,9 +63,9 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			}
 
 			// TODO: trigger construction complete message
-			ctx.Send(state.Cluster.DB(), &messages.CreateBuildingMessage{
-				Building: state.Building,
-			})
+			if err := state.persistCreate(&messages.CreateBuildingMessage{Building: state.Building}); err != nil {
+				slog.ErrorContext(state.Ctx(), "failed to persist building create", "building_id", state.Building.BuildingID, "error", err)
+			}
 		}
 		switch state.Building.BuildingType() {
 		case domain.BuildingTypeCityCenter:
@@ -88,10 +91,11 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpgradeBuildingMessage:
-		state.upgrade(ctx)
-
-	case messages.UpdateBuildingOwnerMessage:
-		state.Owner = msg.Owner
+		if err := state.upgrade(ctx); err != nil {
+			ctx.Respond(err)
+			return
+		}
+		ctx.Respond(messages.Ack{})
 
 	case messages.GetBuildingMessage:
 		ctx.Respond(&messages.GetBuildingResponseMessage{
@@ -103,10 +107,30 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 		state.stopPeriodicOperation()
 		state.destroy(ctx)
 
+	case messages.ReconcileTilesMessage:
+		state.reaffirmTile()
+
+	case messages.PeriodicOperationMessage:
+		state.reaffirmTile()
+		if state.Impl != nil {
+			state.Impl.Handle(ctx, state)
+		}
+
 	default:
 		if state.Impl != nil {
 			state.Impl.Handle(ctx, state)
 		}
+	}
+}
+
+// reaffirmTile re-pushes this building's presence to its tile. The building's
+// coordinates are authoritative; the tile's building index is derived, so this
+// idempotent nudge repairs any drift.
+func (state *buildingActor) reaffirmTile() {
+	if err := state.Cluster.Tell("tile", utils.GetTileIndex(state.Building.X, state.Building.Y), messages.UpdateTileBuildingMessage{
+		BuildingID: &state.Building.BuildingID,
+	}); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to reaffirm building tile index", "building_id", state.Building.BuildingID, "error", err)
 	}
 }
 
@@ -115,9 +139,6 @@ func (state *buildingActor) constructionActive() bool {
 }
 
 func (state *buildingActor) upgrade(ctx actor.Context) error {
-	if state.Owner == nil {
-		return errors.New("cannot upgrade building without owner")
-	}
 	if state.constructionActive() {
 		return &messages.ConstructionInProgressError{BuildingID: state.Building.BuildingID}
 	}
@@ -126,11 +147,11 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 		return &messages.MaxLevelReachedError{BuildingID: state.Building.BuildingID}
 	}
 
-	res, err := state.Cluster.Request("user", *state.Owner, messages.CheckAndDeductGoldMessage{
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.DeductOwnerGoldMessage{
 		Amount: constants.GetBuildingCost(buildingType, state.Building.Level),
 	})
 	if err != nil {
-		slog.ErrorContext(state.Ctx(), "failed to check user balance for upgrade", "error", err)
+		slog.ErrorContext(state.Ctx(), "failed to deduct gold for upgrade", "error", err)
 		return err
 	}
 	switch msg := res.(type) {
@@ -167,11 +188,59 @@ func (state *buildingActor) destroy(ctx actor.Context) {
 	ctx.Send(state.Cluster.DB(), messages.DeleteBuildingMessage{
 		BuildingID: state.Building.BuildingID,
 	})
-	state.Cluster.Request("tile", utils.GetTileIndex(state.Building.X, state.Building.Y), messages.UpdateTileBuildingMessage{
+	if _, err := state.Cluster.Request("tile", utils.GetTileIndex(state.Building.X, state.Building.Y), messages.UpdateTileBuildingMessage{
 		BuildingID: nil,
-	})
+	}); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to clear building from tile on destroy", "building_id", state.Building.BuildingID, "error", err)
+	}
 	slog.DebugContext(state.Ctx(), "shutting down BuildingActor", "building_id", state.Building.BuildingID, "type", state.Building.BuildingType())
 	ctx.Stop(ctx.Self())
+}
+
+// creditProduction accumulates produced resources and forwards them to the
+// city, which credits its owner. The pending total is only cleared once the
+// city acks, so a dropped or failed tick is retried on the next one.
+func (state *buildingActor) creditProduction(gold, food int64) {
+	state.pendingGold += gold
+	state.pendingFood += food
+	if state.pendingGold == 0 && state.pendingFood == 0 {
+		return
+	}
+
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.CreditProductionMessage{
+		Gold: state.pendingGold,
+		Food: state.pendingFood,
+	})
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to credit production to city", "error", err)
+		return
+	}
+	if _, ok := res.(messages.Ack); ok {
+		state.pendingGold = 0
+		state.pendingFood = 0
+	}
+}
+
+// populationLevel returns the level to use for population/stat lookups, falling
+// back to the target level while the building is still under construction
+// (level 0) so stat-table indexing stays valid.
+func (state *buildingActor) populationLevel() int {
+	if state.Building.Level >= 1 {
+		return state.Building.Level
+	}
+	return state.Building.TargetLevel
+}
+
+// reportPopulation tells the city this building's absolute contribution to the
+// population cap. It is idempotent (keyed by building) and fire-and-forget to
+// avoid deadlocking against a city that is mid-create awaiting this building.
+func (state *buildingActor) reportPopulation(population float64) {
+	if err := state.Cluster.Tell("city", state.Building.CityID, messages.SetBuildingPopulationMessage{
+		BuildingID: state.Building.BuildingID,
+		Population: population,
+	}); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to report building population to city", "error", err)
+	}
 }
 
 func (state *buildingActor) startPeriodicOperation(ctx actor.Context) {

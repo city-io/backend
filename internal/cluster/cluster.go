@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -95,6 +96,9 @@ func (cp *ClusterProvider) RequestFuture(kind, identity string, message any) (ac
 
 func (cp *ClusterProvider) Tell(kind, identity string, msg any) error {
 	pid := cp.cluster.Get(identity, kind)
+	if pid == nil {
+		return fmt.Errorf("could not resolve actor %s/%s", kind, identity)
+	}
 	cp.system.Root.Send(pid, msg)
 	return nil
 }

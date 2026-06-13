@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package cityio.v1;
+
+import "cityio/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+// Building is a structure within a city.
+message Building {
+  string building_id = 1;
+  string city_id = 2;
+  BuildingType type = 3;
+  int32 level = 4;
+  int32 target_level = 5;
+  Coordinates coords = 6;
+  optional google.protobuf.Timestamp construction_start = 7;
+  optional google.protobuf.Timestamp construction_end = 8;
+}
+
+message CreateBuildingRequest {
+  string city_id = 1;
+  BuildingType type = 2;
+  Coordinates coords = 3;
+}
+message CreateBuildingResponse {
+  Building building = 1;
+}
+
+message UpgradeBuildingRequest {
+  string building_id = 1;
+}
+message UpgradeBuildingResponse {}
+
+// BuildingService constructs and upgrades buildings.
+service BuildingService {
+  rpc CreateBuilding(CreateBuildingRequest) returns (CreateBuildingResponse);
+  rpc UpgradeBuilding(UpgradeBuildingRequest) returns (UpgradeBuildingResponse);
+}
