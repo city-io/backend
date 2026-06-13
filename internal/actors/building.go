@@ -78,6 +78,8 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			state.Impl = newFarmImpl()
 		case domain.BuildingTypeHouse:
 			state.Impl = newHouseImpl()
+		case domain.BuildingTypeBarracks:
+			state.Impl = newBarracksImpl()
 		}
 
 		state.Impl.Create(ctx, state)

@@ -6,6 +6,8 @@ import (
 
 	"connectrpc.com/connect"
 
+	"cityio/internal/constants"
+	"cityio/internal/domain"
 	pb "cityio/internal/gen/cityio/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -38,6 +40,15 @@ func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
+
+	owned, err := h.srv.ownedCities(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !domain.PointVisible(owned, resp.Building.X, resp.Building.Y, constants.VisionRadius) {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
+	}
+
 	return connect.NewResponse(&pb.GetBuildingResponse{Building: mapping.BuildingToProto(resp.Building)}), nil
 }
 
@@ -75,6 +86,13 @@ func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Reques
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+
+	owned, err := h.srv.ownedCities(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
+
 	buildings := make([]*pb.Building, 0, len(buildingList))
 	for _, b := range buildingList {
 		buildings = append(buildings, mapping.BuildingToProto(b))

@@ -5,7 +5,7 @@ Guidance for AI agents working in this repository. Read this fully before making
 ## What this is
 
 `cityio` is the Go backend for **city.io**, a real-time, tick-based multiplayer city-building
-game. The world is a 128×128 grid of tiles. Players own cities; cities contain buildings;
+game. The world is a 75×75 grid of tiles. Players own cities; cities contain buildings;
 buildings produce resources and grow population on a timer. Almost all game state lives in
 memory as **actors** (Proto-Actor), with PostgreSQL used as a periodic write-behind backup
 rather than the source of truth during runtime.
@@ -98,6 +98,7 @@ make all        # go run cmd/*.go   (build + run)
 make build      # build to bin/cityio
 make start      # run bin/cityio
 make generate   # sqlc generate (regenerate internal/database from db/queries + schema)
+buf generate    # regenerate internal/gen from proto/cityio/v1/*.proto
 ```
 
 Run/build commands must be executed from the **repo root** — `NewDB` loads migrations from the
@@ -150,6 +151,8 @@ goose -dir db/migrations up
 - **Generated code:** `internal/database/*.sql.go`, `db.go`, `models.go`, `querier.go` are
   produced by sqlc. Edit `db/queries/*.sql` / `db/migrations/*.sql` and `sqlc.yaml`, then
   regenerate. The only hand-written files in that package are `database.go` and `utils.go`.
+  `internal/gen/` is produced by `buf generate` from `proto/cityio/v1/*.proto`. Do not
+  hand-edit generated files in either package.
 
 ## Conventions to follow
 

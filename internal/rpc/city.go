@@ -7,6 +7,8 @@ import (
 	"connectrpc.com/connect"
 
 	"cityio/internal/auth"
+	"cityio/internal/constants"
+	"cityio/internal/domain"
 	pb "cityio/internal/gen/cityio/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -26,6 +28,15 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[pb.GetCi
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
+
+	owned, err := h.srv.ownedCities(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !domain.CityVisible(owned, resp.City, constants.VisionRadius) {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
+	}
+
 	return connect.NewResponse(&pb.GetCityResponse{City: mapping.CityToProto(resp.City)}), nil
 }
 

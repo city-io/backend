@@ -17,6 +17,13 @@ func ToPGTimestamp(t *time.Time) pgtype.Timestamp {
 	return pgtype.Timestamp{Time: *t, Valid: true}
 }
 
+func toNullTime(ts pgtype.Timestamp) domain.NullTime {
+	if !ts.Valid {
+		return domain.NullTime{}
+	}
+	return domain.NullTime{Time: &ts.Time}
+}
+
 func (c City) ToModel() *domain.City {
 	return &domain.City{
 		CityID:        c.CityID,
@@ -67,8 +74,8 @@ func (b Building) ToModel() *domain.Building {
 		TargetLevel:       int(b.TargetLevel),
 		X:                 b.Coords.X,
 		Y:                 b.Coords.Y,
-		ConstructionStart: domain.NullTime{Time: &b.ConstructionStart.Time},
-		ConstructionEnd:   domain.NullTime{Time: &b.ConstructionEnd.Time},
+		ConstructionStart: toNullTime(b.ConstructionStart),
+		ConstructionEnd:   toNullTime(b.ConstructionEnd),
 	}
 }
 
@@ -95,8 +102,8 @@ func (b GetBuildingsByCityRow) ToModel() *domain.Building {
 		TargetLevel:       int(b.TargetLevel),
 		X:                 int(b.X),
 		Y:                 int(b.Y),
-		ConstructionStart: domain.NullTime{Time: &b.ConstructionStart.Time},
-		ConstructionEnd:   domain.NullTime{Time: &b.ConstructionEnd.Time},
+		ConstructionStart: toNullTime(b.ConstructionStart),
+		ConstructionEnd:   toNullTime(b.ConstructionEnd),
 	}
 }
 
@@ -109,7 +116,7 @@ func (b GetAllBuildingsRow) ToModel() *domain.Building {
 		TargetLevel:       int(b.TargetLevel),
 		X:                 int(b.X),
 		Y:                 int(b.Y),
-		ConstructionStart: domain.NullTime{Time: &b.ConstructionStart.Time},
-		ConstructionEnd:   domain.NullTime{Time: &b.ConstructionEnd.Time},
+		ConstructionStart: toNullTime(b.ConstructionStart),
+		ConstructionEnd:   toNullTime(b.ConstructionEnd),
 	}
 }

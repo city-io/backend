@@ -73,9 +73,10 @@ func ClaimsFromContext(ctx context.Context) (Claims, bool) {
 }
 
 // publicProcedures are reachable without a token.
-var publicProcedures = map[string]bool{
-	"/cityio.v1.UserService/Register": true,
-	"/cityio.v1.UserService/Login":    true,
+var publicProcedures = map[string]struct{}{
+	"/cityio.v1.UserService/Register":        {},
+	"/cityio.v1.UserService/Login":           {},
+	"/cityio.v1.ConfigService/GetGameConfig": {},
 }
 
 // Interceptor verifies the bearer token on every non-public procedure and
@@ -91,7 +92,7 @@ type interceptor struct {
 
 func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		if publicProcedures[req.Spec().Procedure] {
+		if _, ok := publicProcedures[req.Spec().Procedure]; ok {
 			return next(ctx, req)
 		}
 		claims, err := authenticate(i.secret, req.Header().Get("Authorization"))
@@ -108,7 +109,7 @@ func (i *interceptor) WrapStreamingClient(next connect.StreamingClientFunc) conn
 
 func (i *interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		if publicProcedures[conn.Spec().Procedure] {
+		if _, ok := publicProcedures[conn.Spec().Procedure]; ok {
 			return next(ctx, conn)
 		}
 		claims, err := authenticate(i.secret, conn.RequestHeader().Get("Authorization"))

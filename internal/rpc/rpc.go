@@ -3,11 +3,14 @@
 package rpc
 
 import (
+	"context"
+	"errors"
 	"net/http"
 
 	"connectrpc.com/connect"
 
 	"cityio/internal/auth"
+	"cityio/internal/domain"
 	"cityio/internal/gen/cityio/v1/cityiov1connect"
 	"cityio/internal/ports"
 )
@@ -24,6 +27,14 @@ func NewServer(cluster ports.ClusterProvider, store ports.Store, jwtSecret strin
 	return &Server{cluster: cluster, store: store, jwtSecret: jwtSecret}
 }
 
+func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, errors.New("missing claims")
+	}
+	return s.store.GetCitiesByOwner(ctx, claims.UserID)
+}
+
 // Handler returns the HTTP handler serving every Connect service with the auth
 // interceptor applied.
 func (s *Server) Handler() http.Handler {
@@ -34,5 +45,6 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(cityiov1connect.NewCityServiceHandler(&cityHandler{s}, opts))
 	mux.Handle(cityiov1connect.NewBuildingServiceHandler(&buildingHandler{s}, opts))
 	mux.Handle(cityiov1connect.NewMapServiceHandler(&mapHandler{s}, opts))
+	mux.Handle(cityiov1connect.NewConfigServiceHandler(&configHandler{s}, opts))
 	return mux
 }
