@@ -139,10 +139,14 @@ func reset(ctx context.Context, deps *Deps) error {
 			slog.ErrorContext(ctx, "error resetting user fields", "error", err)
 		}
 
-		src := rand.NewSource(time.Now().UnixNano())
-		r := rand.New(src)
-		startX := r.Intn(constants.MapSize - constants.CitySize)
-		startY := r.Intn(constants.MapSize - constants.CitySize)
+		var startX, startY int
+		for {
+			startX = r.Intn(constants.MapSize - constants.CitySize)
+			startY = r.Intn(constants.MapSize - constants.CitySize)
+			if canPlace(occupied, startX, startY, constants.CitySize) {
+				break
+			}
+		}
 
 		cityID := uuid.New().String()
 		err = db.CreateCity(ctx, database.CreateCityParams{
@@ -188,58 +192,45 @@ func reset(ctx context.Context, deps *Deps) error {
 	buildings := make([]domain.Building, 0)
 	for x := range constants.MapSize {
 		for y := range constants.MapSize {
-			open := true
-			// TODO: optimize random city placement
-			for i := -1; i < 6; i++ {
-				for j := -1; j < 6; j++ {
-					if x+i < 0 || y+j < 0 || x+i >= constants.MapSize || y+j >= constants.MapSize || occupied[x+i][y+j] {
-						open = false
-						break
-					}
-				}
+			size := 0
+			rng := r.Intn(1000)
+			if rng < 3 {
+				size = 5
+			} else if rng < 10 {
+				size = 4
+			} else if rng < 50 {
+				size = 3
+			} else if rng < 100 {
+				size = 2
 			}
 
-			if open {
-				size := 0
-				rng := r.Intn(1000)
-				if rng < 3 {
-					size = 5
-				} else if rng < 10 {
-					size = 4
-				} else if rng < 50 {
-					size = 3
-				} else if rng < 100 {
-					size = 2
-				}
-				if size > 0 && x+size < constants.MapSize && y+size < constants.MapSize {
-					cityID := uuid.New().String()
-					cities = append(cities, domain.City{
-						CityID:        cityID,
-						Type:          "town",
-						Owner:         nil,
-						Name:          fmt.Sprintf("Town %s", cityID),
-						Population:    constants.InitialTownPopulation,
-						PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, 1),
-						StartX:        x,
-						StartY:        y,
-						Size:          size,
-					})
-					buildings = append(buildings, domain.Building{
-						BuildingID:        uuid.New().String(),
-						CityID:            cityID,
-						Type:              string(domain.BuildingTypeTownCenter),
-						Level:             1,
-						TargetLevel:       1,
-						X:                 x + size/2,
-						Y:                 y + size/2,
-						ConstructionStart: domain.NullTime{Time: nil},
-						ConstructionEnd:   domain.NullTime{Time: nil},
-					})
-					occupied[x][y] = true
-					for i := 0; i < size; i++ {
-						for j := 0; j < size; j++ {
-							occupied[x+i][y+j] = true
-						}
+			if size > 0 && canPlace(occupied, x, y, size) {
+				cityID := uuid.New().String()
+				cities = append(cities, domain.City{
+					CityID:        cityID,
+					Type:          "town",
+					Owner:         nil,
+					Name:          fmt.Sprintf("Town %s", cityID),
+					Population:    constants.InitialTownPopulation,
+					PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, 1),
+					StartX:        x,
+					StartY:        y,
+					Size:          size,
+				})
+				buildings = append(buildings, domain.Building{
+					BuildingID:        uuid.New().String(),
+					CityID:            cityID,
+					Type:              string(domain.BuildingTypeTownCenter),
+					Level:             1,
+					TargetLevel:       1,
+					X:                 x + size/2,
+					Y:                 y + size/2,
+					ConstructionStart: domain.NullTime{Time: nil},
+					ConstructionEnd:   domain.NullTime{Time: nil},
+				})
+				for i := 0; i < size; i++ {
+					for j := 0; j < size; j++ {
+						occupied[x+i][y+j] = true
 					}
 				}
 			}
@@ -327,4 +318,25 @@ func reset(ctx context.Context, deps *Deps) error {
 
 	slog.DebugContext(ctx, "reset complete")
 	return nil
+}
+
+// canPlace reports whether a city of the given size can be placed at (x, y)
+// with at least a 1-tile gap from all occupied cells.
+func canPlace(occupied [][]bool, x, y, size int) bool {
+	mapSize := len(occupied)
+	if x+size > mapSize || y+size > mapSize {
+		return false
+	}
+	for i := -1; i <= size; i++ {
+		for j := -1; j <= size; j++ {
+			nx, ny := x+i, y+j
+			if nx < 0 || ny < 0 || nx >= mapSize || ny >= mapSize {
+				continue
+			}
+			if occupied[nx][ny] {
+				return false
+			}
+		}
+	}
+	return true
 }
