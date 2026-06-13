@@ -2,7 +2,7 @@
 package constants
 
 const (
-	MapSize  = 128 // generate a map of size MapSize x MapSize
+	MapSize  = 100 // generate a map of size MapSize x MapSize
 	CitySize = 5
 
 	PopulationGrowthRate = 0.001
