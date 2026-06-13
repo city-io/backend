@@ -85,6 +85,11 @@ func CityToProto(c domain.City) *pb.City {
 	}
 }
 
+// TileToProto builds a proto Tile from raw occupancy data.
+func TileToProto(cityID, buildingID *string, x, y int) *pb.Tile {
+	return &pb.Tile{X: int32(x), Y: int32(y), CityId: cityID, BuildingId: buildingID}
+}
+
 // BuildingToProto converts a domain building to its proto representation.
 func BuildingToProto(b domain.Building) *pb.Building {
 	out := &pb.Building{

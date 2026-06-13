@@ -72,6 +72,34 @@ func (b Building) ToModel() *domain.Building {
 	}
 }
 
+func (c GetCitiesByOwnerRow) ToModel() *domain.City {
+	return &domain.City{
+		CityID:        c.CityID,
+		Type:          domain.CityType(c.Type),
+		Owner:         c.Owner,
+		Name:          c.Name,
+		Population:    c.Population,
+		PopulationCap: c.PopulationCap,
+		StartX:        int(c.StartX),
+		StartY:        int(c.StartY),
+		Size:          int(c.Size),
+	}
+}
+
+func (b GetBuildingsByCityRow) ToModel() *domain.Building {
+	return &domain.Building{
+		BuildingID:        b.BuildingID,
+		CityID:            b.CityID,
+		Type:              b.Type,
+		Level:             int(b.Level),
+		TargetLevel:       int(b.TargetLevel),
+		X:                 int(b.X),
+		Y:                 int(b.Y),
+		ConstructionStart: domain.NullTime{Time: &b.ConstructionStart.Time},
+		ConstructionEnd:   domain.NullTime{Time: &b.ConstructionEnd.Time},
+	}
+}
+
 func (b GetAllBuildingsRow) ToModel() *domain.Building {
 	return &domain.Building{
 		BuildingID:        b.BuildingID,

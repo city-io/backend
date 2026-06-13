@@ -37,12 +37,15 @@ const (
 	CityServiceGetCityProcedure = "/cityio.v1.CityService/GetCity"
 	// CityServiceCreateCityProcedure is the fully-qualified name of the CityService's CreateCity RPC.
 	CityServiceCreateCityProcedure = "/cityio.v1.CityService/CreateCity"
+	// CityServiceListCitiesProcedure is the fully-qualified name of the CityService's ListCities RPC.
+	CityServiceListCitiesProcedure = "/cityio.v1.CityService/ListCities"
 )
 
 // CityServiceClient is a client for the cityio.v1.CityService service.
 type CityServiceClient interface {
 	GetCity(context.Context, *connect.Request[v1.GetCityRequest]) (*connect.Response[v1.GetCityResponse], error)
 	CreateCity(context.Context, *connect.Request[v1.CreateCityRequest]) (*connect.Response[v1.CreateCityResponse], error)
+	ListCities(context.Context, *connect.Request[v1.ListCitiesRequest]) (*connect.Response[v1.ListCitiesResponse], error)
 }
 
 // NewCityServiceClient constructs a client for the cityio.v1.CityService service. By default, it
@@ -68,6 +71,12 @@ func NewCityServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(cityServiceMethods.ByName("CreateCity")),
 			connect.WithClientOptions(opts...),
 		),
+		listCities: connect.NewClient[v1.ListCitiesRequest, v1.ListCitiesResponse](
+			httpClient,
+			baseURL+CityServiceListCitiesProcedure,
+			connect.WithSchema(cityServiceMethods.ByName("ListCities")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -75,6 +84,7 @@ func NewCityServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type cityServiceClient struct {
 	getCity    *connect.Client[v1.GetCityRequest, v1.GetCityResponse]
 	createCity *connect.Client[v1.CreateCityRequest, v1.CreateCityResponse]
+	listCities *connect.Client[v1.ListCitiesRequest, v1.ListCitiesResponse]
 }
 
 // GetCity calls cityio.v1.CityService.GetCity.
@@ -87,10 +97,16 @@ func (c *cityServiceClient) CreateCity(ctx context.Context, req *connect.Request
 	return c.createCity.CallUnary(ctx, req)
 }
 
+// ListCities calls cityio.v1.CityService.ListCities.
+func (c *cityServiceClient) ListCities(ctx context.Context, req *connect.Request[v1.ListCitiesRequest]) (*connect.Response[v1.ListCitiesResponse], error) {
+	return c.listCities.CallUnary(ctx, req)
+}
+
 // CityServiceHandler is an implementation of the cityio.v1.CityService service.
 type CityServiceHandler interface {
 	GetCity(context.Context, *connect.Request[v1.GetCityRequest]) (*connect.Response[v1.GetCityResponse], error)
 	CreateCity(context.Context, *connect.Request[v1.CreateCityRequest]) (*connect.Response[v1.CreateCityResponse], error)
+	ListCities(context.Context, *connect.Request[v1.ListCitiesRequest]) (*connect.Response[v1.ListCitiesResponse], error)
 }
 
 // NewCityServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -112,12 +128,20 @@ func NewCityServiceHandler(svc CityServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(cityServiceMethods.ByName("CreateCity")),
 		connect.WithHandlerOptions(opts...),
 	)
+	cityServiceListCitiesHandler := connect.NewUnaryHandler(
+		CityServiceListCitiesProcedure,
+		svc.ListCities,
+		connect.WithSchema(cityServiceMethods.ByName("ListCities")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cityio.v1.CityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CityServiceGetCityProcedure:
 			cityServiceGetCityHandler.ServeHTTP(w, r)
 		case CityServiceCreateCityProcedure:
 			cityServiceCreateCityHandler.ServeHTTP(w, r)
+		case CityServiceListCitiesProcedure:
+			cityServiceListCitiesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -133,4 +157,8 @@ func (UnimplementedCityServiceHandler) GetCity(context.Context, *connect.Request
 
 func (UnimplementedCityServiceHandler) CreateCity(context.Context, *connect.Request[v1.CreateCityRequest]) (*connect.Response[v1.CreateCityResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.CityService.CreateCity is not implemented"))
+}
+
+func (UnimplementedCityServiceHandler) ListCities(context.Context, *connect.Request[v1.ListCitiesRequest]) (*connect.Response[v1.ListCitiesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.v1.CityService.ListCities is not implemented"))
 }

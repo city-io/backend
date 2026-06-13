@@ -286,6 +286,69 @@ func (q *Queries) GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error) {
 	return items, nil
 }
 
+const getCitiesByOwner = `-- name: GetCitiesByOwner :many
+SELECT
+    city_id,
+    type,
+    owner,
+    name,
+    population,
+    population_cap,
+    (start_coords).x::int4 AS start_x,
+    (start_coords).y::int4 AS start_y,
+    size,
+    created_at,
+    updated_at
+FROM cities
+WHERE owner = $1
+`
+
+type GetCitiesByOwnerRow struct {
+	CityID        string           `json:"city_id"`
+	Type          string           `json:"type"`
+	Owner         *string          `json:"owner"`
+	Name          string           `json:"name"`
+	Population    float64          `json:"population"`
+	PopulationCap float64          `json:"population_cap"`
+	StartX        int32            `json:"start_x"`
+	StartY        int32            `json:"start_y"`
+	Size          int32            `json:"size"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+}
+
+func (q *Queries) GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, getCitiesByOwner, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCitiesByOwnerRow
+	for rows.Next() {
+		var i GetCitiesByOwnerRow
+		if err := rows.Scan(
+			&i.CityID,
+			&i.Type,
+			&i.Owner,
+			&i.Name,
+			&i.Population,
+			&i.PopulationCap,
+			&i.StartX,
+			&i.StartY,
+			&i.Size,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateCity = `-- name: UpdateCity :exec
 UPDATE cities
 SET

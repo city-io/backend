@@ -26,13 +26,35 @@ message CreateBuildingResponse {
   Building building = 1;
 }
 
+message GetBuildingRequest {
+  string building_id = 1;
+}
+message GetBuildingResponse {
+  Building building = 1;
+}
+
 message UpgradeBuildingRequest {
   string building_id = 1;
 }
 message UpgradeBuildingResponse {}
 
+message DeleteBuildingRequest {
+  string building_id = 1;
+}
+message DeleteBuildingResponse {}
+
+message ListBuildingsRequest {
+  string city_id = 1;
+}
+message ListBuildingsResponse {
+  repeated Building buildings = 1;
+}
+
 // BuildingService constructs and upgrades buildings.
 service BuildingService {
   rpc CreateBuilding(CreateBuildingRequest) returns (CreateBuildingResponse);
+  rpc GetBuilding(GetBuildingRequest) returns (GetBuildingResponse);
   rpc UpgradeBuilding(UpgradeBuildingRequest) returns (UpgradeBuildingResponse);
+  rpc DeleteBuilding(DeleteBuildingRequest) returns (DeleteBuildingResponse);
+  rpc ListBuildings(ListBuildingsRequest) returns (ListBuildingsResponse);
 }

@@ -171,6 +171,8 @@ func (state *cityActor) Receive(ctx actor.Context) {
 }
 
 func (state *cityActor) startPeriodicOperation(ctx actor.Context) {
+	pid := ctx.Self()
+	system := ctx.ActorSystem()
 	go func() {
 		// sleep for a random duration up to 10 seconds to attempt
 		// creating an even distribution of database writing
@@ -183,7 +185,7 @@ func (state *cityActor) startPeriodicOperation(ctx actor.Context) {
 		for {
 			select {
 			case <-state.ticker.C:
-				ctx.Send(ctx.Self(), messages.PeriodicOperationMessage{})
+				system.Root.Send(pid, messages.PeriodicOperationMessage{})
 			case <-state.stopTickerCh:
 				state.ticker.Stop()
 				return

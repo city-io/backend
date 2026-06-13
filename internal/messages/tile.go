@@ -1,7 +1,5 @@
 package messages
 
-import "cityio/internal/domain"
-
 type UpdateTileCityMessage struct {
 	CityID string
 }
@@ -15,5 +13,6 @@ type ReconcileTilesMessage struct{}
 
 type GetTileMessage struct{}
 type GetTileResponseMessage struct {
-	City *domain.City
+	CityID     *string
+	BuildingID *string
 }

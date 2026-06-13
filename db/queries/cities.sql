@@ -105,6 +105,22 @@ FROM (
         UNNEST(sqlc.arg(sizes)::int[])               AS size
 ) AS v;
 
+-- name: GetCitiesByOwner :many
+SELECT
+    city_id,
+    type,
+    owner,
+    name,
+    population,
+    population_cap,
+    (start_coords).x::int4 AS start_x,
+    (start_coords).y::int4 AS start_y,
+    size,
+    created_at,
+    updated_at
+FROM cities
+WHERE owner = $1;
+
 -- name: BatchUpdateCities :exec
 UPDATE cities AS c
 SET

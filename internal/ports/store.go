@@ -15,6 +15,8 @@ type Store interface {
 	GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error)
 	GetAllCities(ctx context.Context) ([]domain.City, error)
 	GetAllBuildings(ctx context.Context) ([]domain.Building, error)
+	GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error)
+	GetBuildingsByCity(ctx context.Context, cityID string) ([]domain.Building, error)
 
 	CreateUser(ctx context.Context, user domain.User) error
 	CreateCity(ctx context.Context, city domain.City) error

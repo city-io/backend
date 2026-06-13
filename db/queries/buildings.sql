@@ -11,6 +11,20 @@ SELECT
     construction_end
 FROM buildings;
 
+-- name: GetBuildingsByCity :many
+SELECT
+    building_id,
+    city_id,
+    type,
+    level,
+    target_level,
+    (coords).x::int4 AS x,
+    (coords).y::int4 AS y,
+    construction_start,
+    construction_end
+FROM buildings
+WHERE city_id = $1;
+
 -- name: CreateBuilding :exec
 INSERT INTO buildings (
     building_id,

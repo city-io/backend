@@ -26,15 +26,20 @@ func (state *tileActor) Receive(ctx actor.Context) {
 
 	case messages.UpdateTileCityMessage:
 		state.CityID = &msg.CityID
-		ctx.Respond(messages.Ack{})
+		if ctx.Sender() != nil {
+			ctx.Respond(messages.Ack{})
+		}
 
 	case messages.UpdateTileBuildingMessage:
 		state.BuildingID = msg.BuildingID
-		ctx.Respond(messages.Ack{})
+		if ctx.Sender() != nil {
+			ctx.Respond(messages.Ack{})
+		}
 
 	case messages.GetTileMessage:
 		ctx.Respond(messages.GetTileResponseMessage{
-			City: nil,
+			CityID:     state.CityID,
+			BuildingID: state.BuildingID,
 		})
 	}
 }

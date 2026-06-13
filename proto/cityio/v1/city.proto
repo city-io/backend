@@ -33,8 +33,14 @@ message CreateCityResponse {
   City city = 1;
 }
 
+message ListCitiesRequest {}
+message ListCitiesResponse {
+  repeated City cities = 1;
+}
+
 // CityService creates and reads cities.
 service CityService {
   rpc GetCity(GetCityRequest) returns (GetCityResponse);
   rpc CreateCity(CreateCityRequest) returns (CreateCityResponse);
+  rpc ListCities(ListCitiesRequest) returns (ListCitiesResponse);
 }

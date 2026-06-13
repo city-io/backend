@@ -227,6 +227,94 @@ func (x *CreateBuildingResponse) GetBuilding() *Building {
 	return nil
 }
 
+type GetBuildingRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BuildingId    string                 `protobuf:"bytes,1,opt,name=building_id,json=buildingId,proto3" json:"building_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBuildingRequest) Reset() {
+	*x = GetBuildingRequest{}
+	mi := &file_cityio_v1_building_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBuildingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBuildingRequest) ProtoMessage() {}
+
+func (x *GetBuildingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_v1_building_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBuildingRequest.ProtoReflect.Descriptor instead.
+func (*GetBuildingRequest) Descriptor() ([]byte, []int) {
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetBuildingRequest) GetBuildingId() string {
+	if x != nil {
+		return x.BuildingId
+	}
+	return ""
+}
+
+type GetBuildingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Building      *Building              `protobuf:"bytes,1,opt,name=building,proto3" json:"building,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBuildingResponse) Reset() {
+	*x = GetBuildingResponse{}
+	mi := &file_cityio_v1_building_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBuildingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBuildingResponse) ProtoMessage() {}
+
+func (x *GetBuildingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_v1_building_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBuildingResponse.ProtoReflect.Descriptor instead.
+func (*GetBuildingResponse) Descriptor() ([]byte, []int) {
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetBuildingResponse) GetBuilding() *Building {
+	if x != nil {
+		return x.Building
+	}
+	return nil
+}
+
 type UpgradeBuildingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BuildingId    string                 `protobuf:"bytes,1,opt,name=building_id,json=buildingId,proto3" json:"building_id,omitempty"`
@@ -236,7 +324,7 @@ type UpgradeBuildingRequest struct {
 
 func (x *UpgradeBuildingRequest) Reset() {
 	*x = UpgradeBuildingRequest{}
-	mi := &file_cityio_v1_building_proto_msgTypes[3]
+	mi := &file_cityio_v1_building_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -248,7 +336,7 @@ func (x *UpgradeBuildingRequest) String() string {
 func (*UpgradeBuildingRequest) ProtoMessage() {}
 
 func (x *UpgradeBuildingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_building_proto_msgTypes[3]
+	mi := &file_cityio_v1_building_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -261,7 +349,7 @@ func (x *UpgradeBuildingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpgradeBuildingRequest.ProtoReflect.Descriptor instead.
 func (*UpgradeBuildingRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_building_proto_rawDescGZIP(), []int{3}
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UpgradeBuildingRequest) GetBuildingId() string {
@@ -279,7 +367,7 @@ type UpgradeBuildingResponse struct {
 
 func (x *UpgradeBuildingResponse) Reset() {
 	*x = UpgradeBuildingResponse{}
-	mi := &file_cityio_v1_building_proto_msgTypes[4]
+	mi := &file_cityio_v1_building_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -291,7 +379,7 @@ func (x *UpgradeBuildingResponse) String() string {
 func (*UpgradeBuildingResponse) ProtoMessage() {}
 
 func (x *UpgradeBuildingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_building_proto_msgTypes[4]
+	mi := &file_cityio_v1_building_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -304,7 +392,175 @@ func (x *UpgradeBuildingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpgradeBuildingResponse.ProtoReflect.Descriptor instead.
 func (*UpgradeBuildingResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_building_proto_rawDescGZIP(), []int{4}
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{6}
+}
+
+type DeleteBuildingRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BuildingId    string                 `protobuf:"bytes,1,opt,name=building_id,json=buildingId,proto3" json:"building_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteBuildingRequest) Reset() {
+	*x = DeleteBuildingRequest{}
+	mi := &file_cityio_v1_building_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteBuildingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteBuildingRequest) ProtoMessage() {}
+
+func (x *DeleteBuildingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_v1_building_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteBuildingRequest.ProtoReflect.Descriptor instead.
+func (*DeleteBuildingRequest) Descriptor() ([]byte, []int) {
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DeleteBuildingRequest) GetBuildingId() string {
+	if x != nil {
+		return x.BuildingId
+	}
+	return ""
+}
+
+type DeleteBuildingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteBuildingResponse) Reset() {
+	*x = DeleteBuildingResponse{}
+	mi := &file_cityio_v1_building_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteBuildingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteBuildingResponse) ProtoMessage() {}
+
+func (x *DeleteBuildingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_v1_building_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteBuildingResponse.ProtoReflect.Descriptor instead.
+func (*DeleteBuildingResponse) Descriptor() ([]byte, []int) {
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{8}
+}
+
+type ListBuildingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CityId        string                 `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBuildingsRequest) Reset() {
+	*x = ListBuildingsRequest{}
+	mi := &file_cityio_v1_building_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBuildingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBuildingsRequest) ProtoMessage() {}
+
+func (x *ListBuildingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_v1_building_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBuildingsRequest.ProtoReflect.Descriptor instead.
+func (*ListBuildingsRequest) Descriptor() ([]byte, []int) {
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListBuildingsRequest) GetCityId() string {
+	if x != nil {
+		return x.CityId
+	}
+	return ""
+}
+
+type ListBuildingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Buildings     []*Building            `protobuf:"bytes,1,rep,name=buildings,proto3" json:"buildings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBuildingsResponse) Reset() {
+	*x = ListBuildingsResponse{}
+	mi := &file_cityio_v1_building_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBuildingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBuildingsResponse) ProtoMessage() {}
+
+func (x *ListBuildingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_v1_building_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBuildingsResponse.ProtoReflect.Descriptor instead.
+func (*ListBuildingsResponse) Descriptor() ([]byte, []int) {
+	return file_cityio_v1_building_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListBuildingsResponse) GetBuildings() []*Building {
+	if x != nil {
+		return x.Buildings
+	}
+	return nil
 }
 
 var File_cityio_v1_building_proto protoreflect.FileDescriptor
@@ -329,14 +585,30 @@ const file_cityio_v1_building_proto_rawDesc = "" +
 	"\x04type\x18\x02 \x01(\x0e2\x17.cityio.v1.BuildingTypeR\x04type\x12.\n" +
 	"\x06coords\x18\x03 \x01(\v2\x16.cityio.v1.CoordinatesR\x06coords\"I\n" +
 	"\x16CreateBuildingResponse\x12/\n" +
+	"\bbuilding\x18\x01 \x01(\v2\x13.cityio.v1.BuildingR\bbuilding\"5\n" +
+	"\x12GetBuildingRequest\x12\x1f\n" +
+	"\vbuilding_id\x18\x01 \x01(\tR\n" +
+	"buildingId\"F\n" +
+	"\x13GetBuildingResponse\x12/\n" +
 	"\bbuilding\x18\x01 \x01(\v2\x13.cityio.v1.BuildingR\bbuilding\"9\n" +
 	"\x16UpgradeBuildingRequest\x12\x1f\n" +
 	"\vbuilding_id\x18\x01 \x01(\tR\n" +
 	"buildingId\"\x19\n" +
-	"\x17UpgradeBuildingResponse2\xc2\x01\n" +
+	"\x17UpgradeBuildingResponse\"8\n" +
+	"\x15DeleteBuildingRequest\x12\x1f\n" +
+	"\vbuilding_id\x18\x01 \x01(\tR\n" +
+	"buildingId\"\x18\n" +
+	"\x16DeleteBuildingResponse\"/\n" +
+	"\x14ListBuildingsRequest\x12\x17\n" +
+	"\acity_id\x18\x01 \x01(\tR\x06cityId\"J\n" +
+	"\x15ListBuildingsResponse\x121\n" +
+	"\tbuildings\x18\x01 \x03(\v2\x13.cityio.v1.BuildingR\tbuildings2\xbb\x03\n" +
 	"\x0fBuildingService\x12U\n" +
-	"\x0eCreateBuilding\x12 .cityio.v1.CreateBuildingRequest\x1a!.cityio.v1.CreateBuildingResponse\x12X\n" +
-	"\x0fUpgradeBuilding\x12!.cityio.v1.UpgradeBuildingRequest\x1a\".cityio.v1.UpgradeBuildingResponseB\x8b\x01\n" +
+	"\x0eCreateBuilding\x12 .cityio.v1.CreateBuildingRequest\x1a!.cityio.v1.CreateBuildingResponse\x12L\n" +
+	"\vGetBuilding\x12\x1d.cityio.v1.GetBuildingRequest\x1a\x1e.cityio.v1.GetBuildingResponse\x12X\n" +
+	"\x0fUpgradeBuilding\x12!.cityio.v1.UpgradeBuildingRequest\x1a\".cityio.v1.UpgradeBuildingResponse\x12U\n" +
+	"\x0eDeleteBuilding\x12 .cityio.v1.DeleteBuildingRequest\x1a!.cityio.v1.DeleteBuildingResponse\x12R\n" +
+	"\rListBuildings\x12\x1f.cityio.v1.ListBuildingsRequest\x1a .cityio.v1.ListBuildingsResponseB\x8b\x01\n" +
 	"\rcom.cityio.v1B\rBuildingProtoP\x01Z&cityio/internal/gen/cityio/v1;cityiov1\xa2\x02\x03CXX\xaa\x02\tCityio.V1\xca\x02\tCityio\\V1\xe2\x02\x15Cityio\\V1\\GPBMetadata\xea\x02\n" +
 	"Cityio::V1b\x06proto3"
 
@@ -352,34 +624,48 @@ func file_cityio_v1_building_proto_rawDescGZIP() []byte {
 	return file_cityio_v1_building_proto_rawDescData
 }
 
-var file_cityio_v1_building_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_cityio_v1_building_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_cityio_v1_building_proto_goTypes = []any{
 	(*Building)(nil),                // 0: cityio.v1.Building
 	(*CreateBuildingRequest)(nil),   // 1: cityio.v1.CreateBuildingRequest
 	(*CreateBuildingResponse)(nil),  // 2: cityio.v1.CreateBuildingResponse
-	(*UpgradeBuildingRequest)(nil),  // 3: cityio.v1.UpgradeBuildingRequest
-	(*UpgradeBuildingResponse)(nil), // 4: cityio.v1.UpgradeBuildingResponse
-	(BuildingType)(0),               // 5: cityio.v1.BuildingType
-	(*Coordinates)(nil),             // 6: cityio.v1.Coordinates
-	(*timestamppb.Timestamp)(nil),   // 7: google.protobuf.Timestamp
+	(*GetBuildingRequest)(nil),      // 3: cityio.v1.GetBuildingRequest
+	(*GetBuildingResponse)(nil),     // 4: cityio.v1.GetBuildingResponse
+	(*UpgradeBuildingRequest)(nil),  // 5: cityio.v1.UpgradeBuildingRequest
+	(*UpgradeBuildingResponse)(nil), // 6: cityio.v1.UpgradeBuildingResponse
+	(*DeleteBuildingRequest)(nil),   // 7: cityio.v1.DeleteBuildingRequest
+	(*DeleteBuildingResponse)(nil),  // 8: cityio.v1.DeleteBuildingResponse
+	(*ListBuildingsRequest)(nil),    // 9: cityio.v1.ListBuildingsRequest
+	(*ListBuildingsResponse)(nil),   // 10: cityio.v1.ListBuildingsResponse
+	(BuildingType)(0),               // 11: cityio.v1.BuildingType
+	(*Coordinates)(nil),             // 12: cityio.v1.Coordinates
+	(*timestamppb.Timestamp)(nil),   // 13: google.protobuf.Timestamp
 }
 var file_cityio_v1_building_proto_depIdxs = []int32{
-	5, // 0: cityio.v1.Building.type:type_name -> cityio.v1.BuildingType
-	6, // 1: cityio.v1.Building.coords:type_name -> cityio.v1.Coordinates
-	7, // 2: cityio.v1.Building.construction_start:type_name -> google.protobuf.Timestamp
-	7, // 3: cityio.v1.Building.construction_end:type_name -> google.protobuf.Timestamp
-	5, // 4: cityio.v1.CreateBuildingRequest.type:type_name -> cityio.v1.BuildingType
-	6, // 5: cityio.v1.CreateBuildingRequest.coords:type_name -> cityio.v1.Coordinates
-	0, // 6: cityio.v1.CreateBuildingResponse.building:type_name -> cityio.v1.Building
-	1, // 7: cityio.v1.BuildingService.CreateBuilding:input_type -> cityio.v1.CreateBuildingRequest
-	3, // 8: cityio.v1.BuildingService.UpgradeBuilding:input_type -> cityio.v1.UpgradeBuildingRequest
-	2, // 9: cityio.v1.BuildingService.CreateBuilding:output_type -> cityio.v1.CreateBuildingResponse
-	4, // 10: cityio.v1.BuildingService.UpgradeBuilding:output_type -> cityio.v1.UpgradeBuildingResponse
-	9, // [9:11] is the sub-list for method output_type
-	7, // [7:9] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	11, // 0: cityio.v1.Building.type:type_name -> cityio.v1.BuildingType
+	12, // 1: cityio.v1.Building.coords:type_name -> cityio.v1.Coordinates
+	13, // 2: cityio.v1.Building.construction_start:type_name -> google.protobuf.Timestamp
+	13, // 3: cityio.v1.Building.construction_end:type_name -> google.protobuf.Timestamp
+	11, // 4: cityio.v1.CreateBuildingRequest.type:type_name -> cityio.v1.BuildingType
+	12, // 5: cityio.v1.CreateBuildingRequest.coords:type_name -> cityio.v1.Coordinates
+	0,  // 6: cityio.v1.CreateBuildingResponse.building:type_name -> cityio.v1.Building
+	0,  // 7: cityio.v1.GetBuildingResponse.building:type_name -> cityio.v1.Building
+	0,  // 8: cityio.v1.ListBuildingsResponse.buildings:type_name -> cityio.v1.Building
+	1,  // 9: cityio.v1.BuildingService.CreateBuilding:input_type -> cityio.v1.CreateBuildingRequest
+	3,  // 10: cityio.v1.BuildingService.GetBuilding:input_type -> cityio.v1.GetBuildingRequest
+	5,  // 11: cityio.v1.BuildingService.UpgradeBuilding:input_type -> cityio.v1.UpgradeBuildingRequest
+	7,  // 12: cityio.v1.BuildingService.DeleteBuilding:input_type -> cityio.v1.DeleteBuildingRequest
+	9,  // 13: cityio.v1.BuildingService.ListBuildings:input_type -> cityio.v1.ListBuildingsRequest
+	2,  // 14: cityio.v1.BuildingService.CreateBuilding:output_type -> cityio.v1.CreateBuildingResponse
+	4,  // 15: cityio.v1.BuildingService.GetBuilding:output_type -> cityio.v1.GetBuildingResponse
+	6,  // 16: cityio.v1.BuildingService.UpgradeBuilding:output_type -> cityio.v1.UpgradeBuildingResponse
+	8,  // 17: cityio.v1.BuildingService.DeleteBuilding:output_type -> cityio.v1.DeleteBuildingResponse
+	10, // 18: cityio.v1.BuildingService.ListBuildings:output_type -> cityio.v1.ListBuildingsResponse
+	14, // [14:19] is the sub-list for method output_type
+	9,  // [9:14] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_cityio_v1_building_proto_init() }
@@ -395,7 +681,7 @@ func file_cityio_v1_building_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_v1_building_proto_rawDesc), len(file_cityio_v1_building_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

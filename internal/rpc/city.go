@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"cityio/internal/auth"
 	pb "cityio/internal/gen/cityio/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -39,4 +40,20 @@ func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[pb.Cr
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&pb.CreateCityResponse{City: mapping.CityToProto(*city)}), nil
+}
+
+func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[pb.ListCitiesRequest]) (*connect.Response[pb.ListCitiesResponse], error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
+	}
+	cityList, err := h.srv.store.GetCitiesByOwner(ctx, claims.UserID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	cities := make([]*pb.City, 0, len(cityList))
+	for _, c := range cityList {
+		cities = append(cities, mapping.CityToProto(c))
+	}
+	return connect.NewResponse(&pb.ListCitiesResponse{Cities: cities}), nil
 }
