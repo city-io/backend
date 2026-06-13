@@ -1,6 +1,8 @@
 package actors
 
 import (
+	"log/slog"
+
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
@@ -27,7 +29,7 @@ func (c *farmImpl) Handle(ctx actor.Context, state *buildingActor) {
 			Change: constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level),
 		})
 		if err != nil {
-			state.Log.Error("failed to send farm production back to user", "error", err)
+			slog.ErrorContext(state.Ctx(), "failed to send farm production back to user", "error", err)
 		}
 	}
 }

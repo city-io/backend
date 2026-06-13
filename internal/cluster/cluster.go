@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -18,25 +19,23 @@ import (
 )
 
 type ClusterProvider struct {
-	log         logger.Logger
 	system      *actor.ActorSystem
 	cluster     *cluster.Cluster
 	databasePID *actor.PID
 }
 
-func NewRuntime(log logger.Logger, db database.Querier) *ClusterProvider {
+func NewRuntime(ctx context.Context, db database.Querier, environment string) *ClusterProvider {
 	system := actor.NewActorSystem()
 
 	databaseProps := actor.PropsFromProducer(func() actor.Actor {
 		ac := actors.NewDatabaseActor(db)
-		ac.SetLog(log)
+		ac.SetContext(logger.With(ctx, "actor", ac.ActorType()))
 		return ac
 	})
 	databasePID := system.Root.Spawn(databaseProps)
 	system.Root.Send(databasePID, messages.InitDatabaseMessage{})
 
 	cp := &ClusterProvider{
-		log:         log,
 		system:      system,
 		cluster:     nil,
 		databasePID: databasePID,
@@ -45,7 +44,7 @@ func NewRuntime(log logger.Logger, db database.Querier) *ClusterProvider {
 	spawn := func(newActor func() actors.BaseActorInterface) actor.Producer {
 		return func() actor.Actor {
 			ac := newActor()
-			ac.SetLog(log.With("actor", ac.ActorType()))
+			ac.SetContext(logger.With(ctx, "actor", ac.ActorType()))
 			ac.SetCluster(cp)
 			return ac
 		}
@@ -61,7 +60,7 @@ func NewRuntime(log logger.Logger, db database.Querier) *ClusterProvider {
 	lookup := disthash.New()
 
 	var provider cluster.ClusterProvider
-	if constants.Environment == "development" {
+	if environment != "production" {
 		testagent := test.NewInMemAgent()
 		provider = test.NewTestProvider(testagent)
 	} else {

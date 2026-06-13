@@ -3,16 +3,16 @@ package messages
 import (
 	"fmt"
 
-	"cityio/internal/models"
+	"cityio/internal/domain"
 )
 
 type CreateCityMessage struct {
-	City    models.City
+	City    domain.City
 	Restore bool
 }
 
 type UpdateCityMessage struct {
-	City models.City
+	City domain.City
 }
 type UpdateCityOwnerMessage struct {
 	Owner *string
@@ -23,7 +23,7 @@ type UpdateCityPopulationCapMessage struct {
 
 type GetCityMessage struct{}
 type GetCityResponseMessage struct {
-	City models.City
+	City domain.City
 }
 
 type DeleteCityMessage struct {

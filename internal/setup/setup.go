@@ -4,6 +4,7 @@ package setup
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -12,24 +13,22 @@ import (
 
 	"cityio/internal/constants"
 	"cityio/internal/database"
+	"cityio/internal/domain"
 	"cityio/internal/logger"
-	"cityio/internal/models"
 	"cityio/internal/ports"
 	"cityio/internal/services"
 )
 
 type Deps struct {
-	Log     logger.Logger
 	DB      database.Querier
 	Cluster ports.ClusterProvider
 }
 
-func Run(deps *Deps) {
-	reset(deps)
-	log := deps.Log.With("phase", "init")
+func Run(ctx context.Context, deps *Deps) {
+	reset(ctx, deps)
+	ctx = logger.With(ctx, "phase", "init")
 	db := deps.DB
 	cluster := deps.Cluster
-	ctx := logger.WithContext(context.Background(), log)
 
 	users, err := db.GetAllUsers(ctx)
 	if err != nil {
@@ -42,10 +41,10 @@ func Run(deps *Deps) {
 			panic(err)
 		}
 	}
-	log.Info("spawned user actors", "count", len(users))
+	slog.InfoContext(ctx, "spawned user actors", "count", len(users))
 
 	// TODO: remove test user registration later
-	userID, err := services.CreateUser(ctx, cluster, &models.CreateUserRequest{
+	userID, err := services.CreateUser(ctx, cluster, &services.CreateUserRequest{
 		Email:    "cityio@example.com",
 		Username: "cityio",
 		Password: "cityio",
@@ -53,7 +52,7 @@ func Run(deps *Deps) {
 	if err != nil {
 		panic(err)
 	}
-	log.Info("registered test user", "user_id", userID)
+	slog.InfoContext(ctx, "registered test user", "user_id", userID)
 
 	// tiles, err := db.GetAllTiles(ctx)
 	// if err != nil {
@@ -79,7 +78,7 @@ func Run(deps *Deps) {
 			panic(err)
 		}
 	}
-	log.Info("spawned city actors", "count", len(cities))
+	slog.InfoContext(ctx, "spawned city actors", "count", len(cities))
 
 	// var armies []models.Army
 	// cl.DB().Find(&armies)
@@ -99,7 +98,7 @@ func Run(deps *Deps) {
 
 	for _, building := range buildings {
 		// city and town center will get restored by city actor
-		if building.Type == string(constants.BuildingTypeCityCenter) || building.Type == string(constants.BuildingTypeTownCenter) {
+		if building.Type == string(domain.BuildingTypeCityCenter) || building.Type == string(domain.BuildingTypeTownCenter) {
 			continue
 		}
 		err := services.RestoreBuilding(ctx, cluster, building.ToModel())
@@ -107,13 +106,13 @@ func Run(deps *Deps) {
 			panic(err)
 		}
 	}
-	log.Info("spawned building actors", "count", len(buildings))
+	slog.InfoContext(ctx, "spawned building actors", "count", len(buildings))
 
-	log.Info("initialization complete")
+	slog.InfoContext(ctx, "initialization complete")
 }
 
-func reset(deps *Deps) error {
-	log := deps.Log.With("phase", "reset")
+func reset(ctx context.Context, deps *Deps) error {
+	ctx = logger.With(ctx, "phase", "reset")
 	db := deps.DB
 
 	src := rand.NewSource(time.Now().UnixNano())
@@ -124,20 +123,20 @@ func reset(deps *Deps) error {
 		occupied[i] = make([]bool, constants.MapSize)
 	}
 
-	users, err := db.GetAllUsers(context.Background())
+	users, err := db.GetAllUsers(ctx)
 	if err != nil {
-		log.Error("error fetching existing users", "error", err)
+		slog.ErrorContext(ctx, "error fetching existing users", "error", err)
 	}
 
 	for _, user := range users {
 		user.Gold = constants.InitialPlayerGold
 		user.Food = constants.InitialPlayerFood
-		err := db.UpdateUserStats(context.Background(), database.UpdateUserStatsParams{
+		err := db.UpdateUserStats(ctx, database.UpdateUserStatsParams{
 			Gold: user.Gold,
 			Food: user.Food,
 		})
 		if err != nil {
-			log.Error("error resetting user fields", "error", err)
+			slog.ErrorContext(ctx, "error resetting user fields", "error", err)
 		}
 
 		src := rand.NewSource(time.Now().UnixNano())
@@ -146,26 +145,26 @@ func reset(deps *Deps) error {
 		startY := r.Intn(constants.MapSize - constants.CitySize)
 
 		cityID := uuid.New().String()
-		err = db.CreateCity(context.Background(), database.CreateCityParams{
+		err = db.CreateCity(ctx, database.CreateCityParams{
 			CityID:        cityID,
 			Type:          "capital",
 			Owner:         &user.UserID,
 			Name:          fmt.Sprintf("%s's City", user.Username),
 			Population:    constants.InitialPlayerCityPopulation,
-			PopulationCap: constants.GetBuildingPopulation(constants.BuildingTypeCityCenter, 1),
+			PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeCityCenter, 1),
 			StartX:        int32(startX),
 			StartY:        int32(startY),
 		})
 		if err != nil {
-			log.Error("error creating city in db", "error", err)
+			slog.ErrorContext(ctx, "error creating city in db", "error", err)
 			return err
 		}
-		log.Debug("created city in db", "city_id", cityID, "user", user.Username, "x", startX, "y", startY)
+		slog.DebugContext(ctx, "created city in db", "city_id", cityID, "user", user.Username, "x", startX, "y", startY)
 
-		err = db.CreateBuilding(context.Background(), database.CreateBuildingParams{
+		err = db.CreateBuilding(ctx, database.CreateBuildingParams{
 			BuildingID:        uuid.New().String(),
 			CityID:            cityID,
-			Type:              string(constants.BuildingTypeCityCenter),
+			Type:              string(domain.BuildingTypeCityCenter),
 			Level:             1,
 			TargetLevel:       1,
 			X:                 int32(startX + constants.CitySize/2),
@@ -174,7 +173,7 @@ func reset(deps *Deps) error {
 			ConstructionEnd:   pgtype.Timestamp{Valid: false},
 		})
 		if err != nil {
-			log.Error("error creating building in db", "error", err)
+			slog.ErrorContext(ctx, "error creating building in db", "error", err)
 			return err
 		}
 
@@ -185,8 +184,8 @@ func reset(deps *Deps) error {
 		}
 	}
 
-	cities := make([]models.City, 0)
-	buildings := make([]models.Building, 0)
+	cities := make([]domain.City, 0)
+	buildings := make([]domain.Building, 0)
 	for x := range constants.MapSize {
 		for y := range constants.MapSize {
 			open := true
@@ -214,27 +213,27 @@ func reset(deps *Deps) error {
 				}
 				if size > 0 && x+size < constants.MapSize && y+size < constants.MapSize {
 					cityID := uuid.New().String()
-					cities = append(cities, models.City{
+					cities = append(cities, domain.City{
 						CityID:        cityID,
 						Type:          "town",
 						Owner:         nil,
 						Name:          fmt.Sprintf("Town %s", cityID),
 						Population:    constants.InitialTownPopulation,
-						PopulationCap: constants.GetBuildingPopulation(constants.BuildingTypeTownCenter, 1),
+						PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, 1),
 						StartX:        x,
 						StartY:        y,
 						Size:          size,
 					})
-					buildings = append(buildings, models.Building{
+					buildings = append(buildings, domain.Building{
 						BuildingID:        uuid.New().String(),
 						CityID:            cityID,
-						Type:              string(constants.BuildingTypeTownCenter),
+						Type:              string(domain.BuildingTypeTownCenter),
 						Level:             1,
 						TargetLevel:       1,
 						X:                 x + size/2,
 						Y:                 y + size/2,
-						ConstructionStart: models.NullTime{Time: nil},
-						ConstructionEnd:   models.NullTime{Time: nil},
+						ConstructionStart: domain.NullTime{Time: nil},
+						ConstructionEnd:   domain.NullTime{Time: nil},
 					})
 					occupied[x][y] = true
 					for i := 0; i < size; i++ {
@@ -283,13 +282,13 @@ func reset(deps *Deps) error {
 			params.Sizes = append(params.Sizes, int32(city.Size))
 		}
 
-		if err := db.BatchCreateCities(context.Background(), params); err != nil {
-			log.Error("error batch creating cities", "start_idx", i, "end_idx", end, "error", err)
+		if err := db.BatchCreateCities(ctx, params); err != nil {
+			slog.ErrorContext(ctx, "error batch creating cities", "start_idx", i, "end_idx", end, "error", err)
 			return err
 		}
 	}
 
-	log.Debug("created cities", "count", len(cities))
+	slog.DebugContext(ctx, "created cities", "count", len(cities))
 
 	buildingBatchSize := 5000
 	for i := 0; i < len(buildings); i += buildingBatchSize {
@@ -316,16 +315,16 @@ func reset(deps *Deps) error {
 			params.TargetLevels = append(params.TargetLevels, int32(b.TargetLevel))
 			params.Xs = append(params.Xs, int32(b.X))
 			params.Ys = append(params.Ys, int32(b.Y))
-			params.ConstructionStarts = append(params.ConstructionStarts, b.ConstructionStart.ToPG())
-			params.ConstructionEnds = append(params.ConstructionEnds, b.ConstructionEnd.ToPG())
+			params.ConstructionStarts = append(params.ConstructionStarts, database.ToPGTimestamp(b.ConstructionStart.Time))
+			params.ConstructionEnds = append(params.ConstructionEnds, database.ToPGTimestamp(b.ConstructionEnd.Time))
 		}
 
-		if err := db.BatchCreateBuildings(context.Background(), params); err != nil {
-			log.Error("error batch creating buildings", "start_idx", i, "end_idx", end, "error", err)
+		if err := db.BatchCreateBuildings(ctx, params); err != nil {
+			slog.ErrorContext(ctx, "error batch creating buildings", "start_idx", i, "end_idx", end, "error", err)
 			return err
 		}
 	}
 
-	log.Debug("reset complete")
+	slog.DebugContext(ctx, "reset complete")
 	return nil
 }

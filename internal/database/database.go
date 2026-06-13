@@ -3,64 +3,47 @@ package database
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
-
-	"cityio/internal/logger"
 )
 
-func NewDB(log logger.Logger) Querier {
-	var dsn string
-	if os.Getenv("ENVIRONMENT") == "production" {
-		log.Info("Using production database")
-		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432",
-			os.Getenv("PSQL_HOST_PROD"),
-			os.Getenv("PSQL_USERNAME_PROD"),
-			os.Getenv("PSQL_PASSWORD_PROD"),
-			os.Getenv("PSQL_DATABASE_PROD"))
-	} else {
-		log.Info("Using development database")
-		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432",
-			os.Getenv("PSQL_HOST_DEV"),
-			os.Getenv("PSQL_USERNAME_DEV"),
-			os.Getenv("PSQL_PASSWORD_DEV"),
-			os.Getenv("PSQL_DATABASE_DEV"))
-	}
-
-	pool, err := pgxpool.New(context.Background(), dsn)
+// NewDB connects to the database described by dsn, runs migrations and returns
+// a Querier. It terminates the process on any fatal initialization error.
+func NewDB(ctx context.Context, dsn string) Querier {
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		log.Error("failed to create pgx pool", "error", err)
+		slog.ErrorContext(ctx, "failed to create pgx pool", "error", err)
 		os.Exit(1)
 	}
 
 	migrations, err := goose.OpenDBWithDriver("pgx", dsn)
 	if err != nil {
-		log.Error("failed to open goose DB connection", "error", err)
+		slog.ErrorContext(ctx, "failed to open goose DB connection", "error", err)
 		os.Exit(1)
 	}
 
 	if err := goose.RunContext(
-		context.Background(),
+		ctx,
 		"down-to",
 		migrations,
 		"db/migrations",
 		"0",
 	); err != nil {
-		log.Error("failed to open goose reset migration", "error", err)
+		slog.ErrorContext(ctx, "failed to open goose reset migration", "error", err)
 		os.Exit(1)
 	}
 
 	if err := goose.RunContext(
-		context.Background(),
+		ctx,
 		"up",
 		migrations,
 		"db/migrations",
 	); err != nil {
-		log.Error("failed to open goose apply migration", "error", err)
+		slog.ErrorContext(ctx, "failed to open goose apply migration", "error", err)
 		os.Exit(1)
 	}
 

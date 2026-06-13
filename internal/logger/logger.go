@@ -1,48 +1,25 @@
-// Package logger implements the logging functionality using slog.
+// Package logger configures the global slog logger with a context-aware
+// handler. Attributes attached to a context with With are automatically
+// emitted by every slog call that receives that context (for example
+// slog.InfoContext).
 package logger
 
 import (
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/lmittmann/tint"
 )
 
-type Logger interface {
-	Debug(msg string, args ...any)
-	Info(msg string, args ...any)
-	Warn(msg string, args ...any)
-	Error(msg string, args ...any)
-	With(args ...any) Logger
-}
-
-type logger struct {
-	l *slog.Logger
-}
-
-func NewLogger() Logger {
-	log := slog.New(tint.NewHandler(os.Stderr, &tint.Options{
-		Level: slog.LevelDebug,
-	}))
-	return &logger{l: log}
-}
-
-func (s *logger) Debug(msg string, args ...any) {
-	s.l.Debug(msg, args...)
-}
-
-func (s *logger) Info(msg string, args ...any) {
-	s.l.Info(msg, args...)
-}
-
-func (s *logger) Warn(msg string, args ...any) {
-	s.l.Warn(msg, args...)
-}
-
-func (s *logger) Error(msg string, args ...any) {
-	s.l.Error(msg, args...)
-}
-
-func (s *logger) With(args ...any) Logger {
-	return &logger{l: s.l.With(args...)}
+// Setup installs a context-aware tint handler as the global slog default at
+// the provided level.
+func Setup(level slog.Level) {
+	handler := &contextHandler{
+		Handler: tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      level,
+			TimeFormat: time.Kitchen,
+		}),
+	}
+	slog.SetDefault(slog.New(handler))
 }

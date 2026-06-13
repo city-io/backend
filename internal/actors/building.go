@@ -3,13 +3,14 @@ package actors
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/models"
 	"cityio/internal/utils"
 )
 
@@ -21,7 +22,7 @@ type buildingActorImpl interface {
 
 type buildingActor struct {
 	baseActor
-	Building models.Building
+	Building domain.Building
 
 	Owner *string
 	Impl  buildingActorImpl
@@ -35,7 +36,7 @@ func NewBuildingActor() BaseActorInterface {
 }
 
 func (state *buildingActor) ActorType() string {
-	return string(constants.BuildingTypeCityCenter)
+	return string(domain.BuildingTypeCityCenter)
 }
 
 func (state *buildingActor) Receive(ctx actor.Context) {
@@ -52,8 +53,8 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 						1,
 					)) * time.Second,
 				)
-				state.Building.ConstructionStart = models.NullTime{Time: &now}
-				state.Building.ConstructionEnd = models.NullTime{Time: &end}
+				state.Building.ConstructionStart = domain.NullTime{Time: &now}
+				state.Building.ConstructionEnd = domain.NullTime{Time: &end}
 				state.Building.Level = 0
 				state.Building.TargetLevel = 1
 			}
@@ -64,15 +65,15 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			})
 		}
 		switch state.Building.BuildingType() {
-		case constants.BuildingTypeCityCenter:
+		case domain.BuildingTypeCityCenter:
 			state.Impl = newCityCenterImpl()
-		case constants.BuildingTypeTownCenter:
+		case domain.BuildingTypeTownCenter:
 			state.Impl = newTownCenterImpl()
-		case constants.BuildingTypeMine:
+		case domain.BuildingTypeMine:
 			state.Impl = newMineImpl()
-		case constants.BuildingTypeFarm:
+		case domain.BuildingTypeFarm:
 			state.Impl = newFarmImpl()
-		case constants.BuildingTypeHouse:
+		case domain.BuildingTypeHouse:
 			state.Impl = newHouseImpl()
 		}
 
@@ -81,7 +82,7 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			BuildingID: &state.Building.BuildingID,
 		})
 		if err != nil {
-			state.Log.Error("failed to signal tiles of building existence", "error", err)
+			slog.ErrorContext(state.Ctx(), "failed to signal tiles of building existence", "error", err)
 		}
 		state.startPeriodicOperation(ctx)
 		ctx.Respond(messages.Ack{})
@@ -129,17 +130,17 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 		Amount: constants.GetBuildingCost(buildingType, state.Building.Level),
 	})
 	if err != nil {
-		state.Log.Error("failed to check user balance for upgrade", "error", err)
+		slog.ErrorContext(state.Ctx(), "failed to check user balance for upgrade", "error", err)
 		return err
 	}
 	switch msg := res.(type) {
 	case messages.Ack:
 		// continue upgrade
 	case messages.InsufficientGoldError:
-		state.Log.Warn("not enough gold", "needed", msg.Missing)
+		slog.WarnContext(state.Ctx(), "not enough gold", "needed", msg.Missing)
 		return &msg
 	default:
-		state.Log.Error("unexpected response type from user actor", "type", fmt.Sprintf("%T", res))
+		slog.ErrorContext(state.Ctx(), "unexpected response type from user actor", "type", fmt.Sprintf("%T", res))
 		return fmt.Errorf("unexpected response type: %T", res)
 	}
 
@@ -151,8 +152,8 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 		)) * time.Second,
 	)
 	state.Building.TargetLevel++
-	state.Building.ConstructionStart = models.NullTime{Time: &now}
-	state.Building.ConstructionEnd = models.NullTime{Time: &end}
+	state.Building.ConstructionStart = domain.NullTime{Time: &now}
+	state.Building.ConstructionEnd = domain.NullTime{Time: &end}
 
 	// TODO: spawn a blocking goroutine that sends a message upon completion
 	// ensure that it gets an ACK back for processing
@@ -169,7 +170,7 @@ func (state *buildingActor) destroy(ctx actor.Context) {
 	state.Cluster.Request("tile", utils.GetTileIndex(state.Building.X, state.Building.Y), messages.UpdateTileBuildingMessage{
 		BuildingID: nil,
 	})
-	state.Log.Debug("shutting down BuildingActor", "building_id", state.Building.BuildingID, "type", state.Building.BuildingType())
+	slog.DebugContext(state.Ctx(), "shutting down BuildingActor", "building_id", state.Building.BuildingID, "type", state.Building.BuildingType())
 	ctx.Stop(ctx.Self())
 }
 

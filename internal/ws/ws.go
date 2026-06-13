@@ -1,9 +1,7 @@
 package ws
 
 import (
-	"cityio/internal/models"
-
-	"log"
+	"log/slog"
 
 	"github.com/gorilla/websocket"
 )
@@ -20,7 +18,7 @@ func Send(userId string, message int, data any) error {
 		return nil
 	}
 
-	return conn.WriteJSON(&models.WebSocketResponse{
+	return conn.WriteJSON(&WebSocketResponse{
 		Msg:  message,
 		Data: data,
 	})
@@ -29,7 +27,7 @@ func Send(userId string, message int, data any) error {
 func Broadcast(message interface{}) {
 	for _, conn := range connections {
 		if err := conn.WriteJSON(message); err != nil {
-			log.Printf("Error broadcasting message: %s", err)
+			slog.Error("error broadcasting message", "error", err)
 		}
 	}
 }

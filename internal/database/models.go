@@ -5,7 +5,8 @@
 package database
 
 import (
-	"cityio/internal/models"
+	"cityio/internal/domain"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -15,7 +16,7 @@ type Building struct {
 	Type              string             `json:"type"`
 	Level             int32              `json:"level"`
 	TargetLevel       int32              `json:"target_level"`
-	Coords            models.Coordinates `json:"coords"`
+	Coords            domain.Coordinates `json:"coords"`
 	ConstructionStart pgtype.Timestamp   `json:"construction_start"`
 	ConstructionEnd   pgtype.Timestamp   `json:"construction_end"`
 	CreatedAt         pgtype.Timestamp   `json:"created_at"`
@@ -29,7 +30,7 @@ type City struct {
 	Name          string             `json:"name"`
 	Population    float64            `json:"population"`
 	PopulationCap float64            `json:"population_cap"`
-	StartCoords   models.Coordinates `json:"start_coords"`
+	StartCoords   domain.Coordinates `json:"start_coords"`
 	Size          int32              `json:"size"`
 	CreatedAt     pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`

@@ -1,23 +1,22 @@
 package actors
 
 import (
-	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 
 	"cityio/internal/constants"
-	"cityio/internal/logger"
+	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/models"
 	"cityio/internal/services"
 	"cityio/internal/ws"
 )
 
 type userActor struct {
 	baseActor
-	User models.User
+	User domain.User
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -35,15 +34,14 @@ func (state *userActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case *messages.CreateUserMessage:
-		state.Log.Info("registering UserActor", "username", msg.User.Username)
+		slog.DebugContext(state.Ctx(), "registering user actor", "username", msg.User.Username)
 		state.User = msg.User
 		if !msg.Restore {
 			ctx.Send(state.Cluster.DB(), &messages.CreateUserMessage{
 				User: state.User,
 			})
-			serviceCtx := logger.WithContext(context.Background(), state.Log)
-			services.CreateCity(serviceCtx, state.Cluster, &models.CityInput{
-				Type:  constants.CityTypeCity,
+			services.CreateCity(state.Ctx(), state.Cluster, &services.CityInput{ //nolint:errcheck // fire-and-forget
+				Type:  domain.CityTypeCity,
 				Owner: &state.User.UserID,
 				Name:  fmt.Sprintf("%s's City", state.User.Username),
 				Size:  constants.CitySize,
@@ -79,7 +77,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 			UserID: state.User.UserID,
 		})
 
-		state.Log.Info("shutting down UserActor", "user_id", state.User.UserID)
+		slog.DebugContext(state.Ctx(), "shutting down user actor", "user_id", state.User.UserID)
 		state.stopPeriodicOperation()
 		ctx.Stop(ctx.Self())
 
@@ -114,7 +112,7 @@ func (state *userActor) stopPeriodicOperation() {
 }
 
 func (state *userActor) ws() {
-	ws.Send(state.User.UserID, messages.WS_USER, &models.UserAccountOutput{
+	ws.Send(state.User.UserID, messages.WS_USER, &ws.UserAccountOutput{
 		Username: state.User.Username,
 		Gold:     state.User.Gold,
 		Food:     state.User.Food,

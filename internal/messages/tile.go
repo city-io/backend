@@ -1,6 +1,6 @@
 package messages
 
-import "cityio/internal/models"
+import "cityio/internal/domain"
 
 type UpdateTileOwnerMessage struct {
 	Owner *string
@@ -14,5 +14,5 @@ type UpdateTileBuildingMessage struct {
 
 type GetTileMessage struct{}
 type GetTileResponseMessage struct {
-	City *models.City
+	City *domain.City
 }
