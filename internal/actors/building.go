@@ -114,6 +114,7 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 
 	case messages.PeriodicOperationMessage:
 		state.reaffirmTile()
+		state.checkConstructionComplete()
 		if state.Impl != nil {
 			state.Impl.Handle(ctx, state)
 		}
@@ -134,6 +135,24 @@ func (state *buildingActor) reaffirmTile() {
 	}); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to reaffirm building tile index", "building_id", state.Building.BuildingID, "error", err)
 	}
+}
+
+func (state *buildingActor) checkConstructionComplete() {
+	if !state.constructionActive() {
+		return
+	}
+	if state.Building.ConstructionEnd.Time == nil || time.Now().Before(*state.Building.ConstructionEnd.Time) {
+		return
+	}
+	state.Building.Level = state.Building.TargetLevel
+	state.Building.ConstructionStart = domain.NullTime{}
+	state.Building.ConstructionEnd = domain.NullTime{}
+	state.Store.EnqueueBuilding(state.Building)
+	slog.InfoContext(state.Ctx(), "construction complete",
+		"building_id", state.Building.BuildingID,
+		"type", state.Building.BuildingType(),
+		"level", state.Building.Level,
+	)
 }
 
 func (state *buildingActor) constructionActive() bool {

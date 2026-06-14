@@ -41,9 +41,13 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[pb.GetCi
 }
 
 func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[pb.CreateCityRequest]) (*connect.Response[pb.CreateCityResponse], error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
+	}
 	city, err := services.CreateCity(ctx, h.srv.cluster, h.srv.store, &services.CityInput{
 		Type:  mapping.CityTypeFromProto(req.Msg.GetType()),
-		Owner: req.Msg.Owner,
+		Owner: &claims.UserID,
 		Name:  req.Msg.GetName(),
 		Size:  int(req.Msg.GetSize()),
 	})

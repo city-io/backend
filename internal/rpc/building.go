@@ -18,7 +18,33 @@ type buildingHandler struct {
 	srv *Server
 }
 
+func (h *buildingHandler) requireBuildingOwnership(ctx context.Context, buildingID string) error {
+	res, err := h.srv.cluster.Request("building", buildingID, messages.GetBuildingMessage{})
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	resp, ok := res.(messages.GetBuildingResponseMessage)
+	if !ok {
+		return connect.NewError(connect.CodeNotFound, errors.New("building not found"))
+	}
+	owns, err := h.srv.ownsCity(ctx, resp.Building.CityID)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	if !owns {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("building not owned by caller"))
+	}
+	return nil
+}
+
 func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Request[pb.CreateBuildingRequest]) (*connect.Response[pb.CreateBuildingResponse], error) {
+	owns, err := h.srv.ownsCity(ctx, req.Msg.GetCityId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !owns {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
+	}
 	building, err := services.CreateBuilding(ctx, h.srv.cluster, &services.BuildingInput{
 		CityID: req.Msg.GetCityId(),
 		Type:   mapping.BuildingTypeFromProto(req.Msg.GetType()),
@@ -53,6 +79,9 @@ func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[
 }
 
 func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Request[pb.UpgradeBuildingRequest]) (*connect.Response[pb.UpgradeBuildingResponse], error) {
+	if err := h.requireBuildingOwnership(ctx, req.Msg.GetBuildingId()); err != nil {
+		return nil, err
+	}
 	res, err := h.srv.cluster.Request("building", req.Msg.GetBuildingId(), messages.UpgradeBuildingMessage{})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -75,6 +104,9 @@ func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Requ
 }
 
 func (h *buildingHandler) DeleteBuilding(ctx context.Context, req *connect.Request[pb.DeleteBuildingRequest]) (*connect.Response[pb.DeleteBuildingResponse], error) {
+	if err := h.requireBuildingOwnership(ctx, req.Msg.GetBuildingId()); err != nil {
+		return nil, err
+	}
 	if err := h.srv.cluster.Tell("building", req.Msg.GetBuildingId(), messages.DeleteBuildingMessage{BuildingID: req.Msg.GetBuildingId()}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

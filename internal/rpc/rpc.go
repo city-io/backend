@@ -35,6 +35,19 @@ func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {
 	return s.store.GetCitiesByOwner(ctx, claims.UserID)
 }
 
+func (s *Server) ownsCity(ctx context.Context, cityID string) (bool, error) {
+	owned, err := s.ownedCities(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, c := range owned {
+		if c.CityID == cityID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // Handler returns the HTTP handler serving every Connect service with the auth
 // interceptor applied.
 func (s *Server) Handler() http.Handler {
