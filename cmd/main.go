@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rs/cors"
@@ -49,7 +50,12 @@ func main() {
 
 	server := rpc.NewServer(cl, store, cfg.JWTSecret)
 	handler := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:4173", "http://localhost:3000", "https://cityio.prayujt.com"},
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "http://localhost:5173" || origin == "http://localhost:4173" {
+				return true
+			}
+			return strings.HasSuffix(origin, ".prayujt.com")
+		},
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"*"},
 		// Connect-specific headers must be exposed for streaming/error metadata.
