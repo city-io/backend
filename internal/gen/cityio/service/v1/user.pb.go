@@ -2,11 +2,12 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: cityio/v1/user.proto
+// source: cityio/service/v1/user.proto
 
-package cityiov1
+package servicev1
 
 import (
+	v1 "cityio/internal/gen/cityio/entity/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -21,83 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// User is a player account. The password is never exposed over the wire.
-type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	Gold          int64                  `protobuf:"varint,4,opt,name=gold,proto3" json:"gold,omitempty"`
-	Food          int64                  `protobuf:"varint,5,opt,name=food,proto3" json:"food,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *User) Reset() {
-	*x = User{}
-	mi := &file_cityio_v1_user_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *User) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*User) ProtoMessage() {}
-
-func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use User.ProtoReflect.Descriptor instead.
-func (*User) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *User) GetUserId() string {
-	if x != nil {
-		return x.UserId
-	}
-	return ""
-}
-
-func (x *User) GetEmail() string {
-	if x != nil {
-		return x.Email
-	}
-	return ""
-}
-
-func (x *User) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *User) GetGold() int64 {
-	if x != nil {
-		return x.Gold
-	}
-	return 0
-}
-
-func (x *User) GetFood() int64 {
-	if x != nil {
-		return x.Food
-	}
-	return 0
-}
-
 type RegisterRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
@@ -109,7 +33,7 @@ type RegisterRequest struct {
 
 func (x *RegisterRequest) Reset() {
 	*x = RegisterRequest{}
-	mi := &file_cityio_v1_user_proto_msgTypes[1]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -121,7 +45,7 @@ func (x *RegisterRequest) String() string {
 func (*RegisterRequest) ProtoMessage() {}
 
 func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[1]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -134,7 +58,7 @@ func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
 func (*RegisterRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{1}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *RegisterRequest) GetEmail() string {
@@ -160,7 +84,7 @@ func (x *RegisterRequest) GetPassword() string {
 
 type RegisterResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        *v1.UserId             `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -168,7 +92,7 @@ type RegisterResponse struct {
 
 func (x *RegisterResponse) Reset() {
 	*x = RegisterResponse{}
-	mi := &file_cityio_v1_user_proto_msgTypes[2]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -180,7 +104,7 @@ func (x *RegisterResponse) String() string {
 func (*RegisterResponse) ProtoMessage() {}
 
 func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[2]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -193,14 +117,14 @@ func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterResponse.ProtoReflect.Descriptor instead.
 func (*RegisterResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{2}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RegisterResponse) GetUserId() string {
+func (x *RegisterResponse) GetUserId() *v1.UserId {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return nil
 }
 
 func (x *RegisterResponse) GetToken() string {
@@ -212,7 +136,7 @@ func (x *RegisterResponse) GetToken() string {
 
 type LoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Identifier    string                 `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"` // email or username
+	Identifier    string                 `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
 	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -220,7 +144,7 @@ type LoginRequest struct {
 
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
-	mi := &file_cityio_v1_user_proto_msgTypes[3]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -232,7 +156,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[3]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -245,7 +169,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{3}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *LoginRequest) GetIdentifier() string {
@@ -265,14 +189,14 @@ func (x *LoginRequest) GetPassword() string {
 type LoginResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	User          *User                  `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	User          *v1.User               `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *LoginResponse) Reset() {
 	*x = LoginResponse{}
-	mi := &file_cityio_v1_user_proto_msgTypes[4]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -284,7 +208,7 @@ func (x *LoginResponse) String() string {
 func (*LoginResponse) ProtoMessage() {}
 
 func (x *LoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[4]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -297,7 +221,7 @@ func (x *LoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
 func (*LoginResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{4}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *LoginResponse) GetToken() string {
@@ -307,7 +231,7 @@ func (x *LoginResponse) GetToken() string {
 	return ""
 }
 
-func (x *LoginResponse) GetUser() *User {
+func (x *LoginResponse) GetUser() *v1.User {
 	if x != nil {
 		return x.User
 	}
@@ -316,14 +240,14 @@ func (x *LoginResponse) GetUser() *User {
 
 type GetUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        *v1.UserId             `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetUserRequest) Reset() {
 	*x = GetUserRequest{}
-	mi := &file_cityio_v1_user_proto_msgTypes[5]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +259,7 @@ func (x *GetUserRequest) String() string {
 func (*GetUserRequest) ProtoMessage() {}
 
 func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[5]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,26 +272,26 @@ func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserRequest.ProtoReflect.Descriptor instead.
 func (*GetUserRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{5}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *GetUserRequest) GetUserId() string {
+func (x *GetUserRequest) GetUserId() *v1.UserId {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return nil
 }
 
 type GetUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	User          *v1.User               `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetUserResponse) Reset() {
 	*x = GetUserResponse{}
-	mi := &file_cityio_v1_user_proto_msgTypes[6]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -379,7 +303,7 @@ func (x *GetUserResponse) String() string {
 func (*GetUserResponse) ProtoMessage() {}
 
 func (x *GetUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[6]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -392,10 +316,10 @@ func (x *GetUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserResponse.ProtoReflect.Descriptor instead.
 func (*GetUserResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{6}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GetUserResponse) GetUser() *User {
+func (x *GetUserResponse) GetUser() *v1.User {
 	if x != nil {
 		return x.User
 	}
@@ -404,14 +328,14 @@ func (x *GetUserResponse) GetUser() *User {
 
 type DeleteUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        *v1.UserId             `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DeleteUserRequest) Reset() {
 	*x = DeleteUserRequest{}
-	mi := &file_cityio_v1_user_proto_msgTypes[7]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -423,7 +347,7 @@ func (x *DeleteUserRequest) String() string {
 func (*DeleteUserRequest) ProtoMessage() {}
 
 func (x *DeleteUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[7]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -436,14 +360,14 @@ func (x *DeleteUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteUserRequest.ProtoReflect.Descriptor instead.
 func (*DeleteUserRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{7}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *DeleteUserRequest) GetUserId() string {
+func (x *DeleteUserRequest) GetUserId() *v1.UserId {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return nil
 }
 
 type DeleteUserResponse struct {
@@ -454,7 +378,7 @@ type DeleteUserResponse struct {
 
 func (x *DeleteUserResponse) Reset() {
 	*x = DeleteUserResponse{}
-	mi := &file_cityio_v1_user_proto_msgTypes[8]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +390,7 @@ func (x *DeleteUserResponse) String() string {
 func (*DeleteUserResponse) ProtoMessage() {}
 
 func (x *DeleteUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[8]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +403,7 @@ func (x *DeleteUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteUserResponse.ProtoReflect.Descriptor instead.
 func (*DeleteUserResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{8}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{7}
 }
 
 type StreamStateRequest struct {
@@ -490,7 +414,7 @@ type StreamStateRequest struct {
 
 func (x *StreamStateRequest) Reset() {
 	*x = StreamStateRequest{}
-	mi := &file_cityio_v1_user_proto_msgTypes[9]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +426,7 @@ func (x *StreamStateRequest) String() string {
 func (*StreamStateRequest) ProtoMessage() {}
 
 func (x *StreamStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[9]
+	mi := &file_cityio_service_v1_user_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,33 +439,32 @@ func (x *StreamStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamStateRequest.ProtoReflect.Descriptor instead.
 func (*StreamStateRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{9}
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{8}
 }
 
-// UserState is pushed to a client whenever its resources change.
-type UserState struct {
+// StreamStateResponse wraps an EntityBag pushed to a client whenever state changes.
+type StreamStateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Gold          int64                  `protobuf:"varint,1,opt,name=gold,proto3" json:"gold,omitempty"`
-	Food          int64                  `protobuf:"varint,2,opt,name=food,proto3" json:"food,omitempty"`
+	Entities      *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *UserState) Reset() {
-	*x = UserState{}
-	mi := &file_cityio_v1_user_proto_msgTypes[10]
+func (x *StreamStateResponse) Reset() {
+	*x = StreamStateResponse{}
+	mi := &file_cityio_service_v1_user_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UserState) String() string {
+func (x *StreamStateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UserState) ProtoMessage() {}
+func (*StreamStateResponse) ProtoMessage() {}
 
-func (x *UserState) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_user_proto_msgTypes[10]
+func (x *StreamStateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_user_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,138 +475,129 @@ func (x *UserState) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UserState.ProtoReflect.Descriptor instead.
-func (*UserState) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_user_proto_rawDescGZIP(), []int{10}
+// Deprecated: Use StreamStateResponse.ProtoReflect.Descriptor instead.
+func (*StreamStateResponse) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *UserState) GetGold() int64 {
+func (x *StreamStateResponse) GetEntities() *v1.EntityBag {
 	if x != nil {
-		return x.Gold
+		return x.Entities
 	}
-	return 0
+	return nil
 }
 
-func (x *UserState) GetFood() int64 {
-	if x != nil {
-		return x.Food
-	}
-	return 0
-}
+var File_cityio_service_v1_user_proto protoreflect.FileDescriptor
 
-var File_cityio_v1_user_proto protoreflect.FileDescriptor
-
-const file_cityio_v1_user_proto_rawDesc = "" +
+const file_cityio_service_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x14cityio/v1/user.proto\x12\tcityio.v1\"y\n" +
-	"\x04User\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12\x12\n" +
-	"\x04gold\x18\x04 \x01(\x03R\x04gold\x12\x12\n" +
-	"\x04food\x18\x05 \x01(\x03R\x04food\"_\n" +
+	"\x1ccityio/service/v1/user.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1bcityio/entity/v1/user.proto\x1a\x1acityio/entity/v1/bag.proto\"_\n" +
 	"\x0fRegisterRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x03 \x01(\tR\bpassword\"A\n" +
-	"\x10RegisterResponse\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\"[\n" +
+	"\x10RegisterResponse\x121\n" +
+	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"J\n" +
 	"\fLoginRequest\x12\x1e\n" +
 	"\n" +
 	"identifier\x18\x01 \x01(\tR\n" +
 	"identifier\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"J\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"Q\n" +
 	"\rLoginResponse\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x12#\n" +
-	"\x04user\x18\x02 \x01(\v2\x0f.cityio.v1.UserR\x04user\")\n" +
-	"\x0eGetUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"6\n" +
-	"\x0fGetUserResponse\x12#\n" +
-	"\x04user\x18\x01 \x01(\v2\x0f.cityio.v1.UserR\x04user\",\n" +
-	"\x11DeleteUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12*\n" +
+	"\x04user\x18\x02 \x01(\v2\x16.cityio.entity.v1.UserR\x04user\"C\n" +
+	"\x0eGetUserRequest\x121\n" +
+	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\"=\n" +
+	"\x0fGetUserResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.cityio.entity.v1.UserR\x04user\"F\n" +
+	"\x11DeleteUserRequest\x121\n" +
+	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\"\x14\n" +
 	"\x12DeleteUserResponse\"\x14\n" +
-	"\x12StreamStateRequest\"3\n" +
-	"\tUserState\x12\x12\n" +
-	"\x04gold\x18\x01 \x01(\x03R\x04gold\x12\x12\n" +
-	"\x04food\x18\x02 \x01(\x03R\x04food2\xe1\x02\n" +
-	"\vUserService\x12C\n" +
-	"\bRegister\x12\x1a.cityio.v1.RegisterRequest\x1a\x1b.cityio.v1.RegisterResponse\x12:\n" +
-	"\x05Login\x12\x17.cityio.v1.LoginRequest\x1a\x18.cityio.v1.LoginResponse\x12@\n" +
-	"\aGetUser\x12\x19.cityio.v1.GetUserRequest\x1a\x1a.cityio.v1.GetUserResponse\x12I\n" +
+	"\x12StreamStateRequest\"N\n" +
+	"\x13StreamStateResponse\x127\n" +
+	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\xbb\x03\n" +
+	"\vUserService\x12S\n" +
+	"\bRegister\x12\".cityio.service.v1.RegisterRequest\x1a#.cityio.service.v1.RegisterResponse\x12J\n" +
+	"\x05Login\x12\x1f.cityio.service.v1.LoginRequest\x1a .cityio.service.v1.LoginResponse\x12P\n" +
+	"\aGetUser\x12!.cityio.service.v1.GetUserRequest\x1a\".cityio.service.v1.GetUserResponse\x12Y\n" +
 	"\n" +
-	"DeleteUser\x12\x1c.cityio.v1.DeleteUserRequest\x1a\x1d.cityio.v1.DeleteUserResponse\x12D\n" +
-	"\vStreamState\x12\x1d.cityio.v1.StreamStateRequest\x1a\x14.cityio.v1.UserState0\x01B\x87\x01\n" +
-	"\rcom.cityio.v1B\tUserProtoP\x01Z&cityio/internal/gen/cityio/v1;cityiov1\xa2\x02\x03CXX\xaa\x02\tCityio.V1\xca\x02\tCityio\\V1\xe2\x02\x15Cityio\\V1\\GPBMetadata\xea\x02\n" +
-	"Cityio::V1b\x06proto3"
+	"DeleteUser\x12$.cityio.service.v1.DeleteUserRequest\x1a%.cityio.service.v1.DeleteUserResponse\x12^\n" +
+	"\vStreamState\x12%.cityio.service.v1.StreamStateRequest\x1a&.cityio.service.v1.StreamStateResponse0\x01B\xb9\x01\n" +
+	"\x15com.cityio.service.v1B\tUserProtoP\x01Z/cityio/internal/gen/cityio/service/v1;servicev1\xa2\x02\x03CSX\xaa\x02\x11Cityio.Service.V1\xca\x02\x11Cityio\\Service\\V1\xe2\x02\x1dCityio\\Service\\V1\\GPBMetadata\xea\x02\x13Cityio::Service::V1b\x06proto3"
 
 var (
-	file_cityio_v1_user_proto_rawDescOnce sync.Once
-	file_cityio_v1_user_proto_rawDescData []byte
+	file_cityio_service_v1_user_proto_rawDescOnce sync.Once
+	file_cityio_service_v1_user_proto_rawDescData []byte
 )
 
-func file_cityio_v1_user_proto_rawDescGZIP() []byte {
-	file_cityio_v1_user_proto_rawDescOnce.Do(func() {
-		file_cityio_v1_user_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_cityio_v1_user_proto_rawDesc), len(file_cityio_v1_user_proto_rawDesc)))
+func file_cityio_service_v1_user_proto_rawDescGZIP() []byte {
+	file_cityio_service_v1_user_proto_rawDescOnce.Do(func() {
+		file_cityio_service_v1_user_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_cityio_service_v1_user_proto_rawDesc), len(file_cityio_service_v1_user_proto_rawDesc)))
 	})
-	return file_cityio_v1_user_proto_rawDescData
+	return file_cityio_service_v1_user_proto_rawDescData
 }
 
-var file_cityio_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
-var file_cityio_v1_user_proto_goTypes = []any{
-	(*User)(nil),               // 0: cityio.v1.User
-	(*RegisterRequest)(nil),    // 1: cityio.v1.RegisterRequest
-	(*RegisterResponse)(nil),   // 2: cityio.v1.RegisterResponse
-	(*LoginRequest)(nil),       // 3: cityio.v1.LoginRequest
-	(*LoginResponse)(nil),      // 4: cityio.v1.LoginResponse
-	(*GetUserRequest)(nil),     // 5: cityio.v1.GetUserRequest
-	(*GetUserResponse)(nil),    // 6: cityio.v1.GetUserResponse
-	(*DeleteUserRequest)(nil),  // 7: cityio.v1.DeleteUserRequest
-	(*DeleteUserResponse)(nil), // 8: cityio.v1.DeleteUserResponse
-	(*StreamStateRequest)(nil), // 9: cityio.v1.StreamStateRequest
-	(*UserState)(nil),          // 10: cityio.v1.UserState
+var file_cityio_service_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_cityio_service_v1_user_proto_goTypes = []any{
+	(*RegisterRequest)(nil),     // 0: cityio.service.v1.RegisterRequest
+	(*RegisterResponse)(nil),    // 1: cityio.service.v1.RegisterResponse
+	(*LoginRequest)(nil),        // 2: cityio.service.v1.LoginRequest
+	(*LoginResponse)(nil),       // 3: cityio.service.v1.LoginResponse
+	(*GetUserRequest)(nil),      // 4: cityio.service.v1.GetUserRequest
+	(*GetUserResponse)(nil),     // 5: cityio.service.v1.GetUserResponse
+	(*DeleteUserRequest)(nil),   // 6: cityio.service.v1.DeleteUserRequest
+	(*DeleteUserResponse)(nil),  // 7: cityio.service.v1.DeleteUserResponse
+	(*StreamStateRequest)(nil),  // 8: cityio.service.v1.StreamStateRequest
+	(*StreamStateResponse)(nil), // 9: cityio.service.v1.StreamStateResponse
+	(*v1.UserId)(nil),           // 10: cityio.entity.v1.UserId
+	(*v1.User)(nil),             // 11: cityio.entity.v1.User
+	(*v1.EntityBag)(nil),        // 12: cityio.entity.v1.EntityBag
 }
-var file_cityio_v1_user_proto_depIdxs = []int32{
-	0,  // 0: cityio.v1.LoginResponse.user:type_name -> cityio.v1.User
-	0,  // 1: cityio.v1.GetUserResponse.user:type_name -> cityio.v1.User
-	1,  // 2: cityio.v1.UserService.Register:input_type -> cityio.v1.RegisterRequest
-	3,  // 3: cityio.v1.UserService.Login:input_type -> cityio.v1.LoginRequest
-	5,  // 4: cityio.v1.UserService.GetUser:input_type -> cityio.v1.GetUserRequest
-	7,  // 5: cityio.v1.UserService.DeleteUser:input_type -> cityio.v1.DeleteUserRequest
-	9,  // 6: cityio.v1.UserService.StreamState:input_type -> cityio.v1.StreamStateRequest
-	2,  // 7: cityio.v1.UserService.Register:output_type -> cityio.v1.RegisterResponse
-	4,  // 8: cityio.v1.UserService.Login:output_type -> cityio.v1.LoginResponse
-	6,  // 9: cityio.v1.UserService.GetUser:output_type -> cityio.v1.GetUserResponse
-	8,  // 10: cityio.v1.UserService.DeleteUser:output_type -> cityio.v1.DeleteUserResponse
-	10, // 11: cityio.v1.UserService.StreamState:output_type -> cityio.v1.UserState
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+var file_cityio_service_v1_user_proto_depIdxs = []int32{
+	10, // 0: cityio.service.v1.RegisterResponse.user_id:type_name -> cityio.entity.v1.UserId
+	11, // 1: cityio.service.v1.LoginResponse.user:type_name -> cityio.entity.v1.User
+	10, // 2: cityio.service.v1.GetUserRequest.user_id:type_name -> cityio.entity.v1.UserId
+	11, // 3: cityio.service.v1.GetUserResponse.user:type_name -> cityio.entity.v1.User
+	10, // 4: cityio.service.v1.DeleteUserRequest.user_id:type_name -> cityio.entity.v1.UserId
+	12, // 5: cityio.service.v1.StreamStateResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	0,  // 6: cityio.service.v1.UserService.Register:input_type -> cityio.service.v1.RegisterRequest
+	2,  // 7: cityio.service.v1.UserService.Login:input_type -> cityio.service.v1.LoginRequest
+	4,  // 8: cityio.service.v1.UserService.GetUser:input_type -> cityio.service.v1.GetUserRequest
+	6,  // 9: cityio.service.v1.UserService.DeleteUser:input_type -> cityio.service.v1.DeleteUserRequest
+	8,  // 10: cityio.service.v1.UserService.StreamState:input_type -> cityio.service.v1.StreamStateRequest
+	1,  // 11: cityio.service.v1.UserService.Register:output_type -> cityio.service.v1.RegisterResponse
+	3,  // 12: cityio.service.v1.UserService.Login:output_type -> cityio.service.v1.LoginResponse
+	5,  // 13: cityio.service.v1.UserService.GetUser:output_type -> cityio.service.v1.GetUserResponse
+	7,  // 14: cityio.service.v1.UserService.DeleteUser:output_type -> cityio.service.v1.DeleteUserResponse
+	9,  // 15: cityio.service.v1.UserService.StreamState:output_type -> cityio.service.v1.StreamStateResponse
+	11, // [11:16] is the sub-list for method output_type
+	6,  // [6:11] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_cityio_v1_user_proto_init() }
-func file_cityio_v1_user_proto_init() {
-	if File_cityio_v1_user_proto != nil {
+func init() { file_cityio_service_v1_user_proto_init() }
+func file_cityio_service_v1_user_proto_init() {
+	if File_cityio_service_v1_user_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_v1_user_proto_rawDesc), len(file_cityio_v1_user_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_user_proto_rawDesc), len(file_cityio_service_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_cityio_v1_user_proto_goTypes,
-		DependencyIndexes: file_cityio_v1_user_proto_depIdxs,
-		MessageInfos:      file_cityio_v1_user_proto_msgTypes,
+		GoTypes:           file_cityio_service_v1_user_proto_goTypes,
+		DependencyIndexes: file_cityio_service_v1_user_proto_depIdxs,
+		MessageInfos:      file_cityio_service_v1_user_proto_msgTypes,
 	}.Build()
-	File_cityio_v1_user_proto = out.File
-	file_cityio_v1_user_proto_goTypes = nil
-	file_cityio_v1_user_proto_depIdxs = nil
+	File_cityio_service_v1_user_proto = out.File
+	file_cityio_service_v1_user_proto_goTypes = nil
+	file_cityio_service_v1_user_proto_depIdxs = nil
 }

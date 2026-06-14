@@ -1,20 +1,24 @@
 // Package stream is an in-process pub/sub registry for per-user state pushes.
-// Actors publish a user's latest resources here; the StreamState RPC handler
+// Actors publish a user's latest state here; the StreamState RPC handler
 // subscribes a connected client to them. It replaces the old websocket
 // connection registry.
 package stream
 
-import "sync"
+import (
+	"sync"
 
-// UserState is the per-user resource snapshot pushed to subscribers.
-type UserState struct {
-	Gold int64
-	Food int64
+	"cityio/internal/domain"
+)
+
+// StateUpdate is the per-user snapshot pushed to subscribers.
+// Conversion to proto happens at the RPC boundary.
+type StateUpdate struct {
+	User *domain.User
 }
 
 type subscriber struct {
 	id uint64
-	ch chan UserState
+	ch chan StateUpdate
 }
 
 var (
@@ -27,12 +31,12 @@ var (
 // receive channel plus an unsubscribe function. The channel is buffered and
 // drops the oldest pending value on overflow so a slow client never blocks a
 // publisher.
-func Subscribe(userID string) (<-chan UserState, func()) {
+func Subscribe(userID string) (<-chan StateUpdate, func()) {
 	mu.Lock()
 	defer mu.Unlock()
 
 	nextID++
-	s := subscriber{id: nextID, ch: make(chan UserState, 8)}
+	s := subscriber{id: nextID, ch: make(chan StateUpdate, 8)}
 	subs[userID] = append(subs[userID], s)
 
 	unsubscribe := func() {
@@ -57,7 +61,7 @@ func Subscribe(userID string) (<-chan UserState, func()) {
 // Publish delivers a state update to every subscriber of the user. It never
 // blocks: if a subscriber's buffer is full the oldest value is discarded to
 // make room for the newest.
-func Publish(userID string, state UserState) {
+func Publish(userID string, state StateUpdate) {
 	mu.Lock()
 	defer mu.Unlock()
 

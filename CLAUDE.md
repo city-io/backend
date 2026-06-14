@@ -63,7 +63,14 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
 - **`internal/mapping`** — domain↔proto conversion helpers used by `rpc`.
 - **`internal/stream`** — per-user pub/sub registry backing the server-streaming `StreamState`
   RPC (replaces the old websocket loop).
-- **`internal/gen`** — generated Connect/protobuf code (from `buf`). Do not hand-edit.
+- **`internal/gen`** — generated Connect/protobuf code (from `buf`). Two sub-packages:
+  - `internal/gen/cityio/entity/v1` (`entityv1`) — entity messages (`User`, `City`,
+    `Building`), typed ID wrappers (`UserId`, `CityId`, `BuildingId`), enums, `Coordinates`,
+    and `EntityBag` (a collection of mixed entities).
+  - `internal/gen/cityio/service/v1` (`servicev1`) — RPC request/response messages and `Tile`.
+    The `servicev1connect` sub-package has the Connect service interfaces and handler
+    constructors.
+  Do not hand-edit.
 - **`internal/database`** — `sqlc`-generated query code (`*.sql.go`, `models.go`, `querier.go`,
   `db.go`) plus hand-written `database.go` (`NewDB`) and `utils.go` (row→domain `ToModel`
   converters and `ToPGTimestamp`). **Do not hand-edit generated files**; change the SQL in
@@ -75,6 +82,39 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
 - **`internal/constants`** — tunables (map size, tick frequencies, costs) and the building
   stat tables (`buildings.go`).
 - **`internal/setup`** — `Run()` seeds/restores the world on boot (see gotcha below).
+
+## Proto structure
+
+Proto definitions are split into two packages under `proto/cityio/`:
+
+```
+proto/cityio/
+  entity/v1/             # package cityio.entity.v1
+    common.proto          # typed IDs (UserId, CityId, BuildingId), enums, Coordinates
+    user.proto            # User entity message
+    city.proto            # City entity message
+    building.proto        # Building entity message
+    bag.proto             # EntityBag (repeated User, City, Building)
+  service/v1/             # package cityio.service.v1
+    user.proto            # UserService RPCs + request/response messages
+    city.proto            # CityService RPCs
+    building.proto        # BuildingService RPCs
+    map.proto             # MapService RPCs
+    config.proto          # ConfigService RPCs
+```
+
+**Typed IDs:** `UserId`, `CityId`, `BuildingId` are wrapper messages (each containing a
+`string value`). All entity fields and request parameters use these instead of raw strings, so
+a city ID can't be confused with a building ID at the proto level.
+
+**EntityBag:** a flat bag of `repeated User`, `repeated City`, `repeated Building` used by
+responses that return collections or mixed entity types: `ListCitiesResponse`, `GetMapResponse`,
+and `StreamStateResponse`. Single-entity responses (GetCity, CreateBuilding, etc.) still embed
+the entity inline.
+
+**Procedure prefix:** services live in `cityio.service.v1`, so procedure names are
+`/cityio.service.v1.UserService/Register`, etc. The `publicProcedures` map in `internal/auth`
+uses this prefix.
 
 ## How data flows (typical patterns)
 
@@ -98,7 +138,7 @@ make all        # go run cmd/*.go   (build + run)
 make build      # build to bin/cityio
 make start      # run bin/cityio
 make generate   # sqlc generate (regenerate internal/database from db/queries + schema)
-buf generate    # regenerate internal/gen from proto/cityio/v1/*.proto
+buf generate    # regenerate internal/gen from proto/cityio/{entity,service}/v1/*.proto
 ```
 
 Run/build commands must be executed from the **repo root** — `NewDB` loads migrations from the
@@ -151,8 +191,8 @@ goose -dir db/migrations up
 - **Generated code:** `internal/database/*.sql.go`, `db.go`, `models.go`, `querier.go` are
   produced by sqlc. Edit `db/queries/*.sql` / `db/migrations/*.sql` and `sqlc.yaml`, then
   regenerate. The only hand-written files in that package are `database.go` and `utils.go`.
-  `internal/gen/` is produced by `buf generate` from `proto/cityio/v1/*.proto`. Do not
-  hand-edit generated files in either package.
+  `internal/gen/` is produced by `buf generate` from `proto/cityio/entity/v1/*.proto` and
+  `proto/cityio/service/v1/*.proto`. Do not hand-edit generated files in either package.
 
 ## Conventions to follow
 

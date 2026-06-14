@@ -112,8 +112,6 @@ func (state *userActor) stopPeriodicOperation() {
 }
 
 func (state *userActor) ws() {
-	stream.Publish(state.User.UserID, stream.UserState{
-		Gold: state.User.Gold,
-		Food: state.User.Food,
-	})
+	u := state.User
+	stream.Publish(state.User.UserID, stream.StateUpdate{User: &u})
 }

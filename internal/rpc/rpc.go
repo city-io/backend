@@ -11,7 +11,7 @@ import (
 
 	"cityio/internal/auth"
 	"cityio/internal/domain"
-	"cityio/internal/gen/cityio/v1/cityiov1connect"
+	"cityio/internal/gen/cityio/service/v1/servicev1connect"
 	"cityio/internal/ports"
 )
 
@@ -54,10 +54,10 @@ func (s *Server) Handler() http.Handler {
 	opts := connect.WithInterceptors(auth.Interceptor(s.jwtSecret))
 
 	mux := http.NewServeMux()
-	mux.Handle(cityiov1connect.NewUserServiceHandler(&userHandler{s}, opts))
-	mux.Handle(cityiov1connect.NewCityServiceHandler(&cityHandler{s}, opts))
-	mux.Handle(cityiov1connect.NewBuildingServiceHandler(&buildingHandler{s}, opts))
-	mux.Handle(cityiov1connect.NewMapServiceHandler(&mapHandler{s}, opts))
-	mux.Handle(cityiov1connect.NewConfigServiceHandler(&configHandler{s}, opts))
+	mux.Handle(servicev1connect.NewUserServiceHandler(&userHandler{s}, opts))
+	mux.Handle(servicev1connect.NewCityServiceHandler(&cityHandler{s}, opts))
+	mux.Handle(servicev1connect.NewBuildingServiceHandler(&buildingHandler{s}, opts))
+	mux.Handle(servicev1connect.NewMapServiceHandler(&mapHandler{s}, opts))
+	mux.Handle(servicev1connect.NewConfigServiceHandler(&configHandler{s}, opts))
 	return mux
 }

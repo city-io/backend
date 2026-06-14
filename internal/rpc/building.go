@@ -8,7 +8,8 @@ import (
 
 	"cityio/internal/constants"
 	"cityio/internal/domain"
-	pb "cityio/internal/gen/cityio/v1"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
+	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
 	"cityio/internal/services"
@@ -37,8 +38,9 @@ func (h *buildingHandler) requireBuildingOwnership(ctx context.Context, building
 	return nil
 }
 
-func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Request[pb.CreateBuildingRequest]) (*connect.Response[pb.CreateBuildingResponse], error) {
-	owns, err := h.srv.ownsCity(ctx, req.Msg.GetCityId())
+func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Request[servicev1.CreateBuildingRequest]) (*connect.Response[servicev1.CreateBuildingResponse], error) {
+	cityID := req.Msg.GetCityId().GetValue()
+	owns, err := h.srv.ownsCity(ctx, cityID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -46,7 +48,7 @@ func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
 	}
 	building, err := services.CreateBuilding(ctx, h.srv.cluster, &services.BuildingInput{
-		CityID: req.Msg.GetCityId(),
+		CityID: cityID,
 		Type:   mapping.BuildingTypeFromProto(req.Msg.GetType()),
 		X:      int(req.Msg.GetCoords().GetX()),
 		Y:      int(req.Msg.GetCoords().GetY()),
@@ -54,11 +56,11 @@ func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&pb.CreateBuildingResponse{Building: mapping.BuildingToProto(*building)}), nil
+	return connect.NewResponse(&servicev1.CreateBuildingResponse{Building: mapping.BuildingToProto(*building)}), nil
 }
 
-func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[pb.GetBuildingRequest]) (*connect.Response[pb.GetBuildingResponse], error) {
-	res, err := h.srv.cluster.Request("building", req.Msg.GetBuildingId(), messages.GetBuildingMessage{})
+func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[servicev1.GetBuildingRequest]) (*connect.Response[servicev1.GetBuildingResponse], error) {
+	res, err := h.srv.cluster.Request("building", req.Msg.GetBuildingId().GetValue(), messages.GetBuildingMessage{})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -75,21 +77,22 @@ func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
 
-	return connect.NewResponse(&pb.GetBuildingResponse{Building: mapping.BuildingToProto(resp.Building)}), nil
+	return connect.NewResponse(&servicev1.GetBuildingResponse{Building: mapping.BuildingToProto(resp.Building)}), nil
 }
 
-func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Request[pb.UpgradeBuildingRequest]) (*connect.Response[pb.UpgradeBuildingResponse], error) {
-	if err := h.requireBuildingOwnership(ctx, req.Msg.GetBuildingId()); err != nil {
+func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Request[servicev1.UpgradeBuildingRequest]) (*connect.Response[servicev1.UpgradeBuildingResponse], error) {
+	bid := req.Msg.GetBuildingId().GetValue()
+	if err := h.requireBuildingOwnership(ctx, bid); err != nil {
 		return nil, err
 	}
-	res, err := h.srv.cluster.Request("building", req.Msg.GetBuildingId(), messages.UpgradeBuildingMessage{})
+	res, err := h.srv.cluster.Request("building", bid, messages.UpgradeBuildingMessage{})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	switch v := res.(type) {
 	case messages.Ack:
-		return connect.NewResponse(&pb.UpgradeBuildingResponse{}), nil
+		return connect.NewResponse(&servicev1.UpgradeBuildingResponse{}), nil
 	case *messages.InsufficientGoldError:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
 	case *messages.ConstructionInProgressError:
@@ -103,18 +106,19 @@ func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Requ
 	}
 }
 
-func (h *buildingHandler) DeleteBuilding(ctx context.Context, req *connect.Request[pb.DeleteBuildingRequest]) (*connect.Response[pb.DeleteBuildingResponse], error) {
-	if err := h.requireBuildingOwnership(ctx, req.Msg.GetBuildingId()); err != nil {
+func (h *buildingHandler) DeleteBuilding(ctx context.Context, req *connect.Request[servicev1.DeleteBuildingRequest]) (*connect.Response[servicev1.DeleteBuildingResponse], error) {
+	bid := req.Msg.GetBuildingId().GetValue()
+	if err := h.requireBuildingOwnership(ctx, bid); err != nil {
 		return nil, err
 	}
-	if err := h.srv.cluster.Tell("building", req.Msg.GetBuildingId(), messages.DeleteBuildingMessage{BuildingID: req.Msg.GetBuildingId()}); err != nil {
+	if err := h.srv.cluster.Tell("building", bid, messages.DeleteBuildingMessage{BuildingID: bid}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&pb.DeleteBuildingResponse{}), nil
+	return connect.NewResponse(&servicev1.DeleteBuildingResponse{}), nil
 }
 
-func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Request[pb.ListBuildingsRequest]) (*connect.Response[pb.ListBuildingsResponse], error) {
-	buildingList, err := h.srv.store.GetBuildingsByCity(ctx, req.Msg.GetCityId())
+func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Request[servicev1.ListBuildingsRequest]) (*connect.Response[servicev1.ListBuildingsResponse], error) {
+	buildingList, err := h.srv.store.GetBuildingsByCity(ctx, req.Msg.GetCityId().GetValue())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -125,9 +129,9 @@ func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Reques
 	}
 	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
 
-	buildings := make([]*pb.Building, 0, len(buildingList))
+	buildings := make([]*entityv1.Building, 0, len(buildingList))
 	for _, b := range buildingList {
 		buildings = append(buildings, mapping.BuildingToProto(b))
 	}
-	return connect.NewResponse(&pb.ListBuildingsResponse{Buildings: buildings}), nil
+	return connect.NewResponse(&servicev1.ListBuildingsResponse{Buildings: buildings}), nil
 }

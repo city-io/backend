@@ -9,7 +9,8 @@ import (
 	"cityio/internal/auth"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
-	pb "cityio/internal/gen/cityio/v1"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
+	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
 	"cityio/internal/services"
@@ -19,8 +20,8 @@ type cityHandler struct {
 	srv *Server
 }
 
-func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[pb.GetCityRequest]) (*connect.Response[pb.GetCityResponse], error) {
-	res, err := h.srv.cluster.Request("city", req.Msg.GetCityId(), messages.GetCityMessage{})
+func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[servicev1.GetCityRequest]) (*connect.Response[servicev1.GetCityResponse], error) {
+	res, err := h.srv.cluster.Request("city", req.Msg.GetCityId().GetValue(), messages.GetCityMessage{})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -37,10 +38,10 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[pb.GetCi
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
 
-	return connect.NewResponse(&pb.GetCityResponse{City: mapping.CityToProto(resp.City)}), nil
+	return connect.NewResponse(&servicev1.GetCityResponse{City: mapping.CityToProto(resp.City)}), nil
 }
 
-func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[pb.CreateCityRequest]) (*connect.Response[pb.CreateCityResponse], error) {
+func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[servicev1.CreateCityRequest]) (*connect.Response[servicev1.CreateCityResponse], error) {
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
@@ -54,10 +55,10 @@ func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[pb.Cr
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&pb.CreateCityResponse{City: mapping.CityToProto(*city)}), nil
+	return connect.NewResponse(&servicev1.CreateCityResponse{City: mapping.CityToProto(*city)}), nil
 }
 
-func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[pb.ListCitiesRequest]) (*connect.Response[pb.ListCitiesResponse], error) {
+func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servicev1.ListCitiesRequest]) (*connect.Response[servicev1.ListCitiesResponse], error) {
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
@@ -66,9 +67,14 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[pb.Li
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	cities := make([]*pb.City, 0, len(cityList))
+
+	cityIds := make([]*entityv1.CityId, 0, len(cityList))
 	for _, c := range cityList {
-		cities = append(cities, mapping.CityToProto(c))
+		cityIds = append(cityIds, mapping.ToCityId(c.CityID))
 	}
-	return connect.NewResponse(&pb.ListCitiesResponse{Cities: cities}), nil
+
+	return connect.NewResponse(&servicev1.ListCitiesResponse{
+		CityIds:  cityIds,
+		Entities: mapping.EntitiesToBag(nil, cityList, nil),
+	}), nil
 }

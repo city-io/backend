@@ -8,7 +8,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/auth"
-	pb "cityio/internal/gen/cityio/v1"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
+	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
 	"cityio/internal/persistence"
@@ -20,7 +21,7 @@ type userHandler struct {
 	srv *Server
 }
 
-func (h *userHandler) Register(ctx context.Context, req *connect.Request[pb.RegisterRequest]) (*connect.Response[pb.RegisterResponse], error) {
+func (h *userHandler) Register(ctx context.Context, req *connect.Request[servicev1.RegisterRequest]) (*connect.Response[servicev1.RegisterResponse], error) {
 	userID, err := services.CreateUser(ctx, h.srv.cluster, &services.CreateUserRequest{
 		Email:    req.Msg.GetEmail(),
 		Username: req.Msg.GetUsername(),
@@ -39,10 +40,10 @@ func (h *userHandler) Register(ctx context.Context, req *connect.Request[pb.Regi
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return connect.NewResponse(&pb.RegisterResponse{UserId: userID, Token: token}), nil
+	return connect.NewResponse(&servicev1.RegisterResponse{UserId: mapping.ToUserId(userID), Token: token}), nil
 }
 
-func (h *userHandler) Login(ctx context.Context, req *connect.Request[pb.LoginRequest]) (*connect.Response[pb.LoginResponse], error) {
+func (h *userHandler) Login(ctx context.Context, req *connect.Request[servicev1.LoginRequest]) (*connect.Response[servicev1.LoginResponse], error) {
 	found, err := h.srv.store.GetUserByIdentifier(ctx, req.Msg.GetIdentifier())
 	if errors.Is(err, persistence.ErrNotFound) {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
@@ -71,14 +72,14 @@ func (h *userHandler) Login(ctx context.Context, req *connect.Request[pb.LoginRe
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return connect.NewResponse(&pb.LoginResponse{
+	return connect.NewResponse(&servicev1.LoginResponse{
 		Token: token,
 		User:  mapping.UserToProto(user),
 	}), nil
 }
 
-func (h *userHandler) GetUser(ctx context.Context, req *connect.Request[pb.GetUserRequest]) (*connect.Response[pb.GetUserResponse], error) {
-	res, err := h.srv.cluster.Request("user", req.Msg.GetUserId(), messages.GetUserMessage{})
+func (h *userHandler) GetUser(ctx context.Context, req *connect.Request[servicev1.GetUserRequest]) (*connect.Response[servicev1.GetUserResponse], error) {
+	res, err := h.srv.cluster.Request("user", req.Msg.GetUserId().GetValue(), messages.GetUserMessage{})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -86,17 +87,18 @@ func (h *userHandler) GetUser(ctx context.Context, req *connect.Request[pb.GetUs
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 	}
-	return connect.NewResponse(&pb.GetUserResponse{User: mapping.UserToProto(resp.User)}), nil
+	return connect.NewResponse(&servicev1.GetUserResponse{User: mapping.UserToProto(resp.User)}), nil
 }
 
-func (h *userHandler) DeleteUser(ctx context.Context, req *connect.Request[pb.DeleteUserRequest]) (*connect.Response[pb.DeleteUserResponse], error) {
-	if err := h.srv.cluster.Tell("user", req.Msg.GetUserId(), messages.DeleteUserMessage{UserID: req.Msg.GetUserId()}); err != nil {
+func (h *userHandler) DeleteUser(ctx context.Context, req *connect.Request[servicev1.DeleteUserRequest]) (*connect.Response[servicev1.DeleteUserResponse], error) {
+	uid := req.Msg.GetUserId().GetValue()
+	if err := h.srv.cluster.Tell("user", uid, messages.DeleteUserMessage{UserID: uid}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&pb.DeleteUserResponse{}), nil
+	return connect.NewResponse(&servicev1.DeleteUserResponse{}), nil
 }
 
-func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[pb.StreamStateRequest], out *connect.ServerStream[pb.UserState]) error {
+func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[servicev1.StreamStateRequest], out *connect.ServerStream[servicev1.StreamStateResponse]) error {
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {
 		return connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
@@ -107,7 +109,11 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[pb.S
 
 	if res, err := h.srv.cluster.Request("user", claims.UserID, messages.GetUserMessage{}); err == nil {
 		if resp, ok := res.(*messages.GetUserResponseMessage); ok {
-			if err := out.Send(&pb.UserState{Gold: resp.User.Gold, Food: resp.User.Food}); err != nil {
+			if err := out.Send(&servicev1.StreamStateResponse{
+				Entities: &entityv1.EntityBag{
+					Users: []*entityv1.User{mapping.UserToProto(resp.User)},
+				},
+			}); err != nil {
 				return err
 			}
 		}
@@ -117,11 +123,15 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[pb.S
 		select {
 		case <-ctx.Done():
 			return nil
-		case state, ok := <-ch:
+		case update, ok := <-ch:
 			if !ok {
 				return nil
 			}
-			if err := out.Send(&pb.UserState{Gold: state.Gold, Food: state.Food}); err != nil {
+			if err := out.Send(&servicev1.StreamStateResponse{
+				Entities: &entityv1.EntityBag{
+					Users: []*entityv1.User{mapping.UserToProto(*update.User)},
+				},
+			}); err != nil {
 				return err
 			}
 		}

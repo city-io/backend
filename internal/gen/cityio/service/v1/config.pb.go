@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: cityio/v1/config.proto
+// source: cityio/service/v1/config.proto
 
-package cityiov1
+package servicev1
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -29,7 +29,7 @@ type GetGameConfigRequest struct {
 
 func (x *GetGameConfigRequest) Reset() {
 	*x = GetGameConfigRequest{}
-	mi := &file_cityio_v1_config_proto_msgTypes[0]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -41,7 +41,7 @@ func (x *GetGameConfigRequest) String() string {
 func (*GetGameConfigRequest) ProtoMessage() {}
 
 func (x *GetGameConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_config_proto_msgTypes[0]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -54,7 +54,7 @@ func (x *GetGameConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGameConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetGameConfigRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_config_proto_rawDescGZIP(), []int{0}
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{0}
 }
 
 type GetGameConfigResponse struct {
@@ -69,7 +69,7 @@ type GetGameConfigResponse struct {
 
 func (x *GetGameConfigResponse) Reset() {
 	*x = GetGameConfigResponse{}
-	mi := &file_cityio_v1_config_proto_msgTypes[1]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -81,7 +81,7 @@ func (x *GetGameConfigResponse) String() string {
 func (*GetGameConfigResponse) ProtoMessage() {}
 
 func (x *GetGameConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_v1_config_proto_msgTypes[1]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -94,7 +94,7 @@ func (x *GetGameConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGameConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetGameConfigResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_v1_config_proto_rawDescGZIP(), []int{1}
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetGameConfigResponse) GetMapSize() int32 {
@@ -125,42 +125,41 @@ func (x *GetGameConfigResponse) GetBuildingProductionFrequency() int32 {
 	return 0
 }
 
-var File_cityio_v1_config_proto protoreflect.FileDescriptor
+var File_cityio_service_v1_config_proto protoreflect.FileDescriptor
 
-const file_cityio_v1_config_proto_rawDesc = "" +
+const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\n" +
-	"\x16cityio/v1/config.proto\x12\tcityio.v1\"\x16\n" +
+	"\x1ecityio/service/v1/config.proto\x12\x11cityio.service.v1\"\x16\n" +
 	"\x14GetGameConfigRequest\"\xb8\x01\n" +
 	"\x15GetGameConfigResponse\x12\x19\n" +
 	"\bmap_size\x18\x01 \x01(\x05R\amapSize\x12\x1b\n" +
 	"\tcity_size\x18\x02 \x01(\x05R\bcitySize\x12#\n" +
 	"\rvision_radius\x18\x03 \x01(\x05R\fvisionRadius\x12B\n" +
-	"\x1dbuilding_production_frequency\x18\x04 \x01(\x05R\x1bbuildingProductionFrequency2c\n" +
-	"\rConfigService\x12R\n" +
-	"\rGetGameConfig\x12\x1f.cityio.v1.GetGameConfigRequest\x1a .cityio.v1.GetGameConfigResponseB\x89\x01\n" +
-	"\rcom.cityio.v1B\vConfigProtoP\x01Z&cityio/internal/gen/cityio/v1;cityiov1\xa2\x02\x03CXX\xaa\x02\tCityio.V1\xca\x02\tCityio\\V1\xe2\x02\x15Cityio\\V1\\GPBMetadata\xea\x02\n" +
-	"Cityio::V1b\x06proto3"
+	"\x1dbuilding_production_frequency\x18\x04 \x01(\x05R\x1bbuildingProductionFrequency2s\n" +
+	"\rConfigService\x12b\n" +
+	"\rGetGameConfig\x12'.cityio.service.v1.GetGameConfigRequest\x1a(.cityio.service.v1.GetGameConfigResponseB\xbb\x01\n" +
+	"\x15com.cityio.service.v1B\vConfigProtoP\x01Z/cityio/internal/gen/cityio/service/v1;servicev1\xa2\x02\x03CSX\xaa\x02\x11Cityio.Service.V1\xca\x02\x11Cityio\\Service\\V1\xe2\x02\x1dCityio\\Service\\V1\\GPBMetadata\xea\x02\x13Cityio::Service::V1b\x06proto3"
 
 var (
-	file_cityio_v1_config_proto_rawDescOnce sync.Once
-	file_cityio_v1_config_proto_rawDescData []byte
+	file_cityio_service_v1_config_proto_rawDescOnce sync.Once
+	file_cityio_service_v1_config_proto_rawDescData []byte
 )
 
-func file_cityio_v1_config_proto_rawDescGZIP() []byte {
-	file_cityio_v1_config_proto_rawDescOnce.Do(func() {
-		file_cityio_v1_config_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_cityio_v1_config_proto_rawDesc), len(file_cityio_v1_config_proto_rawDesc)))
+func file_cityio_service_v1_config_proto_rawDescGZIP() []byte {
+	file_cityio_service_v1_config_proto_rawDescOnce.Do(func() {
+		file_cityio_service_v1_config_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_cityio_service_v1_config_proto_rawDesc), len(file_cityio_service_v1_config_proto_rawDesc)))
 	})
-	return file_cityio_v1_config_proto_rawDescData
+	return file_cityio_service_v1_config_proto_rawDescData
 }
 
-var file_cityio_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_cityio_v1_config_proto_goTypes = []any{
-	(*GetGameConfigRequest)(nil),  // 0: cityio.v1.GetGameConfigRequest
-	(*GetGameConfigResponse)(nil), // 1: cityio.v1.GetGameConfigResponse
+var file_cityio_service_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_cityio_service_v1_config_proto_goTypes = []any{
+	(*GetGameConfigRequest)(nil),  // 0: cityio.service.v1.GetGameConfigRequest
+	(*GetGameConfigResponse)(nil), // 1: cityio.service.v1.GetGameConfigResponse
 }
-var file_cityio_v1_config_proto_depIdxs = []int32{
-	0, // 0: cityio.v1.ConfigService.GetGameConfig:input_type -> cityio.v1.GetGameConfigRequest
-	1, // 1: cityio.v1.ConfigService.GetGameConfig:output_type -> cityio.v1.GetGameConfigResponse
+var file_cityio_service_v1_config_proto_depIdxs = []int32{
+	0, // 0: cityio.service.v1.ConfigService.GetGameConfig:input_type -> cityio.service.v1.GetGameConfigRequest
+	1, // 1: cityio.service.v1.ConfigService.GetGameConfig:output_type -> cityio.service.v1.GetGameConfigResponse
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -168,26 +167,26 @@ var file_cityio_v1_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_cityio_v1_config_proto_init() }
-func file_cityio_v1_config_proto_init() {
-	if File_cityio_v1_config_proto != nil {
+func init() { file_cityio_service_v1_config_proto_init() }
+func file_cityio_service_v1_config_proto_init() {
+	if File_cityio_service_v1_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_v1_config_proto_rawDesc), len(file_cityio_v1_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_config_proto_rawDesc), len(file_cityio_service_v1_config_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_cityio_v1_config_proto_goTypes,
-		DependencyIndexes: file_cityio_v1_config_proto_depIdxs,
-		MessageInfos:      file_cityio_v1_config_proto_msgTypes,
+		GoTypes:           file_cityio_service_v1_config_proto_goTypes,
+		DependencyIndexes: file_cityio_service_v1_config_proto_depIdxs,
+		MessageInfos:      file_cityio_service_v1_config_proto_msgTypes,
 	}.Build()
-	File_cityio_v1_config_proto = out.File
-	file_cityio_v1_config_proto_goTypes = nil
-	file_cityio_v1_config_proto_depIdxs = nil
+	File_cityio_service_v1_config_proto = out.File
+	file_cityio_service_v1_config_proto_goTypes = nil
+	file_cityio_service_v1_config_proto_depIdxs = nil
 }

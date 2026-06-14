@@ -74,9 +74,9 @@ func ClaimsFromContext(ctx context.Context) (Claims, bool) {
 
 // publicProcedures are reachable without a token.
 var publicProcedures = map[string]struct{}{
-	"/cityio.v1.UserService/Register":        {},
-	"/cityio.v1.UserService/Login":           {},
-	"/cityio.v1.ConfigService/GetGameConfig": {},
+	"/cityio.service.v1.UserService/Register":        {},
+	"/cityio.service.v1.UserService/Login":           {},
+	"/cityio.service.v1.ConfigService/GetGameConfig": {},
 }
 
 // Interceptor verifies the bearer token on every non-public procedure and
