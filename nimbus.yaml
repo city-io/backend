@@ -1,0 +1,38 @@
+app: cityio-backend
+services:
+  - name: api
+    public: true
+    template: http
+    image: docker.prayujt.com/cityio-backend
+    ingress: api.cityio.prayujt.com
+    network:
+      ports:
+        - 8080
+    env:
+      - name: ENVIRONMENT
+        value: production
+      - name: API_PORT
+        value: "8080"
+      - name: JWT_SECRET
+        value: ${JWT_SECRET}
+      - name: PSQL_HOST
+        value: database
+      - name: PSQL_PORT
+        value: "5432"
+      - name: PSQL_DATABASE
+        value: ${PSQL_DATABASE}
+      - name: PSQL_USERNAME
+        value: ${PSQL_USERNAME}
+      - name: PSQL_PASSWORD
+        value: ${PSQL_PASSWORD}
+
+  - name: database
+    template: postgres
+    version: "16"
+    env:
+      - name: POSTGRES_DB
+        value: ${PSQL_DATABASE}
+      - name: POSTGRES_USER
+        value: ${PSQL_USERNAME}
+      - name: POSTGRES_PASSWORD
+        value: ${PSQL_PASSWORD}
