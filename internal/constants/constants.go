@@ -10,8 +10,8 @@ const (
 	InitialTownPopulation = 100
 
 	InitialPlayerCityPopulation = 250
-	InitialPlayerGold           = 100000
-	InitialPlayerFood           = 100000
+	InitialPlayerGold           = 2000
+	InitialPlayerFood           = 1000
 
 	TroopMovementBackupFrequency = 5 // number of tile movements before state saved to db
 
