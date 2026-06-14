@@ -10,7 +10,7 @@ services:
         - 8080
     env:
       - name: ENVIRONMENT
-        value: production
+        value: ${ENVIRONMENT}
       - name: API_PORT
         value: "8080"
       - name: JWT_SECRET

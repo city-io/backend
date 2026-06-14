@@ -12,6 +12,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=build /app/bin/cityio /app/cityio
+COPY --from=build /app/db/migrations /app/db/migrations
 
 EXPOSE 8080
 

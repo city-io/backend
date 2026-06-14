@@ -195,12 +195,12 @@ WHERE NOT EXISTS (
   SELECT 1
   FROM cities c
   WHERE
-    -- X overlap
-    (c.start_coords).x + c.size - 1 >= x
-    AND (c.start_coords).x <= x + $2::int4 - 1
-    -- Y overlap
-    AND (c.start_coords).y + c.size - 1 >= y
-    AND (c.start_coords).y <= y + $2::int4 - 1
+    -- X overlap with 1-tile gap
+    (c.start_coords).x + c.size >= x
+    AND (c.start_coords).x <= x + $2::int4
+    -- Y overlap with 1-tile gap
+    AND (c.start_coords).y + c.size >= y
+    AND (c.start_coords).y <= y + $2::int4
 )
 ORDER BY random()
 LIMIT 1
