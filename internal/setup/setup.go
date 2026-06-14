@@ -188,6 +188,7 @@ func reset(ctx context.Context, deps *Deps) error {
 		}
 	}
 
+	usedNames := make(map[string]bool)
 	cities := make([]domain.City, 0)
 	buildings := make([]domain.Building, 0)
 	for x := range constants.MapSize {
@@ -210,7 +211,7 @@ func reset(ctx context.Context, deps *Deps) error {
 					CityID:        cityID,
 					Type:          "town",
 					Owner:         nil,
-					Name:          fmt.Sprintf("Town %s", cityID),
+					Name:          townName(r, usedNames),
 					Population:    constants.InitialTownPopulation,
 					PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, 1),
 					StartX:        x,
@@ -318,6 +319,32 @@ func reset(ctx context.Context, deps *Deps) error {
 
 	slog.DebugContext(ctx, "reset complete")
 	return nil
+}
+
+var townPrefixes = []string{
+	"Ash", "Birch", "Briar", "Cedar", "Copper", "Crow", "Dusk", "Elder",
+	"Elm", "Ember", "Fern", "Flint", "Frost", "Gold", "Granite", "Hawk",
+	"Hazel", "Heath", "Heron", "Holly", "Iron", "Ivy", "Lark", "Maple",
+	"Marsh", "Moss", "Oak", "Pine", "Raven", "Reed", "Rose", "Rowan",
+	"Shadow", "Silver", "Slate", "Stone", "Storm", "Thorn", "Willow", "Wolf",
+}
+
+var townSuffixes = []string{
+	"bank", "barrow", "borough", "bridge", "brook", "bury", "cliff", "crest",
+	"dale", "dell", "fall", "feld", "ford", "gate", "glen", "grove",
+	"haven", "hill", "hollow", "keep", "mead", "moor", "mound", "point",
+	"pool", "reach", "ridge", "shire", "stead", "vale", "wall", "watch",
+	"well", "wick", "wood", "worth",
+}
+
+func townName(r *rand.Rand, used map[string]bool) string {
+	for {
+		name := townPrefixes[r.Intn(len(townPrefixes))] + townSuffixes[r.Intn(len(townSuffixes))]
+		if !used[name] {
+			used[name] = true
+			return name
+		}
+	}
 }
 
 // canPlace reports whether a city of the given size can be placed at (x, y)
