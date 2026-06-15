@@ -107,13 +107,25 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 	ch, unsubscribe := stream.Subscribe(claims.UserID)
 	defer unsubscribe()
 
+	// Send initial snapshot: user, owned cities, and their buildings.
 	if res, err := h.srv.cluster.Request("user", claims.UserID, messages.GetUserMessage{}); err == nil {
 		if resp, ok := res.(*messages.GetUserResponseMessage); ok {
-			if err := out.Send(&servicev1.StreamStateResponse{
-				Entities: &entityv1.EntityBag{
-					Users: []*entityv1.User{mapping.UserToProto(resp.User)},
-				},
-			}); err != nil {
+			bag := &entityv1.EntityBag{
+				Users: []*entityv1.User{mapping.UserToProto(resp.User)},
+			}
+
+			if cities, err := h.srv.store.GetCitiesByOwner(ctx, claims.UserID); err == nil {
+				for _, c := range cities {
+					bag.Cities = append(bag.Cities, mapping.CityToProto(c))
+					if buildings, err := h.srv.store.GetBuildingsByCity(ctx, c.CityID); err == nil {
+						for _, b := range buildings {
+							bag.Buildings = append(bag.Buildings, mapping.BuildingToProto(b))
+						}
+					}
+				}
+			}
+
+			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
 				return err
 			}
 		}
@@ -127,11 +139,17 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			if !ok {
 				return nil
 			}
-			if err := out.Send(&servicev1.StreamStateResponse{
-				Entities: &entityv1.EntityBag{
-					Users: []*entityv1.User{mapping.UserToProto(*update.User)},
-				},
-			}); err != nil {
+			bag := &entityv1.EntityBag{}
+			if update.User != nil {
+				bag.Users = append(bag.Users, mapping.UserToProto(*update.User))
+			}
+			if update.City != nil {
+				bag.Cities = append(bag.Cities, mapping.CityToProto(*update.City))
+			}
+			if update.Building != nil {
+				bag.Buildings = append(bag.Buildings, mapping.BuildingToProto(*update.Building))
+			}
+			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
 				return err
 			}
 		}

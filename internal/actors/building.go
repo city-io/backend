@@ -89,6 +89,9 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 		if err != nil {
 			slog.ErrorContext(state.Ctx(), "failed to signal tiles of building existence", "error", err)
 		}
+		if !msg.Restore {
+			state.notifyStateChanged()
+		}
 		state.startPeriodicOperation(ctx)
 		ctx.Respond(messages.Ack{})
 
@@ -126,6 +129,14 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 	}
 }
 
+func (state *buildingActor) notifyStateChanged() {
+	if err := state.Cluster.Tell("city", state.Building.CityID, messages.BuildingStateChangedMessage{
+		Building: state.Building,
+	}); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to notify city of building state change", "building_id", state.Building.BuildingID, "error", err)
+	}
+}
+
 // reaffirmTile re-pushes this building's presence to its tile. The building's
 // coordinates are authoritative; the tile's building index is derived, so this
 // idempotent nudge repairs any drift.
@@ -148,6 +159,7 @@ func (state *buildingActor) checkConstructionComplete() {
 	state.Building.ConstructionStart = domain.NullTime{}
 	state.Building.ConstructionEnd = domain.NullTime{}
 	state.Store.EnqueueBuilding(state.Building)
+	state.notifyStateChanged()
 	slog.InfoContext(state.Ctx(), "construction complete",
 		"building_id", state.Building.BuildingID,
 		"type", state.Building.BuildingType(),
@@ -197,9 +209,8 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 	state.Building.ConstructionStart = domain.NullTime{Time: &now}
 	state.Building.ConstructionEnd = domain.NullTime{Time: &end}
 
-	// TODO: spawn a blocking goroutine that sends a message upon completion
-	// ensure that it gets an ACK back for processing
 	state.Store.EnqueueBuilding(state.Building)
+	state.notifyStateChanged()
 	return nil
 }
 

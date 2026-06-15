@@ -33,6 +33,13 @@ type GetBuildingResponseMessage struct {
 	Building domain.Building
 }
 
+// BuildingStateChangedMessage is sent by a building to its city when its state
+// changes meaningfully (construction start/complete, creation). The city relays
+// it to the stream so the owning client sees the update.
+type BuildingStateChangedMessage struct {
+	Building domain.Building
+}
+
 // // Errors
 // type BuildingTypeNotFoundError struct {
 // 	BuildingType string

@@ -11,6 +11,7 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
+	"cityio/internal/stream"
 	"cityio/internal/utils"
 )
 
@@ -94,6 +95,12 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		// longer cache it, so there is nothing to propagate.
 		state.City.Owner = msg.Owner
 
+	case messages.BuildingStateChangedMessage:
+		if state.City.Owner != nil {
+			b := msg.Building
+			stream.Publish(*state.City.Owner, stream.StateUpdate{Building: &b})
+		}
+
 	case messages.SetBuildingPopulationMessage:
 		if state.populationContributions == nil {
 			state.populationContributions = make(map[string]float64)
@@ -104,6 +111,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			cap += p
 		}
 		state.City.PopulationCap = cap
+		state.ws()
 
 	case messages.CreditProductionMessage:
 		if state.City.Owner == nil {
@@ -167,7 +175,16 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			state.City.Population = newPopulation
 		}
 		state.Store.EnqueueCity(state.City)
+		state.ws()
 	}
+}
+
+func (state *cityActor) ws() {
+	if state.City.Owner == nil {
+		return
+	}
+	c := state.City
+	stream.Publish(*state.City.Owner, stream.StateUpdate{City: &c})
 }
 
 func (state *cityActor) startPeriodicOperation(ctx actor.Context) {
