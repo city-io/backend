@@ -114,12 +114,20 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 				Users: []*entityv1.User{mapping.UserToProto(resp.User)},
 			}
 
-			if cities, err := h.srv.store.GetCitiesByOwner(ctx, claims.UserID); err == nil {
-				for _, c := range cities {
-					bag.Cities = append(bag.Cities, mapping.CityToProto(c))
-					if buildings, err := h.srv.store.GetBuildingsByCity(ctx, c.CityID); err == nil {
-						for _, b := range buildings {
-							bag.Buildings = append(bag.Buildings, mapping.BuildingToProto(b))
+			if dbCities, err := h.srv.store.GetCitiesByOwner(ctx, claims.UserID); err == nil {
+				for _, dc := range dbCities {
+					if res, err := h.srv.cluster.Request("city", dc.CityID, messages.GetCityMessage{}); err == nil {
+						if cr, ok := res.(*messages.GetCityResponseMessage); ok {
+							bag.Cities = append(bag.Cities, mapping.CityToProto(cr.City))
+						}
+					}
+					if dbBuildings, err := h.srv.store.GetBuildingsByCity(ctx, dc.CityID); err == nil {
+						for _, db := range dbBuildings {
+							if res, err := h.srv.cluster.Request("building", db.BuildingID, messages.GetBuildingMessage{}); err == nil {
+								if br, ok := res.(*messages.GetBuildingResponseMessage); ok {
+									bag.Buildings = append(bag.Buildings, mapping.BuildingToProto(br.Building))
+								}
+							}
 						}
 					}
 				}
