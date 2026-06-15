@@ -181,7 +181,7 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 	}
 
 	res, err := state.Cluster.Request("city", state.Building.CityID, messages.DeductOwnerGoldMessage{
-		Amount: constants.GetBuildingCost(buildingType, state.Building.Level),
+		Amount: constants.GetBuildingCost(buildingType, state.Building.Level+1),
 	})
 	if err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to deduct gold for upgrade", "error", err)
@@ -198,14 +198,15 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 		return fmt.Errorf("unexpected response type: %T", res)
 	}
 
+	targetLevel := state.Building.Level + 1
 	now := time.Now()
 	end := now.Add(
 		time.Duration(constants.GetBuildingConstructionTime(
 			buildingType,
-			state.Building.Level,
+			targetLevel,
 		)) * time.Second,
 	)
-	state.Building.TargetLevel++
+	state.Building.TargetLevel = targetLevel
 	state.Building.ConstructionStart = domain.NullTime{Time: &now}
 	state.Building.ConstructionEnd = domain.NullTime{Time: &end}
 
