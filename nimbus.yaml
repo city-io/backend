@@ -5,6 +5,8 @@ services:
     template: http
     image: docker.prayujt.com/cityio-backend
     ingress: api.cityio.prayujt.com
+    features:
+      - grpc
     network:
       ports:
         - 8080
