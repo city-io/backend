@@ -213,6 +213,10 @@ goose -dir db/migrations up
   and a case in `buildingActor.Receive`'s impl switch.
 - **Errors:** return them up where a caller can act; otherwise log with context. Match the
   existing pattern in the file you're editing.
+- **Pointer vs value in actor responses:** when an actor does `ctx.Respond(&SomeMessage{})`,
+  every caller asserting on the result **must** use `res.(*SomeMessage)`, not
+  `res.(SomeMessage)`. A pointer/value mismatch silently fails the type assertion. Match
+  whatever the actor sends — check the `ctx.Respond(...)` call before writing the assertion.
 
 ## Comment & style rules (important)
 

@@ -24,7 +24,7 @@ func (h *buildingHandler) requireBuildingOwnership(ctx context.Context, building
 	if err != nil {
 		return connect.NewError(connect.CodeInternal, err)
 	}
-	resp, ok := res.(messages.GetBuildingResponseMessage)
+	resp, ok := res.(*messages.GetBuildingResponseMessage)
 	if !ok {
 		return connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
@@ -64,7 +64,7 @@ func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	resp, ok := res.(messages.GetBuildingResponseMessage)
+	resp, ok := res.(*messages.GetBuildingResponseMessage)
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
