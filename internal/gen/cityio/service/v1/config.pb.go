@@ -7,6 +7,7 @@
 package servicev1
 
 import (
+	v1 "cityio/internal/gen/cityio/entity/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -21,6 +22,186 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ResourceAmount struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Resource      string                 `protobuf:"bytes,1,opt,name=resource,proto3" json:"resource,omitempty"`
+	Amount        int64                  `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResourceAmount) Reset() {
+	*x = ResourceAmount{}
+	mi := &file_cityio_service_v1_config_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceAmount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceAmount) ProtoMessage() {}
+
+func (x *ResourceAmount) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_config_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceAmount.ProtoReflect.Descriptor instead.
+func (*ResourceAmount) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ResourceAmount) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+func (x *ResourceAmount) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+type BuildingLevelStats struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Level            int32                  `protobuf:"varint,1,opt,name=level,proto3" json:"level,omitempty"`
+	Cost             []*ResourceAmount      `protobuf:"bytes,2,rep,name=cost,proto3" json:"cost,omitempty"`
+	ConstructionTime int64                  `protobuf:"varint,3,opt,name=construction_time,json=constructionTime,proto3" json:"construction_time,omitempty"`
+	Production       []*ResourceAmount      `protobuf:"bytes,4,rep,name=production,proto3" json:"production,omitempty"`
+	Population       float64                `protobuf:"fixed64,5,opt,name=population,proto3" json:"population,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *BuildingLevelStats) Reset() {
+	*x = BuildingLevelStats{}
+	mi := &file_cityio_service_v1_config_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BuildingLevelStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BuildingLevelStats) ProtoMessage() {}
+
+func (x *BuildingLevelStats) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_config_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BuildingLevelStats.ProtoReflect.Descriptor instead.
+func (*BuildingLevelStats) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *BuildingLevelStats) GetLevel() int32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *BuildingLevelStats) GetCost() []*ResourceAmount {
+	if x != nil {
+		return x.Cost
+	}
+	return nil
+}
+
+func (x *BuildingLevelStats) GetConstructionTime() int64 {
+	if x != nil {
+		return x.ConstructionTime
+	}
+	return 0
+}
+
+func (x *BuildingLevelStats) GetProduction() []*ResourceAmount {
+	if x != nil {
+		return x.Production
+	}
+	return nil
+}
+
+func (x *BuildingLevelStats) GetPopulation() float64 {
+	if x != nil {
+		return x.Population
+	}
+	return 0
+}
+
+type BuildingConfig struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          v1.BuildingType        `protobuf:"varint,1,opt,name=type,proto3,enum=cityio.entity.v1.BuildingType" json:"type,omitempty"`
+	Levels        []*BuildingLevelStats  `protobuf:"bytes,2,rep,name=levels,proto3" json:"levels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BuildingConfig) Reset() {
+	*x = BuildingConfig{}
+	mi := &file_cityio_service_v1_config_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BuildingConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BuildingConfig) ProtoMessage() {}
+
+func (x *BuildingConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_config_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BuildingConfig.ProtoReflect.Descriptor instead.
+func (*BuildingConfig) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *BuildingConfig) GetType() v1.BuildingType {
+	if x != nil {
+		return x.Type
+	}
+	return v1.BuildingType(0)
+}
+
+func (x *BuildingConfig) GetLevels() []*BuildingLevelStats {
+	if x != nil {
+		return x.Levels
+	}
+	return nil
+}
+
 type GetGameConfigRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -29,7 +210,7 @@ type GetGameConfigRequest struct {
 
 func (x *GetGameConfigRequest) Reset() {
 	*x = GetGameConfigRequest{}
-	mi := &file_cityio_service_v1_config_proto_msgTypes[0]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -41,7 +222,7 @@ func (x *GetGameConfigRequest) String() string {
 func (*GetGameConfigRequest) ProtoMessage() {}
 
 func (x *GetGameConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_config_proto_msgTypes[0]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -54,7 +235,7 @@ func (x *GetGameConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGameConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetGameConfigRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{0}
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{3}
 }
 
 type GetGameConfigResponse struct {
@@ -63,13 +244,14 @@ type GetGameConfigResponse struct {
 	CitySize                    int32                  `protobuf:"varint,2,opt,name=city_size,json=citySize,proto3" json:"city_size,omitempty"`
 	VisionRadius                int32                  `protobuf:"varint,3,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
 	BuildingProductionFrequency int32                  `protobuf:"varint,4,opt,name=building_production_frequency,json=buildingProductionFrequency,proto3" json:"building_production_frequency,omitempty"`
+	Buildings                   []*BuildingConfig      `protobuf:"bytes,5,rep,name=buildings,proto3" json:"buildings,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *GetGameConfigResponse) Reset() {
 	*x = GetGameConfigResponse{}
-	mi := &file_cityio_service_v1_config_proto_msgTypes[1]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -81,7 +263,7 @@ func (x *GetGameConfigResponse) String() string {
 func (*GetGameConfigResponse) ProtoMessage() {}
 
 func (x *GetGameConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_config_proto_msgTypes[1]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -94,7 +276,7 @@ func (x *GetGameConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGameConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetGameConfigResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{1}
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetGameConfigResponse) GetMapSize() int32 {
@@ -125,17 +307,41 @@ func (x *GetGameConfigResponse) GetBuildingProductionFrequency() int32 {
 	return 0
 }
 
+func (x *GetGameConfigResponse) GetBuildings() []*BuildingConfig {
+	if x != nil {
+		return x.Buildings
+	}
+	return nil
+}
+
 var File_cityio_service_v1_config_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1ecityio/service/v1/config.proto\x12\x11cityio.service.v1\"\x16\n" +
-	"\x14GetGameConfigRequest\"\xb8\x01\n" +
+	"\x1ecityio/service/v1/config.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\"D\n" +
+	"\x0eResourceAmount\x12\x1a\n" +
+	"\bresource\x18\x01 \x01(\tR\bresource\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\x03R\x06amount\"\xf1\x01\n" +
+	"\x12BuildingLevelStats\x12\x14\n" +
+	"\x05level\x18\x01 \x01(\x05R\x05level\x125\n" +
+	"\x04cost\x18\x02 \x03(\v2!.cityio.service.v1.ResourceAmountR\x04cost\x12+\n" +
+	"\x11construction_time\x18\x03 \x01(\x03R\x10constructionTime\x12A\n" +
+	"\n" +
+	"production\x18\x04 \x03(\v2!.cityio.service.v1.ResourceAmountR\n" +
+	"production\x12\x1e\n" +
+	"\n" +
+	"population\x18\x05 \x01(\x01R\n" +
+	"population\"\x83\x01\n" +
+	"\x0eBuildingConfig\x122\n" +
+	"\x04type\x18\x01 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x12=\n" +
+	"\x06levels\x18\x02 \x03(\v2%.cityio.service.v1.BuildingLevelStatsR\x06levels\"\x16\n" +
+	"\x14GetGameConfigRequest\"\xf9\x01\n" +
 	"\x15GetGameConfigResponse\x12\x19\n" +
 	"\bmap_size\x18\x01 \x01(\x05R\amapSize\x12\x1b\n" +
 	"\tcity_size\x18\x02 \x01(\x05R\bcitySize\x12#\n" +
 	"\rvision_radius\x18\x03 \x01(\x05R\fvisionRadius\x12B\n" +
-	"\x1dbuilding_production_frequency\x18\x04 \x01(\x05R\x1bbuildingProductionFrequency2s\n" +
+	"\x1dbuilding_production_frequency\x18\x04 \x01(\x05R\x1bbuildingProductionFrequency\x12?\n" +
+	"\tbuildings\x18\x05 \x03(\v2!.cityio.service.v1.BuildingConfigR\tbuildings2s\n" +
 	"\rConfigService\x12b\n" +
 	"\rGetGameConfig\x12'.cityio.service.v1.GetGameConfigRequest\x1a(.cityio.service.v1.GetGameConfigResponseB\xbb\x01\n" +
 	"\x15com.cityio.service.v1B\vConfigProtoP\x01Z/cityio/internal/gen/cityio/service/v1;servicev1\xa2\x02\x03CSX\xaa\x02\x11Cityio.Service.V1\xca\x02\x11Cityio\\Service\\V1\xe2\x02\x1dCityio\\Service\\V1\\GPBMetadata\xea\x02\x13Cityio::Service::V1b\x06proto3"
@@ -152,19 +358,28 @@ func file_cityio_service_v1_config_proto_rawDescGZIP() []byte {
 	return file_cityio_service_v1_config_proto_rawDescData
 }
 
-var file_cityio_service_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_cityio_service_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_cityio_service_v1_config_proto_goTypes = []any{
-	(*GetGameConfigRequest)(nil),  // 0: cityio.service.v1.GetGameConfigRequest
-	(*GetGameConfigResponse)(nil), // 1: cityio.service.v1.GetGameConfigResponse
+	(*ResourceAmount)(nil),        // 0: cityio.service.v1.ResourceAmount
+	(*BuildingLevelStats)(nil),    // 1: cityio.service.v1.BuildingLevelStats
+	(*BuildingConfig)(nil),        // 2: cityio.service.v1.BuildingConfig
+	(*GetGameConfigRequest)(nil),  // 3: cityio.service.v1.GetGameConfigRequest
+	(*GetGameConfigResponse)(nil), // 4: cityio.service.v1.GetGameConfigResponse
+	(v1.BuildingType)(0),          // 5: cityio.entity.v1.BuildingType
 }
 var file_cityio_service_v1_config_proto_depIdxs = []int32{
-	0, // 0: cityio.service.v1.ConfigService.GetGameConfig:input_type -> cityio.service.v1.GetGameConfigRequest
-	1, // 1: cityio.service.v1.ConfigService.GetGameConfig:output_type -> cityio.service.v1.GetGameConfigResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: cityio.service.v1.BuildingLevelStats.cost:type_name -> cityio.service.v1.ResourceAmount
+	0, // 1: cityio.service.v1.BuildingLevelStats.production:type_name -> cityio.service.v1.ResourceAmount
+	5, // 2: cityio.service.v1.BuildingConfig.type:type_name -> cityio.entity.v1.BuildingType
+	1, // 3: cityio.service.v1.BuildingConfig.levels:type_name -> cityio.service.v1.BuildingLevelStats
+	2, // 4: cityio.service.v1.GetGameConfigResponse.buildings:type_name -> cityio.service.v1.BuildingConfig
+	3, // 5: cityio.service.v1.ConfigService.GetGameConfig:input_type -> cityio.service.v1.GetGameConfigRequest
+	4, // 6: cityio.service.v1.ConfigService.GetGameConfig:output_type -> cityio.service.v1.GetGameConfigResponse
+	6, // [6:7] is the sub-list for method output_type
+	5, // [5:6] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_config_proto_init() }
@@ -178,7 +393,7 @@ func file_cityio_service_v1_config_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_config_proto_rawDesc), len(file_cityio_service_v1_config_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

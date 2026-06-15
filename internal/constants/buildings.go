@@ -4,11 +4,17 @@ import "cityio/internal/domain"
 
 const MAX_BUILDING_LEVEL = 10
 
-var buildingProduction = map[domain.BuildingType][]int64{
-	domain.BuildingTypeCityCenter: {5, 10, 15, 20, 25, 30, 35, 40, 45, 50},
-	domain.BuildingTypeTownCenter: {3, 6, 9, 12, 15, 18, 21, 24, 27, 30},
-	domain.BuildingTypeFarm:       {10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
-	domain.BuildingTypeMine:       {10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+// BuildingProductionEntry pairs a resource name with per-level amounts.
+type BuildingProductionEntry struct {
+	Resource string
+	Amounts  []int64
+}
+
+var buildingProduction = map[domain.BuildingType][]BuildingProductionEntry{
+	domain.BuildingTypeCityCenter: {{"gold", []int64{5, 10, 15, 20, 25, 30, 35, 40, 45, 50}}},
+	domain.BuildingTypeTownCenter: {{"gold", []int64{3, 6, 9, 12, 15, 18, 21, 24, 27, 30}}},
+	domain.BuildingTypeFarm:       {{"food", []int64{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}}},
+	domain.BuildingTypeMine:       {{"gold", []int64{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}}},
 }
 
 var buildingPopulation = map[domain.BuildingType][]float64{
@@ -37,7 +43,15 @@ var buildingConstructionTime = map[domain.BuildingType][]int64{
 }
 
 func GetBuildingProduction(buildingType domain.BuildingType, level int) int64 {
-	return buildingProduction[buildingType][level-1]
+	entries := buildingProduction[buildingType]
+	if len(entries) == 0 {
+		return 0
+	}
+	return entries[0].Amounts[level-1]
+}
+
+func GetBuildingProductionEntries(buildingType domain.BuildingType) []BuildingProductionEntry {
+	return buildingProduction[buildingType]
 }
 
 func GetBuildingPopulation(buildingType domain.BuildingType, level int) float64 {
@@ -50,4 +64,28 @@ func GetBuildingCost(buildingType domain.BuildingType, level int) int64 {
 
 func GetBuildingConstructionTime(buildingType domain.BuildingType, level int) int64 {
 	return buildingConstructionTime[buildingType][level-1]
+}
+
+// AllBuildingTypes returns every building type that has a cost table defined.
+func AllBuildingTypes() []domain.BuildingType {
+	return []domain.BuildingType{
+		domain.BuildingTypeCityCenter,
+		domain.BuildingTypeTownCenter,
+		domain.BuildingTypeBarracks,
+		domain.BuildingTypeHouse,
+		domain.BuildingTypeFarm,
+		domain.BuildingTypeMine,
+	}
+}
+
+func GetBuildingCosts(buildingType domain.BuildingType) []int64 {
+	return buildingCosts[buildingType]
+}
+
+func GetBuildingConstructionTimes(buildingType domain.BuildingType) []int64 {
+	return buildingConstructionTime[buildingType]
+}
+
+func GetBuildingPopulations(buildingType domain.BuildingType) []float64 {
+	return buildingPopulation[buildingType]
 }
