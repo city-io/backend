@@ -9,7 +9,7 @@ const (
 
 	InitialTownPopulation = 100
 
-	InitialPlayerCityPopulation = 250
+	InitialPlayerCityPopulation = 100
 	InitialPlayerGold           = 2000
 	InitialPlayerFood           = 1000
 
