@@ -138,6 +138,9 @@ make all        # go run cmd/*.go   (build + run)
 make build      # build to bin/cityio
 make start      # run bin/cityio
 make generate   # sqlc generate (regenerate internal/database from db/queries + schema)
+make db-start   # start the local Postgres cluster (not auto-started after reboot)
+make db-stop    # stop the local Postgres cluster
+make db-status  # check if Postgres is running
 buf generate    # regenerate internal/gen from proto/cityio/{entity,service}/v1/*.proto
 ```
 
