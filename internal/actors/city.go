@@ -101,6 +101,17 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			stream.Publish(*state.City.Owner, stream.StateUpdate{Building: &b})
 		}
 
+	case messages.BuildingDestroyedMessage:
+		delete(state.populationContributions, msg.BuildingID)
+		var cap float64
+		for _, p := range state.populationContributions {
+			cap += p
+		}
+		state.City.PopulationCap = cap
+		if state.City.Owner != nil {
+			stream.Publish(*state.City.Owner, stream.StateUpdate{DeletedBuildingID: &msg.BuildingID})
+		}
+
 	case messages.SetBuildingPopulationMessage:
 		if state.populationContributions == nil {
 			state.populationContributions = make(map[string]float64)

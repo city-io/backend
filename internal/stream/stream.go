@@ -13,9 +13,10 @@ import (
 // StateUpdate is a per-user snapshot pushed to subscribers.
 // Conversion to proto happens at the RPC boundary. Only non-nil fields are sent.
 type StateUpdate struct {
-	User     *domain.User
-	City     *domain.City
-	Building *domain.Building
+	User              *domain.User
+	City              *domain.City
+	Building          *domain.Building
+	DeletedBuildingID *string
 }
 
 type subscriber struct {

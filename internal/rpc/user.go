@@ -157,6 +157,9 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			if update.Building != nil {
 				bag.Buildings = append(bag.Buildings, mapping.BuildingToProto(*update.Building))
 			}
+			if update.DeletedBuildingID != nil {
+				bag.DeletedBuildingIds = append(bag.DeletedBuildingIds, mapping.ToBuildingId(*update.DeletedBuildingID))
+			}
 			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
 				return err
 			}

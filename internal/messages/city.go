@@ -37,6 +37,10 @@ type DeductOwnerGoldMessage struct {
 	Amount int64
 }
 
+type BuildingDestroyedMessage struct {
+	BuildingID string
+}
+
 type GetCityMessage struct{}
 type GetCityResponseMessage struct {
 	City domain.City

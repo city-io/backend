@@ -110,6 +110,10 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 	case messages.DeleteBuildingMessage:
 		state.Impl.Destroy(ctx, state)
 		state.stopPeriodicOperation()
+		state.reportPopulation(0)
+		state.Cluster.Tell("city", state.Building.CityID, messages.BuildingDestroyedMessage{
+			BuildingID: state.Building.BuildingID,
+		})
 		state.destroy(ctx)
 
 	case messages.ReconcileTilesMessage:
