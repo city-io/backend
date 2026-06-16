@@ -7,11 +7,10 @@ const (
 
 	PopulationGrowthRate = 0.001
 
-	InitialTownPopulation = 100
+	InitialPlayerCityPopulation = 250
 
-	InitialPlayerCityPopulation = 100
-	InitialPlayerGold           = 2000
-	InitialPlayerFood           = 1000
+	InitialPlayerGold = 2000
+	InitialPlayerFood = 1000
 
 	TroopMovementBackupFrequency = 5 // number of tile movements before state saved to db
 
@@ -28,3 +27,16 @@ const (
 
 	VisionRadius = 3 // Chebyshev distance beyond owned city edges that a player can see
 )
+
+type TownConfig struct {
+	CenterLevel int
+	HouseCount  int
+}
+
+// TC L1=50, L2=100, L3=150; House L1=50
+var TownSizeConfig = map[int]TownConfig{
+	2: {CenterLevel: 1, HouseCount: 1}, // 50 + 50 = 100
+	3: {CenterLevel: 1, HouseCount: 2}, // 50 + 100 = 150
+	4: {CenterLevel: 2, HouseCount: 2}, // 100 + 100 = 200
+	5: {CenterLevel: 3, HouseCount: 2}, // 150 + 100 = 250
+}

@@ -97,10 +97,6 @@ func Run(ctx context.Context, deps *Deps) {
 	}
 
 	for _, building := range buildings {
-		// city and town center will get restored by city actor
-		if building.Type == string(domain.BuildingTypeCityCenter) || building.Type == string(domain.BuildingTypeTownCenter) {
-			continue
-		}
 		err := services.RestoreBuilding(ctx, cluster, building.ToModel())
 		if err != nil {
 			panic(err)
@@ -155,7 +151,7 @@ func reset(ctx context.Context, deps *Deps) error {
 			Owner:         &user.UserID,
 			Name:          fmt.Sprintf("%s's City", user.Username),
 			Population:    constants.InitialPlayerCityPopulation,
-			PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeCityCenter, 1),
+			PopulationCap: constants.InitialPlayerCityPopulation,
 			StartX:        int32(startX),
 			StartY:        int32(startY),
 		})
@@ -207,28 +203,46 @@ func reset(ctx context.Context, deps *Deps) error {
 
 			if size > 0 && canPlace(occupied, x, y, size) {
 				cityID := uuid.New().String()
+				tc := constants.TownSizeConfig[size]
+				populationCap := constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, tc.CenterLevel) +
+					float64(tc.HouseCount)*constants.GetBuildingPopulation(domain.BuildingTypeHouse, 1)
+
 				cities = append(cities, domain.City{
 					CityID:        cityID,
 					Type:          "town",
 					Owner:         nil,
 					Name:          townName(r, usedNames),
-					Population:    constants.InitialTownPopulation,
-					PopulationCap: constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, 1),
+					Population:    populationCap,
+					PopulationCap: populationCap,
 					StartX:        x,
 					StartY:        y,
 					Size:          size,
 				})
+				centerX, centerY := x+size/2, y+size/2
 				buildings = append(buildings, domain.Building{
 					BuildingID:        uuid.New().String(),
 					CityID:            cityID,
 					Type:              string(domain.BuildingTypeTownCenter),
-					Level:             1,
-					TargetLevel:       1,
-					X:                 x + size/2,
-					Y:                 y + size/2,
+					Level:             tc.CenterLevel,
+					TargetLevel:       tc.CenterLevel,
+					X:                 centerX,
+					Y:                 centerY,
 					ConstructionStart: domain.NullTime{Time: nil},
 					ConstructionEnd:   domain.NullTime{Time: nil},
 				})
+				for _, pos := range randomPositions(r, x, y, size, centerX, centerY, tc.HouseCount) {
+					buildings = append(buildings, domain.Building{
+						BuildingID:        uuid.New().String(),
+						CityID:            cityID,
+						Type:              string(domain.BuildingTypeHouse),
+						Level:             1,
+						TargetLevel:       1,
+						X:                 pos[0],
+						Y:                 pos[1],
+						ConstructionStart: domain.NullTime{Time: nil},
+						ConstructionEnd:   domain.NullTime{Time: nil},
+					})
+				}
 				for i := 0; i < size; i++ {
 					for j := 0; j < size; j++ {
 						occupied[x+i][y+j] = true
@@ -345,6 +359,25 @@ func townName(r *rand.Rand, used map[string]bool) string {
 			return name
 		}
 	}
+}
+
+// randomPositions returns count grid positions within the rectangle starting at
+// (originX, originY) of the given size, excluding (centerX, centerY).
+func randomPositions(r *rand.Rand, originX, originY, size, centerX, centerY, count int) [][2]int {
+	candidates := make([][2]int, 0, size*size-1)
+	for i := 0; i < size; i++ {
+		for j := 0; j < size; j++ {
+			px, py := originX+i, originY+j
+			if px == centerX && py == centerY {
+				continue
+			}
+			candidates = append(candidates, [2]int{px, py})
+		}
+	}
+	r.Shuffle(len(candidates), func(i, j int) {
+		candidates[i], candidates[j] = candidates[j], candidates[i]
+	})
+	return candidates[:count]
 }
 
 // canPlace reports whether a city of the given size can be placed at (x, y)

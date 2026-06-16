@@ -18,7 +18,7 @@ var buildingProduction = map[domain.BuildingType][]BuildingProductionEntry{
 }
 
 var buildingPopulation = map[domain.BuildingType][]float64{
-	domain.BuildingTypeCityCenter: {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000},
+	domain.BuildingTypeCityCenter: {250, 350, 450, 550, 650, 750, 850, 950, 1050, 1150},
 	domain.BuildingTypeTownCenter: {50, 100, 150, 200, 250, 300, 350, 400, 450, 500},
 	domain.BuildingTypeHouse:      {50, 100, 150, 200, 250, 300, 350, 400, 450, 500},
 }
