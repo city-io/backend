@@ -17,6 +17,25 @@ type CreditUserMessage struct {
 	Food int64
 }
 
+// DepositFoodMessage adds surplus food from a city to the user's pool. The
+// amount is accumulated toward the user's rolling FoodIncomeRate.
+type DepositFoodMessage struct {
+	Amount int64
+}
+
+// RequestFoodFromPoolMessage is sent by a deficit city; the user grants up to
+// the pool balance, withdrawing it from User.Food and accumulating it toward
+// FoodUpkeepRate.
+type RequestFoodFromPoolMessage struct {
+	Amount int64
+}
+
+// RequestFoodFromPoolResponse reports how much of the request the pool could
+// cover. Granted < Amount means the city is starving.
+type RequestFoodFromPoolResponse struct {
+	Granted int64
+}
+
 type CheckAndDeductGoldMessage struct {
 	Amount int64
 }

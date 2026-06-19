@@ -37,13 +37,17 @@ WHERE user_id = $1;
 -- name: BatchUpdateUsers :exec
 UPDATE users AS u
 SET
-    gold        = v.gold,
-    food        = v.food,
-    updated_at  = NOW()
+    gold             = v.gold,
+    food             = v.food,
+    food_income_rate = v.food_income_rate,
+    food_upkeep_rate = v.food_upkeep_rate,
+    updated_at       = NOW()
 FROM (
     SELECT
-        UNNEST(sqlc.arg(user_ids)::text[])  AS user_id,
-        UNNEST(sqlc.arg(golds)::int8[])     AS gold,
-        UNNEST(sqlc.arg(foods)::int8[])     AS food
+        UNNEST(sqlc.arg(user_ids)::text[])             AS user_id,
+        UNNEST(sqlc.arg(golds)::int8[])                AS gold,
+        UNNEST(sqlc.arg(foods)::int8[])                AS food,
+        UNNEST(sqlc.arg(food_income_rates)::float8[])  AS food_income_rate,
+        UNNEST(sqlc.arg(food_upkeep_rates)::float8[])  AS food_upkeep_rate
 ) AS v
 WHERE u.user_id = v.user_id;

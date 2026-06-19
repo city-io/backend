@@ -2,6 +2,7 @@ package actors
 
 import (
 	"log/slog"
+	"math"
 	"math/rand"
 	"time"
 
@@ -23,6 +24,11 @@ type cityActor struct {
 	// population cap, keyed by building ID. The cap is derived as their sum, so it
 	// is idempotent under resends and fully rebuilt from buildings on restore.
 	populationContributions map[string]float64
+
+	// pendingFoodIncome holds food produced by this city's buildings since the
+	// last tick. It is consumed locally first; only the surplus is deposited to
+	// the user's pool.
+	pendingFoodIncome int64
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -129,13 +135,15 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			ctx.Respond(messages.Ack{})
 			return
 		}
-		if _, err := state.Cluster.Request("user", *state.City.Owner, messages.CreditUserMessage{
-			Gold: msg.Gold,
-			Food: msg.Food,
-		}); err != nil {
-			slog.ErrorContext(state.Ctx(), "failed to credit production to owner", "error", err)
-			ctx.Respond(&messages.InternalError{})
-			return
+		state.pendingFoodIncome += msg.Food
+		if msg.Gold > 0 {
+			if _, err := state.Cluster.Request("user", *state.City.Owner, messages.CreditUserMessage{
+				Gold: msg.Gold,
+			}); err != nil {
+				slog.ErrorContext(state.Ctx(), "failed to credit gold production to owner", "error", err)
+				ctx.Respond(&messages.InternalError{})
+				return
+			}
 		}
 		ctx.Respond(messages.Ack{})
 
@@ -179,15 +187,79 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		ctx.Stop(ctx.Self())
 
 	case messages.PeriodicOperationMessage:
-		currentPopulation := state.City.Population
-		populationCap := state.City.PopulationCap
-		if populationCap > 0 {
-			newPopulation := currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)
-			state.City.Population = newPopulation
-		}
+		state.tickFoodAndPopulation()
 		state.Store.EnqueueCity(state.City)
 		state.ws()
 	}
+}
+
+// tickFoodAndPopulation runs the per-tick food loop for the city: consume the
+// city's own production first, deposit any surplus to the user pool or request
+// the shortfall from it, then grow or decline the population based on whether
+// demand was met.
+func (state *cityActor) tickFoodAndPopulation() {
+	seconds := float64(constants.CityBackupFrequency)
+
+	if state.City.Owner == nil {
+		state.City.FoodProductionRate = 0
+		state.City.FoodUpkeep = 0
+		state.City.NetFoodFlow = 0
+		state.City.Starving = false
+		state.growPopulation(false, 0)
+		return
+	}
+
+	production := state.pendingFoodIncome
+	state.pendingFoodIncome = 0
+
+	demand := int64(math.Round(state.City.Population * constants.FoodPerPopPerTick))
+
+	state.City.FoodProductionRate = float64(production) / seconds
+	state.City.FoodUpkeep = float64(demand) / seconds
+	state.City.NetFoodFlow = state.City.FoodProductionRate - state.City.FoodUpkeep
+
+	starving := false
+	var shortfallRatio float64
+
+	switch {
+	case production >= demand:
+		if surplus := production - demand; surplus > 0 {
+			if err := state.Cluster.Tell("user", *state.City.Owner, messages.DepositFoodMessage{Amount: surplus}); err != nil {
+				slog.ErrorContext(state.Ctx(), "failed to deposit surplus food to pool", "error", err)
+			}
+		}
+	default:
+		shortfall := demand - production
+		res, err := state.Cluster.Request("user", *state.City.Owner, messages.RequestFoodFromPoolMessage{Amount: shortfall})
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to request food from pool", "error", err)
+			starving = true
+			shortfallRatio = float64(shortfall) / float64(demand)
+		} else if resp, ok := res.(messages.RequestFoodFromPoolResponse); ok {
+			if resp.Granted < shortfall {
+				starving = true
+				shortfallRatio = float64(shortfall-resp.Granted) / float64(demand)
+			}
+		}
+	}
+
+	state.City.Starving = starving
+	state.growPopulation(starving, shortfallRatio)
+}
+
+// growPopulation applies logistic growth when fed, or a starvation-scaled
+// decline when not. Towns (no owner) pass starving=false and grow freely.
+func (state *cityActor) growPopulation(starving bool, shortfallRatio float64) {
+	currentPopulation := state.City.Population
+	populationCap := state.City.PopulationCap
+	if populationCap <= 0 {
+		return
+	}
+	if starving {
+		state.City.Population = currentPopulation * (1 - constants.StarvationDeclineRate*shortfallRatio)
+		return
+	}
+	state.City.Population = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)
 }
 
 func (state *cityActor) ws() {

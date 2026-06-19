@@ -79,24 +79,30 @@ func BuildingTypeFromProto(t entityv1.BuildingType) domain.BuildingType {
 // is never copied across the wire.
 func UserToProto(u domain.User) *entityv1.User {
 	return &entityv1.User{
-		UserId:   ToUserId(u.UserID),
-		Email:    u.Email,
-		Username: u.Username,
-		Gold:     u.Gold,
-		Food:     u.Food,
+		UserId:         ToUserId(u.UserID),
+		Email:          u.Email,
+		Username:       u.Username,
+		Gold:           u.Gold,
+		Food:           u.Food,
+		FoodIncomeRate: u.FoodIncomeRate,
+		FoodUpkeepRate: u.FoodUpkeepRate,
 	}
 }
 
 // CityToProto converts a domain city to its proto representation.
 func CityToProto(c domain.City) *entityv1.City {
 	out := &entityv1.City{
-		CityId:        ToCityId(c.CityID),
-		Type:          CityTypeToProto(c.Type),
-		Name:          c.Name,
-		Population:    c.Population,
-		PopulationCap: c.PopulationCap,
-		Start:         &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
-		Size:          int32(c.Size),
+		CityId:             ToCityId(c.CityID),
+		Type:               CityTypeToProto(c.Type),
+		Name:               c.Name,
+		Population:         c.Population,
+		PopulationCap:      c.PopulationCap,
+		Start:              &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
+		Size:               int32(c.Size),
+		FoodProductionRate: c.FoodProductionRate,
+		FoodUpkeep:         c.FoodUpkeep,
+		NetFoodFlow:        c.NetFoodFlow,
+		Starving:           c.Starving,
 	}
 	if c.Owner != nil {
 		out.Owner = ToUserId(*c.Owner)

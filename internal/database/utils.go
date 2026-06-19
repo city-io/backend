@@ -26,42 +26,52 @@ func toNullTime(ts pgtype.Timestamp) domain.NullTime {
 
 func (c City) ToModel() *domain.City {
 	return &domain.City{
-		CityID:        c.CityID,
-		Type:          domain.CityType(c.Type),
-		Owner:         c.Owner,
-		Name:          c.Name,
-		Population:    c.Population,
-		PopulationCap: c.PopulationCap,
-		StartX:        c.StartCoords.X,
-		StartY:        c.StartCoords.Y,
-		Size:          int(c.Size),
+		CityID:             c.CityID,
+		Type:               domain.CityType(c.Type),
+		Owner:              c.Owner,
+		Name:               c.Name,
+		Population:         c.Population,
+		PopulationCap:      c.PopulationCap,
+		FoodProductionRate: c.FoodProductionRate,
+		FoodUpkeep:         c.FoodUpkeep,
+		NetFoodFlow:        c.NetFoodFlow,
+		Starving:           c.Starving,
+		StartX:             c.StartCoords.X,
+		StartY:             c.StartCoords.Y,
+		Size:               int(c.Size),
 	}
 }
 
 func (c GetAllCitiesRow) ToModel() *domain.City {
 	return &domain.City{
-		CityID:        c.CityID,
-		Type:          domain.CityType(c.Type),
-		Owner:         c.Owner,
-		Name:          c.Name,
-		Population:    c.Population,
-		PopulationCap: c.PopulationCap,
-		StartX:        int(c.StartX),
-		StartY:        int(c.StartY),
-		Size:          int(c.Size),
+		CityID:             c.CityID,
+		Type:               domain.CityType(c.Type),
+		Owner:              c.Owner,
+		Name:               c.Name,
+		Population:         c.Population,
+		PopulationCap:      c.PopulationCap,
+		FoodProductionRate: c.FoodProductionRate,
+		FoodUpkeep:         c.FoodUpkeep,
+		NetFoodFlow:        c.NetFoodFlow,
+		Starving:           c.Starving,
+		StartX:             int(c.StartX),
+		StartY:             int(c.StartY),
+		Size:               int(c.Size),
 	}
 }
 
 func (u User) ToModel() *domain.User {
 	return &domain.User{
-		UserID:    u.UserID,
-		Email:     u.Email,
-		Username:  u.Username,
-		Password:  u.Password,
-		Gold:      u.Gold,
-		Food:      u.Food,
-		CreatedAt: u.CreatedAt.Time,
-		UpdatedAt: u.UpdatedAt.Time,
+		UserID:         u.UserID,
+		Email:          u.Email,
+		Username:       u.Username,
+		Password:       u.Password,
+		Gold:           u.Gold,
+		Food:           u.Food,
+		FoodIncomeRate: u.FoodIncomeRate,
+		FoodUpkeepRate: u.FoodUpkeepRate,
+		CreatedAt:      u.CreatedAt.Time,
+		UpdatedAt:      u.UpdatedAt.Time,
 	}
 }
 
@@ -81,15 +91,19 @@ func (b Building) ToModel() *domain.Building {
 
 func (c GetCitiesByOwnerRow) ToModel() *domain.City {
 	return &domain.City{
-		CityID:        c.CityID,
-		Type:          domain.CityType(c.Type),
-		Owner:         c.Owner,
-		Name:          c.Name,
-		Population:    c.Population,
-		PopulationCap: c.PopulationCap,
-		StartX:        int(c.StartX),
-		StartY:        int(c.StartY),
-		Size:          int(c.Size),
+		CityID:             c.CityID,
+		Type:               domain.CityType(c.Type),
+		Owner:              c.Owner,
+		Name:               c.Name,
+		Population:         c.Population,
+		PopulationCap:      c.PopulationCap,
+		FoodProductionRate: c.FoodProductionRate,
+		FoodUpkeep:         c.FoodUpkeep,
+		NetFoodFlow:        c.NetFoodFlow,
+		Starving:           c.Starving,
+		StartX:             int(c.StartX),
+		StartY:             int(c.StartY),
+		Size:               int(c.Size),
 	}
 }
 

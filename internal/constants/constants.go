@@ -7,6 +7,14 @@ const (
 
 	PopulationGrowthRate = 0.001
 
+	// FoodPerPopPerTick is food consumed per population per CityBackupFrequency
+	// tick. Balanced so one L1 farm roughly sustains one L1 city center.
+	FoodPerPopPerTick = 0.13
+
+	// StarvationDeclineRate scales population loss per tick when a city is
+	// starving. Applied as pop *= (1 - rate * shortfall_ratio).
+	StarvationDeclineRate = 0.005
+
 	InitialPlayerCityPopulation = 250
 
 	InitialPlayerGold = 2000
