@@ -23,31 +23,25 @@ type Building struct {
 }
 
 type City struct {
-	CityID             string             `json:"city_id"`
-	Type               string             `json:"type"`
-	Owner              *string            `json:"owner"`
-	Name               string             `json:"name"`
-	Population         float64            `json:"population"`
-	PopulationCap      float64            `json:"population_cap"`
-	StartCoords        domain.Coordinates `json:"start_coords"`
-	Size               int32              `json:"size"`
-	CreatedAt          pgtype.Timestamp   `json:"created_at"`
-	UpdatedAt          pgtype.Timestamp   `json:"updated_at"`
-	FoodProductionRate float64            `json:"food_production_rate"`
-	FoodUpkeep         float64            `json:"food_upkeep"`
-	NetFoodFlow        float64            `json:"net_food_flow"`
-	Starving           bool               `json:"starving"`
+	CityID        string             `json:"city_id"`
+	Type          string             `json:"type"`
+	Owner         *string            `json:"owner"`
+	Name          string             `json:"name"`
+	Population    float64            `json:"population"`
+	PopulationCap float64            `json:"population_cap"`
+	StartCoords   domain.Coordinates `json:"start_coords"`
+	Size          int32              `json:"size"`
+	CreatedAt     pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
 }
 
 type User struct {
-	UserID         string           `json:"user_id"`
-	Email          string           `json:"email"`
-	Username       string           `json:"username"`
-	Password       string           `json:"password"`
-	Gold           int64            `json:"gold"`
-	Food           int64            `json:"food"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-	FoodIncomeRate float64          `json:"food_income_rate"`
-	FoodUpkeepRate float64          `json:"food_upkeep_rate"`
+	UserID    string           `json:"user_id"`
+	Email     string           `json:"email"`
+	Username  string           `json:"username"`
+	Password  string           `json:"password"`
+	Gold      int64            `json:"gold"`
+	Food      int64            `json:"food"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }

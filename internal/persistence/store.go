@@ -252,19 +252,15 @@ func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) 
 		chunk := cities[i:end]
 
 		params := database.BatchUpdateCitiesParams{
-			CityIds:             make([]string, 0, len(chunk)),
-			Types:               make([]string, 0, len(chunk)),
-			Owners:              make([]string, 0, len(chunk)),
-			Names:               make([]string, 0, len(chunk)),
-			Populations:         make([]float64, 0, len(chunk)),
-			PopulationCaps:      make([]float64, 0, len(chunk)),
-			FoodProductionRates: make([]float64, 0, len(chunk)),
-			FoodUpkeeps:         make([]float64, 0, len(chunk)),
-			NetFoodFlows:        make([]float64, 0, len(chunk)),
-			Starvings:           make([]bool, 0, len(chunk)),
-			StartXs:             make([]int32, 0, len(chunk)),
-			StartYs:             make([]int32, 0, len(chunk)),
-			Sizes:               make([]int32, 0, len(chunk)),
+			CityIds:        make([]string, 0, len(chunk)),
+			Types:          make([]string, 0, len(chunk)),
+			Owners:         make([]string, 0, len(chunk)),
+			Names:          make([]string, 0, len(chunk)),
+			Populations:    make([]float64, 0, len(chunk)),
+			PopulationCaps: make([]float64, 0, len(chunk)),
+			StartXs:        make([]int32, 0, len(chunk)),
+			StartYs:        make([]int32, 0, len(chunk)),
+			Sizes:          make([]int32, 0, len(chunk)),
 		}
 
 		for _, city := range chunk {
@@ -281,10 +277,6 @@ func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) 
 			params.Names = append(params.Names, city.Name)
 			params.Populations = append(params.Populations, city.Population)
 			params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
-			params.FoodProductionRates = append(params.FoodProductionRates, city.FoodProductionRate)
-			params.FoodUpkeeps = append(params.FoodUpkeeps, city.FoodUpkeep)
-			params.NetFoodFlows = append(params.NetFoodFlows, city.NetFoodFlow)
-			params.Starvings = append(params.Starvings, city.Starving)
 			params.StartXs = append(params.StartXs, int32(city.StartX))
 			params.StartYs = append(params.StartYs, int32(city.StartY))
 			params.Sizes = append(params.Sizes, int32(city.Size))
@@ -306,19 +298,15 @@ func (s *Store) flushUsers(ctx context.Context, buffer map[string]domain.User) {
 		chunk := users[i:end]
 
 		params := database.BatchUpdateUsersParams{
-			UserIds:         make([]string, 0, len(chunk)),
-			Foods:           make([]int64, 0, len(chunk)),
-			Golds:           make([]int64, 0, len(chunk)),
-			FoodIncomeRates: make([]float64, 0, len(chunk)),
-			FoodUpkeepRates: make([]float64, 0, len(chunk)),
+			UserIds: make([]string, 0, len(chunk)),
+			Foods:   make([]int64, 0, len(chunk)),
+			Golds:   make([]int64, 0, len(chunk)),
 		}
 
 		for _, user := range chunk {
 			params.UserIds = append(params.UserIds, user.UserID)
 			params.Foods = append(params.Foods, user.Food)
 			params.Golds = append(params.Golds, user.Gold)
-			params.FoodIncomeRates = append(params.FoodIncomeRates, user.FoodIncomeRate)
-			params.FoodUpkeepRates = append(params.FoodUpkeepRates, user.FoodUpkeepRate)
 		}
 
 		if err := s.db.BatchUpdateUsers(ctx, params); err != nil {

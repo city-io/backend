@@ -12,38 +12,26 @@ import (
 const batchUpdateUsers = `-- name: BatchUpdateUsers :exec
 UPDATE users AS u
 SET
-    gold             = v.gold,
-    food             = v.food,
-    food_income_rate = v.food_income_rate,
-    food_upkeep_rate = v.food_upkeep_rate,
-    updated_at       = NOW()
+    gold        = v.gold,
+    food        = v.food,
+    updated_at  = NOW()
 FROM (
     SELECT
-        UNNEST($1::text[])             AS user_id,
-        UNNEST($2::int8[])                AS gold,
-        UNNEST($3::int8[])                AS food,
-        UNNEST($4::float8[])  AS food_income_rate,
-        UNNEST($5::float8[])  AS food_upkeep_rate
+        UNNEST($1::text[])  AS user_id,
+        UNNEST($2::int8[])     AS gold,
+        UNNEST($3::int8[])     AS food
 ) AS v
 WHERE u.user_id = v.user_id
 `
 
 type BatchUpdateUsersParams struct {
-	UserIds         []string  `json:"user_ids"`
-	Golds           []int64   `json:"golds"`
-	Foods           []int64   `json:"foods"`
-	FoodIncomeRates []float64 `json:"food_income_rates"`
-	FoodUpkeepRates []float64 `json:"food_upkeep_rates"`
+	UserIds []string `json:"user_ids"`
+	Golds   []int64  `json:"golds"`
+	Foods   []int64  `json:"foods"`
 }
 
 func (q *Queries) BatchUpdateUsers(ctx context.Context, arg BatchUpdateUsersParams) error {
-	_, err := q.db.Exec(ctx, batchUpdateUsers,
-		arg.UserIds,
-		arg.Golds,
-		arg.Foods,
-		arg.FoodIncomeRates,
-		arg.FoodUpkeepRates,
-	)
+	_, err := q.db.Exec(ctx, batchUpdateUsers, arg.UserIds, arg.Golds, arg.Foods)
 	return err
 }
 
@@ -88,7 +76,7 @@ func (q *Queries) DeleteUser(ctx context.Context, userID string) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT user_id, email, username, password, gold, food, created_at, updated_at, food_income_rate, food_upkeep_rate FROM users
+SELECT user_id, email, username, password, gold, food, created_at, updated_at FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -109,8 +97,6 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.Food,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.FoodIncomeRate,
-			&i.FoodUpkeepRate,
 		); err != nil {
 			return nil, err
 		}
@@ -123,7 +109,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT user_id, email, username, password, gold, food, created_at, updated_at, food_income_rate, food_upkeep_rate FROM users
+SELECT user_id, email, username, password, gold, food, created_at, updated_at FROM users
 WHERE email = $1 OR username = $1
 `
 
@@ -139,8 +125,6 @@ func (q *Queries) GetUserByIdentifier(ctx context.Context, email string) (User, 
 		&i.Food,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.FoodIncomeRate,
-		&i.FoodUpkeepRate,
 	)
 	return i, err
 }

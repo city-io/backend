@@ -75,51 +75,39 @@ func (q *Queries) BatchCreateCities(ctx context.Context, arg BatchCreateCitiesPa
 const batchUpdateCities = `-- name: BatchUpdateCities :exec
 UPDATE cities AS c
 SET
-    type                 = v.type,
-    owner                = NULLIF(v.owner, ''),
-    name                 = v.name,
-    population           = v.population,
-    population_cap       = v.population_cap,
-    food_production_rate = v.food_production_rate,
-    food_upkeep          = v.food_upkeep,
-    net_food_flow        = v.net_food_flow,
-    starving             = v.starving,
-    start_coords         = ROW(v.start_x, v.start_y)::coordinates,
-    size                 = v.size,
-    updated_at           = NOW()
+    type            = v.type,
+    owner           = NULLIF(v.owner, ''),
+    name            = v.name,
+    population      = v.population,
+    population_cap  = v.population_cap,
+    start_coords    = ROW(v.start_x, v.start_y)::coordinates,
+    size            = v.size,
+    updated_at      = NOW()
 FROM (
     SELECT
-        UNNEST($1::text[])                AS city_id,
-        UNNEST($2::text[])                   AS type,
-        UNNEST($3::text[])                  AS owner,
-        UNNEST($4::text[])                   AS name,
-        UNNEST($5::float8[])           AS population,
-        UNNEST($6::float8[])       AS population_cap,
-        UNNEST($7::float8[]) AS food_production_rate,
-        UNNEST($8::float8[])          AS food_upkeep,
-        UNNEST($9::float8[])        AS net_food_flow,
-        UNNEST($10::bool[])               AS starving,
-        UNNEST($11::int[])                 AS start_x,
-        UNNEST($12::int[])                 AS start_y,
-        UNNEST($13::int[])                    AS size
+        UNNEST($1::text[])         AS city_id,
+        UNNEST($2::text[])            AS type,
+        UNNEST($3::text[])           AS owner,
+        UNNEST($4::text[])            AS name,
+        UNNEST($5::float8[])    AS population,
+        UNNEST($6::float8[]) AS population_cap,
+        UNNEST($7::int[])          AS start_x,
+        UNNEST($8::int[])          AS start_y,
+        UNNEST($9::int[])             AS size
 ) AS v
 WHERE c.city_id = v.city_id
 `
 
 type BatchUpdateCitiesParams struct {
-	CityIds             []string  `json:"city_ids"`
-	Types               []string  `json:"types"`
-	Owners              []string  `json:"owners"`
-	Names               []string  `json:"names"`
-	Populations         []float64 `json:"populations"`
-	PopulationCaps      []float64 `json:"population_caps"`
-	FoodProductionRates []float64 `json:"food_production_rates"`
-	FoodUpkeeps         []float64 `json:"food_upkeeps"`
-	NetFoodFlows        []float64 `json:"net_food_flows"`
-	Starvings           []bool    `json:"starvings"`
-	StartXs             []int32   `json:"start_xs"`
-	StartYs             []int32   `json:"start_ys"`
-	Sizes               []int32   `json:"sizes"`
+	CityIds        []string  `json:"city_ids"`
+	Types          []string  `json:"types"`
+	Owners         []string  `json:"owners"`
+	Names          []string  `json:"names"`
+	Populations    []float64 `json:"populations"`
+	PopulationCaps []float64 `json:"population_caps"`
+	StartXs        []int32   `json:"start_xs"`
+	StartYs        []int32   `json:"start_ys"`
+	Sizes          []int32   `json:"sizes"`
 }
 
 func (q *Queries) BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesParams) error {
@@ -130,10 +118,6 @@ func (q *Queries) BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesPa
 		arg.Names,
 		arg.Populations,
 		arg.PopulationCaps,
-		arg.FoodProductionRates,
-		arg.FoodUpkeeps,
-		arg.NetFoodFlows,
-		arg.Starvings,
 		arg.StartXs,
 		arg.StartYs,
 		arg.Sizes,
@@ -248,10 +232,6 @@ SELECT
     name,
     population,
     population_cap,
-    food_production_rate,
-    food_upkeep,
-    net_food_flow,
-    starving,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -261,21 +241,17 @@ FROM cities
 `
 
 type GetAllCitiesRow struct {
-	CityID             string           `json:"city_id"`
-	Type               string           `json:"type"`
-	Owner              *string          `json:"owner"`
-	Name               string           `json:"name"`
-	Population         float64          `json:"population"`
-	PopulationCap      float64          `json:"population_cap"`
-	FoodProductionRate float64          `json:"food_production_rate"`
-	FoodUpkeep         float64          `json:"food_upkeep"`
-	NetFoodFlow        float64          `json:"net_food_flow"`
-	Starving           bool             `json:"starving"`
-	StartX             int32            `json:"start_x"`
-	StartY             int32            `json:"start_y"`
-	Size               int32            `json:"size"`
-	CreatedAt          pgtype.Timestamp `json:"created_at"`
-	UpdatedAt          pgtype.Timestamp `json:"updated_at"`
+	CityID        string           `json:"city_id"`
+	Type          string           `json:"type"`
+	Owner         *string          `json:"owner"`
+	Name          string           `json:"name"`
+	Population    float64          `json:"population"`
+	PopulationCap float64          `json:"population_cap"`
+	StartX        int32            `json:"start_x"`
+	StartY        int32            `json:"start_y"`
+	Size          int32            `json:"size"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error) {
@@ -294,10 +270,6 @@ func (q *Queries) GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error) {
 			&i.Name,
 			&i.Population,
 			&i.PopulationCap,
-			&i.FoodProductionRate,
-			&i.FoodUpkeep,
-			&i.NetFoodFlow,
-			&i.Starving,
 			&i.StartX,
 			&i.StartY,
 			&i.Size,
@@ -322,10 +294,6 @@ SELECT
     name,
     population,
     population_cap,
-    food_production_rate,
-    food_upkeep,
-    net_food_flow,
-    starving,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -336,21 +304,17 @@ WHERE owner = $1
 `
 
 type GetCitiesByOwnerRow struct {
-	CityID             string           `json:"city_id"`
-	Type               string           `json:"type"`
-	Owner              *string          `json:"owner"`
-	Name               string           `json:"name"`
-	Population         float64          `json:"population"`
-	PopulationCap      float64          `json:"population_cap"`
-	FoodProductionRate float64          `json:"food_production_rate"`
-	FoodUpkeep         float64          `json:"food_upkeep"`
-	NetFoodFlow        float64          `json:"net_food_flow"`
-	Starving           bool             `json:"starving"`
-	StartX             int32            `json:"start_x"`
-	StartY             int32            `json:"start_y"`
-	Size               int32            `json:"size"`
-	CreatedAt          pgtype.Timestamp `json:"created_at"`
-	UpdatedAt          pgtype.Timestamp `json:"updated_at"`
+	CityID        string           `json:"city_id"`
+	Type          string           `json:"type"`
+	Owner         *string          `json:"owner"`
+	Name          string           `json:"name"`
+	Population    float64          `json:"population"`
+	PopulationCap float64          `json:"population_cap"`
+	StartX        int32            `json:"start_x"`
+	StartY        int32            `json:"start_y"`
+	Size          int32            `json:"size"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error) {
@@ -369,10 +333,6 @@ func (q *Queries) GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCit
 			&i.Name,
 			&i.Population,
 			&i.PopulationCap,
-			&i.FoodProductionRate,
-			&i.FoodUpkeep,
-			&i.NetFoodFlow,
-			&i.Starving,
 			&i.StartX,
 			&i.StartY,
 			&i.Size,

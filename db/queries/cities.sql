@@ -6,10 +6,6 @@ SELECT
     name,
     population,
     population_cap,
-    food_production_rate,
-    food_upkeep,
-    net_food_flow,
-    starving,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -117,10 +113,6 @@ SELECT
     name,
     population,
     population_cap,
-    food_production_rate,
-    food_upkeep,
-    net_food_flow,
-    starving,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -132,32 +124,24 @@ WHERE owner = $1;
 -- name: BatchUpdateCities :exec
 UPDATE cities AS c
 SET
-    type                 = v.type,
-    owner                = NULLIF(v.owner, ''),
-    name                 = v.name,
-    population           = v.population,
-    population_cap       = v.population_cap,
-    food_production_rate = v.food_production_rate,
-    food_upkeep          = v.food_upkeep,
-    net_food_flow        = v.net_food_flow,
-    starving             = v.starving,
-    start_coords         = ROW(v.start_x, v.start_y)::coordinates,
-    size                 = v.size,
-    updated_at           = NOW()
+    type            = v.type,
+    owner           = NULLIF(v.owner, ''),
+    name            = v.name,
+    population      = v.population,
+    population_cap  = v.population_cap,
+    start_coords    = ROW(v.start_x, v.start_y)::coordinates,
+    size            = v.size,
+    updated_at      = NOW()
 FROM (
     SELECT
-        UNNEST(sqlc.arg(city_ids)::text[])                AS city_id,
-        UNNEST(sqlc.arg(types)::text[])                   AS type,
-        UNNEST(sqlc.arg(owners)::text[])                  AS owner,
-        UNNEST(sqlc.arg(names)::text[])                   AS name,
-        UNNEST(sqlc.arg(populations)::float8[])           AS population,
-        UNNEST(sqlc.arg(population_caps)::float8[])       AS population_cap,
-        UNNEST(sqlc.arg(food_production_rates)::float8[]) AS food_production_rate,
-        UNNEST(sqlc.arg(food_upkeeps)::float8[])          AS food_upkeep,
-        UNNEST(sqlc.arg(net_food_flows)::float8[])        AS net_food_flow,
-        UNNEST(sqlc.arg(starvings)::bool[])               AS starving,
-        UNNEST(sqlc.arg(start_xs)::int[])                 AS start_x,
-        UNNEST(sqlc.arg(start_ys)::int[])                 AS start_y,
-        UNNEST(sqlc.arg(sizes)::int[])                    AS size
+        UNNEST(sqlc.arg(city_ids)::text[])         AS city_id,
+        UNNEST(sqlc.arg(types)::text[])            AS type,
+        UNNEST(sqlc.arg(owners)::text[])           AS owner,
+        UNNEST(sqlc.arg(names)::text[])            AS name,
+        UNNEST(sqlc.arg(populations)::float8[])    AS population,
+        UNNEST(sqlc.arg(population_caps)::float8[]) AS population_cap,
+        UNNEST(sqlc.arg(start_xs)::int[])          AS start_x,
+        UNNEST(sqlc.arg(start_ys)::int[])          AS start_y,
+        UNNEST(sqlc.arg(sizes)::int[])             AS size
 ) AS v
 WHERE c.city_id = v.city_id;
