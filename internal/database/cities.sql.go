@@ -18,7 +18,6 @@ INSERT INTO cities (
     owner,
     name,
     population,
-    population_cap,
     start_coords,
     size
 )
@@ -28,7 +27,6 @@ SELECT
     NULLIF(v.owner, ''),
     v.name,
     v.population,
-    v.population_cap,
     ROW(v.start_x, v.start_y)::coordinates,
     v.size
 FROM (
@@ -38,23 +36,21 @@ FROM (
         UNNEST($3::text[])             AS owner,
         UNNEST($4::text[])              AS name,
         UNNEST($5::float8[])      AS population,
-        UNNEST($6::float8[])  AS population_cap,
-        UNNEST($7::int[])            AS start_x,
-        UNNEST($8::int[])            AS start_y,
-        UNNEST($9::int[])               AS size
+        UNNEST($6::int[])            AS start_x,
+        UNNEST($7::int[])            AS start_y,
+        UNNEST($8::int[])               AS size
 ) AS v
 `
 
 type BatchCreateCitiesParams struct {
-	CityIds        []string  `json:"city_ids"`
-	Types          []string  `json:"types"`
-	Owners         []string  `json:"owners"`
-	Names          []string  `json:"names"`
-	Populations    []float64 `json:"populations"`
-	PopulationCaps []float64 `json:"population_caps"`
-	StartXs        []int32   `json:"start_xs"`
-	StartYs        []int32   `json:"start_ys"`
-	Sizes          []int32   `json:"sizes"`
+	CityIds     []string  `json:"city_ids"`
+	Types       []string  `json:"types"`
+	Owners      []string  `json:"owners"`
+	Names       []string  `json:"names"`
+	Populations []float64 `json:"populations"`
+	StartXs     []int32   `json:"start_xs"`
+	StartYs     []int32   `json:"start_ys"`
+	Sizes       []int32   `json:"sizes"`
 }
 
 func (q *Queries) BatchCreateCities(ctx context.Context, arg BatchCreateCitiesParams) error {
@@ -64,7 +60,6 @@ func (q *Queries) BatchCreateCities(ctx context.Context, arg BatchCreateCitiesPa
 		arg.Owners,
 		arg.Names,
 		arg.Populations,
-		arg.PopulationCaps,
 		arg.StartXs,
 		arg.StartYs,
 		arg.Sizes,
@@ -79,10 +74,8 @@ SET
     owner           = NULLIF(v.owner, ''),
     name            = v.name,
     population      = v.population,
-    population_cap  = v.population_cap,
     start_coords    = ROW(v.start_x, v.start_y)::coordinates,
-    size            = v.size,
-    updated_at      = NOW()
+    size            = v.size
 FROM (
     SELECT
         UNNEST($1::text[])         AS city_id,
@@ -90,24 +83,22 @@ FROM (
         UNNEST($3::text[])           AS owner,
         UNNEST($4::text[])            AS name,
         UNNEST($5::float8[])    AS population,
-        UNNEST($6::float8[]) AS population_cap,
-        UNNEST($7::int[])          AS start_x,
-        UNNEST($8::int[])          AS start_y,
-        UNNEST($9::int[])             AS size
+        UNNEST($6::int[])          AS start_x,
+        UNNEST($7::int[])          AS start_y,
+        UNNEST($8::int[])             AS size
 ) AS v
 WHERE c.city_id = v.city_id
 `
 
 type BatchUpdateCitiesParams struct {
-	CityIds        []string  `json:"city_ids"`
-	Types          []string  `json:"types"`
-	Owners         []string  `json:"owners"`
-	Names          []string  `json:"names"`
-	Populations    []float64 `json:"populations"`
-	PopulationCaps []float64 `json:"population_caps"`
-	StartXs        []int32   `json:"start_xs"`
-	StartYs        []int32   `json:"start_ys"`
-	Sizes          []int32   `json:"sizes"`
+	CityIds     []string  `json:"city_ids"`
+	Types       []string  `json:"types"`
+	Owners      []string  `json:"owners"`
+	Names       []string  `json:"names"`
+	Populations []float64 `json:"populations"`
+	StartXs     []int32   `json:"start_xs"`
+	StartYs     []int32   `json:"start_ys"`
+	Sizes       []int32   `json:"sizes"`
 }
 
 func (q *Queries) BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesParams) error {
@@ -117,7 +108,6 @@ func (q *Queries) BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesPa
 		arg.Owners,
 		arg.Names,
 		arg.Populations,
-		arg.PopulationCaps,
 		arg.StartXs,
 		arg.StartYs,
 		arg.Sizes,
@@ -132,7 +122,6 @@ INSERT INTO cities (
     owner,
     name,
     population,
-    population_cap,
     start_coords,
     size
 )
@@ -142,22 +131,20 @@ VALUES (
     $3,
     $4,
     $5,
-    $6,
-    ROW($7::int4, $8::int4)::coordinates,
-    $9
+    ROW($6::int4, $7::int4)::coordinates,
+    $8
 )
 `
 
 type CreateCityParams struct {
-	CityID        string  `json:"city_id"`
-	Type          string  `json:"type"`
-	Owner         *string `json:"owner"`
-	Name          string  `json:"name"`
-	Population    float64 `json:"population"`
-	PopulationCap float64 `json:"population_cap"`
-	StartX        int32   `json:"start_x"`
-	StartY        int32   `json:"start_y"`
-	Size          int32   `json:"size"`
+	CityID     string  `json:"city_id"`
+	Type       string  `json:"type"`
+	Owner      *string `json:"owner"`
+	Name       string  `json:"name"`
+	Population float64 `json:"population"`
+	StartX     int32   `json:"start_x"`
+	StartY     int32   `json:"start_y"`
+	Size       int32   `json:"size"`
 }
 
 func (q *Queries) CreateCity(ctx context.Context, arg CreateCityParams) error {
@@ -167,7 +154,6 @@ func (q *Queries) CreateCity(ctx context.Context, arg CreateCityParams) error {
 		arg.Owner,
 		arg.Name,
 		arg.Population,
-		arg.PopulationCap,
 		arg.StartX,
 		arg.StartY,
 		arg.Size,
@@ -231,7 +217,6 @@ SELECT
     owner,
     name,
     population,
-    population_cap,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -241,17 +226,16 @@ FROM cities
 `
 
 type GetAllCitiesRow struct {
-	CityID        string           `json:"city_id"`
-	Type          string           `json:"type"`
-	Owner         *string          `json:"owner"`
-	Name          string           `json:"name"`
-	Population    float64          `json:"population"`
-	PopulationCap float64          `json:"population_cap"`
-	StartX        int32            `json:"start_x"`
-	StartY        int32            `json:"start_y"`
-	Size          int32            `json:"size"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	CityID     string           `json:"city_id"`
+	Type       string           `json:"type"`
+	Owner      *string          `json:"owner"`
+	Name       string           `json:"name"`
+	Population float64          `json:"population"`
+	StartX     int32            `json:"start_x"`
+	StartY     int32            `json:"start_y"`
+	Size       int32            `json:"size"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error) {
@@ -269,7 +253,6 @@ func (q *Queries) GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error) {
 			&i.Owner,
 			&i.Name,
 			&i.Population,
-			&i.PopulationCap,
 			&i.StartX,
 			&i.StartY,
 			&i.Size,
@@ -293,7 +276,6 @@ SELECT
     owner,
     name,
     population,
-    population_cap,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -304,17 +286,16 @@ WHERE owner = $1
 `
 
 type GetCitiesByOwnerRow struct {
-	CityID        string           `json:"city_id"`
-	Type          string           `json:"type"`
-	Owner         *string          `json:"owner"`
-	Name          string           `json:"name"`
-	Population    float64          `json:"population"`
-	PopulationCap float64          `json:"population_cap"`
-	StartX        int32            `json:"start_x"`
-	StartY        int32            `json:"start_y"`
-	Size          int32            `json:"size"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp `json:"updated_at"`
+	CityID     string           `json:"city_id"`
+	Type       string           `json:"type"`
+	Owner      *string          `json:"owner"`
+	Name       string           `json:"name"`
+	Population float64          `json:"population"`
+	StartX     int32            `json:"start_x"`
+	StartY     int32            `json:"start_y"`
+	Size       int32            `json:"size"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error) {
@@ -332,7 +313,6 @@ func (q *Queries) GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCit
 			&i.Owner,
 			&i.Name,
 			&i.Population,
-			&i.PopulationCap,
 			&i.StartX,
 			&i.StartY,
 			&i.Size,
@@ -356,23 +336,21 @@ SET
     owner           = $2,
     name            = $3,
     population      = $4,
-    population_cap  = $5,
-    start_coords    = ROW($6::int4, $7::int4)::coordinates,
-    size            = $8,
+    start_coords    = ROW($5::int4, $6::int4)::coordinates,
+    size            = $7,
     updated_at      = NOW()
-WHERE city_id = $9
+WHERE city_id = $8
 `
 
 type UpdateCityParams struct {
-	Type          string  `json:"type"`
-	Owner         *string `json:"owner"`
-	Name          string  `json:"name"`
-	Population    float64 `json:"population"`
-	PopulationCap float64 `json:"population_cap"`
-	StartX        int32   `json:"start_x"`
-	StartY        int32   `json:"start_y"`
-	Size          int32   `json:"size"`
-	CityID        string  `json:"city_id"`
+	Type       string  `json:"type"`
+	Owner      *string `json:"owner"`
+	Name       string  `json:"name"`
+	Population float64 `json:"population"`
+	StartX     int32   `json:"start_x"`
+	StartY     int32   `json:"start_y"`
+	Size       int32   `json:"size"`
+	CityID     string  `json:"city_id"`
 }
 
 func (q *Queries) UpdateCity(ctx context.Context, arg UpdateCityParams) error {
@@ -381,7 +359,6 @@ func (q *Queries) UpdateCity(ctx context.Context, arg UpdateCityParams) error {
 		arg.Owner,
 		arg.Name,
 		arg.Population,
-		arg.PopulationCap,
 		arg.StartX,
 		arg.StartY,
 		arg.Size,

@@ -146,14 +146,13 @@ func reset(ctx context.Context, deps *Deps) error {
 
 		cityID := uuid.New().String()
 		err = db.CreateCity(ctx, database.CreateCityParams{
-			CityID:        cityID,
-			Type:          "capital",
-			Owner:         &user.UserID,
-			Name:          fmt.Sprintf("%s's City", user.Username),
-			Population:    constants.InitialPlayerCityPopulation,
-			PopulationCap: constants.InitialPlayerCityPopulation,
-			StartX:        int32(startX),
-			StartY:        int32(startY),
+			CityID:     cityID,
+			Type:       "capital",
+			Owner:      &user.UserID,
+			Name:       fmt.Sprintf("%s's City", user.Username),
+			Population: constants.InitialPlayerCityPopulation,
+			StartX:     int32(startX),
+			StartY:     int32(startY),
 		})
 		if err != nil {
 			slog.ErrorContext(ctx, "error creating city in db", "error", err)
@@ -166,7 +165,6 @@ func reset(ctx context.Context, deps *Deps) error {
 			CityID:            cityID,
 			Type:              string(domain.BuildingTypeCityCenter),
 			Level:             1,
-			TargetLevel:       1,
 			X:                 int32(startX + constants.CitySize/2),
 			Y:                 int32(startY + constants.CitySize/2),
 			ConstructionStart: pgtype.Timestamp{Valid: false},
@@ -258,15 +256,14 @@ func reset(ctx context.Context, deps *Deps) error {
 		chunk := cities[i:end]
 
 		params := database.BatchCreateCitiesParams{
-			CityIds:        make([]string, 0, len(chunk)),
-			Types:          make([]string, 0, len(chunk)),
-			Owners:         make([]string, 0, len(chunk)),
-			Names:          make([]string, 0, len(chunk)),
-			Populations:    make([]float64, 0, len(chunk)),
-			PopulationCaps: make([]float64, 0, len(chunk)),
-			StartXs:        make([]int32, 0, len(chunk)),
-			StartYs:        make([]int32, 0, len(chunk)),
-			Sizes:          make([]int32, 0, len(chunk)),
+			CityIds:     make([]string, 0, len(chunk)),
+			Types:       make([]string, 0, len(chunk)),
+			Owners:      make([]string, 0, len(chunk)),
+			Names:       make([]string, 0, len(chunk)),
+			Populations: make([]float64, 0, len(chunk)),
+			StartXs:     make([]int32, 0, len(chunk)),
+			StartYs:     make([]int32, 0, len(chunk)),
+			Sizes:       make([]int32, 0, len(chunk)),
 		}
 
 		for _, city := range chunk {
@@ -282,7 +279,6 @@ func reset(ctx context.Context, deps *Deps) error {
 
 			params.Names = append(params.Names, city.Name)
 			params.Populations = append(params.Populations, city.Population)
-			params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
 			params.StartXs = append(params.StartXs, int32(city.StartX))
 			params.StartYs = append(params.StartYs, int32(city.StartY))
 			params.Sizes = append(params.Sizes, int32(city.Size))
@@ -306,7 +302,6 @@ func reset(ctx context.Context, deps *Deps) error {
 			CityIds:            make([]string, 0, len(chunk)),
 			Types:              make([]string, 0, len(chunk)),
 			Levels:             make([]int32, 0, len(chunk)),
-			TargetLevels:       make([]int32, 0, len(chunk)),
 			Xs:                 make([]int32, 0, len(chunk)),
 			Ys:                 make([]int32, 0, len(chunk)),
 			ConstructionStarts: make([]pgtype.Timestamp, 0, len(chunk)),
@@ -318,7 +313,6 @@ func reset(ctx context.Context, deps *Deps) error {
 			params.CityIds = append(params.CityIds, b.CityID)
 			params.Types = append(params.Types, string(b.Type))
 			params.Levels = append(params.Levels, int32(b.Level))
-			params.TargetLevels = append(params.TargetLevels, int32(b.TargetLevel))
 			params.Xs = append(params.Xs, int32(b.X))
 			params.Ys = append(params.Ys, int32(b.Y))
 			params.ConstructionStarts = append(params.ConstructionStarts, database.ToPGTimestamp(b.ConstructionStart.Time))

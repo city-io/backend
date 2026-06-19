@@ -12,9 +12,8 @@ import (
 const batchUpdateUsers = `-- name: BatchUpdateUsers :exec
 UPDATE users AS u
 SET
-    gold        = v.gold,
-    food        = v.food,
-    updated_at  = NOW()
+    gold = v.gold,
+    food = v.food
 FROM (
     SELECT
         UNNEST($1::text[])  AS user_id,
