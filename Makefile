@@ -1,6 +1,6 @@
 include .env
 
-.PHONY: all build start generate db-start db-stop db-status
+.PHONY: all build start generate start-db stop-db status-db
 
 all:
 	go run cmd/*.go
@@ -14,11 +14,12 @@ start:
 generate:
 	sqlc generate
 
-db-start:
+start-db:
+	mkdir -p ~/.local/pg/cityio
 	pg_ctl -D ~/.local/pg/cityio -l ~/.local/pg/cityio.log -o "-p 5432 -k /tmp" -w start
 
-db-stop:
+stop-db:
 	pg_ctl -D ~/.local/pg/cityio -o "-p 5432 -k /tmp" stop
 
-db-status:
+status-db:
 	pg_ctl -D ~/.local/pg/cityio status
