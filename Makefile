@@ -15,7 +15,7 @@ generate:
 	sqlc generate
 
 start-db:
-	mkdir -p ~/.local/pg/cityio
+	@test -f ~/.local/pg/cityio/PG_VERSION || initdb -D ~/.local/pg/cityio -U cityio --auth=trust --encoding=UTF8
 	pg_ctl -D ~/.local/pg/cityio -l ~/.local/pg/cityio.log -o "-p 5432 -k /tmp" -w start
 
 stop-db:
