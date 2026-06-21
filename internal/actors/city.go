@@ -105,6 +105,10 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		if state.City.Owner != nil {
 			b := msg.Building
 			stream.Publish(*state.City.Owner, stream.StateUpdate{Building: &b})
+			// Push the city alongside so derived stats (cap, food rates) update
+			// without waiting for the next tick. The numbers are last-tick's
+			// snapshot — they fully refresh on the next periodic tick.
+			state.publishState()
 		}
 
 	case messages.BuildingDestroyedMessage:
@@ -116,6 +120,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.City.PopulationCap = cap
 		if state.City.Owner != nil {
 			stream.Publish(*state.City.Owner, stream.StateUpdate{DeletedBuildingID: &msg.BuildingID})
+			state.publishState()
 		}
 
 	case messages.SetBuildingPopulationMessage:
@@ -128,7 +133,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			cap += p
 		}
 		state.City.PopulationCap = cap
-		state.ws()
+		state.publishState()
 
 	case messages.CreditProductionMessage:
 		if state.City.Owner == nil {
@@ -189,7 +194,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 	case messages.PeriodicOperationMessage:
 		state.tickFoodAndPopulation()
 		state.Store.EnqueueCity(state.City)
-		state.ws()
+		state.publishState()
 	}
 }
 
@@ -298,7 +303,11 @@ func (state *cityActor) growPopulation(starving bool, shortfallRatio float64) {
 	state.City.Population = newPop
 }
 
-func (state *cityActor) ws() {
+// publishState pushes the city's current state to the owning player's
+// StreamState subscribers via the in-process pub/sub. Towns (no owner) skip
+// the push. Call after any change the player should see without waiting for
+// the next periodic tick — population cap shifts, building events, etc.
+func (state *cityActor) publishState() {
 	if state.City.Owner == nil {
 		return
 	}

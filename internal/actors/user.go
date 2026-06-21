@@ -59,14 +59,14 @@ func (state *userActor) Receive(ctx actor.Context) {
 	case messages.CreditUserMessage:
 		state.User.Gold += msg.Gold
 		state.User.Food += msg.Food
-		state.ws()
+		state.publishState()
 		ctx.Respond(messages.Ack{})
 
 	case messages.DepositFoodMessage:
 		if msg.Amount > 0 {
 			state.User.Food += msg.Amount
 			state.foodIncomeAccum += msg.Amount
-			state.ws()
+			state.publishState()
 		}
 
 	case messages.RequestFoodFromPoolMessage:
@@ -74,7 +74,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 		state.User.Food -= granted
 		state.foodUpkeepAccum += granted
 		if granted > 0 {
-			state.ws()
+			state.publishState()
 		}
 		// TODO: when players can own multiple cities, batch requests within a
 		// window and allocate by priority (capital first, then by population
@@ -89,7 +89,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 			return
 		}
 		state.User.Gold -= msg.Amount
-		state.ws()
+		state.publishState()
 		ctx.Respond(messages.Ack{})
 
 	case messages.GetUserMessage:
@@ -113,7 +113,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 		state.foodIncomeAccum = 0
 		state.foodUpkeepAccum = 0
 		state.Store.EnqueueUser(state.User)
-		state.ws()
+		state.publishState()
 	}
 }
 
@@ -141,7 +141,11 @@ func (state *userActor) stopPeriodicOperation() {
 	state.ticker = nil
 }
 
-func (state *userActor) ws() {
+// publishState pushes the user's current state to their StreamState
+// subscribers via the in-process pub/sub. Call after any change the player
+// should see without waiting for the next periodic tick — gold/food balance
+// shifts, deposit/withdrawal, etc.
+func (state *userActor) publishState() {
 	u := state.User
 	stream.Publish(state.User.UserID, stream.StateUpdate{User: &u})
 }
