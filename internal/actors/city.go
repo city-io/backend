@@ -75,6 +75,15 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			// produces ~33 food/tick. Towns don't need one (they're unowned).
 			if msg.City.Type == domain.CityTypeCity {
 				state.spawnInitialBuilding(domain.BuildingTypeFarm, msg.City.StartX+1, msg.City.StartY+1)
+				// Pre-credit one tick of farm food. The city's first tick can
+				// fire before the farm's own ticker has produced (both run on
+				// 3s cadences with a startup race), and without this seed the
+				// first tick would see production=0, mark the city starving,
+				// drain the pool, and dock 1–2 pop. Worst case the farm also
+				// credits before our first tick — the extra 10 food just
+				// deposits to the pool harmlessly.
+				farmPerHour := constants.GetBuildingProduction(domain.BuildingTypeFarm, 1, "food")
+				state.pendingFoodIncome += constants.PerTickAmount(farmPerHour, constants.BuildingTickInterval)
 			}
 		}
 		state.startPeriodicOperation(ctx)
