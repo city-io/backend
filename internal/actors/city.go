@@ -30,6 +30,15 @@ type cityActor struct {
 	// the user's pool.
 	pendingFoodIncome int64
 
+	// demandRemainder carries the sub-tick fractional part of the per-hour
+	// upkeep into the next tick. Per-hour upkeep × tickSeconds rarely divides
+	// cleanly into SecondsPerHour (because population is fractional), so
+	// without this remainder the truncated per-tick demand silently discards
+	// 0–1 food per tick — the pool would never drain at the displayed
+	// per-hour deficit rate. Carrying the remainder makes the long-run pool
+	// drain exactly match the displayed FoodUpkeep.
+	demandRemainder int64
+
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
@@ -225,7 +234,13 @@ func (state *cityActor) tickFoodAndPopulation() {
 
 	tickSecs := constants.CityTickInterval
 	upkeepPerHour := int64(math.Round(state.City.Population * float64(constants.FoodPerPopPerHour)))
-	demand := constants.PerTickAmount(upkeepPerHour, tickSecs)
+
+	// Carry the sub-tick remainder so the actual per-tick demand averages
+	// exactly to upkeepPerHour over time. See demandRemainder doc.
+	scaled := upkeepPerHour*int64(tickSecs) + state.demandRemainder
+	demand := scaled / int64(constants.SecondsPerHour)
+	state.demandRemainder = scaled % int64(constants.SecondsPerHour)
+
 	productionPerHour := production * int64(constants.SecondsPerHour) / int64(tickSecs)
 
 	state.City.FoodProductionRate = productionPerHour
