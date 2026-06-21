@@ -2,8 +2,10 @@ package rpc
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"cityio/internal/constants"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
@@ -16,11 +18,12 @@ type configHandler struct {
 
 func (h *configHandler) GetGameConfig(_ context.Context, _ *connect.Request[servicev1.GetGameConfigRequest]) (*connect.Response[servicev1.GetGameConfigResponse], error) {
 	return connect.NewResponse(&servicev1.GetGameConfigResponse{
-		MapSize:                     constants.MapSize,
-		CitySize:                    constants.CitySize,
-		VisionRadius:                constants.VisionRadius,
-		BuildingProductionFrequency: constants.BuildingProductionFrequency,
-		Buildings:                   buildBuildingConfigs(),
+		MapSize:      constants.MapSize,
+		CitySize:     constants.CitySize,
+		VisionRadius: constants.VisionRadius,
+		BuildingTick: durationpb.New(constants.BuildingTickInterval * time.Second),
+		CityTick:     durationpb.New(constants.CityTickInterval * time.Second),
+		Buildings:    buildBuildingConfigs(),
 	}), nil
 }
 
@@ -40,15 +43,15 @@ func buildBuildingConfigs() []*servicev1.BuildingConfig {
 				level.Cost = []*servicev1.ResourceAmount{{Resource: "gold", Amount: costs[i]}}
 			}
 			if times != nil {
-				level.ConstructionTime = times[i]
+				level.ConstructionTime = durationpb.New(time.Duration(times[i]) * time.Second)
 			}
 			if pops != nil {
 				level.Population = pops[i]
 			}
 			for _, entry := range prodEntries {
-				level.Production = append(level.Production, &servicev1.ResourceAmount{
+				level.Production = append(level.Production, &servicev1.ResourceRate{
 					Resource: entry.Resource,
-					Amount:   entry.Amounts[i],
+					Rate:     mapping.RatePerDay(entry.Amounts[i]),
 				})
 			}
 

@@ -4,17 +4,21 @@ import "cityio/internal/domain"
 
 const MAX_BUILDING_LEVEL = 10
 
-// BuildingProductionEntry pairs a resource name with per-level amounts.
+// BuildingProductionEntry pairs a resource name with per-level amounts. Amounts
+// are stored as integer values per SecondsPerDay (i.e. per day).
 type BuildingProductionEntry struct {
 	Resource string
 	Amounts  []int64
 }
 
+// All production values are per day. Chosen so per-tick math
+// (amount * tickSeconds / SecondsPerDay) is exact integer division for the
+// current 3s tick: each value is a multiple of 28800 = 86400/3.
 var buildingProduction = map[domain.BuildingType][]BuildingProductionEntry{
-	domain.BuildingTypeCityCenter: {{"gold", []int64{5, 10, 15, 20, 25, 30, 35, 40, 45, 50}}},
-	domain.BuildingTypeTownCenter: {{"gold", []int64{3, 6, 9, 12, 15, 18, 21, 24, 27, 30}}},
-	domain.BuildingTypeFarm:       {{"food", []int64{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}}},
-	domain.BuildingTypeMine:       {{"gold", []int64{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}}},
+	domain.BuildingTypeCityCenter: {{"gold", []int64{144000, 288000, 432000, 576000, 720000, 864000, 1008000, 1152000, 1296000, 1440000}}},
+	domain.BuildingTypeTownCenter: {{"gold", []int64{86400, 172800, 259200, 345600, 432000, 518400, 604800, 691200, 777600, 864000}}},
+	domain.BuildingTypeFarm:       {{"food", []int64{288000, 576000, 864000, 1152000, 1440000, 1728000, 2016000, 2304000, 2592000, 2880000}}},
+	domain.BuildingTypeMine:       {{"gold", []int64{288000, 576000, 864000, 1152000, 1440000, 1728000, 2016000, 2304000, 2592000, 2880000}}},
 }
 
 var buildingPopulation = map[domain.BuildingType][]float64{
@@ -42,12 +46,23 @@ var buildingConstructionTime = map[domain.BuildingType][]int64{
 	domain.BuildingTypeMine:       {5, 10, 15, 20, 25, 30, 35, 40, 45, 50},
 }
 
-func GetBuildingProduction(buildingType domain.BuildingType, level int) int64 {
-	entries := buildingProduction[buildingType]
-	if len(entries) == 0 {
-		return 0
+// GetBuildingProduction returns the per-day production rate for the given
+// resource at the given level. Returns 0 if the building does not produce that
+// resource.
+func GetBuildingProduction(buildingType domain.BuildingType, level int, resource string) int64 {
+	for _, entry := range buildingProduction[buildingType] {
+		if entry.Resource == resource {
+			return entry.Amounts[level-1]
+		}
 	}
-	return entries[0].Amounts[level-1]
+	return 0
+}
+
+// PerTickAmount converts a per-day rate to the amount emitted in one tick of
+// tickSeconds duration. Exact integer division for rates that are multiples of
+// SecondsPerDay / tickSeconds.
+func PerTickAmount(perDay int64, tickSeconds int) int64 {
+	return perDay * int64(tickSeconds) / SecondsPerDay
 }
 
 func GetBuildingProductionEntries(buildingType domain.BuildingType) []BuildingProductionEntry {

@@ -12,6 +12,6 @@ message User {
   int64 gold = 4;
   int64 food = 5;
 
-  double food_income_rate = 6;
-  double food_upkeep_rate = 7;
+  Rate food_income = 6;
+  Rate food_upkeep = 7;
 }

@@ -53,29 +53,20 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			if err := state.Store.CreateCity(state.Ctx(), msg.City); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist city create", "city_id", msg.City.CityID, "error", err)
 			}
-			buildingID := uuid.New().String()
-			buildingType := domain.BuildingTypeCityCenter
+			centerType := domain.BuildingTypeCityCenter
 			if msg.City.Type == domain.CityTypeTown {
-				buildingType = domain.BuildingTypeTownCenter
+				centerType = domain.BuildingTypeTownCenter
 			}
-			buildingX := msg.City.StartX + msg.City.Size/2
-			buildingY := msg.City.StartY + msg.City.Size/2
-			building := domain.Building{
-				BuildingID:        buildingID,
-				CityID:            msg.City.CityID,
-				Type:              string(buildingType),
-				Level:             1,
-				TargetLevel:       1,
-				X:                 buildingX,
-				Y:                 buildingY,
-				ConstructionStart: domain.NullTime{Time: nil},
-				ConstructionEnd:   domain.NullTime{Time: nil},
+			centerX := msg.City.StartX + msg.City.Size/2
+			centerY := msg.City.StartY + msg.City.Size/2
+			state.spawnInitialBuilding(centerType, centerX, centerY)
+
+			// Player capitals ship with one farm so they're self-sustaining at the
+			// initial population: pop=250 demands ~33 food/tick, one L1 farm
+			// produces ~33 food/tick. Towns don't need one (they're unowned).
+			if msg.City.Type == domain.CityTypeCity {
+				state.spawnInitialBuilding(domain.BuildingTypeFarm, msg.City.StartX+1, msg.City.StartY+1)
 			}
-			state.Cluster.Request("building", buildingID, &messages.CreateBuildingMessage{
-				Building:  building,
-				Restore:   false,
-				Construct: false,
-			})
 		}
 		state.startPeriodicOperation(ctx)
 
@@ -193,13 +184,33 @@ func (state *cityActor) Receive(ctx actor.Context) {
 	}
 }
 
+// spawnInitialBuilding kicks off a fully-built level-1 building inside the
+// city block. Used during city creation for the center and (for capitals) the
+// starter farm.
+func (state *cityActor) spawnInitialBuilding(buildingType domain.BuildingType, x, y int) {
+	id := uuid.New().String()
+	state.Cluster.Request("building", id, &messages.CreateBuildingMessage{
+		Building: domain.Building{
+			BuildingID:        id,
+			CityID:            state.City.CityID,
+			Type:              string(buildingType),
+			Level:             1,
+			TargetLevel:       1,
+			X:                 x,
+			Y:                 y,
+			ConstructionStart: domain.NullTime{Time: nil},
+			ConstructionEnd:   domain.NullTime{Time: nil},
+		},
+		Restore:   false,
+		Construct: false,
+	})
+}
+
 // tickFoodAndPopulation runs the per-tick food loop for the city: consume the
 // city's own production first, deposit any surplus to the user pool or request
 // the shortfall from it, then grow or decline the population based on whether
 // demand was met.
 func (state *cityActor) tickFoodAndPopulation() {
-	seconds := float64(constants.CityBackupFrequency)
-
 	if state.City.Owner == nil {
 		state.City.FoodProductionRate = 0
 		state.City.FoodUpkeep = 0
@@ -212,11 +223,14 @@ func (state *cityActor) tickFoodAndPopulation() {
 	production := state.pendingFoodIncome
 	state.pendingFoodIncome = 0
 
-	demand := int64(math.Round(state.City.Population * constants.FoodPerPopPerTick))
+	tickSecs := constants.CityTickInterval
+	upkeepPerDay := int64(math.Round(state.City.Population * float64(constants.FoodPerPopPerDay)))
+	demand := constants.PerTickAmount(upkeepPerDay, tickSecs)
+	productionPerDay := production * int64(constants.SecondsPerDay) / int64(tickSecs)
 
-	state.City.FoodProductionRate = float64(production) / seconds
-	state.City.FoodUpkeep = float64(demand) / seconds
-	state.City.NetFoodFlow = state.City.FoodProductionRate - state.City.FoodUpkeep
+	state.City.FoodProductionRate = productionPerDay
+	state.City.FoodUpkeep = upkeepPerDay
+	state.City.NetFoodFlow = productionPerDay - upkeepPerDay
 
 	starving := false
 	var shortfallRatio float64
@@ -277,9 +291,9 @@ func (state *cityActor) startPeriodicOperation(ctx actor.Context) {
 		// sleep for a random duration up to 10 seconds to attempt
 		// creating an even distribution of database writing
 		rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-		time.Sleep(time.Duration(rnd.Intn(constants.CityBackupFrequency)) * time.Second)
+		time.Sleep(time.Duration(rnd.Intn(constants.CityTickInterval)) * time.Second)
 
-		state.ticker = time.NewTicker(constants.CityBackupFrequency * time.Second)
+		state.ticker = time.NewTicker(constants.CityTickInterval * time.Second)
 		state.stopTickerCh = make(chan struct{})
 
 		for {

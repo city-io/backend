@@ -22,6 +22,7 @@ func (c *mineImpl) Handle(ctx actor.Context, state *buildingActor) {
 		if state.constructionActive() {
 			return
 		}
-		state.creditProduction(constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level), 0)
+		perDay := constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level, "gold")
+		state.creditProduction(constants.PerTickAmount(perDay, constants.BuildingTickInterval), 0)
 	}
 }

@@ -22,15 +22,15 @@ type City struct {
 	StartY        int      `json:"startY"`
 	Size          int      `json:"size"`
 
-	// FoodProductionRate is food per second this city's own farms produced in
-	// the last tick. FoodUpkeep is food per second this city's population
-	// consumed. NetFoodFlow = production - upkeep (positive = surplus exported
-	// to the user pool; negative = imported from it). Starving is true when
-	// the city could not cover its demand even after drawing from the pool.
-	FoodProductionRate float64 `json:"foodProductionRate"`
-	FoodUpkeep         float64 `json:"foodUpkeep"`
-	NetFoodFlow        float64 `json:"netFoodFlow"`
-	Starving           bool    `json:"starving"`
+	// FoodProductionRate is the food this city's own farms produce per day.
+	// FoodUpkeep is the food this city's population consumes per day. NetFoodFlow
+	// = production - upkeep (positive = surplus exported to the user pool;
+	// negative = imported from it). Starving is true when the city could not
+	// cover its demand even after drawing from the pool.
+	FoodProductionRate int64 `json:"foodProductionRate"`
+	FoodUpkeep         int64 `json:"foodUpkeep"`
+	NetFoodFlow        int64 `json:"netFoodFlow"`
+	Starving           bool  `json:"starving"`
 
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`

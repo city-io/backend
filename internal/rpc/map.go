@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"cityio/internal/auth"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
@@ -46,10 +47,20 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 		buildingIds = append(buildingIds, mapping.ToBuildingId(b.BuildingID))
 	}
 
+	bag := mapping.EntitiesToBag(nil, cityList, buildingList)
+	// Strip owner-only fields (production/upkeep rates) from any city the caller
+	// doesn't own. Population, cap, and starving stay public.
+	claims, _ := auth.ClaimsFromContext(ctx)
+	for _, c := range bag.GetCities() {
+		if c.GetOwner() == nil || c.GetOwner().GetValue() != claims.UserID {
+			mapping.HidePrivateCityFields(c)
+		}
+	}
+
 	return connect.NewResponse(&servicev1.GetMapResponse{
 		CityIds:     cityIds,
 		BuildingIds: buildingIds,
-		Entities:    mapping.EntitiesToBag(nil, cityList, buildingList),
+		Entities:    bag,
 	}), nil
 }
 
