@@ -33,6 +33,11 @@ type buildingActor struct {
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
+
+	// constructionTimer fires a PeriodicOperationMessage at the exact moment
+	// construction finishes, so completion is detected without waiting for the
+	// next BuildingTickInterval poll. See scheduleConstructionComplete.
+	constructionTimer *time.Timer
 }
 
 func NewBuildingActor() BaseActorInterface {
@@ -62,7 +67,6 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 				state.Building.TargetLevel = 1
 			}
 
-			// TODO: trigger construction complete message
 			if err := state.Store.CreateBuilding(state.Ctx(), state.Building); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist building create", "building_id", state.Building.BuildingID, "error", err)
 			}
@@ -93,6 +97,7 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			state.notifyStateChanged()
 		}
 		state.startPeriodicOperation(ctx)
+		state.scheduleConstructionComplete(ctx)
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpgradeBuildingMessage:
@@ -216,6 +221,7 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 
 	state.Store.EnqueueBuilding(state.Building)
 	state.notifyStateChanged()
+	state.scheduleConstructionComplete(ctx)
 	return nil
 }
 
@@ -278,6 +284,37 @@ func (state *buildingActor) reportPopulation(population float64) {
 	}
 }
 
+// scheduleConstructionComplete arms a one-shot timer that fires a
+// PeriodicOperationMessage at the exact moment this building's construction
+// finishes. The existing checkConstructionComplete handler then runs as it
+// would on any tick — no special-cased completion path.
+//
+// This is the canonical pattern for any actor state that flips at a known
+// future time: schedule a one-shot, let the regular handler do the work. The
+// per-tick poll on PeriodicOperationMessage is still the safety net (the check
+// is idempotent), so a missed or cancelled timer is at worst a tick-interval
+// of lag. Use this pattern for troop arrivals, training completion, timed
+// effects expiring, etc. — anything where polling would introduce visible
+// delay between the wall-clock event and the player seeing it.
+func (state *buildingActor) scheduleConstructionComplete(ctx actor.Context) {
+	if state.constructionTimer != nil {
+		state.constructionTimer.Stop()
+		state.constructionTimer = nil
+	}
+	if state.Building.ConstructionEnd.Time == nil {
+		return
+	}
+	delay := time.Until(*state.Building.ConstructionEnd.Time)
+	if delay <= 0 {
+		return
+	}
+	pid := ctx.Self()
+	system := ctx.ActorSystem()
+	state.constructionTimer = time.AfterFunc(delay, func() {
+		system.Root.Send(pid, messages.PeriodicOperationMessage{})
+	})
+}
+
 func (state *buildingActor) startPeriodicOperation(ctx actor.Context) {
 	state.ticker = time.NewTicker(constants.BuildingTickInterval * time.Second)
 	state.stopTickerCh = make(chan struct{})
@@ -298,6 +335,10 @@ func (state *buildingActor) startPeriodicOperation(ctx actor.Context) {
 }
 
 func (state *buildingActor) stopPeriodicOperation() {
+	if state.constructionTimer != nil {
+		state.constructionTimer.Stop()
+		state.constructionTimer = nil
+	}
 	select {
 	case <-state.stopTickerCh:
 	default:
