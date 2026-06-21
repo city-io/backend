@@ -279,7 +279,7 @@ func (state *buildingActor) reportPopulation(population float64) {
 }
 
 func (state *buildingActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(constants.BuildingProductionFrequency * time.Second)
+	state.ticker = time.NewTicker(constants.BuildingTickInterval * time.Second)
 	state.stopTickerCh = make(chan struct{})
 
 	pid := ctx.Self()

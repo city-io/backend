@@ -31,10 +31,10 @@ const (
 	TroopMovementBackupFrequency = 5 // number of tile movements before state saved to db
 
 	// in seconds
-	DBBackupFrequency           = 2  // frequency of database flushing buffer queue and writing to database
-	UserBackupFrequency         = 10 // frequency of user state being sent to update queue
-	CityBackupFrequency         = 3  // frequency of population growth event and city state being sent to update queue
-	BuildingProductionFrequency = 3  // frequency of building production
+	DBBackupFrequency    = 2  // frequency of database flushing buffer queue and writing to database
+	UserBackupFrequency  = 10 // frequency of user state being sent to update queue
+	CityTickInterval     = 3  // cadence of the city actor: food loop, population growth, stream push, backup enqueue
+	BuildingTickInterval = 3  // cadence of building actors: resource production, construction checks, tile reaffirm
 
 	ActorTimeoutDuration = 2 // timeout on actor response await
 

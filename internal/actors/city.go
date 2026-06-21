@@ -223,7 +223,7 @@ func (state *cityActor) tickFoodAndPopulation() {
 	production := state.pendingFoodIncome
 	state.pendingFoodIncome = 0
 
-	tickSecs := constants.CityBackupFrequency
+	tickSecs := constants.CityTickInterval
 	upkeepPerDay := int64(math.Round(state.City.Population * float64(constants.FoodPerPopPerDay)))
 	demand := constants.PerTickAmount(upkeepPerDay, tickSecs)
 	productionPerDay := production * int64(constants.SecondsPerDay) / int64(tickSecs)
@@ -291,9 +291,9 @@ func (state *cityActor) startPeriodicOperation(ctx actor.Context) {
 		// sleep for a random duration up to 10 seconds to attempt
 		// creating an even distribution of database writing
 		rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-		time.Sleep(time.Duration(rnd.Intn(constants.CityBackupFrequency)) * time.Second)
+		time.Sleep(time.Duration(rnd.Intn(constants.CityTickInterval)) * time.Second)
 
-		state.ticker = time.NewTicker(constants.CityBackupFrequency * time.Second)
+		state.ticker = time.NewTicker(constants.CityTickInterval * time.Second)
 		state.stopTickerCh = make(chan struct{})
 
 		for {

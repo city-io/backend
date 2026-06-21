@@ -21,8 +21,8 @@ func (h *configHandler) GetGameConfig(_ context.Context, _ *connect.Request[serv
 		MapSize:      constants.MapSize,
 		CitySize:     constants.CitySize,
 		VisionRadius: constants.VisionRadius,
-		BuildingTick: durationpb.New(constants.BuildingProductionFrequency * time.Second),
-		CityTick:     durationpb.New(constants.CityBackupFrequency * time.Second),
+		BuildingTick: durationpb.New(constants.BuildingTickInterval * time.Second),
+		CityTick:     durationpb.New(constants.CityTickInterval * time.Second),
 		Buildings:    buildBuildingConfigs(),
 	}), nil
 }
