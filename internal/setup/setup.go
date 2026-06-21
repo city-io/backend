@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"math/rand"
 	"time"
 
@@ -186,67 +187,73 @@ func reset(ctx context.Context, deps *Deps) error {
 	usedNames := make(map[string]bool)
 	cities := make([]domain.City, 0)
 	buildings := make([]domain.Building, 0)
-	for x := range constants.MapSize {
-		for y := range constants.MapSize {
-			size := 0
-			rng := r.Intn(1000)
-			if rng < 3 {
-				size = 5
-			} else if rng < 10 {
-				size = 4
-			} else if rng < 50 {
-				size = 3
-			} else if rng < 100 {
-				size = 2
-			}
+	for _, c := range poissonDiskPoints(r, constants.MapSize, townMinSpacing, poissonRetries) {
+		size := 0
+		rng := r.Intn(1000)
+		if rng < 30 {
+			size = 5
+		} else if rng < 100 {
+			size = 4
+		} else if rng < 500 {
+			size = 3
+		} else {
+			size = 2
+		}
 
-			if size > 0 && canPlace(occupied, x, y, size) {
-				cityID := uuid.New().String()
-				tc := constants.TownSizeConfig[size]
-				populationCap := constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, tc.CenterLevel) +
-					float64(tc.HouseCount)*constants.GetBuildingPopulation(domain.BuildingTypeHouse, 1)
+		// c is the candidate center; derive the top-left so the town wraps it.
+		x := c[0] - size/2
+		y := c[1] - size/2
+		if x < 0 || y < 0 || x+size > constants.MapSize || y+size > constants.MapSize {
+			continue
+		}
+		if !canPlace(occupied, x, y, size) {
+			continue
+		}
 
-				cities = append(cities, domain.City{
-					CityID:        cityID,
-					Type:          "town",
-					Owner:         nil,
-					Name:          townName(r, usedNames),
-					Population:    populationCap,
-					PopulationCap: populationCap,
-					StartX:        x,
-					StartY:        y,
-					Size:          size,
-				})
-				centerX, centerY := x+size/2, y+size/2
-				buildings = append(buildings, domain.Building{
-					BuildingID:        uuid.New().String(),
-					CityID:            cityID,
-					Type:              string(domain.BuildingTypeTownCenter),
-					Level:             tc.CenterLevel,
-					TargetLevel:       tc.CenterLevel,
-					X:                 centerX,
-					Y:                 centerY,
-					ConstructionStart: domain.NullTime{Time: nil},
-					ConstructionEnd:   domain.NullTime{Time: nil},
-				})
-				for _, pos := range randomPositions(r, x, y, size, centerX, centerY, tc.HouseCount) {
-					buildings = append(buildings, domain.Building{
-						BuildingID:        uuid.New().String(),
-						CityID:            cityID,
-						Type:              string(domain.BuildingTypeHouse),
-						Level:             1,
-						TargetLevel:       1,
-						X:                 pos[0],
-						Y:                 pos[1],
-						ConstructionStart: domain.NullTime{Time: nil},
-						ConstructionEnd:   domain.NullTime{Time: nil},
-					})
-				}
-				for i := 0; i < size; i++ {
-					for j := 0; j < size; j++ {
-						occupied[x+i][y+j] = true
-					}
-				}
+		cityID := uuid.New().String()
+		tc := constants.TownSizeConfig[size]
+		populationCap := constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, tc.CenterLevel) +
+			float64(tc.HouseCount)*constants.GetBuildingPopulation(domain.BuildingTypeHouse, 1)
+
+		cities = append(cities, domain.City{
+			CityID:        cityID,
+			Type:          "town",
+			Owner:         nil,
+			Name:          townName(r, usedNames),
+			Population:    populationCap,
+			PopulationCap: populationCap,
+			StartX:        x,
+			StartY:        y,
+			Size:          size,
+		})
+		centerX, centerY := x+size/2, y+size/2
+		buildings = append(buildings, domain.Building{
+			BuildingID:        uuid.New().String(),
+			CityID:            cityID,
+			Type:              string(domain.BuildingTypeTownCenter),
+			Level:             tc.CenterLevel,
+			TargetLevel:       tc.CenterLevel,
+			X:                 centerX,
+			Y:                 centerY,
+			ConstructionStart: domain.NullTime{Time: nil},
+			ConstructionEnd:   domain.NullTime{Time: nil},
+		})
+		for _, pos := range randomPositions(r, x, y, size, centerX, centerY, tc.HouseCount) {
+			buildings = append(buildings, domain.Building{
+				BuildingID:        uuid.New().String(),
+				CityID:            cityID,
+				Type:              string(domain.BuildingTypeHouse),
+				Level:             1,
+				TargetLevel:       1,
+				X:                 pos[0],
+				Y:                 pos[1],
+				ConstructionStart: domain.NullTime{Time: nil},
+				ConstructionEnd:   domain.NullTime{Time: nil},
+			})
+		}
+		for i := 0; i < size; i++ {
+			for j := 0; j < size; j++ {
+				occupied[x+i][y+j] = true
 			}
 		}
 	}
@@ -375,6 +382,94 @@ func randomPositions(r *rand.Rand, originX, originY, size, centerX, centerY, cou
 		candidates[i], candidates[j] = candidates[j], candidates[i]
 	})
 	return candidates[:count]
+}
+
+// Town placement uses Bridson's Poisson-disk sampling so candidate centers are
+// uniformly distributed across the map with a guaranteed minimum spacing,
+// rather than scanning row-major and clustering at the top-left edge.
+const (
+	// townMinSpacing is the Euclidean minimum distance between town centers.
+	// Smaller = denser map. Large enough to leave room for size-5 footprints
+	// (5×5 tiles + 1-tile gap) without canPlace rejecting too many candidates.
+	townMinSpacing = 5
+
+	// poissonRetries is k in Bridson's algorithm: how many candidate points
+	// to try around each active sample before retiring it. 30 is the standard
+	// value from the original paper.
+	poissonRetries = 30
+)
+
+// poissonDiskPoints returns coordinates inside an N×N grid where every pair is
+// at least minDist apart (Euclidean), distributed uniformly via Bridson's
+// Poisson-disk sampling. k is the per-sample candidate retry budget.
+func poissonDiskPoints(rng *rand.Rand, n, minDist, k int) [][2]int {
+	cellSize := float64(minDist) / math.Sqrt2
+	gridW := int(math.Ceil(float64(n) / cellSize))
+	grid := make([][]int, gridW)
+	for i := range grid {
+		grid[i] = make([]int, gridW)
+		for j := range grid[i] {
+			grid[i][j] = -1
+		}
+	}
+
+	minDistSq := minDist * minDist
+	var points [][2]int
+	add := func(p [2]int) int {
+		idx := len(points)
+		points = append(points, p)
+		gx := int(float64(p[0]) / cellSize)
+		gy := int(float64(p[1]) / cellSize)
+		grid[gx][gy] = idx
+		return idx
+	}
+
+	first := [2]int{rng.Intn(n), rng.Intn(n)}
+	active := []int{add(first)}
+
+	for len(active) > 0 {
+		ai := rng.Intn(len(active))
+		center := points[active[ai]]
+		placed := false
+		for try := 0; try < k; try++ {
+			angle := rng.Float64() * 2 * math.Pi
+			radius := float64(minDist) + rng.Float64()*float64(minDist)
+			cx := center[0] + int(math.Round(math.Cos(angle)*radius))
+			cy := center[1] + int(math.Round(math.Sin(angle)*radius))
+
+			if cx < 0 || cy < 0 || cx >= n || cy >= n {
+				continue
+			}
+
+			gx := int(float64(cx) / cellSize)
+			gy := int(float64(cy) / cellSize)
+			ok := true
+			for i := max(0, gx-2); i <= min(gridW-1, gx+2) && ok; i++ {
+				for j := max(0, gy-2); j <= min(gridW-1, gy+2) && ok; j++ {
+					if grid[i][j] == -1 {
+						continue
+					}
+					p := points[grid[i][j]]
+					dx := p[0] - cx
+					dy := p[1] - cy
+					if dx*dx+dy*dy < minDistSq {
+						ok = false
+					}
+				}
+			}
+
+			if ok {
+				active = append(active, add([2]int{cx, cy}))
+				placed = true
+				break
+			}
+		}
+		if !placed {
+			active = append(active[:ai], active[ai+1:]...)
+		}
+	}
+
+	return points
 }
 
 // canPlace reports whether a city of the given size can be placed at (x, y)
