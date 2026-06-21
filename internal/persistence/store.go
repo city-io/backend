@@ -160,14 +160,15 @@ func (s *Store) CreateUser(ctx context.Context, user domain.User) error {
 
 func (s *Store) CreateCity(ctx context.Context, city domain.City) error {
 	return s.db.CreateCity(ctx, database.CreateCityParams{
-		CityID:     city.CityID,
-		Type:       string(city.Type),
-		Owner:      city.Owner,
-		Name:       city.Name,
-		Population: city.Population,
-		StartX:     int32(city.StartX),
-		StartY:     int32(city.StartY),
-		Size:       int32(city.Size),
+		CityID:        city.CityID,
+		Type:          string(city.Type),
+		Owner:         city.Owner,
+		Name:          city.Name,
+		Population:    city.Population,
+		PopulationCap: city.PopulationCap,
+		StartX:        int32(city.StartX),
+		StartY:        int32(city.StartY),
+		Size:          int32(city.Size),
 	})
 }
 
@@ -250,14 +251,15 @@ func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) 
 		chunk := cities[i:end]
 
 		params := database.BatchUpdateCitiesParams{
-			CityIds:     make([]string, 0, len(chunk)),
-			Types:       make([]string, 0, len(chunk)),
-			Owners:      make([]string, 0, len(chunk)),
-			Names:       make([]string, 0, len(chunk)),
-			Populations: make([]float64, 0, len(chunk)),
-			StartXs:     make([]int32, 0, len(chunk)),
-			StartYs:     make([]int32, 0, len(chunk)),
-			Sizes:       make([]int32, 0, len(chunk)),
+			CityIds:        make([]string, 0, len(chunk)),
+			Types:          make([]string, 0, len(chunk)),
+			Owners:         make([]string, 0, len(chunk)),
+			Names:          make([]string, 0, len(chunk)),
+			Populations:    make([]float64, 0, len(chunk)),
+			PopulationCaps: make([]float64, 0, len(chunk)),
+			StartXs:        make([]int32, 0, len(chunk)),
+			StartYs:        make([]int32, 0, len(chunk)),
+			Sizes:          make([]int32, 0, len(chunk)),
 		}
 
 		for _, city := range chunk {
@@ -273,6 +275,7 @@ func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) 
 
 			params.Names = append(params.Names, city.Name)
 			params.Populations = append(params.Populations, city.Population)
+			params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
 			params.StartXs = append(params.StartXs, int32(city.StartX))
 			params.StartYs = append(params.StartYs, int32(city.StartY))
 			params.Sizes = append(params.Sizes, int32(city.Size))
