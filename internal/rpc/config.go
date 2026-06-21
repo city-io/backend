@@ -16,11 +16,12 @@ type configHandler struct {
 
 func (h *configHandler) GetGameConfig(_ context.Context, _ *connect.Request[servicev1.GetGameConfigRequest]) (*connect.Response[servicev1.GetGameConfigResponse], error) {
 	return connect.NewResponse(&servicev1.GetGameConfigResponse{
-		MapSize:                     constants.MapSize,
-		CitySize:                    constants.CitySize,
-		VisionRadius:                constants.VisionRadius,
-		BuildingProductionFrequency: constants.BuildingProductionFrequency,
-		Buildings:                   buildBuildingConfigs(),
+		MapSize:             constants.MapSize,
+		CitySize:            constants.CitySize,
+		VisionRadius:        constants.VisionRadius,
+		BuildingTickSeconds: constants.BuildingProductionFrequency,
+		CityTickSeconds:     constants.CityBackupFrequency,
+		Buildings:           buildBuildingConfigs(),
 	}), nil
 }
 
@@ -46,9 +47,9 @@ func buildBuildingConfigs() []*servicev1.BuildingConfig {
 				level.Population = pops[i]
 			}
 			for _, entry := range prodEntries {
-				level.Production = append(level.Production, &servicev1.ResourceAmount{
+				level.Production = append(level.Production, &servicev1.ResourceRate{
 					Resource: entry.Resource,
-					Amount:   entry.Amounts[i],
+					Rate:     mapping.RatePerDay(entry.Amounts[i]),
 				})
 			}
 

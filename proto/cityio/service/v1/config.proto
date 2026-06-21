@@ -4,16 +4,23 @@ package cityio.service.v1;
 
 import "cityio/entity/v1/common.proto";
 
+// ResourceAmount is a one-shot amount (e.g. a build cost).
 message ResourceAmount {
   string resource = 1;
   int64 amount = 2;
+}
+
+// ResourceRate is an ongoing flow (e.g. production per day).
+message ResourceRate {
+  string resource = 1;
+  cityio.entity.v1.Rate rate = 2;
 }
 
 message BuildingLevelStats {
   int32 level = 1;
   repeated ResourceAmount cost = 2;
   int64 construction_time = 3;
-  repeated ResourceAmount production = 4;
+  repeated ResourceRate production = 4;
   double population = 5;
 }
 
@@ -28,8 +35,9 @@ message GetGameConfigResponse {
   int32 map_size = 1;
   int32 city_size = 2;
   int32 vision_radius = 3;
-  int32 building_production_frequency = 4;
+  int32 building_tick_seconds = 4;
   repeated BuildingConfig buildings = 5;
+  int32 city_tick_seconds = 6;
 }
 
 service ConfigService {

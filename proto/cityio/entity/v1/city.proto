@@ -15,8 +15,8 @@ message City {
   Coordinates start = 7;
   int32 size = 8;
 
-  double food_production_rate = 9;
-  double food_upkeep = 10;
-  double net_food_flow = 11;
+  Rate food_production = 9;
+  Rate food_upkeep = 10;
+  Rate net_food_flow = 11;
   bool starving = 12;
 }

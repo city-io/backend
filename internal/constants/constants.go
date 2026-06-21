@@ -5,11 +5,19 @@ const (
 	MapSize  = 75 // generate a map of size MapSize x MapSize
 	CitySize = 5
 
-	PopulationGrowthRate = 0.001
+	// SecondsPerDay is the canonical period for all rate values: production,
+	// upkeep, etc. are stored, computed, and shipped as int64 amounts per this
+	// many seconds.
+	SecondsPerDay = 86400
 
-	// FoodPerPopPerTick is food consumed per population per CityBackupFrequency
-	// tick. Balanced so one L1 farm roughly sustains one L1 city center.
-	FoodPerPopPerTick = 0.13
+	// PopulationGrowthRate is applied to current population on every city tick.
+	// Retuned for a 3s tick so growth feels equivalent to the previous 10s
+	// cadence: 0.001 per 10s ≈ 0.0003 per 3s.
+	PopulationGrowthRate = 0.0003
+
+	// FoodPerPopPerDay is the per-population food upkeep per day. 250 pop × 1152
+	// = 288,000 food/day, exactly one L1 farm's output.
+	FoodPerPopPerDay int64 = 1152
 
 	// StarvationDeclineRate scales population loss per tick when a city is
 	// starving. Applied as pop *= (1 - rate * shortfall_ratio).
@@ -25,7 +33,7 @@ const (
 	// in seconds
 	DBBackupFrequency           = 2  // frequency of database flushing buffer queue and writing to database
 	UserBackupFrequency         = 10 // frequency of user state being sent to update queue
-	CityBackupFrequency         = 10 // frequency of population growth event and city state being sent to update queue
+	CityBackupFrequency         = 3  // frequency of population growth event and city state being sent to update queue
 	BuildingProductionFrequency = 3  // frequency of building production
 
 	ActorTimeoutDuration = 2 // timeout on actor response await

@@ -22,6 +22,7 @@ func (c *farmImpl) Handle(ctx actor.Context, state *buildingActor) {
 		if state.constructionActive() {
 			return
 		}
-		state.creditProduction(0, constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level))
+		perDay := constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level, "food")
+		state.creditProduction(0, constants.PerTickAmount(perDay, constants.BuildingProductionFrequency))
 	}
 }

@@ -26,6 +26,7 @@ func (c *townCenterImpl) Handle(ctx actor.Context, state *buildingActor) {
 			return
 		}
 		state.reportPopulation(constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, state.populationLevel()))
-		state.creditProduction(constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level), 0)
+		perDay := constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level, "gold")
+		state.creditProduction(constants.PerTickAmount(perDay, constants.BuildingProductionFrequency), 0)
 	}
 }

@@ -23,16 +23,16 @@ const (
 
 // User is a player account. The password is never exposed over the wire.
 type User struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	UserId         *UserId                `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Email          string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Username       string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	Gold           int64                  `protobuf:"varint,4,opt,name=gold,proto3" json:"gold,omitempty"`
-	Food           int64                  `protobuf:"varint,5,opt,name=food,proto3" json:"food,omitempty"`
-	FoodIncomeRate float64                `protobuf:"fixed64,6,opt,name=food_income_rate,json=foodIncomeRate,proto3" json:"food_income_rate,omitempty"`
-	FoodUpkeepRate float64                `protobuf:"fixed64,7,opt,name=food_upkeep_rate,json=foodUpkeepRate,proto3" json:"food_upkeep_rate,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        *UserId                `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	Gold          int64                  `protobuf:"varint,4,opt,name=gold,proto3" json:"gold,omitempty"`
+	Food          int64                  `protobuf:"varint,5,opt,name=food,proto3" json:"food,omitempty"`
+	FoodIncome    *Rate                  `protobuf:"bytes,6,opt,name=food_income,json=foodIncome,proto3" json:"food_income,omitempty"`
+	FoodUpkeep    *Rate                  `protobuf:"bytes,7,opt,name=food_upkeep,json=foodUpkeep,proto3" json:"food_upkeep,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -100,33 +100,35 @@ func (x *User) GetFood() int64 {
 	return 0
 }
 
-func (x *User) GetFoodIncomeRate() float64 {
+func (x *User) GetFoodIncome() *Rate {
 	if x != nil {
-		return x.FoodIncomeRate
+		return x.FoodIncome
 	}
-	return 0
+	return nil
 }
 
-func (x *User) GetFoodUpkeepRate() float64 {
+func (x *User) GetFoodUpkeep() *Rate {
 	if x != nil {
-		return x.FoodUpkeepRate
+		return x.FoodUpkeep
 	}
-	return 0
+	return nil
 }
 
 var File_cityio_entity_v1_user_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/user.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\xe7\x01\n" +
+	"\x1bcityio/entity/v1/user.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\x85\x02\n" +
 	"\x04User\x121\n" +
 	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12\x12\n" +
 	"\x04gold\x18\x04 \x01(\x03R\x04gold\x12\x12\n" +
-	"\x04food\x18\x05 \x01(\x03R\x04food\x12(\n" +
-	"\x10food_income_rate\x18\x06 \x01(\x01R\x0efoodIncomeRate\x12(\n" +
-	"\x10food_upkeep_rate\x18\a \x01(\x01R\x0efoodUpkeepRateB\xb2\x01\n" +
+	"\x04food\x18\x05 \x01(\x03R\x04food\x127\n" +
+	"\vfood_income\x18\x06 \x01(\v2\x16.cityio.entity.v1.RateR\n" +
+	"foodIncome\x127\n" +
+	"\vfood_upkeep\x18\a \x01(\v2\x16.cityio.entity.v1.RateR\n" +
+	"foodUpkeepB\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tUserProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -145,14 +147,17 @@ var file_cityio_entity_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_cityio_entity_v1_user_proto_goTypes = []any{
 	(*User)(nil),   // 0: cityio.entity.v1.User
 	(*UserId)(nil), // 1: cityio.entity.v1.UserId
+	(*Rate)(nil),   // 2: cityio.entity.v1.Rate
 }
 var file_cityio_entity_v1_user_proto_depIdxs = []int32{
 	1, // 0: cityio.entity.v1.User.user_id:type_name -> cityio.entity.v1.UserId
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: cityio.entity.v1.User.food_income:type_name -> cityio.entity.v1.Rate
+	2, // 2: cityio.entity.v1.User.food_upkeep:type_name -> cityio.entity.v1.Rate
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_user_proto_init() }

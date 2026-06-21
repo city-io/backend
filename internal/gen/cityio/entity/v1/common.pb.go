@@ -318,6 +318,61 @@ func (x *Coordinates) GetY() int32 {
 	return 0
 }
 
+// Rate expresses a value-per-time as an integer "value" and a "scale" in
+// seconds. value / scale is the rate per second. For resource flows scale is
+// typically 86400 (per day).
+type Rate struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         int64                  `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
+	Scale         int32                  `protobuf:"varint,2,opt,name=scale,proto3" json:"scale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Rate) Reset() {
+	*x = Rate{}
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Rate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Rate) ProtoMessage() {}
+
+func (x *Rate) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Rate.ProtoReflect.Descriptor instead.
+func (*Rate) Descriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Rate) GetValue() int64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *Rate) GetScale() int32 {
+	if x != nil {
+		return x.Scale
+	}
+	return 0
+}
+
 var File_cityio_entity_v1_common_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_common_proto_rawDesc = "" +
@@ -332,7 +387,10 @@ const file_cityio_entity_v1_common_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\tR\x05value\")\n" +
 	"\vCoordinates\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
-	"\x01y\x18\x02 \x01(\x05R\x01y*M\n" +
+	"\x01y\x18\x02 \x01(\x05R\x01y\"2\n" +
+	"\x04Rate\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\x03R\x05value\x12\x14\n" +
+	"\x05scale\x18\x02 \x01(\x05R\x05scale*M\n" +
 	"\bCityType\x12\x19\n" +
 	"\x15CITY_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eCITY_TYPE_CITY\x10\x01\x12\x12\n" +
@@ -360,7 +418,7 @@ func file_cityio_entity_v1_common_proto_rawDescGZIP() []byte {
 }
 
 var file_cityio_entity_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_cityio_entity_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_cityio_entity_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_cityio_entity_v1_common_proto_goTypes = []any{
 	(CityType)(0),       // 0: cityio.entity.v1.CityType
 	(BuildingType)(0),   // 1: cityio.entity.v1.BuildingType
@@ -368,6 +426,7 @@ var file_cityio_entity_v1_common_proto_goTypes = []any{
 	(*CityId)(nil),      // 3: cityio.entity.v1.CityId
 	(*BuildingId)(nil),  // 4: cityio.entity.v1.BuildingId
 	(*Coordinates)(nil), // 5: cityio.entity.v1.Coordinates
+	(*Rate)(nil),        // 6: cityio.entity.v1.Rate
 }
 var file_cityio_entity_v1_common_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -388,7 +447,7 @@ func file_cityio_entity_v1_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_common_proto_rawDesc), len(file_cityio_entity_v1_common_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

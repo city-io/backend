@@ -107,9 +107,9 @@ func (state *userActor) Receive(ctx actor.Context) {
 		ctx.Stop(ctx.Self())
 
 	case messages.PeriodicOperationMessage:
-		seconds := float64(constants.UserBackupFrequency)
-		state.User.FoodIncomeRate = float64(state.foodIncomeAccum) / seconds
-		state.User.FoodUpkeepRate = float64(state.foodUpkeepAccum) / seconds
+		windowSecs := int64(constants.UserBackupFrequency)
+		state.User.FoodIncomeRate = state.foodIncomeAccum * int64(constants.SecondsPerDay) / windowSecs
+		state.User.FoodUpkeepRate = state.foodUpkeepAccum * int64(constants.SecondsPerDay) / windowSecs
 		state.foodIncomeAccum = 0
 		state.foodUpkeepAccum = 0
 		state.Store.EnqueueUser(state.User)
