@@ -11,17 +11,27 @@ const (
 	// and the same clean-tick property holds (3600 % 3 == 0).
 	SecondsPerHour = 3600
 
-	// PopulationGrowthRate is applied to current population on every city tick.
-	// Retuned for a 3s tick so growth feels equivalent to the previous 10s
-	// cadence: 0.001 per 10s ≈ 0.0003 per 3s.
-	PopulationGrowthRate = 0.0003
+	// PopulationGrowthRate is the base logistic growth rate per city tick, in
+	// the absence of any food surplus bonus. Slow on purpose so a food
+	// surplus is meaningfully felt — a city that only just covers its upkeep
+	// grows at this rate, and stacking extra farms speeds it up via
+	// SurplusGrowthBonus.
+	PopulationGrowthRate = 0.0002
+
+	// SurplusGrowthBonus is the maximum additional growth multiplier from a
+	// food surplus. The bonus saturates at 100% surplus (production = 2×
+	// demand): below that it scales linearly; above it stays capped. At full
+	// saturation growth runs at (1 + SurplusGrowthBonus)× the base rate.
+	SurplusGrowthBonus = 1.0
 
 	// FoodPerPopPerHour is the per-population food upkeep per hour. 250 pop ×
 	// 48 = 12,000 food/hour, exactly one L1 farm's output.
 	FoodPerPopPerHour int64 = 48
 
-	// StarvationDeclineRate scales population loss per tick when a city is
-	// starving. Applied as pop *= (1 - rate * shortfall_ratio).
+	// StarvationDeclineRate scales population loss per tick when a city's
+	// own production doesn't cover its demand. Applied as
+	// pop *= (1 - rate * deficitRatio). Pool coverage no longer prevents the
+	// decline — a city has to be locally self-sufficient to hold or grow.
 	StarvationDeclineRate = 0.005
 
 	InitialPlayerCityPopulation = 250

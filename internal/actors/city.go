@@ -222,15 +222,19 @@ func (state *cityActor) spawnInitialBuilding(buildingType domain.BuildingType, x
 
 // tickFoodAndPopulation runs the per-tick food loop for the city: consume the
 // city's own production first, deposit any surplus to the user pool or request
-// the shortfall from it, then grow or decline the population based on whether
-// demand was met.
+// the shortfall from it, then grow or decline the population.
+//
+// Growth/decline is decided by *local* production vs demand — the pool can no
+// longer rescue a deficit city's population. A city that imports its food
+// holds the pool drain but doesn't grow; if production covers demand the
+// surplus accelerates growth proportionally up to SurplusGrowthBonus.
 func (state *cityActor) tickFoodAndPopulation() {
 	if state.City.Owner == nil {
 		state.City.FoodProductionRate = 0
 		state.City.FoodUpkeep = 0
 		state.City.NetFoodFlow = 0
 		state.City.Starving = false
-		state.growPopulation(false, 0)
+		state.growPopulation(false, 0, 0)
 		return
 	}
 
@@ -252,40 +256,39 @@ func (state *cityActor) tickFoodAndPopulation() {
 	state.City.FoodUpkeep = upkeepPerHour
 	state.City.NetFoodFlow = productionPerHour - upkeepPerHour
 
-	starving := false
-	var shortfallRatio float64
-
-	switch {
-	case production >= demand:
+	if production >= demand {
+		// Local surplus: deposit, no starvation, scale growth by surplus.
 		if surplus := production - demand; surplus > 0 {
 			if err := state.Cluster.Tell("user", *state.City.Owner, messages.DepositFoodMessage{Amount: surplus}); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to deposit surplus food to pool", "error", err)
 			}
 		}
-	default:
-		shortfall := demand - production
-		res, err := state.Cluster.Request("user", *state.City.Owner, messages.RequestFoodFromPoolMessage{Amount: shortfall})
-		if err != nil {
-			slog.ErrorContext(state.Ctx(), "failed to request food from pool", "error", err)
-			starving = true
-			shortfallRatio = float64(shortfall) / float64(demand)
-		} else if resp, ok := res.(messages.RequestFoodFromPoolResponse); ok {
-			if resp.Granted < shortfall {
-				starving = true
-				shortfallRatio = float64(shortfall-resp.Granted) / float64(demand)
-			}
+		state.City.Starving = false
+		var surplusRatio float64
+		if demand > 0 {
+			surplusRatio = float64(production-demand) / float64(demand)
 		}
+		state.growPopulation(false, 0, surplusRatio)
+		return
 	}
 
-	state.City.Starving = starving
-	state.growPopulation(starving, shortfallRatio)
+	// Local deficit: still draw from the pool (so the user's food drains as the
+	// city imports), but the city is starving from its own perspective and its
+	// population declines regardless of whether the pool covered the shortfall.
+	shortfall := demand - production
+	if _, err := state.Cluster.Request("user", *state.City.Owner, messages.RequestFoodFromPoolMessage{Amount: shortfall}); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to request food from pool", "error", err)
+	}
+	state.City.Starving = true
+	deficitRatio := float64(shortfall) / float64(demand)
+	state.growPopulation(true, deficitRatio, 0)
 }
 
-// growPopulation applies logistic growth when fed, or a starvation-scaled
-// decline when not. Towns (no owner) pass starving=false and grow freely.
-// Records the per-tick delta as a per-hour rate on the city so clients can
-// render growth/decline without reverse-engineering the formulas.
-func (state *cityActor) growPopulation(starving bool, shortfallRatio float64) {
+// growPopulation moves the population for one tick: logistic growth scaled by
+// a food-surplus bonus when fed, or a decline scaled by the local deficit
+// ratio when not. Records the per-tick delta as a per-hour rate on the city
+// so clients can render the trend without reverse-engineering the formulas.
+func (state *cityActor) growPopulation(starving bool, deficitRatio, surplusRatio float64) {
 	currentPopulation := state.City.Population
 	populationCap := state.City.PopulationCap
 	if populationCap <= 0 {
@@ -294,9 +297,14 @@ func (state *cityActor) growPopulation(starving bool, shortfallRatio float64) {
 	}
 	var newPop float64
 	if starving {
-		newPop = currentPopulation * (1 - constants.StarvationDeclineRate*shortfallRatio)
+		newPop = currentPopulation * (1 - constants.StarvationDeclineRate*deficitRatio)
 	} else {
-		newPop = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)
+		// Surplus bonus saturates at 100% extra production (surplusRatio = 1.0).
+		// fedFactor goes from 1.0 (just covered) up to 1 + SurplusGrowthBonus
+		// at saturation; beyond that, more farms give no further speedup.
+		bonus := math.Min(surplusRatio, 1.0) * constants.SurplusGrowthBonus
+		fedFactor := 1.0 + bonus
+		newPop = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)*fedFactor
 	}
 	delta := newPop - currentPopulation
 	state.City.PopulationGrowthRate = int64(math.Round(delta * float64(constants.SecondsPerHour) / float64(constants.CityTickInterval)))
