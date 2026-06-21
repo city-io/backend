@@ -10,6 +10,7 @@ import (
 	v1 "cityio/internal/gen/cityio/entity/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -132,7 +133,7 @@ type BuildingLevelStats struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Level            int32                  `protobuf:"varint,1,opt,name=level,proto3" json:"level,omitempty"`
 	Cost             []*ResourceAmount      `protobuf:"bytes,2,rep,name=cost,proto3" json:"cost,omitempty"`
-	ConstructionTime int64                  `protobuf:"varint,3,opt,name=construction_time,json=constructionTime,proto3" json:"construction_time,omitempty"`
+	ConstructionTime *durationpb.Duration   `protobuf:"bytes,3,opt,name=construction_time,json=constructionTime,proto3" json:"construction_time,omitempty"`
 	Production       []*ResourceRate        `protobuf:"bytes,4,rep,name=production,proto3" json:"production,omitempty"`
 	Population       float64                `protobuf:"fixed64,5,opt,name=population,proto3" json:"population,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -183,11 +184,11 @@ func (x *BuildingLevelStats) GetCost() []*ResourceAmount {
 	return nil
 }
 
-func (x *BuildingLevelStats) GetConstructionTime() int64 {
+func (x *BuildingLevelStats) GetConstructionTime() *durationpb.Duration {
 	if x != nil {
 		return x.ConstructionTime
 	}
-	return 0
+	return nil
 }
 
 func (x *BuildingLevelStats) GetProduction() []*ResourceRate {
@@ -293,15 +294,15 @@ func (*GetGameConfigRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetGameConfigResponse struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	MapSize             int32                  `protobuf:"varint,1,opt,name=map_size,json=mapSize,proto3" json:"map_size,omitempty"`
-	CitySize            int32                  `protobuf:"varint,2,opt,name=city_size,json=citySize,proto3" json:"city_size,omitempty"`
-	VisionRadius        int32                  `protobuf:"varint,3,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
-	BuildingTickSeconds int32                  `protobuf:"varint,4,opt,name=building_tick_seconds,json=buildingTickSeconds,proto3" json:"building_tick_seconds,omitempty"`
-	Buildings           []*BuildingConfig      `protobuf:"bytes,5,rep,name=buildings,proto3" json:"buildings,omitempty"`
-	CityTickSeconds     int32                  `protobuf:"varint,6,opt,name=city_tick_seconds,json=cityTickSeconds,proto3" json:"city_tick_seconds,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MapSize       int32                  `protobuf:"varint,1,opt,name=map_size,json=mapSize,proto3" json:"map_size,omitempty"`
+	CitySize      int32                  `protobuf:"varint,2,opt,name=city_size,json=citySize,proto3" json:"city_size,omitempty"`
+	VisionRadius  int32                  `protobuf:"varint,3,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
+	BuildingTick  *durationpb.Duration   `protobuf:"bytes,4,opt,name=building_tick,json=buildingTick,proto3" json:"building_tick,omitempty"`
+	Buildings     []*BuildingConfig      `protobuf:"bytes,5,rep,name=buildings,proto3" json:"buildings,omitempty"`
+	CityTick      *durationpb.Duration   `protobuf:"bytes,6,opt,name=city_tick,json=cityTick,proto3" json:"city_tick,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetGameConfigResponse) Reset() {
@@ -355,11 +356,11 @@ func (x *GetGameConfigResponse) GetVisionRadius() int32 {
 	return 0
 }
 
-func (x *GetGameConfigResponse) GetBuildingTickSeconds() int32 {
+func (x *GetGameConfigResponse) GetBuildingTick() *durationpb.Duration {
 	if x != nil {
-		return x.BuildingTickSeconds
+		return x.BuildingTick
 	}
-	return 0
+	return nil
 }
 
 func (x *GetGameConfigResponse) GetBuildings() []*BuildingConfig {
@@ -369,28 +370,28 @@ func (x *GetGameConfigResponse) GetBuildings() []*BuildingConfig {
 	return nil
 }
 
-func (x *GetGameConfigResponse) GetCityTickSeconds() int32 {
+func (x *GetGameConfigResponse) GetCityTick() *durationpb.Duration {
 	if x != nil {
-		return x.CityTickSeconds
+		return x.CityTick
 	}
-	return 0
+	return nil
 }
 
 var File_cityio_service_v1_config_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1ecityio/service/v1/config.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\"D\n" +
+	"\x1ecityio/service/v1/config.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1egoogle/protobuf/duration.proto\"D\n" +
 	"\x0eResourceAmount\x12\x1a\n" +
 	"\bresource\x18\x01 \x01(\tR\bresource\x12\x16\n" +
 	"\x06amount\x18\x02 \x01(\x03R\x06amount\"V\n" +
 	"\fResourceRate\x12\x1a\n" +
 	"\bresource\x18\x01 \x01(\tR\bresource\x12*\n" +
-	"\x04rate\x18\x02 \x01(\v2\x16.cityio.entity.v1.RateR\x04rate\"\xef\x01\n" +
+	"\x04rate\x18\x02 \x01(\v2\x16.cityio.entity.v1.RateR\x04rate\"\x8a\x02\n" +
 	"\x12BuildingLevelStats\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x125\n" +
-	"\x04cost\x18\x02 \x03(\v2!.cityio.service.v1.ResourceAmountR\x04cost\x12+\n" +
-	"\x11construction_time\x18\x03 \x01(\x03R\x10constructionTime\x12?\n" +
+	"\x04cost\x18\x02 \x03(\v2!.cityio.service.v1.ResourceAmountR\x04cost\x12F\n" +
+	"\x11construction_time\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x10constructionTime\x12?\n" +
 	"\n" +
 	"production\x18\x04 \x03(\v2\x1f.cityio.service.v1.ResourceRateR\n" +
 	"production\x12\x1e\n" +
@@ -400,14 +401,14 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x0eBuildingConfig\x122\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x12=\n" +
 	"\x06levels\x18\x02 \x03(\v2%.cityio.service.v1.BuildingLevelStatsR\x06levels\"\x16\n" +
-	"\x14GetGameConfigRequest\"\x95\x02\n" +
+	"\x14GetGameConfigRequest\"\xad\x02\n" +
 	"\x15GetGameConfigResponse\x12\x19\n" +
 	"\bmap_size\x18\x01 \x01(\x05R\amapSize\x12\x1b\n" +
 	"\tcity_size\x18\x02 \x01(\x05R\bcitySize\x12#\n" +
-	"\rvision_radius\x18\x03 \x01(\x05R\fvisionRadius\x122\n" +
-	"\x15building_tick_seconds\x18\x04 \x01(\x05R\x13buildingTickSeconds\x12?\n" +
-	"\tbuildings\x18\x05 \x03(\v2!.cityio.service.v1.BuildingConfigR\tbuildings\x12*\n" +
-	"\x11city_tick_seconds\x18\x06 \x01(\x05R\x0fcityTickSeconds2s\n" +
+	"\rvision_radius\x18\x03 \x01(\x05R\fvisionRadius\x12>\n" +
+	"\rbuilding_tick\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\fbuildingTick\x12?\n" +
+	"\tbuildings\x18\x05 \x03(\v2!.cityio.service.v1.BuildingConfigR\tbuildings\x126\n" +
+	"\tcity_tick\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\bcityTick2s\n" +
 	"\rConfigService\x12b\n" +
 	"\rGetGameConfig\x12'.cityio.service.v1.GetGameConfigRequest\x1a(.cityio.service.v1.GetGameConfigResponseB\xbb\x01\n" +
 	"\x15com.cityio.service.v1B\vConfigProtoP\x01Z/cityio/internal/gen/cityio/service/v1;servicev1\xa2\x02\x03CSX\xaa\x02\x11Cityio.Service.V1\xca\x02\x11Cityio\\Service\\V1\xe2\x02\x1dCityio\\Service\\V1\\GPBMetadata\xea\x02\x13Cityio::Service::V1b\x06proto3"
@@ -433,22 +434,26 @@ var file_cityio_service_v1_config_proto_goTypes = []any{
 	(*GetGameConfigRequest)(nil),  // 4: cityio.service.v1.GetGameConfigRequest
 	(*GetGameConfigResponse)(nil), // 5: cityio.service.v1.GetGameConfigResponse
 	(*v1.Rate)(nil),               // 6: cityio.entity.v1.Rate
-	(v1.BuildingType)(0),          // 7: cityio.entity.v1.BuildingType
+	(*durationpb.Duration)(nil),   // 7: google.protobuf.Duration
+	(v1.BuildingType)(0),          // 8: cityio.entity.v1.BuildingType
 }
 var file_cityio_service_v1_config_proto_depIdxs = []int32{
-	6, // 0: cityio.service.v1.ResourceRate.rate:type_name -> cityio.entity.v1.Rate
-	0, // 1: cityio.service.v1.BuildingLevelStats.cost:type_name -> cityio.service.v1.ResourceAmount
-	1, // 2: cityio.service.v1.BuildingLevelStats.production:type_name -> cityio.service.v1.ResourceRate
-	7, // 3: cityio.service.v1.BuildingConfig.type:type_name -> cityio.entity.v1.BuildingType
-	2, // 4: cityio.service.v1.BuildingConfig.levels:type_name -> cityio.service.v1.BuildingLevelStats
-	3, // 5: cityio.service.v1.GetGameConfigResponse.buildings:type_name -> cityio.service.v1.BuildingConfig
-	4, // 6: cityio.service.v1.ConfigService.GetGameConfig:input_type -> cityio.service.v1.GetGameConfigRequest
-	5, // 7: cityio.service.v1.ConfigService.GetGameConfig:output_type -> cityio.service.v1.GetGameConfigResponse
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6,  // 0: cityio.service.v1.ResourceRate.rate:type_name -> cityio.entity.v1.Rate
+	0,  // 1: cityio.service.v1.BuildingLevelStats.cost:type_name -> cityio.service.v1.ResourceAmount
+	7,  // 2: cityio.service.v1.BuildingLevelStats.construction_time:type_name -> google.protobuf.Duration
+	1,  // 3: cityio.service.v1.BuildingLevelStats.production:type_name -> cityio.service.v1.ResourceRate
+	8,  // 4: cityio.service.v1.BuildingConfig.type:type_name -> cityio.entity.v1.BuildingType
+	2,  // 5: cityio.service.v1.BuildingConfig.levels:type_name -> cityio.service.v1.BuildingLevelStats
+	7,  // 6: cityio.service.v1.GetGameConfigResponse.building_tick:type_name -> google.protobuf.Duration
+	3,  // 7: cityio.service.v1.GetGameConfigResponse.buildings:type_name -> cityio.service.v1.BuildingConfig
+	7,  // 8: cityio.service.v1.GetGameConfigResponse.city_tick:type_name -> google.protobuf.Duration
+	4,  // 9: cityio.service.v1.ConfigService.GetGameConfig:input_type -> cityio.service.v1.GetGameConfigRequest
+	5,  // 10: cityio.service.v1.ConfigService.GetGameConfig:output_type -> cityio.service.v1.GetGameConfigResponse
+	10, // [10:11] is the sub-list for method output_type
+	9,  // [9:10] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_config_proto_init() }

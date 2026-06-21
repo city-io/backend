@@ -3,6 +3,7 @@ syntax = "proto3";
 package cityio.service.v1;
 
 import "cityio/entity/v1/common.proto";
+import "google/protobuf/duration.proto";
 
 // ResourceAmount is a one-shot amount (e.g. a build cost).
 message ResourceAmount {
@@ -19,7 +20,7 @@ message ResourceRate {
 message BuildingLevelStats {
   int32 level = 1;
   repeated ResourceAmount cost = 2;
-  int64 construction_time = 3;
+  google.protobuf.Duration construction_time = 3;
   repeated ResourceRate production = 4;
   double population = 5;
 }
@@ -35,9 +36,9 @@ message GetGameConfigResponse {
   int32 map_size = 1;
   int32 city_size = 2;
   int32 vision_radius = 3;
-  int32 building_tick_seconds = 4;
+  google.protobuf.Duration building_tick = 4;
   repeated BuildingConfig buildings = 5;
-  int32 city_tick_seconds = 6;
+  google.protobuf.Duration city_tick = 6;
 }
 
 service ConfigService {
