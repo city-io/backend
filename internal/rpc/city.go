@@ -38,7 +38,12 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[servicev
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
 
-	return connect.NewResponse(&servicev1.GetCityResponse{City: mapping.CityToProto(resp.City)}), nil
+	claims, _ := auth.ClaimsFromContext(ctx)
+	city := mapping.CityToProto(resp.City)
+	if resp.City.Owner == nil || *resp.City.Owner != claims.UserID {
+		mapping.HidePrivateCityFields(city)
+	}
+	return connect.NewResponse(&servicev1.GetCityResponse{City: city}), nil
 }
 
 func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[servicev1.CreateCityRequest]) (*connect.Response[servicev1.CreateCityResponse], error) {

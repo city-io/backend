@@ -115,6 +115,15 @@ func CityToProto(c domain.City) *entityv1.City {
 	return out
 }
 
+// HidePrivateCityFields blanks the production/upkeep rate fields on a city
+// proto. Use when the viewer is not the city's owner: only the owner gets to
+// see economic intel. Population and starving status stay visible.
+func HidePrivateCityFields(c *entityv1.City) {
+	c.FoodProduction = nil
+	c.FoodUpkeep = nil
+	c.NetFoodFlow = nil
+}
+
 // TileToProto builds a proto Tile from raw occupancy data.
 func TileToProto(cityID, buildingID *string, x, y int) *servicev1.Tile {
 	t := &servicev1.Tile{X: int32(x), Y: int32(y)}
