@@ -473,7 +473,10 @@ func poissonDiskPoints(rng *rand.Rand, n, minDist, k int) [][2]int {
 }
 
 // canPlace reports whether a city of the given size can be placed at (x, y)
-// with at least a 1-tile gap from all occupied cells.
+// with at least a 1-tile gap from all occupied cells and from the map boundary.
+// Off-map cells are treated as occupied so edge placements have the same gap
+// requirement as interior ones — otherwise canPlace is more permissive near
+// the borders and town density skews toward the edges.
 func canPlace(occupied [][]bool, x, y, size int) bool {
 	mapSize := len(occupied)
 	if x+size > mapSize || y+size > mapSize {
@@ -483,7 +486,7 @@ func canPlace(occupied [][]bool, x, y, size int) bool {
 		for j := -1; j <= size; j++ {
 			nx, ny := x+i, y+j
 			if nx < 0 || ny < 0 || nx >= mapSize || ny >= mapSize {
-				continue
+				return false
 			}
 			if occupied[nx][ny] {
 				return false
