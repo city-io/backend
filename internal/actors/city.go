@@ -224,13 +224,13 @@ func (state *cityActor) tickFoodAndPopulation() {
 	state.pendingFoodIncome = 0
 
 	tickSecs := constants.CityTickInterval
-	upkeepPerDay := int64(math.Round(state.City.Population * float64(constants.FoodPerPopPerDay)))
-	demand := constants.PerTickAmount(upkeepPerDay, tickSecs)
-	productionPerDay := production * int64(constants.SecondsPerDay) / int64(tickSecs)
+	upkeepPerHour := int64(math.Round(state.City.Population * float64(constants.FoodPerPopPerHour)))
+	demand := constants.PerTickAmount(upkeepPerHour, tickSecs)
+	productionPerHour := production * int64(constants.SecondsPerHour) / int64(tickSecs)
 
-	state.City.FoodProductionRate = productionPerDay
-	state.City.FoodUpkeep = upkeepPerDay
-	state.City.NetFoodFlow = productionPerDay - upkeepPerDay
+	state.City.FoodProductionRate = productionPerHour
+	state.City.FoodUpkeep = upkeepPerHour
+	state.City.NetFoodFlow = productionPerHour - upkeepPerHour
 
 	starving := false
 	var shortfallRatio float64

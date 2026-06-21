@@ -320,7 +320,7 @@ func (x *Coordinates) GetY() int32 {
 
 // Rate expresses a value-per-time as an integer "value" and a "scale" in
 // seconds. value / scale is the rate per second. For resource flows scale is
-// typically 86400 (per day).
+// typically 3600 (per hour).
 type Rate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Value         int64                  `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`

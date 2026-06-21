@@ -5,19 +5,20 @@ const (
 	MapSize  = 75 // generate a map of size MapSize x MapSize
 	CitySize = 5
 
-	// SecondsPerDay is the canonical period for all rate values: production,
+	// SecondsPerHour is the canonical period for all rate values: production,
 	// upkeep, etc. are stored, computed, and shipped as int64 amounts per this
-	// many seconds.
-	SecondsPerDay = 86400
+	// many seconds. Per-hour reads more naturally for players than per-day,
+	// and the same clean-tick property holds (3600 % 3 == 0).
+	SecondsPerHour = 3600
 
 	// PopulationGrowthRate is applied to current population on every city tick.
 	// Retuned for a 3s tick so growth feels equivalent to the previous 10s
 	// cadence: 0.001 per 10s ≈ 0.0003 per 3s.
 	PopulationGrowthRate = 0.0003
 
-	// FoodPerPopPerDay is the per-population food upkeep per day. 250 pop × 1152
-	// = 288,000 food/day, exactly one L1 farm's output.
-	FoodPerPopPerDay int64 = 1152
+	// FoodPerPopPerHour is the per-population food upkeep per hour. 250 pop ×
+	// 48 = 12,000 food/hour, exactly one L1 farm's output.
+	FoodPerPopPerHour int64 = 48
 
 	// StarvationDeclineRate scales population loss per tick when a city is
 	// starving. Applied as pop *= (1 - rate * shortfall_ratio).
@@ -25,8 +26,8 @@ const (
 
 	InitialPlayerCityPopulation = 250
 
-	InitialPlayerGold = 2000
-	InitialPlayerFood = 1000
+	InitialPlayerGold = 5000
+	InitialPlayerFood = 5000
 
 	TroopMovementBackupFrequency = 5 // number of tile movements before state saved to db
 

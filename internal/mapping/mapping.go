@@ -75,9 +75,9 @@ func BuildingTypeFromProto(t entityv1.BuildingType) domain.BuildingType {
 	return buildingTypeFromProto[t]
 }
 
-// RatePerDay wraps a per-day amount as a Rate proto with scale=86400.
-func RatePerDay(perDay int64) *entityv1.Rate {
-	return &entityv1.Rate{Value: perDay, Scale: 86400}
+// RatePerHour wraps a per-hour amount as a Rate proto with scale=3600.
+func RatePerHour(perHour int64) *entityv1.Rate {
+	return &entityv1.Rate{Value: perHour, Scale: 3600}
 }
 
 // UserToProto converts a domain user to its proto representation. The password
@@ -89,8 +89,8 @@ func UserToProto(u domain.User) *entityv1.User {
 		Username:   u.Username,
 		Gold:       u.Gold,
 		Food:       u.Food,
-		FoodIncome: RatePerDay(u.FoodIncomeRate),
-		FoodUpkeep: RatePerDay(u.FoodUpkeepRate),
+		FoodIncome: RatePerHour(u.FoodIncomeRate),
+		FoodUpkeep: RatePerHour(u.FoodUpkeepRate),
 	}
 }
 
@@ -104,9 +104,9 @@ func CityToProto(c domain.City) *entityv1.City {
 		PopulationCap:  c.PopulationCap,
 		Start:          &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
 		Size:           int32(c.Size),
-		FoodProduction: RatePerDay(c.FoodProductionRate),
-		FoodUpkeep:     RatePerDay(c.FoodUpkeep),
-		NetFoodFlow:    RatePerDay(c.NetFoodFlow),
+		FoodProduction: RatePerHour(c.FoodProductionRate),
+		FoodUpkeep:     RatePerHour(c.FoodUpkeep),
+		NetFoodFlow:    RatePerHour(c.NetFoodFlow),
 		Starving:       c.Starving,
 	}
 	if c.Owner != nil {

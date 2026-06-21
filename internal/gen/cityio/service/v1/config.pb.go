@@ -76,7 +76,7 @@ func (x *ResourceAmount) GetAmount() int64 {
 	return 0
 }
 
-// ResourceRate is an ongoing flow (e.g. production per day).
+// ResourceRate is an ongoing flow (e.g. production per hour).
 type ResourceRate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Resource      string                 `protobuf:"bytes,1,opt,name=resource,proto3" json:"resource,omitempty"`

@@ -51,7 +51,7 @@ func buildBuildingConfigs() []*servicev1.BuildingConfig {
 			for _, entry := range prodEntries {
 				level.Production = append(level.Production, &servicev1.ResourceRate{
 					Resource: entry.Resource,
-					Rate:     mapping.RatePerDay(entry.Amounts[i]),
+					Rate:     mapping.RatePerHour(entry.Amounts[i]),
 				})
 			}
 

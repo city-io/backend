@@ -11,8 +11,8 @@ type User struct {
 	Gold     int64  `json:"gold"`
 	Food     int64  `json:"food"`
 
-	// FoodIncomeRate is the rolling food-per-day deposited into the user's pool
-	// by surplus cities. FoodUpkeepRate is the food-per-day withdrawn by
+	// FoodIncomeRate is the rolling food-per-hour deposited into the user's pool
+	// by surplus cities. FoodUpkeepRate is the food-per-hour withdrawn by
 	// importer cities. Sampled on the user actor's periodic tick.
 	FoodIncomeRate int64 `json:"foodIncomeRate"`
 	FoodUpkeepRate int64 `json:"foodUpkeepRate"`
