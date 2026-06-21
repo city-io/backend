@@ -24,31 +24,39 @@ func toNullTime(ts pgtype.Timestamp) domain.NullTime {
 	return domain.NullTime{Time: &ts.Time}
 }
 
+// targetLevelFromConstruction reconstructs a building's target level on
+// restore. Construction is always a single-level upgrade in this codebase, so
+// the target is level+1 when timestamps are present and level otherwise.
+func targetLevelFromConstruction(level int32, start, end pgtype.Timestamp) int {
+	if start.Valid && end.Valid {
+		return int(level) + 1
+	}
+	return int(level)
+}
+
 func (c City) ToModel() *domain.City {
 	return &domain.City{
-		CityID:        c.CityID,
-		Type:          domain.CityType(c.Type),
-		Owner:         c.Owner,
-		Name:          c.Name,
-		Population:    c.Population,
-		PopulationCap: c.PopulationCap,
-		StartX:        c.StartCoords.X,
-		StartY:        c.StartCoords.Y,
-		Size:          int(c.Size),
+		CityID:     c.CityID,
+		Type:       domain.CityType(c.Type),
+		Owner:      c.Owner,
+		Name:       c.Name,
+		Population: c.Population,
+		StartX:     c.StartCoords.X,
+		StartY:     c.StartCoords.Y,
+		Size:       int(c.Size),
 	}
 }
 
 func (c GetAllCitiesRow) ToModel() *domain.City {
 	return &domain.City{
-		CityID:        c.CityID,
-		Type:          domain.CityType(c.Type),
-		Owner:         c.Owner,
-		Name:          c.Name,
-		Population:    c.Population,
-		PopulationCap: c.PopulationCap,
-		StartX:        int(c.StartX),
-		StartY:        int(c.StartY),
-		Size:          int(c.Size),
+		CityID:     c.CityID,
+		Type:       domain.CityType(c.Type),
+		Owner:      c.Owner,
+		Name:       c.Name,
+		Population: c.Population,
+		StartX:     int(c.StartX),
+		StartY:     int(c.StartY),
+		Size:       int(c.Size),
 	}
 }
 
@@ -71,7 +79,7 @@ func (b Building) ToModel() *domain.Building {
 		CityID:            b.CityID,
 		Type:              b.Type,
 		Level:             int(b.Level),
-		TargetLevel:       int(b.TargetLevel),
+		TargetLevel:       targetLevelFromConstruction(b.Level, b.ConstructionStart, b.ConstructionEnd),
 		X:                 b.Coords.X,
 		Y:                 b.Coords.Y,
 		ConstructionStart: toNullTime(b.ConstructionStart),
@@ -81,15 +89,14 @@ func (b Building) ToModel() *domain.Building {
 
 func (c GetCitiesByOwnerRow) ToModel() *domain.City {
 	return &domain.City{
-		CityID:        c.CityID,
-		Type:          domain.CityType(c.Type),
-		Owner:         c.Owner,
-		Name:          c.Name,
-		Population:    c.Population,
-		PopulationCap: c.PopulationCap,
-		StartX:        int(c.StartX),
-		StartY:        int(c.StartY),
-		Size:          int(c.Size),
+		CityID:     c.CityID,
+		Type:       domain.CityType(c.Type),
+		Owner:      c.Owner,
+		Name:       c.Name,
+		Population: c.Population,
+		StartX:     int(c.StartX),
+		StartY:     int(c.StartY),
+		Size:       int(c.Size),
 	}
 }
 
@@ -99,7 +106,7 @@ func (b GetBuildingsByCityRow) ToModel() *domain.Building {
 		CityID:            b.CityID,
 		Type:              b.Type,
 		Level:             int(b.Level),
-		TargetLevel:       int(b.TargetLevel),
+		TargetLevel:       targetLevelFromConstruction(b.Level, b.ConstructionStart, b.ConstructionEnd),
 		X:                 int(b.X),
 		Y:                 int(b.Y),
 		ConstructionStart: toNullTime(b.ConstructionStart),
@@ -113,7 +120,7 @@ func (b GetAllBuildingsRow) ToModel() *domain.Building {
 		CityID:            b.CityID,
 		Type:              b.Type,
 		Level:             int(b.Level),
-		TargetLevel:       int(b.TargetLevel),
+		TargetLevel:       targetLevelFromConstruction(b.Level, b.ConstructionStart, b.ConstructionEnd),
 		X:                 int(b.X),
 		Y:                 int(b.Y),
 		ConstructionStart: toNullTime(b.ConstructionStart),

@@ -18,6 +18,12 @@ type userActor struct {
 	baseActor
 	User domain.User
 
+	// foodIncomeAccum and foodUpkeepAccum sum food flowing in/out of the user
+	// pool between samples. On each periodic tick they are converted to
+	// per-second rates and zeroed.
+	foodIncomeAccum int64
+	foodUpkeepAccum int64
+
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
@@ -56,6 +62,25 @@ func (state *userActor) Receive(ctx actor.Context) {
 		state.ws()
 		ctx.Respond(messages.Ack{})
 
+	case messages.DepositFoodMessage:
+		if msg.Amount > 0 {
+			state.User.Food += msg.Amount
+			state.foodIncomeAccum += msg.Amount
+			state.ws()
+		}
+
+	case messages.RequestFoodFromPoolMessage:
+		granted := max(min(msg.Amount, state.User.Food), 0)
+		state.User.Food -= granted
+		state.foodUpkeepAccum += granted
+		if granted > 0 {
+			state.ws()
+		}
+		// TODO: when players can own multiple cities, batch requests within a
+		// window and allocate by priority (capital first, then by population
+		// descending) instead of first-come.
+		ctx.Respond(messages.RequestFoodFromPoolResponse{Granted: granted})
+
 	case messages.CheckAndDeductGoldMessage:
 		if missing := msg.Amount - state.User.Gold; missing > 0 {
 			ctx.Respond(messages.InsufficientGoldError{
@@ -82,8 +107,13 @@ func (state *userActor) Receive(ctx actor.Context) {
 		ctx.Stop(ctx.Self())
 
 	case messages.PeriodicOperationMessage:
-		// make a backup of the user state
+		seconds := float64(constants.UserBackupFrequency)
+		state.User.FoodIncomeRate = float64(state.foodIncomeAccum) / seconds
+		state.User.FoodUpkeepRate = float64(state.foodUpkeepAccum) / seconds
+		state.foodIncomeAccum = 0
+		state.foodUpkeepAccum = 0
 		state.Store.EnqueueUser(state.User)
+		state.ws()
 	}
 }
 

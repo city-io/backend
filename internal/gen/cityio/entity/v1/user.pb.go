@@ -23,14 +23,16 @@ const (
 
 // User is a player account. The password is never exposed over the wire.
 type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        *UserId                `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	Gold          int64                  `protobuf:"varint,4,opt,name=gold,proto3" json:"gold,omitempty"`
-	Food          int64                  `protobuf:"varint,5,opt,name=food,proto3" json:"food,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         *UserId                `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Email          string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Username       string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	Gold           int64                  `protobuf:"varint,4,opt,name=gold,proto3" json:"gold,omitempty"`
+	Food           int64                  `protobuf:"varint,5,opt,name=food,proto3" json:"food,omitempty"`
+	FoodIncomeRate float64                `protobuf:"fixed64,6,opt,name=food_income_rate,json=foodIncomeRate,proto3" json:"food_income_rate,omitempty"`
+	FoodUpkeepRate float64                `protobuf:"fixed64,7,opt,name=food_upkeep_rate,json=foodUpkeepRate,proto3" json:"food_upkeep_rate,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -98,17 +100,33 @@ func (x *User) GetFood() int64 {
 	return 0
 }
 
+func (x *User) GetFoodIncomeRate() float64 {
+	if x != nil {
+		return x.FoodIncomeRate
+	}
+	return 0
+}
+
+func (x *User) GetFoodUpkeepRate() float64 {
+	if x != nil {
+		return x.FoodUpkeepRate
+	}
+	return 0
+}
+
 var File_cityio_entity_v1_user_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/user.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\x93\x01\n" +
+	"\x1bcityio/entity/v1/user.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\xe7\x01\n" +
 	"\x04User\x121\n" +
 	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12\x12\n" +
 	"\x04gold\x18\x04 \x01(\x03R\x04gold\x12\x12\n" +
-	"\x04food\x18\x05 \x01(\x03R\x04foodB\xb2\x01\n" +
+	"\x04food\x18\x05 \x01(\x03R\x04food\x12(\n" +
+	"\x10food_income_rate\x18\x06 \x01(\x01R\x0efoodIncomeRate\x12(\n" +
+	"\x10food_upkeep_rate\x18\a \x01(\x01R\x0efoodUpkeepRateB\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tUserProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
