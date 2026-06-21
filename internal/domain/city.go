@@ -32,6 +32,11 @@ type City struct {
 	NetFoodFlow        int64 `json:"netFoodFlow"`
 	Starving           bool  `json:"starving"`
 
+	// PopulationGrowthRate is the current per-hour population change. Positive
+	// when the city is growing, negative when starving and population is
+	// declining. Computed from the per-tick delta applied in growPopulation.
+	PopulationGrowthRate int64 `json:"populationGrowthRate"`
+
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 }

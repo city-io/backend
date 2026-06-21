@@ -278,17 +278,24 @@ func (state *cityActor) tickFoodAndPopulation() {
 
 // growPopulation applies logistic growth when fed, or a starvation-scaled
 // decline when not. Towns (no owner) pass starving=false and grow freely.
+// Records the per-tick delta as a per-hour rate on the city so clients can
+// render growth/decline without reverse-engineering the formulas.
 func (state *cityActor) growPopulation(starving bool, shortfallRatio float64) {
 	currentPopulation := state.City.Population
 	populationCap := state.City.PopulationCap
 	if populationCap <= 0 {
+		state.City.PopulationGrowthRate = 0
 		return
 	}
+	var newPop float64
 	if starving {
-		state.City.Population = currentPopulation * (1 - constants.StarvationDeclineRate*shortfallRatio)
-		return
+		newPop = currentPopulation * (1 - constants.StarvationDeclineRate*shortfallRatio)
+	} else {
+		newPop = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)
 	}
-	state.City.Population = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)
+	delta := newPop - currentPopulation
+	state.City.PopulationGrowthRate = int64(math.Round(delta * float64(constants.SecondsPerHour) / float64(constants.CityTickInterval)))
+	state.City.Population = newPop
 }
 
 func (state *cityActor) ws() {

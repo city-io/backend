@@ -44,6 +44,10 @@ type City struct {
 	Size          int32        `protobuf:"varint,8,opt,name=size,proto3" json:"size,omitempty"`
 	// starving is public: visible from outside ("refugees, failed crops").
 	Starving bool `protobuf:"varint,12,opt,name=starving,proto3" json:"starving,omitempty"`
+	// population_growth is the signed per-hour change in population (positive
+	// when growing, negative when declining). Public — observable from outside
+	// by anyone watching the city over time.
+	PopulationGrowth *Rate `protobuf:"bytes,13,opt,name=population_growth,json=populationGrowth,proto3" json:"population_growth,omitempty"`
 	// --- Owner-only ---
 	// food_production, food_upkeep, and net_food_flow expose this city's
 	// economy. They are populated when the requester owns the city and unset
@@ -148,6 +152,13 @@ func (x *City) GetStarving() bool {
 	return false
 }
 
+func (x *City) GetPopulationGrowth() *Rate {
+	if x != nil {
+		return x.PopulationGrowth
+	}
+	return nil
+}
+
 func (x *City) GetFoodProduction() *Rate {
 	if x != nil {
 		return x.FoodProduction
@@ -173,7 +184,7 @@ var File_cityio_entity_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\x9e\x04\n" +
+	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\xe3\x04\n" +
 	"\x04City\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12.\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1a.cityio.entity.v1.CityTypeR\x04type\x123\n" +
@@ -185,7 +196,8 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\x0epopulation_cap\x18\x06 \x01(\x01R\rpopulationCap\x123\n" +
 	"\x05start\x18\a \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x05start\x12\x12\n" +
 	"\x04size\x18\b \x01(\x05R\x04size\x12\x1a\n" +
-	"\bstarving\x18\f \x01(\bR\bstarving\x12?\n" +
+	"\bstarving\x18\f \x01(\bR\bstarving\x12C\n" +
+	"\x11population_growth\x18\r \x01(\v2\x16.cityio.entity.v1.RateR\x10populationGrowth\x12?\n" +
 	"\x0ffood_production\x18\t \x01(\v2\x16.cityio.entity.v1.RateR\x0efoodProduction\x127\n" +
 	"\vfood_upkeep\x18\n" +
 	" \x01(\v2\x16.cityio.entity.v1.RateR\n" +
@@ -220,14 +232,15 @@ var file_cityio_entity_v1_city_proto_depIdxs = []int32{
 	2, // 1: cityio.entity.v1.City.type:type_name -> cityio.entity.v1.CityType
 	3, // 2: cityio.entity.v1.City.owner:type_name -> cityio.entity.v1.UserId
 	4, // 3: cityio.entity.v1.City.start:type_name -> cityio.entity.v1.Coordinates
-	5, // 4: cityio.entity.v1.City.food_production:type_name -> cityio.entity.v1.Rate
-	5, // 5: cityio.entity.v1.City.food_upkeep:type_name -> cityio.entity.v1.Rate
-	5, // 6: cityio.entity.v1.City.net_food_flow:type_name -> cityio.entity.v1.Rate
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	5, // 4: cityio.entity.v1.City.population_growth:type_name -> cityio.entity.v1.Rate
+	5, // 5: cityio.entity.v1.City.food_production:type_name -> cityio.entity.v1.Rate
+	5, // 6: cityio.entity.v1.City.food_upkeep:type_name -> cityio.entity.v1.Rate
+	5, // 7: cityio.entity.v1.City.net_food_flow:type_name -> cityio.entity.v1.Rate
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_city_proto_init() }

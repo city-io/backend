@@ -97,17 +97,18 @@ func UserToProto(u domain.User) *entityv1.User {
 // CityToProto converts a domain city to its proto representation.
 func CityToProto(c domain.City) *entityv1.City {
 	out := &entityv1.City{
-		CityId:         ToCityId(c.CityID),
-		Type:           CityTypeToProto(c.Type),
-		Name:           c.Name,
-		Population:     c.Population,
-		PopulationCap:  c.PopulationCap,
-		Start:          &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
-		Size:           int32(c.Size),
-		FoodProduction: RatePerHour(c.FoodProductionRate),
-		FoodUpkeep:     RatePerHour(c.FoodUpkeep),
-		NetFoodFlow:    RatePerHour(c.NetFoodFlow),
-		Starving:       c.Starving,
+		CityId:           ToCityId(c.CityID),
+		Type:             CityTypeToProto(c.Type),
+		Name:             c.Name,
+		Population:       c.Population,
+		PopulationCap:    c.PopulationCap,
+		Start:            &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
+		Size:             int32(c.Size),
+		FoodProduction:   RatePerHour(c.FoodProductionRate),
+		FoodUpkeep:       RatePerHour(c.FoodUpkeep),
+		NetFoodFlow:      RatePerHour(c.NetFoodFlow),
+		Starving:         c.Starving,
+		PopulationGrowth: RatePerHour(c.PopulationGrowthRate),
 	}
 	if c.Owner != nil {
 		out.Owner = ToUserId(*c.Owner)
