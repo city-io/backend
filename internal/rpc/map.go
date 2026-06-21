@@ -48,6 +48,8 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	}
 
 	bag := mapping.EntitiesToBag(nil, cityList, buildingList)
+	// Strip owner-only fields (production/upkeep rates) from any city the caller
+	// doesn't own. Population, cap, and starving stay public.
 	claims, _ := auth.ClaimsFromContext(ctx)
 	for _, c := range bag.GetCities() {
 		if c.GetOwner() == nil || c.GetOwner().GetValue() != claims.UserID {

@@ -38,6 +38,7 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[servicev
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
 
+	// Owner gets the full economy intel; everyone else sees only public fields.
 	claims, _ := auth.ClaimsFromContext(ctx)
 	city := mapping.CityToProto(resp.City)
 	if resp.City.Owner == nil || *resp.City.Owner != claims.UserID {

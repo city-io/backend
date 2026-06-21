@@ -116,8 +116,10 @@ func CityToProto(c domain.City) *entityv1.City {
 }
 
 // HidePrivateCityFields blanks the production/upkeep rate fields on a city
-// proto. Use when the viewer is not the city's owner: only the owner gets to
-// see economic intel. Population and starving status stay visible.
+// proto. Call this when the viewer is not the city's owner: only the owner
+// gets to see economic intel (food_production, food_upkeep, net_food_flow).
+// Public fields (identity, location, population, population_cap, starving)
+// stay untouched. See the visibility note on the City proto.
 func HidePrivateCityFields(c *entityv1.City) {
 	c.FoodProduction = nil
 	c.FoodUpkeep = nil

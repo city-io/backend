@@ -22,20 +22,35 @@ const (
 )
 
 // City is a settlement on the map, owned by a player or neutral.
+//
+// Visibility: public fields are returned to anyone whose vision covers the
+// city (population, population_cap, starving, identity, location). Private
+// fields (food_production, food_upkeep, net_food_flow) are economy intel and
+// only populated when the requester is the city's owner; for non-owners they
+// arrive unset. The owner-only restriction is enforced in
+// mapping.HidePrivateCityFields, called from GetMap and GetCity.
+// StreamState is already owner-scoped (publishes only to *City.Owner) so it
+// always carries the full set.
 type City struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	CityId         *CityId                `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
-	Type           CityType               `protobuf:"varint,2,opt,name=type,proto3,enum=cityio.entity.v1.CityType" json:"type,omitempty"`
-	Owner          *UserId                `protobuf:"bytes,3,opt,name=owner,proto3,oneof" json:"owner,omitempty"`
-	Name           string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Population     float64                `protobuf:"fixed64,5,opt,name=population,proto3" json:"population,omitempty"`
-	PopulationCap  float64                `protobuf:"fixed64,6,opt,name=population_cap,json=populationCap,proto3" json:"population_cap,omitempty"`
-	Start          *Coordinates           `protobuf:"bytes,7,opt,name=start,proto3" json:"start,omitempty"`
-	Size           int32                  `protobuf:"varint,8,opt,name=size,proto3" json:"size,omitempty"`
-	FoodProduction *Rate                  `protobuf:"bytes,9,opt,name=food_production,json=foodProduction,proto3" json:"food_production,omitempty"`
-	FoodUpkeep     *Rate                  `protobuf:"bytes,10,opt,name=food_upkeep,json=foodUpkeep,proto3" json:"food_upkeep,omitempty"`
-	NetFoodFlow    *Rate                  `protobuf:"bytes,11,opt,name=net_food_flow,json=netFoodFlow,proto3" json:"net_food_flow,omitempty"`
-	Starving       bool                   `protobuf:"varint,12,opt,name=starving,proto3" json:"starving,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// --- Public ---
+	CityId        *CityId      `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
+	Type          CityType     `protobuf:"varint,2,opt,name=type,proto3,enum=cityio.entity.v1.CityType" json:"type,omitempty"`
+	Owner         *UserId      `protobuf:"bytes,3,opt,name=owner,proto3,oneof" json:"owner,omitempty"`
+	Name          string       `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Population    float64      `protobuf:"fixed64,5,opt,name=population,proto3" json:"population,omitempty"`
+	PopulationCap float64      `protobuf:"fixed64,6,opt,name=population_cap,json=populationCap,proto3" json:"population_cap,omitempty"`
+	Start         *Coordinates `protobuf:"bytes,7,opt,name=start,proto3" json:"start,omitempty"`
+	Size          int32        `protobuf:"varint,8,opt,name=size,proto3" json:"size,omitempty"`
+	// starving is public: visible from outside ("refugees, failed crops").
+	Starving bool `protobuf:"varint,12,opt,name=starving,proto3" json:"starving,omitempty"`
+	// --- Owner-only ---
+	// food_production, food_upkeep, and net_food_flow expose this city's
+	// economy. They are populated when the requester owns the city and unset
+	// otherwise. Non-owners receive nil/zero for these fields.
+	FoodProduction *Rate `protobuf:"bytes,9,opt,name=food_production,json=foodProduction,proto3" json:"food_production,omitempty"`
+	FoodUpkeep     *Rate `protobuf:"bytes,10,opt,name=food_upkeep,json=foodUpkeep,proto3" json:"food_upkeep,omitempty"`
+	NetFoodFlow    *Rate `protobuf:"bytes,11,opt,name=net_food_flow,json=netFoodFlow,proto3" json:"net_food_flow,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -126,6 +141,13 @@ func (x *City) GetSize() int32 {
 	return 0
 }
 
+func (x *City) GetStarving() bool {
+	if x != nil {
+		return x.Starving
+	}
+	return false
+}
+
 func (x *City) GetFoodProduction() *Rate {
 	if x != nil {
 		return x.FoodProduction
@@ -147,13 +169,6 @@ func (x *City) GetNetFoodFlow() *Rate {
 	return nil
 }
 
-func (x *City) GetStarving() bool {
-	if x != nil {
-		return x.Starving
-	}
-	return false
-}
-
 var File_cityio_entity_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_city_proto_rawDesc = "" +
@@ -169,13 +184,13 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"population\x12%\n" +
 	"\x0epopulation_cap\x18\x06 \x01(\x01R\rpopulationCap\x123\n" +
 	"\x05start\x18\a \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x05start\x12\x12\n" +
-	"\x04size\x18\b \x01(\x05R\x04size\x12?\n" +
+	"\x04size\x18\b \x01(\x05R\x04size\x12\x1a\n" +
+	"\bstarving\x18\f \x01(\bR\bstarving\x12?\n" +
 	"\x0ffood_production\x18\t \x01(\v2\x16.cityio.entity.v1.RateR\x0efoodProduction\x127\n" +
 	"\vfood_upkeep\x18\n" +
 	" \x01(\v2\x16.cityio.entity.v1.RateR\n" +
 	"foodUpkeep\x12:\n" +
-	"\rnet_food_flow\x18\v \x01(\v2\x16.cityio.entity.v1.RateR\vnetFoodFlow\x12\x1a\n" +
-	"\bstarving\x18\f \x01(\bR\bstarvingB\b\n" +
+	"\rnet_food_flow\x18\v \x01(\v2\x16.cityio.entity.v1.RateR\vnetFoodFlowB\b\n" +
 	"\x06_ownerB\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tCityProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
