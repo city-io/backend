@@ -27,11 +27,11 @@ type City struct {
 	Owner         *string            `json:"owner"`
 	Name          string             `json:"name"`
 	Population    float64            `json:"population"`
+	PopulationCap float64            `json:"population_cap"`
 	StartCoords   domain.Coordinates `json:"start_coords"`
 	Size          int32              `json:"size"`
 	CreatedAt     pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
-	PopulationCap float64            `json:"population_cap"`
 }
 
 type User struct {

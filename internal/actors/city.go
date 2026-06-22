@@ -75,15 +75,6 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			// produces ~33 food/tick. Towns don't need one (they're unowned).
 			if msg.City.Type == domain.CityTypeCity {
 				state.spawnInitialBuilding(domain.BuildingTypeFarm, msg.City.StartX+1, msg.City.StartY+1)
-				// Pre-credit one tick of farm food. The city's first tick can
-				// fire before the farm's own ticker has produced (both run on
-				// 3s cadences with a startup race), and without this seed the
-				// first tick would see production=0, mark the city starving,
-				// drain the pool, and dock 1–2 pop. Worst case the farm also
-				// credits before our first tick — the extra 10 food just
-				// deposits to the pool harmlessly.
-				farmPerHour := constants.GetBuildingProduction(domain.BuildingTypeFarm, 1, "food")
-				state.pendingFoodIncome += constants.PerTickAmount(farmPerHour, constants.BuildingTickInterval)
 			}
 		}
 		state.startPeriodicOperation(ctx)
@@ -336,10 +327,17 @@ func (state *cityActor) startPeriodicOperation(ctx actor.Context) {
 	pid := ctx.Self()
 	system := ctx.ActorSystem()
 	go func() {
-		// sleep for a random duration up to 10 seconds to attempt
-		// creating an even distribution of database writing
+		// Sleep [1, CityTickInterval-1] seconds before the first tick so the
+		// city is always cleanly offset from the (parallel) building tickers
+		// that fire on the same 3s cadence. Without this offset, a city tick
+		// can fire at the same moment as a farm tick and the farm's
+		// CreditProductionMessage races the city's PeriodicOperationMessage —
+		// when the city's tick wins, production=0 and the city phantom-starves.
+		// Also doubles as jitter for DB-flush load distribution.
 		rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-		time.Sleep(time.Duration(rnd.Intn(constants.CityTickInterval)) * time.Second)
+		minOffset := 1
+		jitter := rnd.Intn(constants.CityTickInterval - minOffset)
+		time.Sleep(time.Duration(minOffset+jitter) * time.Second)
 
 		state.ticker = time.NewTicker(constants.CityTickInterval * time.Second)
 		state.stopTickerCh = make(chan struct{})

@@ -188,8 +188,8 @@ const findEmptyCityBlock = `-- name: FindEmptyCityBlock :one
 SELECT
   x::int4 AS x,
   y::int4 AS y
-FROM generate_series(0, $1::int4  - $2::int4)  AS x
-CROSS JOIN generate_series(0, $3::int4 - $2::int4) AS y
+FROM generate_series(1, $1::int4  - $2::int4 - 1)  AS x
+CROSS JOIN generate_series(1, $3::int4 - $2::int4 - 1) AS y
 WHERE NOT EXISTS (
   SELECT 1
   FROM cities c
@@ -216,6 +216,10 @@ type FindEmptyCityBlockRow struct {
 	Y int32 `json:"y"`
 }
 
+// Picks a uniformly random empty (size × size) block, enforcing a 1-tile gap
+// from the map boundary on every side as well as from every other city.
+// Range [1, mapWidth - size - 1] guarantees the block's footprint never
+// touches the map edge.
 func (q *Queries) FindEmptyCityBlock(ctx context.Context, arg FindEmptyCityBlockParams) (FindEmptyCityBlockRow, error) {
 	row := q.db.QueryRow(ctx, findEmptyCityBlock, arg.MapWidth, arg.Size, arg.MapHeight)
 	var i FindEmptyCityBlockRow

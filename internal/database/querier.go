@@ -20,6 +20,10 @@ type Querier interface {
 	DeleteBuilding(ctx context.Context, buildingID string) error
 	DeleteCity(ctx context.Context, cityID string) error
 	DeleteUser(ctx context.Context, userID string) error
+	// Picks a uniformly random empty (size × size) block, enforcing a 1-tile gap
+	// from the map boundary on every side as well as from every other city.
+	// Range [1, mapWidth - size - 1] guarantees the block's footprint never
+	// touches the map edge.
 	FindEmptyCityBlock(ctx context.Context, arg FindEmptyCityBlockParams) (FindEmptyCityBlockRow, error)
 	GetAllBuildings(ctx context.Context) ([]GetAllBuildingsRow, error)
 	GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error)

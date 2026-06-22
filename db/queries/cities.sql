@@ -53,11 +53,15 @@ SET
 WHERE city_id = sqlc.arg(city_id);
 
 -- name: FindEmptyCityBlock :one
+-- Picks a uniformly random empty (size × size) block, enforcing a 1-tile gap
+-- from the map boundary on every side as well as from every other city.
+-- Range [1, mapWidth - size - 1] guarantees the block's footprint never
+-- touches the map edge.
 SELECT
   x::int4 AS x,
   y::int4 AS y
-FROM generate_series(0, sqlc.arg(map_width)::int4  - sqlc.arg(size)::int4)  AS x
-CROSS JOIN generate_series(0, sqlc.arg(map_height)::int4 - sqlc.arg(size)::int4) AS y
+FROM generate_series(1, sqlc.arg(map_width)::int4  - sqlc.arg(size)::int4 - 1)  AS x
+CROSS JOIN generate_series(1, sqlc.arg(map_height)::int4 - sqlc.arg(size)::int4 - 1) AS y
 WHERE NOT EXISTS (
   SELECT 1
   FROM cities c

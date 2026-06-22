@@ -44,30 +44,6 @@ func Run(ctx context.Context, deps *Deps) {
 	}
 	slog.InfoContext(ctx, "spawned user actors", "count", len(users))
 
-	// TODO: remove test user registration later
-	userID, err := services.CreateUser(ctx, cluster, &services.CreateUserRequest{
-		Email:    "cityio@example.com",
-		Username: "cityio",
-		Password: "cityio",
-	})
-	if err != nil {
-		panic(err)
-	}
-	slog.InfoContext(ctx, "registered test user", "user_id", userID)
-
-	// tiles, err := db.GetAllTiles(ctx)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// for _, tile := range tiles {
-	// 	err := ctrls.Tile().Restore(tile.ToModel())
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-	// log.Info("spawned map tile actors", "count", len(tiles))
-
 	cities, err := db.GetAllCities(ctx)
 	if err != nil {
 		panic(err)
@@ -81,17 +57,6 @@ func Run(ctx context.Context, deps *Deps) {
 	}
 	slog.InfoContext(ctx, "spawned city actors", "count", len(cities))
 
-	// var armies []models.Army
-	// cl.DB().Find(&armies)
-
-	// for _, army := range armies {
-	// 	err := services.RestoreArmy(army)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-	// log.Printf("Spawned actors for %d armies", len(armies))
-
 	buildings, err := db.GetAllBuildings(ctx)
 	if err != nil {
 		panic(err)
@@ -104,6 +69,23 @@ func Run(ctx context.Context, deps *Deps) {
 		}
 	}
 	slog.InfoContext(ctx, "spawned building actors", "count", len(buildings))
+
+	// Create the test user AFTER the bulk restore. Restoration must not see
+	// the test user's entities, otherwise the cityActor and building actors
+	// receive a second CreateCityMessage / CreateBuildingMessage and call
+	// startPeriodicOperation again — producing duplicate tickers that emit
+	// staggered credits, breaking the food loop's tick alignment.
+	// TODO: remove test user registration once real registration is the only
+	// path.
+	userID, err := services.CreateUser(ctx, cluster, &services.CreateUserRequest{
+		Email:    "cityio@example.com",
+		Username: "cityio",
+		Password: "cityio",
+	})
+	if err != nil {
+		panic(err)
+	}
+	slog.InfoContext(ctx, "registered test user", "user_id", userID)
 
 	slog.InfoContext(ctx, "initialization complete")
 }
