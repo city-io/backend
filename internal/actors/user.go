@@ -57,31 +57,38 @@ func (state *userActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.Ack{})
 
 	case messages.CreditUserMessage:
+		// Background production credit (gold from mines/centers, etc).
+		// State changes but we don't publish here — many buildings hit this
+		// per tick, and clients only care about the net amount over a window.
+		// The periodic tick below publishes the consolidated state.
 		state.User.Gold += msg.Gold
 		state.User.Food += msg.Food
-		state.publish()
 		ctx.Respond(messages.Ack{})
 
 	case messages.DepositFoodMessage:
+		// City surplus flowing into the pool. Same batching reasoning as
+		// CreditUserMessage — the periodic publish carries the net change.
 		if msg.Amount > 0 {
 			state.User.Food += msg.Amount
 			state.foodIncomeAccum += msg.Amount
-			state.publish()
 		}
 
 	case messages.RequestFoodFromPoolMessage:
+		// City deficit drawing from the pool. Same batching reasoning.
 		granted := max(min(msg.Amount, state.User.Food), 0)
 		state.User.Food -= granted
 		state.foodUpkeepAccum += granted
-		if granted > 0 {
-			state.publish()
-		}
 		// TODO: when players can own multiple cities, batch requests within a
 		// window and allocate by priority (capital first, then by population
 		// descending) instead of first-come.
 		ctx.Respond(messages.RequestFoodFromPoolResponse{Granted: granted})
 
 	case messages.CheckAndDeductGoldMessage:
+		// Player-initiated spend (e.g. building upgrade). Publish immediately
+		// so the player sees the deduction in their HUD without waiting for
+		// the next periodic tick. The publish also carries any accumulated
+		// background credits, so they appear at the same moment too — feels
+		// natural rather than "my gold just jumped between actions."
 		if missing := msg.Amount - state.User.Gold; missing > 0 {
 			ctx.Respond(messages.InsufficientGoldError{
 				Missing: missing,

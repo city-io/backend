@@ -15,10 +15,10 @@ type BuildingProductionEntry struct {
 // (amount * tickSeconds / SecondsPerHour) is exact integer division for the
 // current 3s tick: each value is a multiple of 1200 = 3600/3.
 var buildingProduction = map[domain.BuildingType][]BuildingProductionEntry{
-	domain.BuildingTypeCityCenter: {{"gold", []int64{6000, 12000, 18000, 24000, 30000, 36000, 42000, 48000, 54000, 60000}}},
+	domain.BuildingTypeCityCenter: {{"gold", []int64{3600, 7200, 10800, 14400, 18000, 21600, 25200, 28800, 32400, 36000}}},
 	domain.BuildingTypeTownCenter: {{"gold", []int64{3600, 7200, 10800, 14400, 18000, 21600, 25200, 28800, 32400, 36000}}},
 	domain.BuildingTypeFarm:       {{"food", []int64{12000, 24000, 36000, 48000, 60000, 72000, 84000, 96000, 108000, 120000}}},
-	domain.BuildingTypeMine:       {{"gold", []int64{12000, 24000, 36000, 48000, 60000, 72000, 84000, 96000, 108000, 120000}}},
+	domain.BuildingTypeMine:       {{"gold", []int64{7200, 14400, 21600, 28800, 36000, 43200, 50400, 57600, 64800, 72000}}},
 }
 
 var buildingPopulation = map[domain.BuildingType][]float64{
