@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -29,7 +30,7 @@ func CreateUser(ctx context.Context, cluster ports.ClusterProvider, user *Create
 		return "", err
 	}
 
-	cluster.Request("user", userID, &messages.CreateUserMessage{ //nolint:errcheck // fire-and-forget
+	res, err := cluster.Request("user", userID, &messages.CreateUserMessage{
 		User: domain.User{
 			UserID:   userID,
 			Username: user.Username,
@@ -40,6 +41,14 @@ func CreateUser(ctx context.Context, cluster ports.ClusterProvider, user *Create
 		},
 		Restore: false,
 	})
-
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to create user actor", "user_id", userID, "error", err)
+		return "", err
+	}
+	if _, ok := res.(messages.Ack); !ok {
+		// The actor either failed to persist (UserCreationError) or returned
+		// some unexpected response. Surface as a generic failure to the caller.
+		return "", fmt.Errorf("user actor refused create: %T", res)
+	}
 	return userID, nil
 }

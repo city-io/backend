@@ -45,6 +45,8 @@ func (state *userActor) Receive(ctx actor.Context) {
 		if !msg.Restore {
 			if err := state.Store.CreateUser(state.Ctx(), state.User); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist user create", "user_id", state.User.UserID, "error", err)
+				ctx.Respond(&messages.UserCreationError{UserID: state.User.UserID})
+				return
 			}
 			services.CreateCity(state.Ctx(), state.Cluster, state.Store, &services.CityInput{ //nolint:errcheck // fire-and-forget
 				Type:  domain.CityTypeCity,

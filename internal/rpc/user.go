@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"connectrpc.com/connect"
 	"golang.org/x/crypto/bcrypt"
@@ -17,15 +18,41 @@ import (
 	"cityio/internal/stream"
 )
 
+const minPasswordLength = 8
+
 type userHandler struct {
 	srv *Server
 }
 
 func (h *userHandler) Register(ctx context.Context, req *connect.Request[servicev1.RegisterRequest]) (*connect.Response[servicev1.RegisterResponse], error) {
+	email := strings.TrimSpace(req.Msg.GetEmail())
+	username := strings.TrimSpace(req.Msg.GetUsername())
+	password := req.Msg.GetPassword()
+
+	if email == "" || username == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email and username are required"))
+	}
+	if len(password) < minPasswordLength {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("password must be at least 8 characters"))
+	}
+
+	// Surface duplicates with AlreadyExists before incurring the actor spawn +
+	// bcrypt cost. The DB still has the UNIQUE constraint as a backstop.
+	if existing, err := h.srv.store.GetUserByIdentifier(ctx, email); err == nil && existing != nil {
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already registered"))
+	} else if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if existing, err := h.srv.store.GetUserByIdentifier(ctx, username); err == nil && existing != nil {
+		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("username already taken"))
+	} else if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
 	userID, err := services.CreateUser(ctx, h.srv.cluster, &services.CreateUserRequest{
-		Email:    req.Msg.GetEmail(),
-		Username: req.Msg.GetUsername(),
-		Password: req.Msg.GetPassword(),
+		Email:    email,
+		Username: username,
+		Password: password,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -33,8 +60,8 @@ func (h *userHandler) Register(ctx context.Context, req *connect.Request[service
 
 	token, err := auth.Issue(h.srv.jwtSecret, auth.Claims{
 		UserID:   userID,
-		Username: req.Msg.GetUsername(),
-		Email:    req.Msg.GetEmail(),
+		Username: username,
+		Email:    email,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
