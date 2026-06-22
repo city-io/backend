@@ -102,13 +102,14 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.City.Owner = msg.Owner
 
 	case messages.BuildingStateChangedMessage:
-		// Building proto is pushed immediately so the player sees level / construction
-		// state change without delay. The city snapshot it lives in (cap, food
-		// rates) waits for the next periodic tick — those fields are inherently
-		// per-tick values and many BuildingStateChanged events can land per tick.
+		// Real state change (created, upgrade started, upgrade complete) — push
+		// the building proto and the city snapshot together so the player sees
+		// both the new level and the cap/food-rate fields it implies in the
+		// same emit.
 		if state.City.Owner != nil {
 			b := msg.Building
 			stream.Publish(*state.City.Owner, stream.StateUpdate{Building: &b})
+			state.publish()
 		}
 
 	case messages.BuildingDestroyedMessage:
@@ -118,19 +119,24 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			cap += p
 		}
 		state.City.PopulationCap = cap
-		// Deletion signal goes out immediately so the client drops the building
-		// from its scene; the new cap on the city rides the next periodic tick.
+		// Real state change — emit the deletion id and the updated city
+		// snapshot (with the lower cap) together.
 		if state.City.Owner != nil {
 			stream.Publish(*state.City.Owner, stream.StateUpdate{DeletedBuildingID: &msg.BuildingID})
+			state.publish()
 		}
 
 	case messages.SetBuildingPopulationMessage:
-		// Population contributions are re-reported on every building tick —
-		// publishing here would fan out N times per 3s for an N-building city
-		// even when nothing visible changed. Cap is updated silently; the city
-		// publish on the periodic tick carries any change.
+		// Buildings re-report the same contribution on every periodic tick;
+		// only publish when the value actually changes (initial register,
+		// upgrade complete, building destroyed). Otherwise we'd fan out N
+		// publishes per 3s for an N-building city with nothing visible to
+		// say. cityCenter / townCenter / house all use this path.
 		if state.populationContributions == nil {
 			state.populationContributions = make(map[string]float64)
+		}
+		if existing, ok := state.populationContributions[msg.BuildingID]; ok && existing == msg.Population {
+			return
 		}
 		state.populationContributions[msg.BuildingID] = msg.Population
 		var cap float64
@@ -138,6 +144,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			cap += p
 		}
 		state.City.PopulationCap = cap
+		state.publish()
 
 	case messages.CreditProductionMessage:
 		if state.City.Owner == nil {
@@ -317,10 +324,9 @@ func (state *cityActor) growPopulation(starving bool, deficitRatio, surplusRatio
 
 // publish pushes the city's current state to the owning player's
 // StreamState subscribers via the in-process pub/sub. Towns (no owner) skip
-// the push. Towns (no owner) skip the push. Called once per periodic tick;
-// passive state changes (cap shifts from building reports, food rate
-// recompute, etc.) batch into that emit instead of firing their own publishes
-// so a busy city doesn't spam the stream.
+// the push. Called on real state changes (building created/upgraded/destroyed,
+// per-tick food/growth recompute) — not on every periodic message a building
+// fires at us, so we don't fan out a publish per building per tick.
 func (state *cityActor) publish() {
 	if state.City.Owner == nil {
 		return
