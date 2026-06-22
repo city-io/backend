@@ -20,11 +20,19 @@ type Server struct {
 	cluster   ports.ClusterProvider
 	store     ports.Store
 	jwtSecret string
+
+	// shutdownCtx is cancelled when the process is shutting down. Long-lived
+	// handlers (StreamState) select on it and return Unauthenticated so clients
+	// take their "session ended, log in again" path instead of seeing a
+	// half-closed connection.
+	shutdownCtx context.Context
 }
 
 // NewServer constructs an RPC server backed by the given cluster and store.
-func NewServer(cluster ports.ClusterProvider, store ports.Store, jwtSecret string) *Server {
-	return &Server{cluster: cluster, store: store, jwtSecret: jwtSecret}
+// shutdownCtx is cancelled by main on SIGINT/SIGTERM; streaming handlers
+// observe it and close their streams.
+func NewServer(shutdownCtx context.Context, cluster ports.ClusterProvider, store ports.Store, jwtSecret string) *Server {
+	return &Server{cluster: cluster, store: store, jwtSecret: jwtSecret, shutdownCtx: shutdownCtx}
 }
 
 func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {

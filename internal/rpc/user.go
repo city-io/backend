@@ -143,6 +143,11 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-h.srv.shutdownCtx.Done():
+			// Server is shutting down. Return Unauthenticated so the client's
+			// auth-error path runs (clears JWT, redirects to /login) — same
+			// shape it would see if the JWT had expired mid-session.
+			return connect.NewError(connect.CodeUnauthenticated, errors.New("server shutting down"))
 		case update, ok := <-ch:
 			if !ok {
 				return nil

@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/rs/cors"
@@ -48,7 +51,13 @@ func main() {
 		Cluster: cl,
 	})
 
-	server := rpc.NewServer(cl, store, cfg.JWTSecret)
+	// shutdownCtx is cancelled when we receive SIGINT/SIGTERM. The RPC server
+	// hands it to long-lived handlers (StreamState) so they can close cleanly
+	// instead of dying mid-connection.
+	shutdownCtx, cancelShutdown := context.WithCancel(ctx)
+	defer cancelShutdown()
+
+	server := rpc.NewServer(shutdownCtx, cl, store, cfg.JWTSecret)
 	handler := cors.New(cors.Options{
 		AllowOriginFunc: func(origin string) bool {
 			if origin == "http://localhost:5173" || origin == "http://localhost:4173" {
@@ -68,9 +77,29 @@ func main() {
 		ReadTimeout: 15 * time.Second,
 	}
 
+	// Catch SIGINT/SIGTERM, signal active streams to close, then drain HTTP
+	// and the persistence flush queue before exiting.
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigCh
+		slog.InfoContext(ctx, "shutdown signal received", "signal", sig.String())
+		cancelShutdown()
+
+		// Give in-flight StreamState handlers a moment to observe the
+		// cancellation and return Unauthenticated to their clients.
+		shutdownTimeout, cancelTimeout := context.WithTimeout(ctx, 10*time.Second)
+		defer cancelTimeout()
+		if err := httpServer.Shutdown(shutdownTimeout); err != nil {
+			slog.ErrorContext(ctx, "http server shutdown error", "error", err)
+		}
+		store.Stop(ctx)
+	}()
+
 	slog.InfoContext(ctx, "serving connect rpc", "port", cfg.APIPort)
-	if err := httpServer.ListenAndServe(); err != nil {
+	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.ErrorContext(ctx, "rpc server stopped", "error", err)
 		os.Exit(1)
 	}
+	slog.InfoContext(ctx, "rpc server stopped cleanly")
 }
