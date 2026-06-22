@@ -10,6 +10,8 @@ services:
     network:
       ports:
         - 8080
+    monitoring:
+      port: 8080
     env:
       - name: ENVIRONMENT
         value: ${ENVIRONMENT}

@@ -9,6 +9,8 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"cityio/internal/auth"
 	"cityio/internal/domain"
 	"cityio/internal/gen/cityio/service/v1/servicev1connect"
@@ -59,7 +61,9 @@ func (s *Server) ownsCity(ctx context.Context, cityID string) (bool, error) {
 
 // Handler returns the HTTP handler serving every Connect service with the
 // metrics + auth interceptors applied (metrics is outermost so it captures
-// auth failures and timing for them).
+// auth failures and timing for them). /metrics and /healthz share the same
+// listener as the Connect services — the nimbus deployment scrapes them off
+// the API port rather than a dedicated metrics port.
 func (s *Server) Handler() http.Handler {
 	opts := connect.WithInterceptors(metrics.Interceptor(), auth.Interceptor(s.jwtSecret))
 
@@ -69,5 +73,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(servicev1connect.NewBuildingServiceHandler(&buildingHandler{s}, opts))
 	mux.Handle(servicev1connect.NewMapServiceHandler(&mapHandler{s}, opts))
 	mux.Handle(servicev1connect.NewConfigServiceHandler(&configHandler{s}, opts))
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
 	return mux
 }

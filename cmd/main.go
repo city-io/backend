@@ -58,9 +58,9 @@ func main() {
 	shutdownCtx, cancelShutdown := context.WithCancel(ctx)
 	defer cancelShutdown()
 
-	// Internal-only metrics endpoint + periodic state snapshot. No auth —
-	// scrape from the private network.
-	metrics.Serve(shutdownCtx, metrics.DefaultAddr)
+	// /metrics is served from the same port as the RPC API (see rpc.Server.Handler);
+	// here we just spin up the periodic state snapshot that fills the aggregate
+	// gauges.
 	metrics.StartSnapshot(shutdownCtx, store)
 
 	server := rpc.NewServer(shutdownCtx, cl, store, cfg.JWTSecret)
