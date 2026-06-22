@@ -13,6 +13,7 @@ import (
 type Store interface {
 	FindEmptyCityBlock(ctx context.Context, size int) (domain.Coordinates, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error)
+	GetAllUsers(ctx context.Context) ([]domain.User, error)
 	GetAllCities(ctx context.Context) ([]domain.City, error)
 	GetAllBuildings(ctx context.Context) ([]domain.Building, error)
 	GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error)

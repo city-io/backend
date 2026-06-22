@@ -19,6 +19,7 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/domain"
+	"cityio/internal/metrics"
 )
 
 const batchSize = 5000
@@ -99,6 +100,18 @@ func (s *Store) GetUserByIdentifier(ctx context.Context, identifier string) (*do
 		return nil, err
 	}
 	return row.ToModel(), nil
+}
+
+func (s *Store) GetAllUsers(ctx context.Context) ([]domain.User, error) {
+	rows, err := s.db.GetAllUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	users := make([]domain.User, 0, len(rows))
+	for _, u := range rows {
+		users = append(users, *u.ToModel())
+	}
+	return users, nil
 }
 
 func (s *Store) GetAllCities(ctx context.Context) ([]domain.City, error) {
@@ -209,19 +222,25 @@ func (s *Store) DeleteBuilding(ctx context.Context, buildingID string) error {
 func (s *Store) EnqueueUser(user domain.User) {
 	s.mu.Lock()
 	s.userBuffer[user.UserID] = user
+	size := len(s.userBuffer)
 	s.mu.Unlock()
+	metrics.PersistenceBufferSize.WithLabelValues("user").Set(float64(size))
 }
 
 func (s *Store) EnqueueCity(city domain.City) {
 	s.mu.Lock()
 	s.cityBuffer[city.CityID] = city
+	size := len(s.cityBuffer)
 	s.mu.Unlock()
+	metrics.PersistenceBufferSize.WithLabelValues("city").Set(float64(size))
 }
 
 func (s *Store) EnqueueBuilding(building domain.Building) {
 	s.mu.Lock()
 	s.buildingBuffer[building.BuildingID] = building
+	size := len(s.buildingBuffer)
 	s.mu.Unlock()
+	metrics.PersistenceBufferSize.WithLabelValues("building").Set(float64(size))
 }
 
 // flush swaps out the pending buffers under the lock, then writes the snapshots
@@ -235,6 +254,11 @@ func (s *Store) flush(ctx context.Context) {
 	s.cityBuffer = make(map[string]domain.City)
 	s.buildingBuffer = make(map[string]domain.Building)
 	s.mu.Unlock()
+	// Reset the buffer-size gauges now that we've swapped the maps; enqueues
+	// during the flush bump them again from zero.
+	metrics.PersistenceBufferSize.WithLabelValues("user").Set(0)
+	metrics.PersistenceBufferSize.WithLabelValues("city").Set(0)
+	metrics.PersistenceBufferSize.WithLabelValues("building").Set(0)
 
 	s.flushCities(ctx, cities)
 	s.flushUsers(ctx, users)
@@ -242,6 +266,11 @@ func (s *Store) flush(ctx context.Context) {
 }
 
 func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) {
+	start := time.Now()
+	defer func() {
+		metrics.PersistenceFlushDurationSeconds.WithLabelValues("city").Observe(time.Since(start).Seconds())
+		metrics.PersistenceFlushRowsWritten.WithLabelValues("city").Observe(float64(len(buffer)))
+	}()
 	cities := make([]domain.City, 0, len(buffer))
 	for _, c := range buffer {
 		cities = append(cities, c)
@@ -283,11 +312,17 @@ func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) 
 
 		if err := s.db.BatchUpdateCities(ctx, params); err != nil {
 			slog.ErrorContext(ctx, "error batch updating cities", "idx", i, "error", err)
+			metrics.PersistenceFlushErrorsTotal.WithLabelValues("city").Inc()
 		}
 	}
 }
 
 func (s *Store) flushUsers(ctx context.Context, buffer map[string]domain.User) {
+	start := time.Now()
+	defer func() {
+		metrics.PersistenceFlushDurationSeconds.WithLabelValues("user").Observe(time.Since(start).Seconds())
+		metrics.PersistenceFlushRowsWritten.WithLabelValues("user").Observe(float64(len(buffer)))
+	}()
 	users := make([]domain.User, 0, len(buffer))
 	for _, u := range buffer {
 		users = append(users, u)
@@ -310,11 +345,17 @@ func (s *Store) flushUsers(ctx context.Context, buffer map[string]domain.User) {
 
 		if err := s.db.BatchUpdateUsers(ctx, params); err != nil {
 			slog.ErrorContext(ctx, "error batch updating users", "idx", i, "error", err)
+			metrics.PersistenceFlushErrorsTotal.WithLabelValues("user").Inc()
 		}
 	}
 }
 
 func (s *Store) flushBuildings(ctx context.Context, buffer map[string]domain.Building) {
+	start := time.Now()
+	defer func() {
+		metrics.PersistenceFlushDurationSeconds.WithLabelValues("building").Observe(time.Since(start).Seconds())
+		metrics.PersistenceFlushRowsWritten.WithLabelValues("building").Observe(float64(len(buffer)))
+	}()
 	buildings := make([]domain.Building, 0, len(buffer))
 	for _, b := range buffer {
 		buildings = append(buildings, b)
@@ -347,6 +388,7 @@ func (s *Store) flushBuildings(ctx context.Context, buffer map[string]domain.Bui
 
 		if err := s.db.BatchUpdateBuildings(ctx, params); err != nil {
 			slog.ErrorContext(ctx, "error batch updating buildings", "idx", i, "error", err)
+			metrics.PersistenceFlushErrorsTotal.WithLabelValues("building").Inc()
 		}
 	}
 }

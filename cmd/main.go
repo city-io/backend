@@ -20,6 +20,7 @@ import (
 	"cityio/internal/config"
 	"cityio/internal/database"
 	"cityio/internal/logger"
+	"cityio/internal/metrics"
 	"cityio/internal/persistence"
 	"cityio/internal/rpc"
 	"cityio/internal/setup"
@@ -56,6 +57,11 @@ func main() {
 	// instead of dying mid-connection.
 	shutdownCtx, cancelShutdown := context.WithCancel(ctx)
 	defer cancelShutdown()
+
+	// Internal-only metrics endpoint + periodic state snapshot. No auth —
+	// scrape from the private network.
+	metrics.Serve(shutdownCtx, metrics.DefaultAddr)
+	metrics.StartSnapshot(shutdownCtx, store)
 
 	server := rpc.NewServer(shutdownCtx, cl, store, cfg.JWTSecret)
 	handler := cors.New(cors.Options{

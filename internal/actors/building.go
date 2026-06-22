@@ -10,6 +10,7 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
+	"cityio/internal/metrics"
 	"cityio/internal/utils"
 )
 
@@ -164,11 +165,17 @@ func (state *buildingActor) checkConstructionComplete() {
 	if state.Building.ConstructionEnd.Time == nil || time.Now().Before(*state.Building.ConstructionEnd.Time) {
 		return
 	}
+	// Capture timing for the duration metric before we clear the start stamp.
+	bt := string(state.Building.BuildingType())
+	if state.Building.ConstructionStart.Time != nil {
+		metrics.ConstructionDurationSeconds.WithLabelValues(bt).Observe(time.Since(*state.Building.ConstructionStart.Time).Seconds())
+	}
 	state.Building.Level = state.Building.TargetLevel
 	state.Building.ConstructionStart = domain.NullTime{}
 	state.Building.ConstructionEnd = domain.NullTime{}
 	state.Store.EnqueueBuilding(state.Building)
 	state.notifyStateChanged()
+	metrics.ConstructionCompletesTotal.WithLabelValues(bt, fmt.Sprintf("%d", state.Building.Level)).Inc()
 	slog.InfoContext(state.Ctx(), "construction complete",
 		"building_id", state.Building.BuildingID,
 		"type", state.Building.BuildingType(),
@@ -222,6 +229,7 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 	state.Store.EnqueueBuilding(state.Building)
 	state.notifyStateChanged()
 	state.scheduleConstructionComplete(ctx)
+	metrics.UpgradesStartedTotal.WithLabelValues(string(buildingType), fmt.Sprintf("%d", targetLevel)).Inc()
 	return nil
 }
 

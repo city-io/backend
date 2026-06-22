@@ -12,6 +12,7 @@ import (
 	"cityio/internal/constants"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
+	"cityio/internal/metrics"
 	"cityio/internal/stream"
 	"cityio/internal/utils"
 )
@@ -240,6 +241,11 @@ func (state *cityActor) spawnInitialBuilding(buildingType domain.BuildingType, x
 // holds the pool drain but doesn't grow; if production covers demand the
 // surplus accelerates growth proportionally up to SurplusGrowthBonus.
 func (state *cityActor) tickFoodAndPopulation() {
+	start := time.Now()
+	defer func() {
+		metrics.CityTickDurationSeconds.Observe(time.Since(start).Seconds())
+	}()
+
 	if state.City.Owner == nil {
 		state.City.FoodProductionRate = 0
 		state.City.FoodUpkeep = 0
@@ -272,6 +278,8 @@ func (state *cityActor) tickFoodAndPopulation() {
 		if surplus := production - demand; surplus > 0 {
 			if err := state.Cluster.Tell("user", *state.City.Owner, messages.DepositFoodMessage{Amount: surplus}); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to deposit surplus food to pool", "error", err)
+			} else {
+				metrics.FoodDepositedTotal.Add(float64(surplus))
 			}
 		}
 		state.City.Starving = false
@@ -287,8 +295,20 @@ func (state *cityActor) tickFoodAndPopulation() {
 	// city imports), but the city is starving from its own perspective and its
 	// population declines regardless of whether the pool covered the shortfall.
 	shortfall := demand - production
-	if _, err := state.Cluster.Request("user", *state.City.Owner, messages.RequestFoodFromPoolMessage{Amount: shortfall}); err != nil {
+	res, err := state.Cluster.Request("user", *state.City.Owner, messages.RequestFoodFromPoolMessage{Amount: shortfall})
+	if err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to request food from pool", "error", err)
+		metrics.FoodPoolGrantsTotal.WithLabelValues("empty").Inc()
+	} else if resp, ok := res.(messages.RequestFoodFromPoolResponse); ok {
+		metrics.FoodWithdrawnTotal.Add(float64(resp.Granted))
+		switch {
+		case resp.Granted >= shortfall:
+			metrics.FoodPoolGrantsTotal.WithLabelValues("full").Inc()
+		case resp.Granted > 0:
+			metrics.FoodPoolGrantsTotal.WithLabelValues("partial").Inc()
+		default:
+			metrics.FoodPoolGrantsTotal.WithLabelValues("empty").Inc()
+		}
 	}
 	state.City.Starving = true
 	deficitRatio := float64(shortfall) / float64(demand)

@@ -13,6 +13,7 @@ import (
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
+	"cityio/internal/metrics"
 	"cityio/internal/persistence"
 	"cityio/internal/services"
 	"cityio/internal/stream"
@@ -30,22 +31,28 @@ func (h *userHandler) Register(ctx context.Context, req *connect.Request[service
 	password := req.Msg.GetPassword()
 
 	if email == "" || username == "" {
+		metrics.RegistrationsTotal.WithLabelValues("invalid_argument").Inc()
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email and username are required"))
 	}
 	if len(password) < minPasswordLength {
+		metrics.RegistrationsTotal.WithLabelValues("invalid_argument").Inc()
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("password must be at least 8 characters"))
 	}
 
 	// Surface duplicates with AlreadyExists before incurring the actor spawn +
 	// bcrypt cost. The DB still has the UNIQUE constraint as a backstop.
 	if existing, err := h.srv.store.GetUserByIdentifier(ctx, email); err == nil && existing != nil {
+		metrics.RegistrationsTotal.WithLabelValues("already_exists").Inc()
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already registered"))
 	} else if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+		metrics.RegistrationsTotal.WithLabelValues("internal").Inc()
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if existing, err := h.srv.store.GetUserByIdentifier(ctx, username); err == nil && existing != nil {
+		metrics.RegistrationsTotal.WithLabelValues("already_exists").Inc()
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("username already taken"))
 	} else if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+		metrics.RegistrationsTotal.WithLabelValues("internal").Inc()
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -55,6 +62,7 @@ func (h *userHandler) Register(ctx context.Context, req *connect.Request[service
 		Password: password,
 	})
 	if err != nil {
+		metrics.RegistrationsTotal.WithLabelValues("internal").Inc()
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -64,22 +72,27 @@ func (h *userHandler) Register(ctx context.Context, req *connect.Request[service
 		Email:    email,
 	})
 	if err != nil {
+		metrics.RegistrationsTotal.WithLabelValues("internal").Inc()
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	metrics.RegistrationsTotal.WithLabelValues("ok").Inc()
 	return connect.NewResponse(&servicev1.RegisterResponse{UserId: mapping.ToUserId(userID), Token: token}), nil
 }
 
 func (h *userHandler) Login(ctx context.Context, req *connect.Request[servicev1.LoginRequest]) (*connect.Response[servicev1.LoginResponse], error) {
 	found, err := h.srv.store.GetUserByIdentifier(ctx, req.Msg.GetIdentifier())
 	if errors.Is(err, persistence.ErrNotFound) {
+		metrics.LoginsTotal.WithLabelValues("not_found").Inc()
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 	if err != nil {
+		metrics.LoginsTotal.WithLabelValues("internal").Inc()
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(found.Password), []byte(req.Msg.GetPassword())); err != nil {
+		metrics.LoginsTotal.WithLabelValues("invalid").Inc()
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 
@@ -96,9 +109,11 @@ func (h *userHandler) Login(ctx context.Context, req *connect.Request[servicev1.
 		Email:    user.Email,
 	})
 	if err != nil {
+		metrics.LoginsTotal.WithLabelValues("internal").Inc()
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	metrics.LoginsTotal.WithLabelValues("ok").Inc()
 	return connect.NewResponse(&servicev1.LoginResponse{
 		Token: token,
 		User:  mapping.UserToProto(user),

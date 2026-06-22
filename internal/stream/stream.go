@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"cityio/internal/domain"
+	"cityio/internal/metrics"
 )
 
 // StateUpdate is a per-user snapshot pushed to subscribers.
@@ -41,6 +42,7 @@ func Subscribe(userID string) (<-chan StateUpdate, func()) {
 	nextID++
 	s := subscriber{id: nextID, ch: make(chan StateUpdate, 8)}
 	subs[userID] = append(subs[userID], s)
+	metrics.StreamSubscribers.Inc()
 
 	unsubscribe := func() {
 		mu.Lock()
@@ -49,6 +51,7 @@ func Subscribe(userID string) (<-chan StateUpdate, func()) {
 		for i, existing := range list {
 			if existing.id == s.id {
 				subs[userID] = append(list[:i], list[i+1:]...)
+				metrics.StreamSubscribers.Dec()
 				break
 			}
 		}
@@ -65,6 +68,8 @@ func Subscribe(userID string) (<-chan StateUpdate, func()) {
 // blocks: if a subscriber's buffer is full the oldest value is discarded to
 // make room for the newest.
 func Publish(userID string, state StateUpdate) {
+	recordPublish(state)
+
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -72,6 +77,9 @@ func Publish(userID string, state StateUpdate) {
 		select {
 		case s.ch <- state:
 		default:
+			// Buffer full — drop oldest, then try again. If we still can't
+			// enqueue, count the drop and move on.
+			metrics.StreamBufferDropsTotal.Inc()
 			select {
 			case <-s.ch:
 			default:
@@ -79,7 +87,26 @@ func Publish(userID string, state StateUpdate) {
 			select {
 			case s.ch <- state:
 			default:
+				metrics.StreamBufferDropsTotal.Inc()
 			}
 		}
+	}
+}
+
+// recordPublish bumps the stream publish counter once per populated field on
+// the update. A single update can carry user + city + building, so each
+// non-nil field is counted independently.
+func recordPublish(state StateUpdate) {
+	if state.User != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("user").Inc()
+	}
+	if state.City != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("city").Inc()
+	}
+	if state.Building != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("building").Inc()
+	}
+	if state.DeletedBuildingID != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("deletion").Inc()
 	}
 }
