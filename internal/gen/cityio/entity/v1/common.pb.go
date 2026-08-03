@@ -133,6 +133,62 @@ func (BuildingType) EnumDescriptor() ([]byte, []int) {
 	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{1}
 }
 
+// TroopType identifies a kind of troop.
+type TroopType int32
+
+const (
+	TroopType_TROOP_TYPE_UNSPECIFIED TroopType = 0
+	TroopType_TROOP_TYPE_SOLDIER     TroopType = 1
+	TroopType_TROOP_TYPE_ARCHER      TroopType = 2
+	TroopType_TROOP_TYPE_CAVALRY     TroopType = 3
+	TroopType_TROOP_TYPE_ARTILLERY   TroopType = 4
+)
+
+// Enum value maps for TroopType.
+var (
+	TroopType_name = map[int32]string{
+		0: "TROOP_TYPE_UNSPECIFIED",
+		1: "TROOP_TYPE_SOLDIER",
+		2: "TROOP_TYPE_ARCHER",
+		3: "TROOP_TYPE_CAVALRY",
+		4: "TROOP_TYPE_ARTILLERY",
+	}
+	TroopType_value = map[string]int32{
+		"TROOP_TYPE_UNSPECIFIED": 0,
+		"TROOP_TYPE_SOLDIER":     1,
+		"TROOP_TYPE_ARCHER":      2,
+		"TROOP_TYPE_CAVALRY":     3,
+		"TROOP_TYPE_ARTILLERY":   4,
+	}
+)
+
+func (x TroopType) Enum() *TroopType {
+	p := new(TroopType)
+	*p = x
+	return p
+}
+
+func (x TroopType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TroopType) Descriptor() protoreflect.EnumDescriptor {
+	return file_cityio_entity_v1_common_proto_enumTypes[2].Descriptor()
+}
+
+func (TroopType) Type() protoreflect.EnumType {
+	return &file_cityio_entity_v1_common_proto_enumTypes[2]
+}
+
+func (x TroopType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TroopType.Descriptor instead.
+func (TroopType) EnumDescriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{2}
+}
+
 type UserId struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
@@ -265,6 +321,50 @@ func (x *BuildingId) GetValue() string {
 	return ""
 }
 
+type ArmyId struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ArmyId) Reset() {
+	*x = ArmyId{}
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArmyId) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArmyId) ProtoMessage() {}
+
+func (x *ArmyId) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArmyId.ProtoReflect.Descriptor instead.
+func (*ArmyId) Descriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ArmyId) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 // Coordinates is a position on the game map.
 type Coordinates struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -276,7 +376,7 @@ type Coordinates struct {
 
 func (x *Coordinates) Reset() {
 	*x = Coordinates{}
-	mi := &file_cityio_entity_v1_common_proto_msgTypes[3]
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +388,7 @@ func (x *Coordinates) String() string {
 func (*Coordinates) ProtoMessage() {}
 
 func (x *Coordinates) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_common_proto_msgTypes[3]
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +401,7 @@ func (x *Coordinates) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Coordinates.ProtoReflect.Descriptor instead.
 func (*Coordinates) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{3}
+	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Coordinates) GetX() int32 {
@@ -331,7 +431,7 @@ type Rate struct {
 
 func (x *Rate) Reset() {
 	*x = Rate{}
-	mi := &file_cityio_entity_v1_common_proto_msgTypes[4]
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -343,7 +443,7 @@ func (x *Rate) String() string {
 func (*Rate) ProtoMessage() {}
 
 func (x *Rate) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_common_proto_msgTypes[4]
+	mi := &file_cityio_entity_v1_common_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -356,7 +456,7 @@ func (x *Rate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Rate.ProtoReflect.Descriptor instead.
 func (*Rate) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{4}
+	return file_cityio_entity_v1_common_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Rate) GetValue() int64 {
@@ -384,6 +484,8 @@ const file_cityio_entity_v1_common_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\tR\x05value\"\"\n" +
 	"\n" +
 	"BuildingId\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"\x1e\n" +
+	"\x06ArmyId\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\")\n" +
 	"\vCoordinates\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
@@ -402,7 +504,13 @@ const file_cityio_entity_v1_common_proto_rawDesc = "" +
 	"\x16BUILDING_TYPE_BARRACKS\x10\x03\x12\x17\n" +
 	"\x13BUILDING_TYPE_HOUSE\x10\x04\x12\x16\n" +
 	"\x12BUILDING_TYPE_FARM\x10\x05\x12\x16\n" +
-	"\x12BUILDING_TYPE_MINE\x10\x06B\xb4\x01\n" +
+	"\x12BUILDING_TYPE_MINE\x10\x06*\x88\x01\n" +
+	"\tTroopType\x12\x1a\n" +
+	"\x16TROOP_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12TROOP_TYPE_SOLDIER\x10\x01\x12\x15\n" +
+	"\x11TROOP_TYPE_ARCHER\x10\x02\x12\x16\n" +
+	"\x12TROOP_TYPE_CAVALRY\x10\x03\x12\x18\n" +
+	"\x14TROOP_TYPE_ARTILLERY\x10\x04B\xb4\x01\n" +
 	"\x14com.cityio.entity.v1B\vCommonProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -417,16 +525,18 @@ func file_cityio_entity_v1_common_proto_rawDescGZIP() []byte {
 	return file_cityio_entity_v1_common_proto_rawDescData
 }
 
-var file_cityio_entity_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_cityio_entity_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_cityio_entity_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_cityio_entity_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_cityio_entity_v1_common_proto_goTypes = []any{
 	(CityType)(0),       // 0: cityio.entity.v1.CityType
 	(BuildingType)(0),   // 1: cityio.entity.v1.BuildingType
-	(*UserId)(nil),      // 2: cityio.entity.v1.UserId
-	(*CityId)(nil),      // 3: cityio.entity.v1.CityId
-	(*BuildingId)(nil),  // 4: cityio.entity.v1.BuildingId
-	(*Coordinates)(nil), // 5: cityio.entity.v1.Coordinates
-	(*Rate)(nil),        // 6: cityio.entity.v1.Rate
+	(TroopType)(0),      // 2: cityio.entity.v1.TroopType
+	(*UserId)(nil),      // 3: cityio.entity.v1.UserId
+	(*CityId)(nil),      // 4: cityio.entity.v1.CityId
+	(*BuildingId)(nil),  // 5: cityio.entity.v1.BuildingId
+	(*ArmyId)(nil),      // 6: cityio.entity.v1.ArmyId
+	(*Coordinates)(nil), // 7: cityio.entity.v1.Coordinates
+	(*Rate)(nil),        // 8: cityio.entity.v1.Rate
 }
 var file_cityio_entity_v1_common_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -446,8 +556,8 @@ func file_cityio_entity_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_common_proto_rawDesc), len(file_cityio_entity_v1_common_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   5,
+			NumEnums:      3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

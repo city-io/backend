@@ -125,6 +125,7 @@ type Tile struct {
 	Y             int32                  `protobuf:"varint,2,opt,name=y,proto3" json:"y,omitempty"`
 	CityId        *v1.CityId             `protobuf:"bytes,3,opt,name=city_id,json=cityId,proto3,oneof" json:"city_id,omitempty"`
 	BuildingId    *v1.BuildingId         `protobuf:"bytes,4,opt,name=building_id,json=buildingId,proto3,oneof" json:"building_id,omitempty"`
+	ArmyIds       []*v1.ArmyId           `protobuf:"bytes,5,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -183,6 +184,13 @@ func (x *Tile) GetCityId() *v1.CityId {
 func (x *Tile) GetBuildingId() *v1.BuildingId {
 	if x != nil {
 		return x.BuildingId
+	}
+	return nil
+}
+
+func (x *Tile) GetArmyIds() []*v1.ArmyId {
+	if x != nil {
+		return x.ArmyIds
 	}
 	return nil
 }
@@ -284,13 +292,14 @@ const file_cityio_service_v1_map_proto_rawDesc = "" +
 	"\x0eGetMapResponse\x123\n" +
 	"\bcity_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x12?\n" +
 	"\fbuilding_ids\x18\x02 \x03(\v2\x1c.cityio.entity.v1.BuildingIdR\vbuildingIds\x127\n" +
-	"\bentities\x18\x03 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"\xba\x01\n" +
+	"\bentities\x18\x03 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"\xef\x01\n" +
 	"\x04Tile\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\x126\n" +
 	"\acity_id\x18\x03 \x01(\v2\x18.cityio.entity.v1.CityIdH\x00R\x06cityId\x88\x01\x01\x12B\n" +
 	"\vbuilding_id\x18\x04 \x01(\v2\x1c.cityio.entity.v1.BuildingIdH\x01R\n" +
-	"buildingId\x88\x01\x01B\n" +
+	"buildingId\x88\x01\x01\x123\n" +
+	"\barmy_ids\x18\x05 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIdsB\n" +
 	"\n" +
 	"\b_city_idB\x0e\n" +
 	"\f_building_id\"G\n" +
@@ -326,25 +335,27 @@ var file_cityio_service_v1_map_proto_goTypes = []any{
 	(*v1.CityId)(nil),       // 5: cityio.entity.v1.CityId
 	(*v1.BuildingId)(nil),   // 6: cityio.entity.v1.BuildingId
 	(*v1.EntityBag)(nil),    // 7: cityio.entity.v1.EntityBag
-	(*v1.Coordinates)(nil),  // 8: cityio.entity.v1.Coordinates
+	(*v1.ArmyId)(nil),       // 8: cityio.entity.v1.ArmyId
+	(*v1.Coordinates)(nil),  // 9: cityio.entity.v1.Coordinates
 }
 var file_cityio_service_v1_map_proto_depIdxs = []int32{
-	5, // 0: cityio.service.v1.GetMapResponse.city_ids:type_name -> cityio.entity.v1.CityId
-	6, // 1: cityio.service.v1.GetMapResponse.building_ids:type_name -> cityio.entity.v1.BuildingId
-	7, // 2: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	5, // 3: cityio.service.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
-	6, // 4: cityio.service.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
-	8, // 5: cityio.service.v1.GetTileRequest.coords:type_name -> cityio.entity.v1.Coordinates
-	2, // 6: cityio.service.v1.GetTileResponse.tile:type_name -> cityio.service.v1.Tile
-	0, // 7: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
-	3, // 8: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
-	1, // 9: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
-	4, // 10: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
-	9, // [9:11] is the sub-list for method output_type
-	7, // [7:9] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	5,  // 0: cityio.service.v1.GetMapResponse.city_ids:type_name -> cityio.entity.v1.CityId
+	6,  // 1: cityio.service.v1.GetMapResponse.building_ids:type_name -> cityio.entity.v1.BuildingId
+	7,  // 2: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	5,  // 3: cityio.service.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
+	6,  // 4: cityio.service.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
+	8,  // 5: cityio.service.v1.Tile.army_ids:type_name -> cityio.entity.v1.ArmyId
+	9,  // 6: cityio.service.v1.GetTileRequest.coords:type_name -> cityio.entity.v1.Coordinates
+	2,  // 7: cityio.service.v1.GetTileResponse.tile:type_name -> cityio.service.v1.Tile
+	0,  // 8: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
+	3,  // 9: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
+	1,  // 10: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
+	4,  // 11: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
+	10, // [10:12] is the sub-list for method output_type
+	8,  // [8:10] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_map_proto_init() }

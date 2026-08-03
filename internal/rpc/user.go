@@ -175,6 +175,19 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 				}
 			}
 
+			if dbArmies, err := h.srv.store.GetAllArmies(ctx); err == nil {
+				for _, da := range dbArmies {
+					if da.Owner != claims.UserID {
+						continue
+					}
+					if res, err := h.srv.cluster.Request("army", da.ArmyID, messages.GetArmyMessage{}); err == nil {
+						if ar, ok := res.(*messages.GetArmyResponseMessage); ok {
+							bag.Armies = append(bag.Armies, mapping.ArmyToProto(ar.Army))
+						}
+					}
+				}
+			}
+
 			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
 				return err
 			}
@@ -206,6 +219,12 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			}
 			if update.DeletedBuildingID != nil {
 				bag.DeletedBuildingIds = append(bag.DeletedBuildingIds, mapping.ToBuildingId(*update.DeletedBuildingID))
+			}
+			if update.Army != nil {
+				bag.Armies = append(bag.Armies, mapping.ArmyToProto(*update.Army))
+			}
+			if update.DeletedArmyID != nil {
+				bag.DeletedArmyIds = append(bag.DeletedArmyIds, mapping.ToArmyId(*update.DeletedArmyID))
 			}
 			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
 				return err

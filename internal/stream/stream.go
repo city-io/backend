@@ -18,6 +18,8 @@ type StateUpdate struct {
 	City              *domain.City
 	Building          *domain.Building
 	DeletedBuildingID *string
+	Army              *domain.Army
+	DeletedArmyID     *string
 }
 
 type subscriber struct {
@@ -107,6 +109,12 @@ func recordPublish(state StateUpdate) {
 		metrics.StreamPublishesTotal.WithLabelValues("building").Inc()
 	}
 	if state.DeletedBuildingID != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("deletion").Inc()
+	}
+	if state.Army != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("army").Inc()
+	}
+	if state.DeletedArmyID != nil {
 		metrics.StreamPublishesTotal.WithLabelValues("deletion").Inc()
 	}
 }

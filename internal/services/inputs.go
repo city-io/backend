@@ -24,3 +24,10 @@ type BuildingInput struct {
 	X      int                 `json:"x"`
 	Y      int                 `json:"y"`
 }
+
+// ArmyInput is the command to train a batch of troops at a barracks.
+type ArmyInput struct {
+	BarracksID string           `json:"barracks_id"`
+	TroopType  domain.TroopType `json:"troop_type"`
+	Count      int64            `json:"count"`
+}

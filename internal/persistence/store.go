@@ -8,6 +8,7 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"sync"
@@ -35,6 +36,7 @@ type Store struct {
 	userBuffer     map[string]domain.User
 	cityBuffer     map[string]domain.City
 	buildingBuffer map[string]domain.Building
+	armyBuffer     map[string]domain.Army
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -47,6 +49,7 @@ func New(db database.Querier) *Store {
 		userBuffer:     make(map[string]domain.User),
 		cityBuffer:     make(map[string]domain.City),
 		buildingBuffer: make(map[string]domain.Building),
+		armyBuffer:     make(map[string]domain.Army),
 		stopTickerCh:   make(chan struct{}),
 	}
 }
@@ -138,6 +141,18 @@ func (s *Store) GetAllBuildings(ctx context.Context) ([]domain.Building, error) 
 	return buildings, nil
 }
 
+func (s *Store) GetAllArmies(ctx context.Context) ([]domain.Army, error) {
+	rows, err := s.db.GetAllArmies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	armies := make([]domain.Army, 0, len(rows))
+	for _, a := range rows {
+		armies = append(armies, *a.ToModel())
+	}
+	return armies, nil
+}
+
 func (s *Store) GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error) {
 	rows, err := s.db.GetCitiesByOwner(ctx, &owner)
 	if err != nil {
@@ -198,6 +213,23 @@ func (s *Store) CreateBuilding(ctx context.Context, building domain.Building) er
 	})
 }
 
+func (s *Store) CreateArmy(ctx context.Context, army domain.Army) error {
+	troops, err := json.Marshal(army.Troops)
+	if err != nil {
+		return err
+	}
+	return s.db.CreateArmy(ctx, database.CreateArmyParams{
+		ArmyID:       army.ArmyID,
+		Owner:        army.Owner,
+		X:            int32(army.X),
+		Y:            int32(army.Y),
+		Troops:       troops,
+		DestX:        int32PtrFromInt(army.DestX),
+		DestY:        int32PtrFromInt(army.DestY),
+		UpkeepCityID: army.UpkeepCityID,
+	})
+}
+
 func (s *Store) DeleteUser(ctx context.Context, userID string) error {
 	s.mu.Lock()
 	delete(s.userBuffer, userID)
@@ -217,6 +249,13 @@ func (s *Store) DeleteBuilding(ctx context.Context, buildingID string) error {
 	delete(s.buildingBuffer, buildingID)
 	s.mu.Unlock()
 	return s.db.DeleteBuilding(ctx, buildingID)
+}
+
+func (s *Store) DeleteArmy(ctx context.Context, armyID string) error {
+	s.mu.Lock()
+	delete(s.armyBuffer, armyID)
+	s.mu.Unlock()
+	return s.db.DeleteArmy(ctx, armyID)
 }
 
 func (s *Store) EnqueueUser(user domain.User) {
@@ -243,6 +282,24 @@ func (s *Store) EnqueueBuilding(building domain.Building) {
 	metrics.PersistenceBufferSize.WithLabelValues("building").Set(float64(size))
 }
 
+func (s *Store) EnqueueArmy(army domain.Army) {
+	s.mu.Lock()
+	s.armyBuffer[army.ArmyID] = army
+	size := len(s.armyBuffer)
+	s.mu.Unlock()
+	metrics.PersistenceBufferSize.WithLabelValues("army").Set(float64(size))
+}
+
+// int32PtrFromInt converts an optional int to an optional int32 for a nullable
+// integer column.
+func int32PtrFromInt(v *int) *int32 {
+	if v == nil {
+		return nil
+	}
+	n := int32(*v)
+	return &n
+}
+
 // flush swaps out the pending buffers under the lock, then writes the snapshots
 // without holding it so enqueues continue while a flush is in flight.
 func (s *Store) flush(ctx context.Context) {
@@ -250,19 +307,23 @@ func (s *Store) flush(ctx context.Context) {
 	users := s.userBuffer
 	cities := s.cityBuffer
 	buildings := s.buildingBuffer
+	armies := s.armyBuffer
 	s.userBuffer = make(map[string]domain.User)
 	s.cityBuffer = make(map[string]domain.City)
 	s.buildingBuffer = make(map[string]domain.Building)
+	s.armyBuffer = make(map[string]domain.Army)
 	s.mu.Unlock()
 	// Reset the buffer-size gauges now that we've swapped the maps; enqueues
 	// during the flush bump them again from zero.
 	metrics.PersistenceBufferSize.WithLabelValues("user").Set(0)
 	metrics.PersistenceBufferSize.WithLabelValues("city").Set(0)
 	metrics.PersistenceBufferSize.WithLabelValues("building").Set(0)
+	metrics.PersistenceBufferSize.WithLabelValues("army").Set(0)
 
 	s.flushCities(ctx, cities)
 	s.flushUsers(ctx, users)
 	s.flushBuildings(ctx, buildings)
+	s.flushArmies(ctx, armies)
 }
 
 func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) {
@@ -391,4 +452,67 @@ func (s *Store) flushBuildings(ctx context.Context, buffer map[string]domain.Bui
 			metrics.PersistenceFlushErrorsTotal.WithLabelValues("building").Inc()
 		}
 	}
+}
+
+func (s *Store) flushArmies(ctx context.Context, buffer map[string]domain.Army) {
+	start := time.Now()
+	defer func() {
+		metrics.PersistenceFlushDurationSeconds.WithLabelValues("army").Observe(time.Since(start).Seconds())
+		metrics.PersistenceFlushRowsWritten.WithLabelValues("army").Observe(float64(len(buffer)))
+	}()
+	armies := make([]domain.Army, 0, len(buffer))
+	for _, a := range buffer {
+		armies = append(armies, a)
+	}
+	for i := 0; i < len(armies); i += batchSize {
+		end := min(i+batchSize, len(armies))
+		chunk := armies[i:end]
+
+		params := database.BatchUpdateArmiesParams{
+			ArmyIds:       make([]string, 0, len(chunk)),
+			Owners:        make([]string, 0, len(chunk)),
+			Xs:            make([]int32, 0, len(chunk)),
+			Ys:            make([]int32, 0, len(chunk)),
+			TroopsList:    make([]string, 0, len(chunk)),
+			DestXs:        make([]int32, 0, len(chunk)),
+			DestYs:        make([]int32, 0, len(chunk)),
+			UpkeepCityIds: make([]string, 0, len(chunk)),
+		}
+
+		for _, a := range chunk {
+			troops, err := json.Marshal(a.Troops)
+			if err != nil {
+				slog.ErrorContext(ctx, "error marshalling army troops", "army_id", a.ArmyID, "error", err)
+				continue
+			}
+			params.ArmyIds = append(params.ArmyIds, a.ArmyID)
+			params.Owners = append(params.Owners, a.Owner)
+			params.Xs = append(params.Xs, int32(a.X))
+			params.Ys = append(params.Ys, int32(a.Y))
+			params.TroopsList = append(params.TroopsList, string(troops))
+			// -1 and "" are the NULL sentinels the BatchUpdateArmies query maps
+			// back to SQL NULL via NULLIF (valid coords are 0..MapSize-1).
+			params.DestXs = append(params.DestXs, destSentinel(a.DestX))
+			params.DestYs = append(params.DestYs, destSentinel(a.DestY))
+			upkeep := ""
+			if a.UpkeepCityID != nil {
+				upkeep = *a.UpkeepCityID
+			}
+			params.UpkeepCityIds = append(params.UpkeepCityIds, upkeep)
+		}
+
+		if err := s.db.BatchUpdateArmies(ctx, params); err != nil {
+			slog.ErrorContext(ctx, "error batch updating armies", "idx", i, "error", err)
+			metrics.PersistenceFlushErrorsTotal.WithLabelValues("army").Inc()
+		}
+	}
+}
+
+// destSentinel maps an optional destination coordinate to the -1 NULL sentinel
+// used by the batch army update query.
+func destSentinel(v *int) int32 {
+	if v == nil {
+		return -1
+	}
+	return int32(*v)
 }

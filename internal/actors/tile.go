@@ -11,6 +11,7 @@ type tileActor struct {
 
 	CityID     *string
 	BuildingID *string
+	Armies     map[string]struct{}
 }
 
 func NewTileActor() BaseActorInterface {
@@ -36,10 +37,30 @@ func (state *tileActor) Receive(ctx actor.Context) {
 			ctx.Respond(messages.Ack{})
 		}
 
+	case messages.AddTileArmyMessage:
+		if state.Armies == nil {
+			state.Armies = make(map[string]struct{})
+		}
+		state.Armies[msg.ArmyID] = struct{}{}
+		if ctx.Sender() != nil {
+			ctx.Respond(messages.Ack{})
+		}
+
+	case messages.RemoveTileArmyMessage:
+		delete(state.Armies, msg.ArmyID)
+		if ctx.Sender() != nil {
+			ctx.Respond(messages.Ack{})
+		}
+
 	case messages.GetTileMessage:
+		armyIDs := make([]string, 0, len(state.Armies))
+		for id := range state.Armies {
+			armyIDs = append(armyIDs, id)
+		}
 		ctx.Respond(messages.GetTileResponseMessage{
 			CityID:     state.CityID,
 			BuildingID: state.BuildingID,
+			ArmyIDs:    armyIDs,
 		})
 	}
 }

@@ -45,6 +45,7 @@ func NewRuntime(ctx context.Context, store ports.Store, environment string) *Clu
 		cluster.NewKind("city", actor.PropsFromProducer(spawn(actors.NewCityActor))),
 		cluster.NewKind("tile", actor.PropsFromProducer(spawn(actors.NewTileActor))),
 		cluster.NewKind("building", actor.PropsFromProducer(spawn(actors.NewBuildingActor))),
+		cluster.NewKind("army", actor.PropsFromProducer(spawn(actors.NewArmyActor))),
 	}
 
 	remoteConfig := remote.Configure("127.0.0.1", 8090)
