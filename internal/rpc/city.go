@@ -30,11 +30,11 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[servicev
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
 
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !domain.CityVisible(owned, resp.City, constants.VisionRadius) {
+	if !domain.CityVisible(seen, resp.City, constants.VisionRadius) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
 

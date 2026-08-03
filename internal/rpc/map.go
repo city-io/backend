@@ -21,7 +21,7 @@ type mapHandler struct {
 }
 
 func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.GetMapRequest]) (*connect.Response[servicev1.GetMapResponse], error) {
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -39,9 +39,9 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	cityList = domain.FilterCities(owned, cityList, constants.VisionRadius)
-	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
-	armyList = domain.FilterArmies(owned, armyList, constants.VisionRadius)
+	cityList = domain.FilterCities(seen, cityList, constants.VisionRadius)
+	buildingList = domain.FilterBuildings(seen, buildingList, constants.VisionRadius)
+	armyList = domain.FilterArmies(seen, armyList, constants.VisionRadius)
 
 	cityIds := make([]*entityv1.CityId, 0, len(cityList))
 	for _, c := range cityList {
@@ -69,28 +69,26 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	}), nil
 }
 
-// GetTerrain returns the whole map in one response. Terrain is generated once
-// at boot and never changes, so this is deliberately not filtered by vision or
-// paged: the planes total a few kilobytes and the client caches them for the
-// session. Fog of war hides entities, which is the information that matters —
-// the shape of the coastline is not a secret worth a per-viewport query.
+// GetTerrain bootstraps a client with the map's dimensions and the ground it
+// can currently see. Vision is ephemeral — it lasts only while a city, army or
+// held structure is watching — so this is a snapshot, not a permanent reveal;
+// the state stream sends a fresh set whenever the player's vision moves.
 func (h *mapHandler) GetTerrain(ctx context.Context, req *connect.Request[servicev1.GetTerrainRequest]) (*connect.Response[servicev1.GetTerrainResponse], error) {
 	w := h.srv.world
 	if w == nil {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("world not generated"))
 	}
 
-	// The world's plane values are numbered to match the proto enums exactly,
-	// so these copy straight out with no remapping.
+	seen, err := h.srv.watchers(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
 	return connect.NewResponse(&servicev1.GetTerrainResponse{
 		Width:   int32(w.Width),
 		Height:  int32(w.Height),
 		Seed:    w.Seed,
-		Terrain: append([]byte(nil), w.Terrain...),
-		Relief:  append([]byte(nil), w.Relief...),
-		Feature: append([]byte(nil), w.Feature...),
-		Special: append([]byte(nil), w.Special...),
-		Rivers:  append([]byte(nil), w.Rivers...),
+		Visible: mapping.VisibleTerrainToProto(w, seen, constants.VisionRadius),
 	}), nil
 }
 
@@ -98,11 +96,11 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 	x := int(req.Msg.GetCoords().GetX())
 	y := int(req.Msg.GetCoords().GetY())
 
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !domain.PointVisible(owned, x, y, constants.VisionRadius) {
+	if !domain.PointVisible(seen, x, y, constants.VisionRadius) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 

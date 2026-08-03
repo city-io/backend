@@ -69,11 +69,11 @@ func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
 
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !domain.PointVisible(owned, resp.Building.X, resp.Building.Y, constants.VisionRadius) {
+	if !domain.PointVisible(seen, resp.Building.X, resp.Building.Y, constants.VisionRadius) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
 
@@ -128,11 +128,11 @@ func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Reques
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
+	buildingList = domain.FilterBuildings(seen, buildingList, constants.VisionRadius)
 
 	buildings := make([]*entityv1.Building, 0, len(buildingList))
 	for _, b := range buildingList {

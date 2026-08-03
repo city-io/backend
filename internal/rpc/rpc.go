@@ -48,6 +48,31 @@ func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {
 	return s.store.GetCitiesByOwner(ctx, claims.UserID)
 }
 
+// watchers builds the caller's vision set. Cities were once the only thing
+// that could see, which meant an army could march the length of the map
+// revealing nothing and a player's visible area never changed after founding.
+func (s *Server) watchers(ctx context.Context) ([]domain.Watcher, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, errors.New("missing claims")
+	}
+	cities, err := s.store.GetCitiesByOwner(ctx, claims.UserID)
+	if err != nil {
+		return nil, err
+	}
+	all, err := s.store.GetAllArmies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	armies := make([]domain.Army, 0, len(all))
+	for _, a := range all {
+		if a.Owner == claims.UserID {
+			armies = append(armies, a)
+		}
+	}
+	return domain.WatchersFor(cities, armies), nil
+}
+
 func (s *Server) ownsCity(ctx context.Context, cityID string) (bool, error) {
 	owned, err := s.ownedCities(ctx)
 	if err != nil {

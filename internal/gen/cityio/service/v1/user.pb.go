@@ -444,10 +444,14 @@ func (*StreamStateRequest) Descriptor() ([]byte, []int) {
 
 // StreamStateResponse wraps an EntityBag pushed to a client whenever state changes.
 type StreamStateResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entities      *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Entities *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
+	// The player's currently visible ground, sent whole whenever it changes and
+	// omitted when it has not. Absent on most ticks, since vision only moves when
+	// a city, army or watchtower does.
+	VisibleTerrain *VisibleTerrain `protobuf:"bytes,2,opt,name=visible_terrain,json=visibleTerrain,proto3,oneof" json:"visible_terrain,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *StreamStateResponse) Reset() {
@@ -487,11 +491,18 @@ func (x *StreamStateResponse) GetEntities() *v1.EntityBag {
 	return nil
 }
 
+func (x *StreamStateResponse) GetVisibleTerrain() *VisibleTerrain {
+	if x != nil {
+		return x.VisibleTerrain
+	}
+	return nil
+}
+
 var File_cityio_service_v1_user_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccityio/service/v1/user.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1bcityio/entity/v1/user.proto\x1a\x1acityio/entity/v1/bag.proto\"_\n" +
+	"\x1ccityio/service/v1/user.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1bcityio/entity/v1/user.proto\x1a\x1acityio/entity/v1/bag.proto\x1a\x1bcityio/service/v1/map.proto\"_\n" +
 	"\x0fRegisterRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1a\n" +
@@ -514,9 +525,11 @@ const file_cityio_service_v1_user_proto_rawDesc = "" +
 	"\x11DeleteUserRequest\x121\n" +
 	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\"\x14\n" +
 	"\x12DeleteUserResponse\"\x14\n" +
-	"\x12StreamStateRequest\"N\n" +
+	"\x12StreamStateRequest\"\xb3\x01\n" +
 	"\x13StreamStateResponse\x127\n" +
-	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\xbb\x03\n" +
+	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\x12O\n" +
+	"\x0fvisible_terrain\x18\x02 \x01(\v2!.cityio.service.v1.VisibleTerrainH\x00R\x0evisibleTerrain\x88\x01\x01B\x12\n" +
+	"\x10_visible_terrain2\xbb\x03\n" +
 	"\vUserService\x12S\n" +
 	"\bRegister\x12\".cityio.service.v1.RegisterRequest\x1a#.cityio.service.v1.RegisterResponse\x12J\n" +
 	"\x05Login\x12\x1f.cityio.service.v1.LoginRequest\x1a .cityio.service.v1.LoginResponse\x12P\n" +
@@ -553,6 +566,7 @@ var file_cityio_service_v1_user_proto_goTypes = []any{
 	(*v1.UserId)(nil),           // 10: cityio.entity.v1.UserId
 	(*v1.User)(nil),             // 11: cityio.entity.v1.User
 	(*v1.EntityBag)(nil),        // 12: cityio.entity.v1.EntityBag
+	(*VisibleTerrain)(nil),      // 13: cityio.service.v1.VisibleTerrain
 }
 var file_cityio_service_v1_user_proto_depIdxs = []int32{
 	10, // 0: cityio.service.v1.RegisterResponse.user_id:type_name -> cityio.entity.v1.UserId
@@ -561,21 +575,22 @@ var file_cityio_service_v1_user_proto_depIdxs = []int32{
 	11, // 3: cityio.service.v1.GetUserResponse.user:type_name -> cityio.entity.v1.User
 	10, // 4: cityio.service.v1.DeleteUserRequest.user_id:type_name -> cityio.entity.v1.UserId
 	12, // 5: cityio.service.v1.StreamStateResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	0,  // 6: cityio.service.v1.UserService.Register:input_type -> cityio.service.v1.RegisterRequest
-	2,  // 7: cityio.service.v1.UserService.Login:input_type -> cityio.service.v1.LoginRequest
-	4,  // 8: cityio.service.v1.UserService.GetUser:input_type -> cityio.service.v1.GetUserRequest
-	6,  // 9: cityio.service.v1.UserService.DeleteUser:input_type -> cityio.service.v1.DeleteUserRequest
-	8,  // 10: cityio.service.v1.UserService.StreamState:input_type -> cityio.service.v1.StreamStateRequest
-	1,  // 11: cityio.service.v1.UserService.Register:output_type -> cityio.service.v1.RegisterResponse
-	3,  // 12: cityio.service.v1.UserService.Login:output_type -> cityio.service.v1.LoginResponse
-	5,  // 13: cityio.service.v1.UserService.GetUser:output_type -> cityio.service.v1.GetUserResponse
-	7,  // 14: cityio.service.v1.UserService.DeleteUser:output_type -> cityio.service.v1.DeleteUserResponse
-	9,  // 15: cityio.service.v1.UserService.StreamState:output_type -> cityio.service.v1.StreamStateResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	13, // 6: cityio.service.v1.StreamStateResponse.visible_terrain:type_name -> cityio.service.v1.VisibleTerrain
+	0,  // 7: cityio.service.v1.UserService.Register:input_type -> cityio.service.v1.RegisterRequest
+	2,  // 8: cityio.service.v1.UserService.Login:input_type -> cityio.service.v1.LoginRequest
+	4,  // 9: cityio.service.v1.UserService.GetUser:input_type -> cityio.service.v1.GetUserRequest
+	6,  // 10: cityio.service.v1.UserService.DeleteUser:input_type -> cityio.service.v1.DeleteUserRequest
+	8,  // 11: cityio.service.v1.UserService.StreamState:input_type -> cityio.service.v1.StreamStateRequest
+	1,  // 12: cityio.service.v1.UserService.Register:output_type -> cityio.service.v1.RegisterResponse
+	3,  // 13: cityio.service.v1.UserService.Login:output_type -> cityio.service.v1.LoginResponse
+	5,  // 14: cityio.service.v1.UserService.GetUser:output_type -> cityio.service.v1.GetUserResponse
+	7,  // 15: cityio.service.v1.UserService.DeleteUser:output_type -> cityio.service.v1.DeleteUserResponse
+	9,  // 16: cityio.service.v1.UserService.StreamState:output_type -> cityio.service.v1.StreamStateResponse
+	12, // [12:17] is the sub-list for method output_type
+	7,  // [7:12] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_user_proto_init() }
@@ -583,6 +598,8 @@ func file_cityio_service_v1_user_proto_init() {
 	if File_cityio_service_v1_user_proto != nil {
 		return
 	}
+	file_cityio_service_v1_map_proto_init()
+	file_cityio_service_v1_user_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

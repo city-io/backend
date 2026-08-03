@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/auth"
+	"cityio/internal/constants"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
@@ -149,6 +150,20 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 	ch, unsubscribe := stream.Subscribe(claims.UserID)
 	defer unsubscribe()
 
+	// Vision is ephemeral: it lasts only while a city, army or held structure is
+	// watching, so the visible set shrinks as readily as it grows. Rather than
+	// track reveals and concealments separately, resend the whole set whenever
+	// it changes and let the client replace what it has. lastVisible is what
+	// keeps that from being sent on every tick when nothing has moved.
+	var lastVisible *servicev1.VisibleTerrain
+	currentVisible := func() *servicev1.VisibleTerrain {
+		seen, err := h.srv.watchers(ctx)
+		if err != nil {
+			return nil
+		}
+		return mapping.VisibleTerrainToProto(h.srv.world, seen, constants.VisionRadius)
+	}
+
 	// Send initial snapshot: user, owned cities, and their buildings.
 	if res, err := h.srv.cluster.Request("user", claims.UserID, messages.GetUserMessage{}); err == nil {
 		if resp, ok := res.(*messages.GetUserResponseMessage); ok {
@@ -188,7 +203,8 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 				}
 			}
 
-			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
+			lastVisible = currentVisible()
+			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag, VisibleTerrain: lastVisible}); err != nil {
 				return err
 			}
 		}
@@ -226,7 +242,17 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			if update.DeletedArmyID != nil {
 				bag.DeletedArmyIds = append(bag.DeletedArmyIds, mapping.ToArmyId(*update.DeletedArmyID))
 			}
-			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
+			res := &servicev1.StreamStateResponse{Entities: bag}
+			// Only cities and armies can move vision, and recomputing costs a
+			// query per subscriber — so skip it on the resource-only ticks that
+			// make up most of the stream.
+			if update.City != nil || update.Army != nil || update.DeletedArmyID != nil {
+				if visible := currentVisible(); !mapping.SameVisibleTerrain(visible, lastVisible) {
+					lastVisible = visible
+					res.VisibleTerrain = visible
+				}
+			}
+			if err := out.Send(res); err != nil {
 				return err
 			}
 		}
