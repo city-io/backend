@@ -37,12 +37,15 @@ const (
 	MapServiceGetMapProcedure = "/cityio.service.v1.MapService/GetMap"
 	// MapServiceGetTileProcedure is the fully-qualified name of the MapService's GetTile RPC.
 	MapServiceGetTileProcedure = "/cityio.service.v1.MapService/GetTile"
+	// MapServiceGetTerrainProcedure is the fully-qualified name of the MapService's GetTerrain RPC.
+	MapServiceGetTerrainProcedure = "/cityio.service.v1.MapService/GetTerrain"
 )
 
 // MapServiceClient is a client for the cityio.service.v1.MapService service.
 type MapServiceClient interface {
 	GetMap(context.Context, *connect.Request[v1.GetMapRequest]) (*connect.Response[v1.GetMapResponse], error)
 	GetTile(context.Context, *connect.Request[v1.GetTileRequest]) (*connect.Response[v1.GetTileResponse], error)
+	GetTerrain(context.Context, *connect.Request[v1.GetTerrainRequest]) (*connect.Response[v1.GetTerrainResponse], error)
 }
 
 // NewMapServiceClient constructs a client for the cityio.service.v1.MapService service. By default,
@@ -68,13 +71,20 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("GetTile")),
 			connect.WithClientOptions(opts...),
 		),
+		getTerrain: connect.NewClient[v1.GetTerrainRequest, v1.GetTerrainResponse](
+			httpClient,
+			baseURL+MapServiceGetTerrainProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("GetTerrain")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // mapServiceClient implements MapServiceClient.
 type mapServiceClient struct {
-	getMap  *connect.Client[v1.GetMapRequest, v1.GetMapResponse]
-	getTile *connect.Client[v1.GetTileRequest, v1.GetTileResponse]
+	getMap     *connect.Client[v1.GetMapRequest, v1.GetMapResponse]
+	getTile    *connect.Client[v1.GetTileRequest, v1.GetTileResponse]
+	getTerrain *connect.Client[v1.GetTerrainRequest, v1.GetTerrainResponse]
 }
 
 // GetMap calls cityio.service.v1.MapService.GetMap.
@@ -87,10 +97,16 @@ func (c *mapServiceClient) GetTile(ctx context.Context, req *connect.Request[v1.
 	return c.getTile.CallUnary(ctx, req)
 }
 
+// GetTerrain calls cityio.service.v1.MapService.GetTerrain.
+func (c *mapServiceClient) GetTerrain(ctx context.Context, req *connect.Request[v1.GetTerrainRequest]) (*connect.Response[v1.GetTerrainResponse], error) {
+	return c.getTerrain.CallUnary(ctx, req)
+}
+
 // MapServiceHandler is an implementation of the cityio.service.v1.MapService service.
 type MapServiceHandler interface {
 	GetMap(context.Context, *connect.Request[v1.GetMapRequest]) (*connect.Response[v1.GetMapResponse], error)
 	GetTile(context.Context, *connect.Request[v1.GetTileRequest]) (*connect.Response[v1.GetTileResponse], error)
+	GetTerrain(context.Context, *connect.Request[v1.GetTerrainRequest]) (*connect.Response[v1.GetTerrainResponse], error)
 }
 
 // NewMapServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -112,12 +128,20 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("GetTile")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceGetTerrainHandler := connect.NewUnaryHandler(
+		MapServiceGetTerrainProcedure,
+		svc.GetTerrain,
+		connect.WithSchema(mapServiceMethods.ByName("GetTerrain")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/cityio.service.v1.MapService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MapServiceGetMapProcedure:
 			mapServiceGetMapHandler.ServeHTTP(w, r)
 		case MapServiceGetTileProcedure:
 			mapServiceGetTileHandler.ServeHTTP(w, r)
+		case MapServiceGetTerrainProcedure:
+			mapServiceGetTerrainHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -133,4 +157,8 @@ func (UnimplementedMapServiceHandler) GetMap(context.Context, *connect.Request[v
 
 func (UnimplementedMapServiceHandler) GetTile(context.Context, *connect.Request[v1.GetTileRequest]) (*connect.Response[v1.GetTileResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.MapService.GetTile is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) GetTerrain(context.Context, *connect.Request[v1.GetTerrainRequest]) (*connect.Response[v1.GetTerrainResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.MapService.GetTerrain is not implemented"))
 }

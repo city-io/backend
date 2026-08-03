@@ -18,12 +18,14 @@ import (
 
 	"cityio/internal/cluster"
 	"cityio/internal/config"
+	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/logger"
 	"cityio/internal/metrics"
 	"cityio/internal/persistence"
 	"cityio/internal/rpc"
 	"cityio/internal/setup"
+	"cityio/internal/world"
 )
 
 func main() {
@@ -43,13 +45,20 @@ func main() {
 	slog.InfoContext(ctx, "starting cityio backend")
 
 	db := database.NewDB(ctx, cfg.DatabaseDSN())
-	store := persistence.New(db)
+
+	// The map is regenerated from a fixed seed on every boot rather than
+	// persisted, so it survives the reset that wipes everything else.
+	gameWorld := world.Generate(constants.MapSize, constants.MapSize, constants.WorldSeed)
+	slog.InfoContext(ctx, "generated world", "width", gameWorld.Width, "height", gameWorld.Height, "seed", gameWorld.Seed)
+
+	store := persistence.New(db, gameWorld)
 	store.Start(ctx)
 	cl := cluster.NewRuntime(ctx, store, cfg.Environment)
 
 	setup.Run(ctx, &setup.Deps{
 		DB:      db,
 		Cluster: cl,
+		World:   gameWorld,
 	})
 
 	// shutdownCtx is cancelled when we receive SIGINT/SIGTERM. The RPC server
@@ -63,7 +72,7 @@ func main() {
 	// gauges.
 	metrics.StartSnapshot(shutdownCtx, store)
 
-	server := rpc.NewServer(shutdownCtx, cl, store, cfg.JWTSecret)
+	server := rpc.NewServer(shutdownCtx, cl, store, gameWorld, cfg.JWTSecret)
 	handler := cors.New(cors.Options{
 		AllowOriginFunc: func(origin string) bool {
 			if origin == "http://localhost:5173" || origin == "http://localhost:4173" {

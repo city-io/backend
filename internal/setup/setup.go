@@ -18,11 +18,13 @@ import (
 	"cityio/internal/logger"
 	"cityio/internal/ports"
 	"cityio/internal/services"
+	"cityio/internal/world"
 )
 
 type Deps struct {
 	DB      database.Querier
 	Cluster ports.ClusterProvider
+	World   *world.World
 }
 
 func Run(ctx context.Context, deps *Deps) {
@@ -131,13 +133,21 @@ func reset(ctx context.Context, deps *Deps) error {
 			slog.ErrorContext(ctx, "error resetting user fields", "error", err)
 		}
 
+		// Bounded: canPlace now also rejects unbuildable terrain, so on a map
+		// with no room left this would otherwise spin forever.
 		var startX, startY int
-		for {
+		placed := false
+		for attempt := 0; attempt < 4000; attempt++ {
 			startX = r.Intn(constants.MapSize - constants.CitySize)
 			startY = r.Intn(constants.MapSize - constants.CitySize)
-			if canPlace(occupied, startX, startY, constants.CitySize) {
+			if canPlace(deps.World, occupied, startX, startY, constants.CitySize) {
+				placed = true
 				break
 			}
+		}
+		if !placed {
+			slog.ErrorContext(ctx, "no room to place restored user's city", "user", user.Username)
+			continue
 		}
 
 		cityID := uuid.New().String()
@@ -201,7 +211,7 @@ func reset(ctx context.Context, deps *Deps) error {
 		if x < 0 || y < 0 || x+size > constants.MapSize || y+size > constants.MapSize {
 			continue
 		}
-		if !canPlace(occupied, x, y, size) {
+		if !canPlace(deps.World, occupied, x, y, size) {
 			continue
 		}
 
@@ -386,7 +396,12 @@ const (
 	// townMinSpacing is the Euclidean minimum distance between town centers.
 	// Smaller = denser map. Large enough to leave room for size-5 footprints
 	// (5×5 tiles + 1-tile gap) without canPlace rejecting too many candidates.
-	townMinSpacing = 5
+	//
+	// Tightened from 5 to 4 when canPlace started rejecting unbuildable ground:
+	// roughly half of all candidates now land on water, peaks or ice, which
+	// otherwise halved the number of towns on the map and with it the amount
+	// there is to expand into.
+	townMinSpacing = 4
 
 	// poissonRetries is k in Bridson's algorithm: how many candidate points
 	// to try around each active sample before retiring it. 30 is the standard
@@ -468,13 +483,19 @@ func poissonDiskPoints(rng *rand.Rand, n, minDist, k int) [][2]int {
 }
 
 // canPlace reports whether a city of the given size can be placed at (x, y)
-// with at least a 1-tile gap from all occupied cells and from the map boundary.
-// Off-map cells are treated as occupied so edge placements have the same gap
-// requirement as interior ones — otherwise canPlace is more permissive near
-// the borders and town density skews toward the edges.
-func canPlace(occupied [][]bool, x, y, size int) bool {
+// with at least a 1-tile gap from all occupied cells and from the map boundary,
+// on ground that can actually be settled. Off-map cells are treated as occupied
+// so edge placements have the same gap requirement as interior ones — otherwise
+// canPlace is more permissive near the borders and town density skews toward
+// the edges.
+func canPlace(w *world.World, occupied [][]bool, x, y, size int) bool {
 	mapSize := len(occupied)
 	if x+size > mapSize || y+size > mapSize {
+		return false
+	}
+	// Every tile of the footprint must be dry, unfrozen and off the peaks.
+	// Without this the map is scattered with towns standing in open ocean.
+	if w != nil && !w.BlockBuildable(x, y, size) {
 		return false
 	}
 	for i := -1; i <= size; i++ {

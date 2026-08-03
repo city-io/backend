@@ -53,6 +53,12 @@ const (
 	TroopMovementDuration = 1 // time it takes to cross 1 tile
 
 	VisionRadius = 3 // Chebyshev distance beyond owned city edges that a player can see
+
+	// WorldSeed fixes the shape of the map. Terrain is regenerated from it on
+	// every boot rather than persisted, so the world survives restarts even
+	// though everything else is wiped. Changing it reshapes the map for
+	// everyone.
+	WorldSeed = 0xc17e0
 )
 
 type TownConfig struct {

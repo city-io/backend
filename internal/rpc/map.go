@@ -69,6 +69,31 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	}), nil
 }
 
+// GetTerrain returns the whole map in one response. Terrain is generated once
+// at boot and never changes, so this is deliberately not filtered by vision or
+// paged: the planes total a few kilobytes and the client caches them for the
+// session. Fog of war hides entities, which is the information that matters —
+// the shape of the coastline is not a secret worth a per-viewport query.
+func (h *mapHandler) GetTerrain(ctx context.Context, req *connect.Request[servicev1.GetTerrainRequest]) (*connect.Response[servicev1.GetTerrainResponse], error) {
+	w := h.srv.world
+	if w == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("world not generated"))
+	}
+
+	// The world's plane values are numbered to match the proto enums exactly,
+	// so these copy straight out with no remapping.
+	return connect.NewResponse(&servicev1.GetTerrainResponse{
+		Width:   int32(w.Width),
+		Height:  int32(w.Height),
+		Seed:    w.Seed,
+		Terrain: append([]byte(nil), w.Terrain...),
+		Relief:  append([]byte(nil), w.Relief...),
+		Feature: append([]byte(nil), w.Feature...),
+		Special: append([]byte(nil), w.Special...),
+		Rivers:  append([]byte(nil), w.Rivers...),
+	}), nil
+}
+
 func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1.GetTileRequest]) (*connect.Response[servicev1.GetTileResponse], error) {
 	x := int(req.Msg.GetCoords().GetX())
 	y := int(req.Msg.GetCoords().GetY())

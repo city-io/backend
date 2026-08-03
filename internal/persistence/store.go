@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"cityio/internal/database"
 	"cityio/internal/domain"
 	"cityio/internal/metrics"
+	"cityio/internal/world"
 )
 
 const batchSize = 5000
@@ -30,7 +32,8 @@ var ErrNotFound = errors.New("not found")
 
 // Store implements ports.Store over a sqlc Querier backed by a pgx pool.
 type Store struct {
-	db database.Querier
+	db    database.Querier
+	world *world.World
 
 	mu             sync.Mutex
 	userBuffer     map[string]domain.User
@@ -43,9 +46,10 @@ type Store struct {
 }
 
 // New constructs a Store. Call Start to begin periodic flushing.
-func New(db database.Querier) *Store {
+func New(db database.Querier, w *world.World) *Store {
 	return &Store{
 		db:             db,
+		world:          w,
 		userBuffer:     make(map[string]domain.User),
 		cityBuffer:     make(map[string]domain.City),
 		buildingBuffer: make(map[string]domain.Building),
@@ -82,7 +86,36 @@ func (s *Store) Stop(ctx context.Context) {
 	s.flush(ctx)
 }
 
+// FindEmptyCityBlock picks a starting block for a new city.
+//
+// With terrain available the search runs in memory over the whole map, because
+// the SQL query only knows about collisions with other cities: the blocks it
+// leaves free are precisely the water and mountain that town seeding already
+// rejected, so drawing from it seats players in the worst ground on the map.
+// The query remains the fallback for when no world is loaded.
 func (s *Store) FindEmptyCityBlock(ctx context.Context, size int) (domain.Coordinates, error) {
+	if s.world != nil {
+		cities, err := s.GetAllCities(ctx)
+		if err != nil {
+			return domain.Coordinates{}, err
+		}
+		occupied := blockedTiles(cities, s.world.Width, s.world.Height)
+		collides := func(x, y int) bool {
+			for dx := 0; dx < size; dx++ {
+				for dy := 0; dy < size; dy++ {
+					if occupied[(y+dy)*s.world.Width+(x+dx)] {
+						return true
+					}
+				}
+			}
+			return false
+		}
+		if x, y, ok := s.world.FindStart(size, collides, rand.Intn); ok {
+			return domain.Coordinates{X: x, Y: y}, nil
+		}
+		slog.WarnContext(ctx, "no habitable start block left; falling back to any empty block")
+	}
+
 	row, err := s.db.FindEmptyCityBlock(ctx, database.FindEmptyCityBlockParams{
 		MapWidth:  constants.MapSize,
 		MapHeight: constants.MapSize,
@@ -92,6 +125,24 @@ func (s *Store) FindEmptyCityBlock(ctx context.Context, size int) (domain.Coordi
 		return domain.Coordinates{}, err
 	}
 	return domain.Coordinates{X: int(row.X), Y: int(row.Y)}, nil
+}
+
+// blockedTiles marks every tile covered by an existing city, expanded by the
+// one-tile gap the placement rules require between settlements.
+func blockedTiles(cities []domain.City, width, height int) []bool {
+	blocked := make([]bool, width*height)
+	for _, c := range cities {
+		for dx := -1; dx <= c.Size; dx++ {
+			for dy := -1; dy <= c.Size; dy++ {
+				x, y := c.StartX+dx, c.StartY+dy
+				if x < 0 || y < 0 || x >= width || y >= height {
+					continue
+				}
+				blocked[y*width+x] = true
+			}
+		}
+	}
+	return blocked
 }
 
 func (s *Store) GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error) {
