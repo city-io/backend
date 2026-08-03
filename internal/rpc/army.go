@@ -107,12 +107,17 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 	if err != nil {
 		return nil, err
 	}
-	owned, err := h.srv.ownedCities(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if !domain.PointVisible(owned, army.X, army.Y, constants.VisionRadius) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("army not found"))
+	// The owner can always inspect their own army; everyone else needs vision on
+	// its tile.
+	claims, _ := auth.ClaimsFromContext(ctx)
+	if army.Owner != claims.UserID {
+		owned, err := h.srv.ownedCities(ctx)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if !domain.PointVisible(owned, army.X, army.Y, constants.VisionRadius) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("army not found"))
+		}
 	}
 	return connect.NewResponse(&servicev1.GetArmyResponse{Army: mapping.ArmyToProto(army)}), nil
 }
