@@ -54,3 +54,22 @@ func FilterBuildings(cities []City, all []Building, radius int) []Building {
 	}
 	return out
 }
+
+// FilterArmies returns the subset of armies visible from cities within radius.
+func FilterArmies(cities []City, all []Army, radius int) []Army {
+	out := make([]Army, 0, len(all))
+	for _, a := range all {
+		if PointVisible(cities, a.X, a.Y, radius) {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// ChebyshevToCity returns the Chebyshev (king-move) distance from point (px, py)
+// to the nearest tile of city c. Zero when the point lies inside the city box.
+func ChebyshevToCity(c City, px, py int) int {
+	dx := max(0, c.StartX-px, px-(c.StartX+c.Size-1))
+	dy := max(0, c.StartY-py, py-(c.StartY+c.Size-1))
+	return max(dx, dy)
+}

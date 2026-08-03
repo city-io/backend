@@ -40,6 +40,20 @@ var buildingTypeFromProto = map[entityv1.BuildingType]domain.BuildingType{
 	entityv1.BuildingType_BUILDING_TYPE_MINE:        domain.BuildingTypeMine,
 }
 
+var troopTypeToProto = map[domain.TroopType]entityv1.TroopType{
+	domain.TroopTypeSoldier:   entityv1.TroopType_TROOP_TYPE_SOLDIER,
+	domain.TroopTypeArcher:    entityv1.TroopType_TROOP_TYPE_ARCHER,
+	domain.TroopTypeCavalry:   entityv1.TroopType_TROOP_TYPE_CAVALRY,
+	domain.TroopTypeArtillery: entityv1.TroopType_TROOP_TYPE_ARTILLERY,
+}
+
+var troopTypeFromProto = map[entityv1.TroopType]domain.TroopType{
+	entityv1.TroopType_TROOP_TYPE_SOLDIER:   domain.TroopTypeSoldier,
+	entityv1.TroopType_TROOP_TYPE_ARCHER:    domain.TroopTypeArcher,
+	entityv1.TroopType_TROOP_TYPE_CAVALRY:   domain.TroopTypeCavalry,
+	entityv1.TroopType_TROOP_TYPE_ARTILLERY: domain.TroopTypeArtillery,
+}
+
 // ToUserId wraps a raw string into a typed proto ID.
 func ToUserId(id string) *entityv1.UserId {
 	return &entityv1.UserId{Value: id}
@@ -53,6 +67,21 @@ func ToCityId(id string) *entityv1.CityId {
 // ToBuildingId wraps a raw string into a typed proto ID.
 func ToBuildingId(id string) *entityv1.BuildingId {
 	return &entityv1.BuildingId{Value: id}
+}
+
+// ToArmyId wraps a raw string into a typed proto ID.
+func ToArmyId(id string) *entityv1.ArmyId {
+	return &entityv1.ArmyId{Value: id}
+}
+
+// TroopTypeToProto maps a domain troop type to its proto enum.
+func TroopTypeToProto(t domain.TroopType) entityv1.TroopType {
+	return troopTypeToProto[t]
+}
+
+// TroopTypeFromProto maps a proto troop type enum to its domain value.
+func TroopTypeFromProto(t entityv1.TroopType) domain.TroopType {
+	return troopTypeFromProto[t]
 }
 
 // CityTypeToProto maps a domain city type to its proto enum.
@@ -97,18 +126,19 @@ func UserToProto(u domain.User) *entityv1.User {
 // CityToProto converts a domain city to its proto representation.
 func CityToProto(c domain.City) *entityv1.City {
 	out := &entityv1.City{
-		CityId:           ToCityId(c.CityID),
-		Type:             CityTypeToProto(c.Type),
-		Name:             c.Name,
-		Population:       c.Population,
-		PopulationCap:    c.PopulationCap,
-		Start:            &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
-		Size:             int32(c.Size),
-		FoodProduction:   RatePerHour(c.FoodProductionRate),
-		FoodUpkeep:       RatePerHour(c.FoodUpkeep),
-		NetFoodFlow:      RatePerHour(c.NetFoodFlow),
-		Starving:         c.Starving,
-		PopulationGrowth: RatePerHour(c.PopulationGrowthRate),
+		CityId:             ToCityId(c.CityID),
+		Type:               CityTypeToProto(c.Type),
+		Name:               c.Name,
+		Population:         c.Population,
+		PopulationCap:      c.PopulationCap,
+		Start:              &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
+		Size:               int32(c.Size),
+		FoodProduction:     RatePerHour(c.FoodProductionRate),
+		FoodUpkeep:         RatePerHour(c.FoodUpkeep),
+		NetFoodFlow:        RatePerHour(c.NetFoodFlow),
+		Starving:           c.Starving,
+		PopulationGrowth:   RatePerHour(c.PopulationGrowthRate),
+		MilitaryPopulation: c.MilitaryPopulation,
 	}
 	if c.Owner != nil {
 		out.Owner = ToUserId(*c.Owner)
@@ -128,13 +158,16 @@ func HidePrivateCityFields(c *entityv1.City) {
 }
 
 // TileToProto builds a proto Tile from raw occupancy data.
-func TileToProto(cityID, buildingID *string, x, y int) *servicev1.Tile {
+func TileToProto(cityID, buildingID *string, armyIDs []string, x, y int) *servicev1.Tile {
 	t := &servicev1.Tile{X: int32(x), Y: int32(y)}
 	if cityID != nil {
 		t.CityId = ToCityId(*cityID)
 	}
 	if buildingID != nil {
 		t.BuildingId = ToBuildingId(*buildingID)
+	}
+	for _, id := range armyIDs {
+		t.ArmyIds = append(t.ArmyIds, ToArmyId(id))
 	}
 	return t
 }
@@ -158,8 +191,27 @@ func BuildingToProto(b domain.Building) *entityv1.Building {
 	return out
 }
 
+// ArmyToProto converts a domain army to its proto representation.
+func ArmyToProto(a domain.Army) *entityv1.Army {
+	out := &entityv1.Army{
+		ArmyId: ToArmyId(a.ArmyID),
+		Owner:  ToUserId(a.Owner),
+		Coords: &entityv1.Coordinates{X: int32(a.X), Y: int32(a.Y)},
+	}
+	for troopType, count := range a.Troops {
+		out.Troops = append(out.Troops, &entityv1.TroopStack{
+			Type:  TroopTypeToProto(troopType),
+			Count: int32(count),
+		})
+	}
+	if a.DestX != nil && a.DestY != nil {
+		out.Destination = &entityv1.Coordinates{X: int32(*a.DestX), Y: int32(*a.DestY)}
+	}
+	return out
+}
+
 // EntitiesToBag builds an EntityBag from slices of domain entities.
-func EntitiesToBag(users []domain.User, cities []domain.City, buildings []domain.Building) *entityv1.EntityBag {
+func EntitiesToBag(users []domain.User, cities []domain.City, buildings []domain.Building, armies []domain.Army) *entityv1.EntityBag {
 	bag := &entityv1.EntityBag{}
 	for _, u := range users {
 		bag.Users = append(bag.Users, UserToProto(u))
@@ -169,6 +221,9 @@ func EntitiesToBag(users []domain.User, cities []domain.City, buildings []domain
 	}
 	for _, b := range buildings {
 		bag.Buildings = append(bag.Buildings, BuildingToProto(b))
+	}
+	for _, a := range armies {
+		bag.Armies = append(bag.Armies, ArmyToProto(a))
 	}
 	return bag
 }

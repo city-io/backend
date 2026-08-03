@@ -71,6 +71,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(servicev1connect.NewUserServiceHandler(&userHandler{s}, opts))
 	mux.Handle(servicev1connect.NewCityServiceHandler(&cityHandler{s}, opts))
 	mux.Handle(servicev1connect.NewBuildingServiceHandler(&buildingHandler{s}, opts))
+	mux.Handle(servicev1connect.NewArmyServiceHandler(&armyHandler{s}, opts))
 	mux.Handle(servicev1connect.NewMapServiceHandler(&mapHandler{s}, opts))
 	mux.Handle(servicev1connect.NewConfigServiceHandler(&configHandler{s}, opts))
 	mux.Handle("/metrics", promhttp.Handler())

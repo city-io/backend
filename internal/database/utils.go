@@ -1,6 +1,7 @@
 package database
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -128,5 +129,32 @@ func (b GetAllBuildingsRow) ToModel() *domain.Building {
 		Y:                 int(b.Y),
 		ConstructionStart: toNullTime(b.ConstructionStart),
 		ConstructionEnd:   toNullTime(b.ConstructionEnd),
+	}
+}
+
+// intPtrFromInt32 converts an optional int32 (nullable column) to an optional
+// int for the domain layer.
+func intPtrFromInt32(v *int32) *int {
+	if v == nil {
+		return nil
+	}
+	n := int(*v)
+	return &n
+}
+
+func (a GetAllArmiesRow) ToModel() *domain.Army {
+	troops := make(map[domain.TroopType]int64)
+	if len(a.Troops) > 0 {
+		_ = json.Unmarshal(a.Troops, &troops)
+	}
+	return &domain.Army{
+		ArmyID:       a.ArmyID,
+		Owner:        a.Owner,
+		X:            int(a.X),
+		Y:            int(a.Y),
+		Troops:       troops,
+		DestX:        intPtrFromInt32(a.DestX),
+		DestY:        intPtrFromInt32(a.DestY),
+		UpkeepCityID: a.UpkeepCityID,
 	}
 }

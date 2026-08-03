@@ -19,6 +19,7 @@ message Tile {
   int32 y = 2;
   optional cityio.entity.v1.CityId city_id = 3;
   optional cityio.entity.v1.BuildingId building_id = 4;
+  repeated cityio.entity.v1.ArmyId army_ids = 5;
 }
 
 message GetTileRequest {

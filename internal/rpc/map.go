@@ -34,9 +34,14 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
+	armyList, err := h.srv.store.GetAllArmies(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 
 	cityList = domain.FilterCities(owned, cityList, constants.VisionRadius)
 	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
+	armyList = domain.FilterArmies(owned, armyList, constants.VisionRadius)
 
 	cityIds := make([]*entityv1.CityId, 0, len(cityList))
 	for _, c := range cityList {
@@ -47,7 +52,7 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 		buildingIds = append(buildingIds, mapping.ToBuildingId(b.BuildingID))
 	}
 
-	bag := mapping.EntitiesToBag(nil, cityList, buildingList)
+	bag := mapping.EntitiesToBag(nil, cityList, buildingList, armyList)
 	// Strip owner-only fields (production/upkeep rates) from any city the caller
 	// doesn't own. Population, cap, and starving stay public.
 	claims, _ := auth.ClaimsFromContext(ctx)
@@ -85,6 +90,6 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 	return connect.NewResponse(&servicev1.GetTileResponse{
-		Tile: mapping.TileToProto(resp.CityID, resp.BuildingID, x, y),
+		Tile: mapping.TileToProto(resp.CityID, resp.BuildingID, resp.ArmyIDs, x, y),
 	}), nil
 }

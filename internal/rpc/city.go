@@ -81,6 +81,6 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 
 	return connect.NewResponse(&servicev1.ListCitiesResponse{
 		CityIds:  cityIds,
-		Entities: mapping.EntitiesToBag(nil, cityList, nil),
+		Entities: mapping.EntitiesToBag(nil, cityList, nil, nil),
 	}), nil
 }

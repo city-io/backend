@@ -18,9 +18,13 @@ type City struct {
 	Name          string   `json:"name"`
 	Population    float64  `json:"population"`
 	PopulationCap float64  `json:"populationCap"`
-	StartX        int      `json:"startX"`
-	StartY        int      `json:"startY"`
-	Size          int      `json:"size"`
+	// MilitaryPopulation is the share of Population reserved as standing army.
+	// Civilians (Population − MilitaryPopulation) drive food upkeep; the reserve
+	// is bounded by MilitaryPopulationFraction × Population.
+	MilitaryPopulation float64 `json:"militaryPopulation"`
+	StartX             int     `json:"startX"`
+	StartY             int     `json:"startY"`
+	Size               int     `json:"size"`
 
 	// FoodProductionRate is the food this city's own farms produce per hour.
 	// FoodUpkeep is the food this city's population consumes per hour. NetFoodFlow

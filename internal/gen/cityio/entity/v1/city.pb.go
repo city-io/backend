@@ -48,6 +48,9 @@ type City struct {
 	// when growing, negative when declining). Public — observable from outside
 	// by anyone watching the city over time.
 	PopulationGrowth *Rate `protobuf:"bytes,13,opt,name=population_growth,json=populationGrowth,proto3" json:"population_growth,omitempty"`
+	// military_population is the share of population currently reserved as
+	// standing army (bounded by MilitaryPopulationFraction × population).
+	MilitaryPopulation float64 `protobuf:"fixed64,14,opt,name=military_population,json=militaryPopulation,proto3" json:"military_population,omitempty"`
 	// --- Owner-only ---
 	// food_production, food_upkeep, and net_food_flow expose this city's
 	// economy. They are populated when the requester owns the city and unset
@@ -159,6 +162,13 @@ func (x *City) GetPopulationGrowth() *Rate {
 	return nil
 }
 
+func (x *City) GetMilitaryPopulation() float64 {
+	if x != nil {
+		return x.MilitaryPopulation
+	}
+	return 0
+}
+
 func (x *City) GetFoodProduction() *Rate {
 	if x != nil {
 		return x.FoodProduction
@@ -184,7 +194,7 @@ var File_cityio_entity_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\xe3\x04\n" +
+	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\x94\x05\n" +
 	"\x04City\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12.\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1a.cityio.entity.v1.CityTypeR\x04type\x123\n" +
@@ -197,7 +207,8 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\x05start\x18\a \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x05start\x12\x12\n" +
 	"\x04size\x18\b \x01(\x05R\x04size\x12\x1a\n" +
 	"\bstarving\x18\f \x01(\bR\bstarving\x12C\n" +
-	"\x11population_growth\x18\r \x01(\v2\x16.cityio.entity.v1.RateR\x10populationGrowth\x12?\n" +
+	"\x11population_growth\x18\r \x01(\v2\x16.cityio.entity.v1.RateR\x10populationGrowth\x12/\n" +
+	"\x13military_population\x18\x0e \x01(\x01R\x12militaryPopulation\x12?\n" +
 	"\x0ffood_production\x18\t \x01(\v2\x16.cityio.entity.v1.RateR\x0efoodProduction\x127\n" +
 	"\vfood_upkeep\x18\n" +
 	" \x01(\v2\x16.cityio.entity.v1.RateR\n" +

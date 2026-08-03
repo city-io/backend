@@ -26,6 +26,12 @@ type cityActor struct {
 	// is idempotent under resends and fully rebuilt from buildings on restore.
 	populationContributions map[string]float64
 
+	// armyUpkeep holds each army's food upkeep (per hour) currently attributed
+	// to this city, keyed by army ID. The city's army food demand is their sum,
+	// so it is idempotent under resends. Armies re-attribute themselves to the
+	// nearest owned city as they move.
+	armyUpkeep map[string]int64
+
 	// pendingFoodIncome holds food produced by this city's buildings since the
 	// last tick. It is consumed locally first; only the surplus is deposited to
 	// the user's pool.
@@ -58,6 +64,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 	case *messages.CreateCityMessage:
 		state.City = msg.City
 		state.populationContributions = make(map[string]float64)
+		state.armyUpkeep = make(map[string]int64)
 
 		if !msg.Restore {
 			if err := state.Store.CreateCity(state.Ctx(), msg.City); err != nil {
@@ -147,6 +154,40 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.City.PopulationCap = cap
 		state.publish()
 
+	case messages.ReserveMilitaryPopulationMessage:
+		// Standing army from a city is hard-capped at MilitaryPopulationFraction
+		// of its current population (bounded by the population cap). Reserving is
+		// idempotent-safe: it only ever grows MilitaryPopulation and rejects when
+		// the request would breach the cap.
+		limit := int64(constants.MilitaryPopulationFraction * state.City.Population)
+		available := limit - int64(state.City.MilitaryPopulation)
+		if msg.Count > available {
+			ctx.Respond(&messages.InsufficientPopulationError{Available: max(available, 0), Requested: msg.Count})
+			return
+		}
+		state.City.MilitaryPopulation += float64(msg.Count)
+		state.publish()
+		ctx.Respond(messages.Ack{})
+
+	case messages.ReleaseMilitaryPopulationMessage:
+		state.City.MilitaryPopulation -= float64(msg.Count)
+		if state.City.MilitaryPopulation < 0 {
+			state.City.MilitaryPopulation = 0
+		}
+		state.publish()
+
+	case messages.SetArmyUpkeepMessage:
+		if state.armyUpkeep == nil {
+			state.armyUpkeep = make(map[string]int64)
+		}
+		if existing, ok := state.armyUpkeep[msg.ArmyID]; ok && existing == msg.Amount {
+			return
+		}
+		state.armyUpkeep[msg.ArmyID] = msg.Amount
+
+	case messages.RemoveArmyUpkeepMessage:
+		delete(state.armyUpkeep, msg.ArmyID)
+
 	case messages.CreditProductionMessage:
 		if state.City.Owner == nil {
 			ctx.Respond(messages.Ack{})
@@ -210,6 +251,16 @@ func (state *cityActor) Receive(ctx actor.Context) {
 	}
 }
 
+// armyUpkeepTotal is the sum of food upkeep (per hour) for all armies currently
+// attributed to this city.
+func (state *cityActor) armyUpkeepTotal() int64 {
+	var sum int64
+	for _, u := range state.armyUpkeep {
+		sum += u
+	}
+	return sum
+}
+
 // spawnInitialBuilding kicks off a fully-built level-1 building inside the
 // city block. Used during city creation for the center and (for capitals) the
 // starter farm.
@@ -259,7 +310,13 @@ func (state *cityActor) tickFoodAndPopulation() {
 	state.pendingFoodIncome = 0
 
 	tickSecs := constants.CityTickInterval
-	upkeepPerHour := int64(math.Round(state.City.Population * float64(constants.FoodPerPopPerHour)))
+	// Only civilians (population minus the reserved military) draw city food
+	// upkeep; standing armies add their own upkeep on top, wherever they are.
+	civilians := state.City.Population - state.City.MilitaryPopulation
+	if civilians < 0 {
+		civilians = 0
+	}
+	upkeepPerHour := int64(math.Round(civilians*float64(constants.FoodPerPopPerHour))) + state.armyUpkeepTotal()
 
 	// Carry the sub-tick remainder so the actual per-tick demand averages
 	// exactly to upkeepPerHour over time. See demandRemainder doc.
