@@ -20,7 +20,7 @@ func (h *configHandler) GetGameConfig(_ context.Context, _ *connect.Request[serv
 	return connect.NewResponse(&servicev1.GetGameConfigResponse{
 		MapSize:      constants.MapSize,
 		CitySize:     constants.CitySize,
-		VisionRadius: constants.VisionRadius,
+		VisionRadius: constants.CityVisionRadius,
 		BuildingTick: durationpb.New(constants.BuildingTickInterval * time.Second),
 		CityTick:     durationpb.New(constants.CityTickInterval * time.Second),
 		Buildings:    buildBuildingConfigs(),

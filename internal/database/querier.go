@@ -36,8 +36,10 @@ type Querier interface {
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]GetBuildingsByCityRow, error)
 	GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error)
 	GetUserByIdentifier(ctx context.Context, email string) (User, error)
+	GetUserExplored(ctx context.Context, userID string) ([]byte, error)
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
+	UpdateUserExplored(ctx context.Context, arg UpdateUserExploredParams) error
 	UpdateUserStats(ctx context.Context, arg UpdateUserStatsParams) error
 }
 

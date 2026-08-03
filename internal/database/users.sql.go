@@ -75,7 +75,7 @@ func (q *Queries) DeleteUser(ctx context.Context, userID string) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT user_id, email, username, password, gold, food, created_at, updated_at FROM users
+SELECT user_id, email, username, password, gold, food, created_at, updated_at, explored FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -96,6 +96,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.Food,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Explored,
 		); err != nil {
 			return nil, err
 		}
@@ -108,7 +109,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT user_id, email, username, password, gold, food, created_at, updated_at FROM users
+SELECT user_id, email, username, password, gold, food, created_at, updated_at, explored FROM users
 WHERE email = $1 OR username = $1
 `
 
@@ -124,8 +125,20 @@ func (q *Queries) GetUserByIdentifier(ctx context.Context, email string) (User, 
 		&i.Food,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Explored,
 	)
 	return i, err
+}
+
+const getUserExplored = `-- name: GetUserExplored :one
+SELECT explored FROM users WHERE user_id = $1
+`
+
+func (q *Queries) GetUserExplored(ctx context.Context, userID string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getUserExplored, userID)
+	var explored []byte
+	err := row.Scan(&explored)
+	return explored, err
 }
 
 const updateUser = `-- name: UpdateUser :exec
@@ -152,6 +165,20 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.Gold,
 		arg.Food,
 	)
+	return err
+}
+
+const updateUserExplored = `-- name: UpdateUserExplored :exec
+UPDATE users SET explored = $2, updated_at = NOW() WHERE user_id = $1
+`
+
+type UpdateUserExploredParams struct {
+	UserID   string `json:"user_id"`
+	Explored []byte `json:"explored"`
+}
+
+func (q *Queries) UpdateUserExplored(ctx context.Context, arg UpdateUserExploredParams) error {
+	_, err := q.db.Exec(ctx, updateUserExplored, arg.UserID, arg.Explored)
 	return err
 }
 

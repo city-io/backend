@@ -7,7 +7,6 @@ import (
 	"connectrpc.com/connect"
 
 	"cityio/internal/auth"
-	"cityio/internal/constants"
 	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
@@ -21,7 +20,7 @@ type mapHandler struct {
 }
 
 func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.GetMapRequest]) (*connect.Response[servicev1.GetMapResponse], error) {
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -39,9 +38,9 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	cityList = domain.FilterCities(owned, cityList, constants.VisionRadius)
-	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
-	armyList = domain.FilterArmies(owned, armyList, constants.VisionRadius)
+	cityList = domain.FilterCities(seen, cityList)
+	buildingList = domain.FilterBuildings(seen, buildingList)
+	armyList = domain.FilterArmies(seen, armyList)
 
 	cityIds := make([]*entityv1.CityId, 0, len(cityList))
 	for _, c := range cityList {
@@ -69,40 +68,53 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	}), nil
 }
 
-// GetTerrain returns the whole map in one response. Terrain is generated once
-// at boot and never changes, so this is deliberately not filtered by vision or
-// paged: the planes total a few kilobytes and the client caches them for the
-// session. Fog of war hides entities, which is the information that matters —
-// the shape of the coastline is not a secret worth a per-viewport query.
+// GetTerrain bootstraps a client with the whole charted map — every tile the
+// caller has ever seen, remembered permanently — plus the subset they can see
+// right now. Ground stays known once scouted; only what stands on it needs live
+// vision, which the entity streams handle.
 func (h *mapHandler) GetTerrain(ctx context.Context, req *connect.Request[servicev1.GetTerrainRequest]) (*connect.Response[servicev1.GetTerrainResponse], error) {
 	w := h.srv.world
 	if w == nil {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("world not generated"))
 	}
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
+	}
 
-	// The world's plane values are numbered to match the proto enums exactly,
-	// so these copy straight out with no remapping.
-	return connect.NewResponse(&servicev1.GetTerrainResponse{
-		Width:   int32(w.Width),
-		Height:  int32(w.Height),
-		Seed:    w.Seed,
-		Terrain: append([]byte(nil), w.Terrain...),
-		Relief:  append([]byte(nil), w.Relief...),
-		Feature: append([]byte(nil), w.Feature...),
-		Special: append([]byte(nil), w.Special...),
-		Rivers:  append([]byte(nil), w.Rivers...),
-	}), nil
+	seen, err := h.srv.watchers(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// Fold whatever is currently visible into the charted set before replying,
+	// so a fresh client immediately knows the ground around its own cities even
+	// if it has never streamed.
+	stored, err := h.srv.store.GetUserExplored(ctx, claims.UserID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	explored := domain.NewExplored(stored, w.Width, w.Height)
+	if revealed := explored.Reveal(seen, w.Width, w.Height); len(revealed) > 0 {
+		if err := h.srv.store.SetUserExplored(ctx, claims.UserID, []byte(explored)); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+
+	resp := mapping.ExploredPlanes(w, explored)
+	resp.Visible = mapping.VisibleIndices(w, seen)
+	return connect.NewResponse(resp), nil
 }
 
 func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1.GetTileRequest]) (*connect.Response[servicev1.GetTileResponse], error) {
 	x := int(req.Msg.GetCoords().GetX())
 	y := int(req.Msg.GetCoords().GetY())
 
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !domain.PointVisible(owned, x, y, constants.VisionRadius) {
+	if !domain.PointVisible(seen, x, y) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 

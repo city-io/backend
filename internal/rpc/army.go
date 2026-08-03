@@ -7,7 +7,6 @@ import (
 	"connectrpc.com/connect"
 
 	"cityio/internal/auth"
-	"cityio/internal/constants"
 	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
@@ -111,11 +110,11 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 	// its tile.
 	claims, _ := auth.ClaimsFromContext(ctx)
 	if army.Owner != claims.UserID {
-		owned, err := h.srv.ownedCities(ctx)
+		seen, err := h.srv.watchers(ctx)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		if !domain.PointVisible(owned, army.X, army.Y, constants.VisionRadius) {
+		if !domain.PointVisible(seen, army.X, army.Y) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("army not found"))
 		}
 	}

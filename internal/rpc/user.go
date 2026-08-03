@@ -3,12 +3,14 @@ package rpc
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"connectrpc.com/connect"
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/auth"
+	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
@@ -149,6 +151,44 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 	ch, unsubscribe := stream.Subscribe(claims.UserID)
 	defer unsubscribe()
 
+	// Terrain is remembered once seen, but which tiles are lit *right now*
+	// changes as units move — so track both. explored only ever grows and is
+	// persisted when it does; lastVisible is the live set, resent whole when it
+	// shifts (it shrinks as readily as it grows) and skipped when it has not.
+	var explored domain.Explored
+	if w := h.srv.world; w != nil {
+		stored, err := h.srv.store.GetUserExplored(ctx, claims.UserID)
+		if err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+		explored = domain.NewExplored(stored, w.Width, w.Height)
+	}
+	var lastVisible []int32
+
+	visibilityUpdate := func() *servicev1.MapVisibility {
+		w := h.srv.world
+		if w == nil {
+			return nil
+		}
+		seen, err := h.srv.watchers(ctx)
+		if err != nil {
+			return nil
+		}
+		visible := mapping.VisibleIndices(w, seen)
+		var reveal *servicev1.TerrainReveal
+		if revealed := explored.Reveal(seen, w.Width, w.Height); len(revealed) > 0 {
+			if err := h.srv.store.SetUserExplored(ctx, claims.UserID, []byte(explored)); err != nil {
+				slog.ErrorContext(ctx, "failed to persist explored tiles", "error", err)
+			}
+			reveal = mapping.TerrainRevealFor(w, revealed)
+		}
+		if reveal == nil && mapping.SameIndices(visible, lastVisible) {
+			return nil
+		}
+		lastVisible = visible
+		return &servicev1.MapVisibility{Revealed: reveal, Visible: visible}
+	}
+
 	// Send initial snapshot: user, owned cities, and their buildings.
 	if res, err := h.srv.cluster.Request("user", claims.UserID, messages.GetUserMessage{}); err == nil {
 		if resp, ok := res.(*messages.GetUserResponseMessage); ok {
@@ -188,7 +228,7 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 				}
 			}
 
-			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
+			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag, Visibility: visibilityUpdate()}); err != nil {
 				return err
 			}
 		}
@@ -226,7 +266,14 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			if update.DeletedArmyID != nil {
 				bag.DeletedArmyIds = append(bag.DeletedArmyIds, mapping.ToArmyId(*update.DeletedArmyID))
 			}
-			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
+			res := &servicev1.StreamStateResponse{Entities: bag}
+			// Only a city or army moving can change what the player sees, and
+			// recomputing costs a query per subscriber — so skip it on the
+			// resource-only ticks that make up most of the stream.
+			if update.City != nil || update.Army != nil || update.DeletedArmyID != nil {
+				res.Visibility = visibilityUpdate()
+			}
+			if err := out.Send(res); err != nil {
 				return err
 			}
 		}

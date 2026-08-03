@@ -12,6 +12,8 @@ import (
 // without a write per tick.
 type Store interface {
 	FindEmptyCityBlock(ctx context.Context, size int) (domain.Coordinates, error)
+	GetUserExplored(ctx context.Context, userID string) ([]byte, error)
+	SetUserExplored(ctx context.Context, userID string, explored []byte) error
 	GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error)
 	GetAllUsers(ctx context.Context) ([]domain.User, error)
 	GetAllCities(ctx context.Context) ([]domain.City, error)

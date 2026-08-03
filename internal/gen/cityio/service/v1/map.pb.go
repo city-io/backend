@@ -319,35 +319,186 @@ func (*GetTerrainRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{5}
 }
 
-// GetTerrainResponse carries the whole map in one call.
+// TerrainReveal carries tiles that have just been charted, with their static
+// planes, to be merged into the client's permanent map. Terrain is remembered
+// once seen, so this only ever adds — a tile never leaves the charted set.
 //
-// Each plane is packed one byte per tile in row-major order, so the value for
-// (x, y) is at index y * width + x. At the current map size that is about 5 KB
-// per plane — small enough that chunking or viewport queries would cost more
-// than they save, and it lets the client cache the world for the session.
+// Each plane holds one byte per entry of `indices`, in the same order. Indices
+// are row-major (y * width + x).
+type TerrainReveal struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Indices []int32                `protobuf:"varint,1,rep,packed,name=indices,proto3" json:"indices,omitempty"`
+	Terrain []byte                 `protobuf:"bytes,2,opt,name=terrain,proto3" json:"terrain,omitempty"` // cityio.entity.v1.TerrainType
+	Relief  []byte                 `protobuf:"bytes,3,opt,name=relief,proto3" json:"relief,omitempty"`   // cityio.entity.v1.ReliefType
+	Feature []byte                 `protobuf:"bytes,4,opt,name=feature,proto3" json:"feature,omitempty"` // cityio.entity.v1.FeatureType
+	Special []byte                 `protobuf:"bytes,5,opt,name=special,proto3" json:"special,omitempty"` // cityio.entity.v1.SpecialType
+	// rivers holds a 6-bit mask per tile: bit i means a river continues toward
+	// neighbour i, mirrored on the tile across that edge.
+	Rivers        []byte `protobuf:"bytes,6,opt,name=rivers,proto3" json:"rivers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TerrainReveal) Reset() {
+	*x = TerrainReveal{}
+	mi := &file_cityio_service_v1_map_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TerrainReveal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TerrainReveal) ProtoMessage() {}
+
+func (x *TerrainReveal) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_map_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TerrainReveal.ProtoReflect.Descriptor instead.
+func (*TerrainReveal) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TerrainReveal) GetIndices() []int32 {
+	if x != nil {
+		return x.Indices
+	}
+	return nil
+}
+
+func (x *TerrainReveal) GetTerrain() []byte {
+	if x != nil {
+		return x.Terrain
+	}
+	return nil
+}
+
+func (x *TerrainReveal) GetRelief() []byte {
+	if x != nil {
+		return x.Relief
+	}
+	return nil
+}
+
+func (x *TerrainReveal) GetFeature() []byte {
+	if x != nil {
+		return x.Feature
+	}
+	return nil
+}
+
+func (x *TerrainReveal) GetSpecial() []byte {
+	if x != nil {
+		return x.Special
+	}
+	return nil
+}
+
+func (x *TerrainReveal) GetRivers() []byte {
+	if x != nil {
+		return x.Rivers
+	}
+	return nil
+}
+
+// MapVisibility is the visibility delta sent on the state stream as the player's
+// units move.
+type MapVisibility struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Tiles charted for the first time this update, if any.
+	Revealed *TerrainReveal `protobuf:"bytes,1,opt,name=revealed,proto3" json:"revealed,omitempty"`
+	// The tiles the player can see right now, by row-major index. Sent whole
+	// because live vision shrinks as well as grows — an army walking away dims
+	// the ground it was lighting, even though the terrain stays remembered. A
+	// subset of everything charted.
+	Visible       []int32 `protobuf:"varint,2,rep,packed,name=visible,proto3" json:"visible,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MapVisibility) Reset() {
+	*x = MapVisibility{}
+	mi := &file_cityio_service_v1_map_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MapVisibility) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MapVisibility) ProtoMessage() {}
+
+func (x *MapVisibility) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_map_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MapVisibility.ProtoReflect.Descriptor instead.
+func (*MapVisibility) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *MapVisibility) GetRevealed() *TerrainReveal {
+	if x != nil {
+		return x.Revealed
+	}
+	return nil
+}
+
+func (x *MapVisibility) GetVisible() []int32 {
+	if x != nil {
+		return x.Visible
+	}
+	return nil
+}
+
+// GetTerrainResponse bootstraps a client with the map's dimensions, everything
+// the player has charted so far, and what they can see at this moment.
 //
-// Terrain is generated by the server from `seed` and does not change, so this
-// response is stable for the lifetime of a world.
+// The static planes are packed one byte per tile in row-major order (index
+// y * width + x) and are meaningful only where `explored` is set; unseen tiles
+// are zero. At this map size the planes are a few KB and mostly zeros, which
+// compresses to far less than a sparse coordinate list would cost.
 type GetTerrainResponse struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Width   int32                  `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
 	Height  int32                  `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
 	Seed    int64                  `protobuf:"varint,3,opt,name=seed,proto3" json:"seed,omitempty"`
-	Terrain []byte                 `protobuf:"bytes,4,opt,name=terrain,proto3" json:"terrain,omitempty"` // cityio.entity.v1.TerrainType per tile
-	Relief  []byte                 `protobuf:"bytes,5,opt,name=relief,proto3" json:"relief,omitempty"`   // cityio.entity.v1.ReliefType per tile
-	Feature []byte                 `protobuf:"bytes,6,opt,name=feature,proto3" json:"feature,omitempty"` // cityio.entity.v1.FeatureType per tile
-	Special []byte                 `protobuf:"bytes,7,opt,name=special,proto3" json:"special,omitempty"` // cityio.entity.v1.SpecialType per tile
-	// rivers holds a 6-bit mask per tile: bit i means a river continues toward
-	// neighbour i. Both tiles either side of a step carry the reciprocal bit, so
-	// each renders its own half and rivers occupy no tile of their own.
-	Rivers        []byte `protobuf:"bytes,8,opt,name=rivers,proto3" json:"rivers,omitempty"`
+	Terrain []byte                 `protobuf:"bytes,4,opt,name=terrain,proto3" json:"terrain,omitempty"`
+	Relief  []byte                 `protobuf:"bytes,5,opt,name=relief,proto3" json:"relief,omitempty"`
+	Feature []byte                 `protobuf:"bytes,6,opt,name=feature,proto3" json:"feature,omitempty"`
+	Special []byte                 `protobuf:"bytes,7,opt,name=special,proto3" json:"special,omitempty"`
+	Rivers  []byte                 `protobuf:"bytes,8,opt,name=rivers,proto3" json:"rivers,omitempty"`
+	// explored is a bitset in the same row-major order: bit y * width + x is set
+	// for every tile the player has ever seen.
+	Explored []byte `protobuf:"bytes,9,opt,name=explored,proto3" json:"explored,omitempty"`
+	// visible lists the tiles in live view right now, a subset of explored.
+	Visible       []int32 `protobuf:"varint,10,rep,packed,name=visible,proto3" json:"visible,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTerrainResponse) Reset() {
 	*x = GetTerrainResponse{}
-	mi := &file_cityio_service_v1_map_proto_msgTypes[6]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -359,7 +510,7 @@ func (x *GetTerrainResponse) String() string {
 func (*GetTerrainResponse) ProtoMessage() {}
 
 func (x *GetTerrainResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_map_proto_msgTypes[6]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +523,7 @@ func (x *GetTerrainResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTerrainResponse.ProtoReflect.Descriptor instead.
 func (*GetTerrainResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{6}
+	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetTerrainResponse) GetWidth() int32 {
@@ -431,6 +582,20 @@ func (x *GetTerrainResponse) GetRivers() []byte {
 	return nil
 }
 
+func (x *GetTerrainResponse) GetExplored() []byte {
+	if x != nil {
+		return x.Explored
+	}
+	return nil
+}
+
+func (x *GetTerrainResponse) GetVisible() []int32 {
+	if x != nil {
+		return x.Visible
+	}
+	return nil
+}
+
 var File_cityio_service_v1_map_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_map_proto_rawDesc = "" +
@@ -455,7 +620,17 @@ const file_cityio_service_v1_map_proto_rawDesc = "" +
 	"\x06coords\x18\x01 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\">\n" +
 	"\x0fGetTileResponse\x12+\n" +
 	"\x04tile\x18\x01 \x01(\v2\x17.cityio.service.v1.TileR\x04tile\"\x13\n" +
-	"\x11GetTerrainRequest\"\xd4\x01\n" +
+	"\x11GetTerrainRequest\"\xa7\x01\n" +
+	"\rTerrainReveal\x12\x18\n" +
+	"\aindices\x18\x01 \x03(\x05R\aindices\x12\x18\n" +
+	"\aterrain\x18\x02 \x01(\fR\aterrain\x12\x16\n" +
+	"\x06relief\x18\x03 \x01(\fR\x06relief\x12\x18\n" +
+	"\afeature\x18\x04 \x01(\fR\afeature\x12\x18\n" +
+	"\aspecial\x18\x05 \x01(\fR\aspecial\x12\x16\n" +
+	"\x06rivers\x18\x06 \x01(\fR\x06rivers\"g\n" +
+	"\rMapVisibility\x12<\n" +
+	"\brevealed\x18\x01 \x01(\v2 .cityio.service.v1.TerrainRevealR\brevealed\x12\x18\n" +
+	"\avisible\x18\x02 \x03(\x05R\avisible\"\x8a\x02\n" +
 	"\x12GetTerrainResponse\x12\x14\n" +
 	"\x05width\x18\x01 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x02 \x01(\x05R\x06height\x12\x12\n" +
@@ -464,7 +639,10 @@ const file_cityio_service_v1_map_proto_rawDesc = "" +
 	"\x06relief\x18\x05 \x01(\fR\x06relief\x12\x18\n" +
 	"\afeature\x18\x06 \x01(\fR\afeature\x12\x18\n" +
 	"\aspecial\x18\a \x01(\fR\aspecial\x12\x16\n" +
-	"\x06rivers\x18\b \x01(\fR\x06rivers2\x88\x02\n" +
+	"\x06rivers\x18\b \x01(\fR\x06rivers\x12\x1a\n" +
+	"\bexplored\x18\t \x01(\fR\bexplored\x12\x18\n" +
+	"\avisible\x18\n" +
+	" \x03(\x05R\avisible2\x88\x02\n" +
 	"\n" +
 	"MapService\x12M\n" +
 	"\x06GetMap\x12 .cityio.service.v1.GetMapRequest\x1a!.cityio.service.v1.GetMapResponse\x12P\n" +
@@ -485,7 +663,7 @@ func file_cityio_service_v1_map_proto_rawDescGZIP() []byte {
 	return file_cityio_service_v1_map_proto_rawDescData
 }
 
-var file_cityio_service_v1_map_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_cityio_service_v1_map_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_cityio_service_v1_map_proto_goTypes = []any{
 	(*GetMapRequest)(nil),      // 0: cityio.service.v1.GetMapRequest
 	(*GetMapResponse)(nil),     // 1: cityio.service.v1.GetMapResponse
@@ -493,33 +671,36 @@ var file_cityio_service_v1_map_proto_goTypes = []any{
 	(*GetTileRequest)(nil),     // 3: cityio.service.v1.GetTileRequest
 	(*GetTileResponse)(nil),    // 4: cityio.service.v1.GetTileResponse
 	(*GetTerrainRequest)(nil),  // 5: cityio.service.v1.GetTerrainRequest
-	(*GetTerrainResponse)(nil), // 6: cityio.service.v1.GetTerrainResponse
-	(*v1.CityId)(nil),          // 7: cityio.entity.v1.CityId
-	(*v1.BuildingId)(nil),      // 8: cityio.entity.v1.BuildingId
-	(*v1.EntityBag)(nil),       // 9: cityio.entity.v1.EntityBag
-	(*v1.ArmyId)(nil),          // 10: cityio.entity.v1.ArmyId
-	(*v1.Coordinates)(nil),     // 11: cityio.entity.v1.Coordinates
+	(*TerrainReveal)(nil),      // 6: cityio.service.v1.TerrainReveal
+	(*MapVisibility)(nil),      // 7: cityio.service.v1.MapVisibility
+	(*GetTerrainResponse)(nil), // 8: cityio.service.v1.GetTerrainResponse
+	(*v1.CityId)(nil),          // 9: cityio.entity.v1.CityId
+	(*v1.BuildingId)(nil),      // 10: cityio.entity.v1.BuildingId
+	(*v1.EntityBag)(nil),       // 11: cityio.entity.v1.EntityBag
+	(*v1.ArmyId)(nil),          // 12: cityio.entity.v1.ArmyId
+	(*v1.Coordinates)(nil),     // 13: cityio.entity.v1.Coordinates
 }
 var file_cityio_service_v1_map_proto_depIdxs = []int32{
-	7,  // 0: cityio.service.v1.GetMapResponse.city_ids:type_name -> cityio.entity.v1.CityId
-	8,  // 1: cityio.service.v1.GetMapResponse.building_ids:type_name -> cityio.entity.v1.BuildingId
-	9,  // 2: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	7,  // 3: cityio.service.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
-	8,  // 4: cityio.service.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
-	10, // 5: cityio.service.v1.Tile.army_ids:type_name -> cityio.entity.v1.ArmyId
-	11, // 6: cityio.service.v1.GetTileRequest.coords:type_name -> cityio.entity.v1.Coordinates
+	9,  // 0: cityio.service.v1.GetMapResponse.city_ids:type_name -> cityio.entity.v1.CityId
+	10, // 1: cityio.service.v1.GetMapResponse.building_ids:type_name -> cityio.entity.v1.BuildingId
+	11, // 2: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	9,  // 3: cityio.service.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
+	10, // 4: cityio.service.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
+	12, // 5: cityio.service.v1.Tile.army_ids:type_name -> cityio.entity.v1.ArmyId
+	13, // 6: cityio.service.v1.GetTileRequest.coords:type_name -> cityio.entity.v1.Coordinates
 	2,  // 7: cityio.service.v1.GetTileResponse.tile:type_name -> cityio.service.v1.Tile
-	0,  // 8: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
-	3,  // 9: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
-	5,  // 10: cityio.service.v1.MapService.GetTerrain:input_type -> cityio.service.v1.GetTerrainRequest
-	1,  // 11: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
-	4,  // 12: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
-	6,  // 13: cityio.service.v1.MapService.GetTerrain:output_type -> cityio.service.v1.GetTerrainResponse
-	11, // [11:14] is the sub-list for method output_type
-	8,  // [8:11] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	6,  // 8: cityio.service.v1.MapVisibility.revealed:type_name -> cityio.service.v1.TerrainReveal
+	0,  // 9: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
+	3,  // 10: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
+	5,  // 11: cityio.service.v1.MapService.GetTerrain:input_type -> cityio.service.v1.GetTerrainRequest
+	1,  // 12: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
+	4,  // 13: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
+	8,  // 14: cityio.service.v1.MapService.GetTerrain:output_type -> cityio.service.v1.GetTerrainResponse
+	12, // [12:15] is the sub-list for method output_type
+	9,  // [9:12] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_map_proto_init() }
@@ -534,7 +715,7 @@ func file_cityio_service_v1_map_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_map_proto_rawDesc), len(file_cityio_service_v1_map_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

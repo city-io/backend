@@ -46,3 +46,8 @@ FROM (
         UNNEST(sqlc.arg(foods)::int8[])     AS food
 ) AS v
 WHERE u.user_id = v.user_id;
+-- name: GetUserExplored :one
+SELECT explored FROM users WHERE user_id = $1;
+
+-- name: UpdateUserExplored :exec
+UPDATE users SET explored = $2, updated_at = NOW() WHERE user_id = $1;

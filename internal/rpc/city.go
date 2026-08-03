@@ -7,7 +7,6 @@ import (
 	"connectrpc.com/connect"
 
 	"cityio/internal/auth"
-	"cityio/internal/constants"
 	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
@@ -30,11 +29,11 @@ func (h *cityHandler) GetCity(ctx context.Context, req *connect.Request[servicev
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
 
-	owned, err := h.srv.ownedCities(ctx)
+	seen, err := h.srv.watchers(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !domain.CityVisible(owned, resp.City, constants.VisionRadius) {
+	if !domain.CityVisible(seen, resp.City) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("city not found"))
 	}
 

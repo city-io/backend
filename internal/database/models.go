@@ -55,4 +55,5 @@ type User struct {
 	Food      int64            `json:"food"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	Explored  []byte           `json:"explored"`
 }

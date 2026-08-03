@@ -145,6 +145,24 @@ func blockedTiles(cities []domain.City, width, height int) []bool {
 	return blocked
 }
 
+// GetUserExplored returns the player's charted-tile bitset, empty if they have
+// never seen anything.
+func (s *Store) GetUserExplored(ctx context.Context, userID string) ([]byte, error) {
+	b, err := s.db.GetUserExplored(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return b, err
+}
+
+// SetUserExplored persists the player's charted-tile bitset. Written straight
+// through rather than buffered: reveals are infrequent (only when a player
+// pushes into new ground), and losing the charted map on a crash would be more
+// jarring than the write costs.
+func (s *Store) SetUserExplored(ctx context.Context, userID string, explored []byte) error {
+	return s.db.UpdateUserExplored(ctx, database.UpdateUserExploredParams{UserID: userID, Explored: explored})
+}
+
 func (s *Store) GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error) {
 	row, err := s.db.GetUserByIdentifier(ctx, identifier)
 	if errors.Is(err, pgx.ErrNoRows) {

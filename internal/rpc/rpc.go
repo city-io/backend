@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"cityio/internal/auth"
+	"cityio/internal/constants"
 	"cityio/internal/domain"
 	"cityio/internal/gen/cityio/service/v1/servicev1connect"
 	"cityio/internal/metrics"
@@ -46,6 +47,34 @@ func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {
 		return nil, errors.New("missing claims")
 	}
 	return s.store.GetCitiesByOwner(ctx, claims.UserID)
+}
+
+// watchers builds the caller's vision set. Cities were once the only thing
+// that could see, which meant an army could march the length of the map
+// revealing nothing and a player's visible area never changed after founding.
+func (s *Server) watchers(ctx context.Context) ([]domain.Watcher, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return nil, errors.New("missing claims")
+	}
+	cities, err := s.store.GetCitiesByOwner(ctx, claims.UserID)
+	if err != nil {
+		return nil, err
+	}
+	all, err := s.store.GetAllArmies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ws := make([]domain.Watcher, 0, len(cities)+len(all))
+	for _, c := range cities {
+		ws = append(ws, domain.NewCityWatcher(c, constants.CityVisionRadius))
+	}
+	for _, a := range all {
+		if a.Owner == claims.UserID {
+			ws = append(ws, domain.NewArmyWatcher(a, constants.ArmySight(a.Troops)))
+		}
+	}
+	return ws, nil
 }
 
 func (s *Server) ownsCity(ctx context.Context, cityID string) (bool, error) {
