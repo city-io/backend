@@ -19,23 +19,23 @@ type buildingHandler struct {
 	srv *Server
 }
 
-func (h *buildingHandler) requireBuildingOwnership(ctx context.Context, buildingID string) error {
+func (h *buildingHandler) requireBuildingOwnership(ctx context.Context, buildingID string) (domain.Building, error) {
 	res, err := h.srv.cluster.Request("building", buildingID, messages.GetBuildingMessage{})
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+		return domain.Building{}, connect.NewError(connect.CodeInternal, err)
 	}
 	resp, ok := res.(*messages.GetBuildingResponseMessage)
 	if !ok {
-		return connect.NewError(connect.CodeNotFound, errors.New("building not found"))
+		return domain.Building{}, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
 	owns, err := h.srv.ownsCity(ctx, resp.Building.CityID)
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+		return domain.Building{}, connect.NewError(connect.CodeInternal, err)
 	}
 	if !owns {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("building not owned by caller"))
+		return domain.Building{}, connect.NewError(connect.CodePermissionDenied, errors.New("building not owned by caller"))
 	}
-	return nil
+	return resp.Building, nil
 }
 
 func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Request[servicev1.CreateBuildingRequest]) (*connect.Response[servicev1.CreateBuildingResponse], error) {
@@ -82,7 +82,7 @@ func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[
 
 func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Request[servicev1.UpgradeBuildingRequest]) (*connect.Response[servicev1.UpgradeBuildingResponse], error) {
 	bid := req.Msg.GetBuildingId().GetValue()
-	if err := h.requireBuildingOwnership(ctx, bid); err != nil {
+	if _, err := h.requireBuildingOwnership(ctx, bid); err != nil {
 		return nil, err
 	}
 	res, err := h.srv.cluster.Request("building", bid, messages.UpgradeBuildingMessage{})
@@ -108,8 +108,13 @@ func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Requ
 
 func (h *buildingHandler) DeleteBuilding(ctx context.Context, req *connect.Request[servicev1.DeleteBuildingRequest]) (*connect.Response[servicev1.DeleteBuildingResponse], error) {
 	bid := req.Msg.GetBuildingId().GetValue()
-	if err := h.requireBuildingOwnership(ctx, bid); err != nil {
+	building, err := h.requireBuildingOwnership(ctx, bid)
+	if err != nil {
 		return nil, err
+	}
+	switch building.BuildingType() {
+	case domain.BuildingTypeCityCenter, domain.BuildingTypeTownCenter:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("city center and town center cannot be demolished"))
 	}
 	if err := h.srv.cluster.Tell("building", bid, messages.DeleteBuildingMessage{BuildingID: bid}); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
