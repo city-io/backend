@@ -34,8 +34,10 @@ var troopStats = map[domain.TroopType]TroopStat{
 
 // CityVisionRadius is how far a city sees beyond its own footprint. Kept
 // separate from troop sight so a settlement is not blind while it has no
-// garrison.
-const CityVisionRadius = 3
+// garrison. Generous on purpose: until units can carry vision out onto the
+// map, this disk is the whole of what a new player sees, and a tight one makes
+// the world feel like a corridor.
+const CityVisionRadius = 5
 
 // ArmySight is how far an army can see: the widest sight among the troop types
 // it contains, so adding a single cavalry scout extends the whole army's reach.
