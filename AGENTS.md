@@ -1,4 +1,4 @@
-# CLAUDE.md
+# city.io Backend
 
 Guidance for AI agents working in this repository. Read this fully before making changes.
 It covers both **backend development** (the Go server in this repo) and **client/frontend
