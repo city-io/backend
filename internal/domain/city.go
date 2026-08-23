@@ -18,11 +18,15 @@ type City struct {
 	Name          string   `json:"name"`
 	Population    float64  `json:"population"`
 	PopulationCap float64  `json:"populationCap"`
+	// PopulationBasis is the highest resident population reached. Recruitment
+	// and casualties do not lower it, so housing upgrades or repeated training
+	// cannot move the protected civilian floor underneath existing residents.
+	PopulationBasis float64 `json:"populationBasis"`
 	// MilitiaPopulation is the non-mobile defensive reserve currently present
-	// in the settlement. MilitiaPercent is its target share of housing capacity;
+	// in the settlement. MilitiaTarget is the exact desired defender count;
 	// losses refill from future population growth rather than appearing for free.
 	MilitiaPopulation float64 `json:"militiaPopulation"`
-	MilitiaPercent    int     `json:"militiaPercent"`
+	MilitiaTarget     float64 `json:"militiaTarget"`
 	TaxRatePercent    int     `json:"taxRatePercent"`
 	StartX            int     `json:"startX"`
 	StartY            int     `json:"startY"`

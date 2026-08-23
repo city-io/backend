@@ -44,8 +44,9 @@ type City struct {
 	Size              int32              `json:"size"`
 	CreatedAt         pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt         pgtype.Timestamp   `json:"updated_at"`
+	PopulationBasis   float64            `json:"population_basis"`
 	MilitiaPopulation float64            `json:"militia_population"`
-	MilitiaPercent    int32              `json:"militia_percent"`
+	MilitiaTarget     float64            `json:"militia_target"`
 	TaxRatePercent    int32              `json:"tax_rate_percent"`
 }
 

@@ -69,13 +69,16 @@ func (state *cityActor) Receive(ctx actor.Context) {
 
 	case *messages.CreateCityMessage:
 		state.City = msg.City
+		if state.City.PopulationBasis <= 0 {
+			state.City.PopulationBasis = state.City.Population
+		}
 		state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 		state.populationContributions = make(map[string]float64)
 		state.foodProduction = make(map[string]int64)
 		state.armyUpkeep = make(map[string]int64)
 
 		if !msg.Restore {
-			if err := state.Store.CreateCity(state.Ctx(), msg.City); err != nil {
+			if err := state.Store.CreateCity(state.Ctx(), state.City); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist city create", "city_id", msg.City.CityID, "error", err)
 			}
 			centerType := domain.BuildingTypeCityCenter
@@ -141,11 +144,14 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			ctx.Respond(&messages.CityPolicyLockedError{})
 			return
 		}
-		if msg.MilitiaPercent < constants.MinMilitiaPercent || msg.MilitiaPercent > constants.MaxMilitiaPercent || msg.TaxRatePercent < 0 || msg.TaxRatePercent > constants.MaxTaxRatePercent {
+		minTarget := constants.MinMilitiaTarget(state.City)
+		maxTarget := constants.MaxMilitiaTarget(state.City)
+		targetChanged := state.City.MilitiaTarget != msg.MilitiaTarget
+		if math.Trunc(msg.MilitiaTarget) != msg.MilitiaTarget || (targetChanged && (msg.MilitiaTarget < minTarget || msg.MilitiaTarget > maxTarget)) || msg.TaxRatePercent < 0 || msg.TaxRatePercent > constants.MaxTaxRatePercent {
 			ctx.Respond(&messages.InvalidCityPolicyError{})
 			return
 		}
-		state.updatePolicy(msg.MilitiaPercent, msg.TaxRatePercent)
+		state.updatePolicy(msg.MilitiaTarget, msg.TaxRatePercent)
 		state.Store.EnqueueCity(state.City)
 		state.publish()
 		ctx.Respond(&messages.GetCityResponseMessage{City: state.City})
@@ -250,6 +256,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 
 	case messages.ReturnRecruitsMessage:
 		state.City.Population += float64(msg.Count)
+		state.City.PopulationBasis = max(state.City.PopulationBasis, state.City.Population)
 		state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 		state.Store.EnqueueCity(state.City)
 		state.publish()
@@ -355,16 +362,16 @@ func (state *cityActor) recruitPopulation(count int64) *messages.InsufficientPop
 	return nil
 }
 
-func (state *cityActor) updatePolicy(militiaPercent, taxRatePercent int) {
-	militiaChanged := state.City.MilitiaPercent != militiaPercent
-	state.City.MilitiaPercent = militiaPercent
+func (state *cityActor) updatePolicy(militiaTarget float64, taxRatePercent int) {
+	militiaChanged := state.City.MilitiaTarget != militiaTarget
+	state.City.MilitiaTarget = militiaTarget
 	state.City.TaxRatePercent = taxRatePercent
 	if militiaChanged {
-		// Reassign available non-core residents immediately when the policy
-		// changes. Population growth continues to refill militia losses later.
-		target := constants.MilitiaTarget(state.City)
+		// Raising the target drafts available non-core residents, but never
+		// destroys an existing militia merely because housing capacity changed.
+		// Lowering below the present force releases only the excess.
 		availableNonCore := max(state.City.Population-constants.CorePopulation(state.City), 0)
-		state.City.MilitiaPopulation = min(target, availableNonCore)
+		state.City.MilitiaPopulation = min(militiaTarget, max(state.City.MilitiaPopulation, availableNonCore))
 	}
 	if !state.City.Starving {
 		state.City.PopulationGrowthRate = int64(math.Round(float64(state.City.PopulationGrowthBeforeTaxRate) * constants.TaxGrowthMultiplier(taxRatePercent)))
@@ -548,6 +555,7 @@ func (state *cityActor) growPopulation(starving bool, deficitRatio, surplusRatio
 	}
 	newPop := max(currentPopulation+delta, 0)
 	delta = newPop - currentPopulation
+	state.City.PopulationBasis = max(state.City.PopulationBasis, newPop)
 	if delta > 0 && state.City.MilitiaBattleID == nil {
 		shortfall := max(constants.MilitiaTarget(state.City)-state.City.MilitiaPopulation, 0)
 		state.City.MilitiaPopulation += min(delta, shortfall)

@@ -234,8 +234,9 @@ func (s *Store) CreateCity(ctx context.Context, city domain.City) error {
 		Name:              city.Name,
 		Population:        city.Population,
 		PopulationCap:     city.PopulationCap,
+		PopulationBasis:   city.PopulationBasis,
 		MilitiaPopulation: city.MilitiaPopulation,
-		MilitiaPercent:    int32(city.MilitiaPercent),
+		MilitiaTarget:     city.MilitiaTarget,
 		TaxRatePercent:    int32(city.TaxRatePercent),
 		StartX:            int32(city.StartX),
 		StartY:            int32(city.StartY),
@@ -417,8 +418,9 @@ func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) 
 			Names:              make([]string, 0, len(chunk)),
 			Populations:        make([]float64, 0, len(chunk)),
 			PopulationCaps:     make([]float64, 0, len(chunk)),
+			PopulationBases:    make([]float64, 0, len(chunk)),
 			MilitiaPopulations: make([]float64, 0, len(chunk)),
-			MilitiaPercents:    make([]int32, 0, len(chunk)),
+			MilitiaTargets:     make([]float64, 0, len(chunk)),
 			TaxRatePercents:    make([]int32, 0, len(chunk)),
 			StartXs:            make([]int32, 0, len(chunk)),
 			StartYs:            make([]int32, 0, len(chunk)),
@@ -439,8 +441,9 @@ func (s *Store) flushCities(ctx context.Context, buffer map[string]domain.City) 
 			params.Names = append(params.Names, city.Name)
 			params.Populations = append(params.Populations, city.Population)
 			params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
+			params.PopulationBases = append(params.PopulationBases, city.PopulationBasis)
 			params.MilitiaPopulations = append(params.MilitiaPopulations, city.MilitiaPopulation)
-			params.MilitiaPercents = append(params.MilitiaPercents, int32(city.MilitiaPercent))
+			params.MilitiaTargets = append(params.MilitiaTargets, city.MilitiaTarget)
 			params.TaxRatePercents = append(params.TaxRatePercents, int32(city.TaxRatePercent))
 			params.StartXs = append(params.StartXs, int32(city.StartX))
 			params.StartYs = append(params.StartYs, int32(city.StartY))

@@ -30,11 +30,34 @@ const (
 )
 
 func CorePopulation(city domain.City) float64 {
-	return city.PopulationCap * float64(CoreCivilianPercent) / 100
+	basis := city.PopulationBasis
+	if basis <= 0 {
+		basis = city.Population
+	}
+	return basis * float64(CoreCivilianPercent) / 100
 }
 
 func MilitiaTarget(city domain.City) float64 {
-	return city.PopulationCap * float64(city.MilitiaPercent) / 100
+	return max(city.MilitiaTarget, 0)
+}
+
+func MilitiaTargetForPercent(city domain.City, percent int) float64 {
+	return math.Round(city.PopulationCap * float64(percent) / 100)
+}
+
+func MinMilitiaTarget(city domain.City) float64 {
+	return math.Ceil(city.PopulationCap * float64(MinMilitiaPercent) / 100)
+}
+
+func MaxMilitiaTarget(city domain.City) float64 {
+	return math.Floor(city.PopulationCap * float64(MaxMilitiaPercent) / 100)
+}
+
+func MilitiaPercent(city domain.City) float64 {
+	if city.PopulationCap <= 0 {
+		return 0
+	}
+	return city.MilitiaTarget / city.PopulationCap * 100
 }
 
 func RecruitablePopulation(city domain.City) int64 {

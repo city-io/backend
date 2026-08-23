@@ -19,8 +19,9 @@ INSERT INTO cities (
     name,
     population,
     population_cap,
+    population_basis,
     militia_population,
-    militia_percent,
+    militia_target,
     tax_rate_percent,
     start_coords,
     size
@@ -32,8 +33,9 @@ SELECT
     v.name,
     v.population,
     v.population_cap,
+    v.population_basis,
     v.militia_population,
-    v.militia_percent,
+    v.militia_target,
     v.tax_rate_percent,
     ROW(v.start_x, v.start_y)::coordinates,
     v.size
@@ -45,12 +47,13 @@ FROM (
         UNNEST($4::text[])              AS name,
         UNNEST($5::float8[])      AS population,
         UNNEST($6::float8[])  AS population_cap,
-        UNNEST($7::float8[]) AS militia_population,
-        UNNEST($8::int[])   AS militia_percent,
-        UNNEST($9::int[])  AS tax_rate_percent,
-        UNNEST($10::int[])            AS start_x,
-        UNNEST($11::int[])            AS start_y,
-        UNNEST($12::int[])               AS size
+        UNNEST($7::float8[]) AS population_basis,
+        UNNEST($8::float8[]) AS militia_population,
+        UNNEST($9::float8[]) AS militia_target,
+        UNNEST($10::int[])  AS tax_rate_percent,
+        UNNEST($11::int[])            AS start_x,
+        UNNEST($12::int[])            AS start_y,
+        UNNEST($13::int[])               AS size
 ) AS v
 `
 
@@ -61,8 +64,9 @@ type BatchCreateCitiesParams struct {
 	Names              []string  `json:"names"`
 	Populations        []float64 `json:"populations"`
 	PopulationCaps     []float64 `json:"population_caps"`
+	PopulationBases    []float64 `json:"population_bases"`
 	MilitiaPopulations []float64 `json:"militia_populations"`
-	MilitiaPercents    []int32   `json:"militia_percents"`
+	MilitiaTargets     []float64 `json:"militia_targets"`
 	TaxRatePercents    []int32   `json:"tax_rate_percents"`
 	StartXs            []int32   `json:"start_xs"`
 	StartYs            []int32   `json:"start_ys"`
@@ -77,8 +81,9 @@ func (q *Queries) BatchCreateCities(ctx context.Context, arg BatchCreateCitiesPa
 		arg.Names,
 		arg.Populations,
 		arg.PopulationCaps,
+		arg.PopulationBases,
 		arg.MilitiaPopulations,
-		arg.MilitiaPercents,
+		arg.MilitiaTargets,
 		arg.TaxRatePercents,
 		arg.StartXs,
 		arg.StartYs,
@@ -95,8 +100,9 @@ SET
     name            = v.name,
     population      = v.population,
     population_cap  = v.population_cap,
+    population_basis = v.population_basis,
     militia_population = v.militia_population,
-    militia_percent = v.militia_percent,
+    militia_target = v.militia_target,
     tax_rate_percent = v.tax_rate_percent,
     start_coords    = ROW(v.start_x, v.start_y)::coordinates,
     size            = v.size
@@ -108,12 +114,13 @@ FROM (
         UNNEST($4::text[])             AS name,
         UNNEST($5::float8[])     AS population,
         UNNEST($6::float8[]) AS population_cap,
-        UNNEST($7::float8[]) AS militia_population,
-        UNNEST($8::int[])  AS militia_percent,
-        UNNEST($9::int[])  AS tax_rate_percent,
-        UNNEST($10::int[])           AS start_x,
-        UNNEST($11::int[])           AS start_y,
-        UNNEST($12::int[])              AS size
+        UNNEST($7::float8[]) AS population_basis,
+        UNNEST($8::float8[]) AS militia_population,
+        UNNEST($9::float8[]) AS militia_target,
+        UNNEST($10::int[])  AS tax_rate_percent,
+        UNNEST($11::int[])           AS start_x,
+        UNNEST($12::int[])           AS start_y,
+        UNNEST($13::int[])              AS size
 ) AS v
 WHERE c.city_id = v.city_id
 `
@@ -125,8 +132,9 @@ type BatchUpdateCitiesParams struct {
 	Names              []string  `json:"names"`
 	Populations        []float64 `json:"populations"`
 	PopulationCaps     []float64 `json:"population_caps"`
+	PopulationBases    []float64 `json:"population_bases"`
 	MilitiaPopulations []float64 `json:"militia_populations"`
-	MilitiaPercents    []int32   `json:"militia_percents"`
+	MilitiaTargets     []float64 `json:"militia_targets"`
 	TaxRatePercents    []int32   `json:"tax_rate_percents"`
 	StartXs            []int32   `json:"start_xs"`
 	StartYs            []int32   `json:"start_ys"`
@@ -141,8 +149,9 @@ func (q *Queries) BatchUpdateCities(ctx context.Context, arg BatchUpdateCitiesPa
 		arg.Names,
 		arg.Populations,
 		arg.PopulationCaps,
+		arg.PopulationBases,
 		arg.MilitiaPopulations,
-		arg.MilitiaPercents,
+		arg.MilitiaTargets,
 		arg.TaxRatePercents,
 		arg.StartXs,
 		arg.StartYs,
@@ -159,8 +168,9 @@ INSERT INTO cities (
     name,
     population,
     population_cap,
+    population_basis,
     militia_population,
-    militia_percent,
+    militia_target,
     tax_rate_percent,
     start_coords,
     size
@@ -175,8 +185,9 @@ VALUES (
     $7,
     $8,
     $9,
-    ROW($10::int4, $11::int4)::coordinates,
-    $12
+    $10,
+    ROW($11::int4, $12::int4)::coordinates,
+    $13
 )
 `
 
@@ -187,8 +198,9 @@ type CreateCityParams struct {
 	Name              string  `json:"name"`
 	Population        float64 `json:"population"`
 	PopulationCap     float64 `json:"population_cap"`
+	PopulationBasis   float64 `json:"population_basis"`
 	MilitiaPopulation float64 `json:"militia_population"`
-	MilitiaPercent    int32   `json:"militia_percent"`
+	MilitiaTarget     float64 `json:"militia_target"`
 	TaxRatePercent    int32   `json:"tax_rate_percent"`
 	StartX            int32   `json:"start_x"`
 	StartY            int32   `json:"start_y"`
@@ -203,8 +215,9 @@ func (q *Queries) CreateCity(ctx context.Context, arg CreateCityParams) error {
 		arg.Name,
 		arg.Population,
 		arg.PopulationCap,
+		arg.PopulationBasis,
 		arg.MilitiaPopulation,
-		arg.MilitiaPercent,
+		arg.MilitiaTarget,
 		arg.TaxRatePercent,
 		arg.StartX,
 		arg.StartY,
@@ -231,8 +244,9 @@ SELECT
     name,
     population,
     population_cap,
+    population_basis,
     militia_population,
-    militia_percent,
+    militia_target,
     tax_rate_percent,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
@@ -249,8 +263,9 @@ type GetAllCitiesRow struct {
 	Name              string           `json:"name"`
 	Population        float64          `json:"population"`
 	PopulationCap     float64          `json:"population_cap"`
+	PopulationBasis   float64          `json:"population_basis"`
 	MilitiaPopulation float64          `json:"militia_population"`
-	MilitiaPercent    int32            `json:"militia_percent"`
+	MilitiaTarget     float64          `json:"militia_target"`
 	TaxRatePercent    int32            `json:"tax_rate_percent"`
 	StartX            int32            `json:"start_x"`
 	StartY            int32            `json:"start_y"`
@@ -275,8 +290,9 @@ func (q *Queries) GetAllCities(ctx context.Context) ([]GetAllCitiesRow, error) {
 			&i.Name,
 			&i.Population,
 			&i.PopulationCap,
+			&i.PopulationBasis,
 			&i.MilitiaPopulation,
-			&i.MilitiaPercent,
+			&i.MilitiaTarget,
 			&i.TaxRatePercent,
 			&i.StartX,
 			&i.StartY,
@@ -302,8 +318,9 @@ SELECT
     name,
     population,
     population_cap,
+    population_basis,
     militia_population,
-    militia_percent,
+    militia_target,
     tax_rate_percent,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
@@ -321,8 +338,9 @@ type GetCitiesByOwnerRow struct {
 	Name              string           `json:"name"`
 	Population        float64          `json:"population"`
 	PopulationCap     float64          `json:"population_cap"`
+	PopulationBasis   float64          `json:"population_basis"`
 	MilitiaPopulation float64          `json:"militia_population"`
-	MilitiaPercent    int32            `json:"militia_percent"`
+	MilitiaTarget     float64          `json:"militia_target"`
 	TaxRatePercent    int32            `json:"tax_rate_percent"`
 	StartX            int32            `json:"start_x"`
 	StartY            int32            `json:"start_y"`
@@ -347,8 +365,9 @@ func (q *Queries) GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCit
 			&i.Name,
 			&i.Population,
 			&i.PopulationCap,
+			&i.PopulationBasis,
 			&i.MilitiaPopulation,
-			&i.MilitiaPercent,
+			&i.MilitiaTarget,
 			&i.TaxRatePercent,
 			&i.StartX,
 			&i.StartY,
@@ -374,13 +393,14 @@ SET
     name            = $3,
     population      = $4,
     population_cap  = $5,
-    militia_population = $6,
-    militia_percent = $7,
-    tax_rate_percent = $8,
-    start_coords    = ROW($9::int4, $10::int4)::coordinates,
-    size            = $11,
+    population_basis = $6,
+    militia_population = $7,
+    militia_target = $8,
+    tax_rate_percent = $9,
+    start_coords    = ROW($10::int4, $11::int4)::coordinates,
+    size            = $12,
     updated_at      = NOW()
-WHERE city_id = $12
+WHERE city_id = $13
 `
 
 type UpdateCityParams struct {
@@ -389,8 +409,9 @@ type UpdateCityParams struct {
 	Name              string  `json:"name"`
 	Population        float64 `json:"population"`
 	PopulationCap     float64 `json:"population_cap"`
+	PopulationBasis   float64 `json:"population_basis"`
 	MilitiaPopulation float64 `json:"militia_population"`
-	MilitiaPercent    int32   `json:"militia_percent"`
+	MilitiaTarget     float64 `json:"militia_target"`
 	TaxRatePercent    int32   `json:"tax_rate_percent"`
 	StartX            int32   `json:"start_x"`
 	StartY            int32   `json:"start_y"`
@@ -405,8 +426,9 @@ func (q *Queries) UpdateCity(ctx context.Context, arg UpdateCityParams) error {
 		arg.Name,
 		arg.Population,
 		arg.PopulationCap,
+		arg.PopulationBasis,
 		arg.MilitiaPopulation,
-		arg.MilitiaPercent,
+		arg.MilitiaTarget,
 		arg.TaxRatePercent,
 		arg.StartX,
 		arg.StartY,

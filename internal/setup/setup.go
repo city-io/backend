@@ -144,18 +144,19 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 		}
 
 		city := domain.City{
-			CityID:         cityID,
-			Type:           domain.CityTypeTown,
-			Owner:          nil,
-			Name:           town.Name,
-			Population:     populationCap,
-			PopulationCap:  populationCap,
-			MilitiaPercent: constants.NeutralMilitiaPercent,
-			TaxRatePercent: constants.NeutralTaxRatePercent,
-			StartX:         town.X,
-			StartY:         town.Y,
-			Size:           town.Size,
+			CityID:          cityID,
+			Type:            domain.CityTypeTown,
+			Owner:           nil,
+			Name:            town.Name,
+			Population:      populationCap,
+			PopulationCap:   populationCap,
+			PopulationBasis: populationCap,
+			TaxRatePercent:  constants.NeutralTaxRatePercent,
+			StartX:          town.X,
+			StartY:          town.Y,
+			Size:            town.Size,
 		}
+		city.MilitiaTarget = constants.MaxMilitiaTarget(city)
 		city.MilitiaPopulation = constants.MilitiaTarget(city)
 		cities = append(cities, city)
 		for _, building := range town.Buildings {
@@ -185,8 +186,9 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 			Names:              make([]string, 0, len(chunk)),
 			Populations:        make([]float64, 0, len(chunk)),
 			PopulationCaps:     make([]float64, 0, len(chunk)),
+			PopulationBases:    make([]float64, 0, len(chunk)),
 			MilitiaPopulations: make([]float64, 0, len(chunk)),
-			MilitiaPercents:    make([]int32, 0, len(chunk)),
+			MilitiaTargets:     make([]float64, 0, len(chunk)),
 			TaxRatePercents:    make([]int32, 0, len(chunk)),
 			StartXs:            make([]int32, 0, len(chunk)),
 			StartYs:            make([]int32, 0, len(chunk)),
@@ -207,8 +209,9 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 			params.Names = append(params.Names, city.Name)
 			params.Populations = append(params.Populations, city.Population)
 			params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
+			params.PopulationBases = append(params.PopulationBases, city.PopulationBasis)
 			params.MilitiaPopulations = append(params.MilitiaPopulations, city.MilitiaPopulation)
-			params.MilitiaPercents = append(params.MilitiaPercents, int32(city.MilitiaPercent))
+			params.MilitiaTargets = append(params.MilitiaTargets, city.MilitiaTarget)
 			params.TaxRatePercents = append(params.TaxRatePercents, int32(city.TaxRatePercent))
 			params.StartXs = append(params.StartXs, int32(city.StartX))
 			params.StartYs = append(params.StartYs, int32(city.StartY))

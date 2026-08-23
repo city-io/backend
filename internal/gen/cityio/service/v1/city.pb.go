@@ -313,7 +313,7 @@ func (x *ListCitiesResponse) GetEntities() *v1.EntityBag {
 type UpdateCityPolicyRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	CityId         *v1.CityId             `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
-	MilitiaPercent int32                  `protobuf:"varint,2,opt,name=militia_percent,json=militiaPercent,proto3" json:"militia_percent,omitempty"`
+	MilitiaTarget  float64                `protobuf:"fixed64,2,opt,name=militia_target,json=militiaTarget,proto3" json:"militia_target,omitempty"`
 	TaxRatePercent int32                  `protobuf:"varint,3,opt,name=tax_rate_percent,json=taxRatePercent,proto3" json:"tax_rate_percent,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -356,9 +356,9 @@ func (x *UpdateCityPolicyRequest) GetCityId() *v1.CityId {
 	return nil
 }
 
-func (x *UpdateCityPolicyRequest) GetMilitiaPercent() int32 {
+func (x *UpdateCityPolicyRequest) GetMilitiaTarget() float64 {
 	if x != nil {
-		return x.MilitiaPercent
+		return x.MilitiaTarget
 	}
 	return 0
 }
@@ -434,10 +434,10 @@ const file_cityio_service_v1_city_proto_rawDesc = "" +
 	"\x11ListCitiesRequest\"\x82\x01\n" +
 	"\x12ListCitiesResponse\x123\n" +
 	"\bcity_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x127\n" +
-	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"\x9f\x01\n" +
+	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"\x9d\x01\n" +
 	"\x17UpdateCityPolicyRequest\x121\n" +
-	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12'\n" +
-	"\x0fmilitia_percent\x18\x02 \x01(\x05R\x0emilitiaPercent\x12(\n" +
+	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12%\n" +
+	"\x0emilitia_target\x18\x02 \x01(\x01R\rmilitiaTarget\x12(\n" +
 	"\x10tax_rate_percent\x18\x03 \x01(\x05R\x0etaxRatePercent\"F\n" +
 	"\x18UpdateCityPolicyResponse\x12*\n" +
 	"\x04city\x18\x01 \x01(\v2\x16.cityio.entity.v1.CityR\x04city2\x82\x03\n" +

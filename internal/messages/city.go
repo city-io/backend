@@ -19,7 +19,7 @@ type UpdateCityOwnerMessage struct {
 type CaptureCityMessage struct{ Owner string }
 
 type UpdateCityPolicyMessage struct {
-	MilitiaPercent int
+	MilitiaTarget  float64
 	TaxRatePercent int
 }
 
@@ -91,7 +91,7 @@ type InvalidCityPolicyError struct{}
 
 func (*InvalidCityPolicyError) Error() string {
 	return fmt.Sprintf(
-		"militia must be %d-%d%% and tax rate must be 0-%d%%",
+		"militia target must be a whole resident within %d-%d%% of housing capacity and tax rate must be 0-%d%%",
 		constants.MinMilitiaPercent,
 		constants.MaxMilitiaPercent,
 		constants.MaxTaxRatePercent,

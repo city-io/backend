@@ -10,8 +10,9 @@ func TestPopulationPolicyBuckets(t *testing.T) {
 	city := domain.City{
 		Population:        250,
 		PopulationCap:     250,
+		PopulationBasis:   250,
 		MilitiaPopulation: 25,
-		MilitiaPercent:    10,
+		MilitiaTarget:     25,
 		TaxRatePercent:    10,
 	}
 	if got := CorePopulation(city); got != 137.5 {
@@ -32,8 +33,9 @@ func TestRecruitablePopulationProtectsTargetMilitiaAfterLosses(t *testing.T) {
 	city := domain.City{
 		Population:        200,
 		PopulationCap:     250,
+		PopulationBasis:   250,
 		MilitiaPopulation: 5,
-		MilitiaPercent:    10,
+		MilitiaTarget:     25,
 	}
 	if got := RecruitablePopulation(city); got != 37 {
 		t.Fatalf("recruitable population = %d, want 37", got)
@@ -51,8 +53,9 @@ func TestNeutralMilitiaUsesEntireNonCorePopulationShare(t *testing.T) {
 	town := domain.City{
 		Population:        250,
 		PopulationCap:     250,
+		PopulationBasis:   250,
 		MilitiaPopulation: 250 * float64(NeutralMilitiaPercent) / 100,
-		MilitiaPercent:    NeutralMilitiaPercent,
+		MilitiaTarget:     MaxMilitiaTarget(domain.City{PopulationCap: 250}),
 	}
 	if got := RecruitablePopulation(town); got != 0 {
 		t.Fatalf("neutral town recruitable population = %d, want 0", got)

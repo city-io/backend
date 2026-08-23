@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"math"
 
 	"connectrpc.com/connect"
 
@@ -85,9 +86,9 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 }
 
 func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request[servicev1.UpdateCityPolicyRequest]) (*connect.Response[servicev1.UpdateCityPolicyResponse], error) {
-	militiaPercent := int(req.Msg.GetMilitiaPercent())
+	militiaTarget := req.Msg.GetMilitiaTarget()
 	taxRatePercent := int(req.Msg.GetTaxRatePercent())
-	if err := validateCityPolicy(militiaPercent, taxRatePercent); err != nil {
+	if err := validateCityPolicy(militiaTarget, taxRatePercent); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
@@ -100,7 +101,7 @@ func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
 	}
 	res, err := h.srv.cluster.Request("city", cityID, messages.UpdateCityPolicyMessage{
-		MilitiaPercent: militiaPercent,
+		MilitiaTarget:  militiaTarget,
 		TaxRatePercent: taxRatePercent,
 	})
 	if err != nil {
@@ -120,9 +121,8 @@ func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request
 	}
 }
 
-func validateCityPolicy(militiaPercent, taxRatePercent int) error {
-	if militiaPercent < constants.MinMilitiaPercent || militiaPercent > constants.MaxMilitiaPercent ||
-		taxRatePercent < 0 || taxRatePercent > constants.MaxTaxRatePercent {
+func validateCityPolicy(militiaTarget float64, taxRatePercent int) error {
+	if militiaTarget < 0 || math.Trunc(militiaTarget) != militiaTarget || taxRatePercent < 0 || taxRatePercent > constants.MaxTaxRatePercent {
 		return &messages.InvalidCityPolicyError{}
 	}
 	return nil

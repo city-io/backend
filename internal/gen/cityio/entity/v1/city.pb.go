@@ -48,11 +48,13 @@ type City struct {
 	// when growing, negative when declining). Public — observable from outside
 	// by anyone watching the city over time.
 	PopulationGrowth *Rate `protobuf:"bytes,13,opt,name=population_growth,json=populationGrowth,proto3" json:"population_growth,omitempty"`
-	// The current non-mobile defensive reserve and its configured target share
-	// of housing capacity. Militia losses refill through future growth.
+	// The current non-mobile defensive reserve, its exact configured target, and
+	// that target as a derived share of housing capacity. Militia losses refill
+	// through future growth.
 	MilitiaPopulation float64 `protobuf:"fixed64,14,opt,name=militia_population,json=militiaPopulation,proto3" json:"militia_population,omitempty"`
-	MilitiaPercent    int32   `protobuf:"varint,15,opt,name=militia_percent,json=militiaPercent,proto3" json:"militia_percent,omitempty"`
-	// The protected 55% housing share that training can never consume.
+	MilitiaTarget     float64 `protobuf:"fixed64,15,opt,name=militia_target,json=militiaTarget,proto3" json:"militia_target,omitempty"`
+	// The protected 55% share of the city's peak population that training can
+	// never consume. Adding housing does not reclassify existing residents.
 	CorePopulation float64 `protobuf:"fixed64,16,opt,name=core_population,json=corePopulation,proto3" json:"core_population,omitempty"`
 	// Residents currently available to transfer into training orders.
 	RecruitablePopulation float64 `protobuf:"fixed64,17,opt,name=recruitable_population,json=recruitablePopulation,proto3" json:"recruitable_population,omitempty"`
@@ -69,7 +71,8 @@ type City struct {
 	// Current population change before tax policy is applied. This owner-only
 	// baseline lets clients preview policy changes without guessing the city
 	// simulation's food and logistic-growth inputs.
-	PopulationGrowthBeforeTax *Rate `protobuf:"bytes,21,opt,name=population_growth_before_tax,json=populationGrowthBeforeTax,proto3" json:"population_growth_before_tax,omitempty"`
+	PopulationGrowthBeforeTax *Rate   `protobuf:"bytes,21,opt,name=population_growth_before_tax,json=populationGrowthBeforeTax,proto3" json:"population_growth_before_tax,omitempty"`
+	MilitiaPercent            float64 `protobuf:"fixed64,22,opt,name=militia_percent,json=militiaPercent,proto3" json:"militia_percent,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -181,9 +184,9 @@ func (x *City) GetMilitiaPopulation() float64 {
 	return 0
 }
 
-func (x *City) GetMilitiaPercent() int32 {
+func (x *City) GetMilitiaTarget() float64 {
 	if x != nil {
-		return x.MilitiaPercent
+		return x.MilitiaTarget
 	}
 	return 0
 }
@@ -251,11 +254,18 @@ func (x *City) GetPopulationGrowthBeforeTax() *Rate {
 	return nil
 }
 
+func (x *City) GetMilitiaPercent() float64 {
+	if x != nil {
+		return x.MilitiaPercent
+	}
+	return 0
+}
+
 var File_cityio_entity_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x84\b\n" +
+	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\xab\b\n" +
 	"\x04City\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12.\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1a.cityio.entity.v1.CityTypeR\x04type\x123\n" +
@@ -269,8 +279,8 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\x04size\x18\b \x01(\x05R\x04size\x12\x1a\n" +
 	"\bstarving\x18\f \x01(\bR\bstarving\x12C\n" +
 	"\x11population_growth\x18\r \x01(\v2\x16.cityio.entity.v1.RateR\x10populationGrowth\x12-\n" +
-	"\x12militia_population\x18\x0e \x01(\x01R\x11militiaPopulation\x12'\n" +
-	"\x0fmilitia_percent\x18\x0f \x01(\x05R\x0emilitiaPercent\x12'\n" +
+	"\x12militia_population\x18\x0e \x01(\x01R\x11militiaPopulation\x12%\n" +
+	"\x0emilitia_target\x18\x0f \x01(\x01R\rmilitiaTarget\x12'\n" +
 	"\x0fcore_population\x18\x10 \x01(\x01R\x0ecorePopulation\x125\n" +
 	"\x16recruitable_population\x18\x11 \x01(\x01R\x15recruitablePopulation\x12-\n" +
 	"\x12taxable_population\x18\x12 \x01(\x01R\x11taxablePopulation\x12?\n" +
@@ -282,7 +292,8 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\x10tax_rate_percent\x18\x13 \x01(\x05R\x0etaxRatePercent\x125\n" +
 	"\n" +
 	"tax_income\x18\x14 \x01(\v2\x16.cityio.entity.v1.RateR\ttaxIncome\x12W\n" +
-	"\x1cpopulation_growth_before_tax\x18\x15 \x01(\v2\x16.cityio.entity.v1.RateR\x19populationGrowthBeforeTaxB\b\n" +
+	"\x1cpopulation_growth_before_tax\x18\x15 \x01(\v2\x16.cityio.entity.v1.RateR\x19populationGrowthBeforeTax\x12'\n" +
+	"\x0fmilitia_percent\x18\x16 \x01(\x01R\x0emilitiaPercentB\b\n" +
 	"\x06_ownerB\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tCityProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 

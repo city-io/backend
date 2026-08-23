@@ -201,11 +201,14 @@ the "Client / frontend API reference" section below.
     militia on the center tile, then must hold it uncontested for 30 seconds. Militia casualties
     reduce both the militia and settlement population. Completion transfers the existing
     settlement and its buildings to the attacker.
-  - **Population transfer:** 55% of housing capacity is a protected civilian core. A city targets
-    a configurable 5–45% passive militia (10% by default; neutral towns start at 45%); residents
-    above the core plus militia target are recruitable. Starting a training order immediately
-    removes its population cost from the settlement. Armies own that manpower thereafter, deaths
-    are permanent, and future settlement growth can create new recruitable surplus.
+  - **Population transfer:** 55% of the city's peak resident population is a protected civilian
+    core. The persisted peak does not fall after recruitment/casualties and does not jump when
+    housing is added, so neither repeated training nor capacity upgrades move the floor. A city
+    stores an exact passive-militia target, constrained to 5–45% of housing capacity when changed
+    (10% by default; neutral towns start at 45%); residents above the core plus target are
+    recruitable. Starting a training order immediately removes its population cost from the
+    settlement. Armies own that manpower thereafter, deaths are permanent, and future settlement
+    growth can create new recruitable surplus.
   - **Tax policy:** each owned city has a 0–100% tax rate (10% by default). Every non-militia
     resident is taxable. At 100%, each taxable resident yields 16 gold/hour and removes 150% of
     untaxed growth, turning growth into a 50% baseline decline; income and growth effects scale
@@ -290,7 +293,7 @@ for TypeScript) rather than hand-writing request types.
   password is never sent.
 - **City** — public fields: `city_id, type, owner? (UserId), name, population (double),
   population_cap (double), start (Coordinates, top-left), size, starving (bool),
-  population_growth (Rate), militia_population, militia_percent, core_population,
+  population_growth (Rate), militia_population, militia_target, derived militia_percent, core_population,
   taxable_population`. **Owner-only** fields (nil/zero for non-owners): `food_production,
   food_upkeep, net_food_flow (Rate), recruitable_population, tax_rate_percent, tax_income,
   population_growth_before_tax`. See `mapping.HidePrivateCityFields`.
@@ -343,9 +346,9 @@ for TypeScript) rather than hand-writing request types.
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.
 - `CreateCity(type, owner?, name, size) → { city }` — placed on a random empty block.
 - `ListCities() → { city_ids[], entities(cities) }` — your owned cities.
-- `UpdateCityPolicy(city_id, militia_percent, tax_rate_percent) → { city }` — owner-only;
-  militia must be 5–45 and tax must be 0–100. The RPC rejects values outside those code-owned
-  ranges before dispatching to the city actor. Policy changes stream immediately.
+- `UpdateCityPolicy(city_id, militia_target, tax_rate_percent) → { city }` — owner-only;
+  militia target must be a whole resident within 5–45% of current housing capacity when changed;
+  tax must be 0–100. Policy changes stream immediately.
 
 **BuildingService**
 - `CreateBuilding(city_id, type, coords) → { building }` — must own the city; starts construction

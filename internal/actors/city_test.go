@@ -47,8 +47,9 @@ func TestCityGrowthRefillsMilitiaBeforeTaxablePopulation(t *testing.T) {
 	state := cityActor{City: domain.City{
 		Population:        200,
 		PopulationCap:     250,
+		PopulationBasis:   200,
 		MilitiaPopulation: 5,
-		MilitiaPercent:    10,
+		MilitiaTarget:     25,
 	}}
 	state.growPopulation(false, 0, 0)
 	delta := state.City.Population - 200
@@ -62,10 +63,11 @@ func TestCityGrowthRefillsMilitiaBeforeTaxablePopulation(t *testing.T) {
 
 func TestMaximumTaxReversesPositiveGrowth(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population:     200,
-		PopulationCap:  250,
-		TaxRatePercent: constants.MaxTaxRatePercent,
-		MilitiaPercent: 10,
+		Population:      200,
+		PopulationCap:   250,
+		PopulationBasis: 200,
+		TaxRatePercent:  constants.MaxTaxRatePercent,
+		MilitiaTarget:   25,
 	}}
 	state.growPopulation(false, 0, 1)
 	if state.City.Population >= 200 || state.City.PopulationGrowthRate >= 0 {
@@ -81,8 +83,8 @@ func TestMaximumTaxReversesPositiveGrowth(t *testing.T) {
 
 func TestRecruitmentTransfersResidentsOutOfCity(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population: 250, PopulationCap: 250, MilitiaPopulation: 25,
-		MilitiaPercent: 10, TaxRatePercent: 10,
+		Population: 250, PopulationCap: 250, PopulationBasis: 250, MilitiaPopulation: 25,
+		MilitiaTarget: 25, TaxRatePercent: 10,
 	}}
 	if err := state.recruitPopulation(45); err != nil {
 		t.Fatalf("recruitment failed: %v", err)
@@ -97,8 +99,8 @@ func TestRecruitmentTransfersResidentsOutOfCity(t *testing.T) {
 
 func TestRecruitmentCannotCrossCoreAndMilitiaFloor(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population: 163, PopulationCap: 250, MilitiaPopulation: 25,
-		MilitiaPercent: 10,
+		Population: 163, PopulationCap: 250, PopulationBasis: 250, MilitiaPopulation: 25,
+		MilitiaTarget: 25,
 	}}
 	err := state.recruitPopulation(1)
 	if err == nil || err.Available != 0 {
@@ -108,34 +110,52 @@ func TestRecruitmentCannotCrossCoreAndMilitiaFloor(t *testing.T) {
 
 func TestCityPolicyReassignsNonCoreResidentsToMilitia(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population: 220, PopulationCap: 250, MilitiaPopulation: 25,
-		MilitiaPercent: 10, TaxRatePercent: 10,
+		Population: 220, PopulationCap: 250, PopulationBasis: 250, MilitiaPopulation: 25,
+		MilitiaTarget: 25, TaxRatePercent: 10,
 	}}
 
-	state.updatePolicy(25, 10)
-	if state.City.MilitiaPopulation != 62.5 {
-		t.Fatalf("militia after target increase = %f, want 62.5", state.City.MilitiaPopulation)
+	state.updatePolicy(63, 10)
+	if state.City.MilitiaPopulation != 63 {
+		t.Fatalf("militia after target increase = %f, want 63", state.City.MilitiaPopulation)
 	}
-	if got := constants.RecruitablePopulation(state.City); got != 20 {
-		t.Fatalf("recruitable population after target increase = %d, want 20", got)
+	if got := constants.RecruitablePopulation(state.City); got != 19 {
+		t.Fatalf("recruitable population after target increase = %d, want 19", got)
 	}
 
-	state.updatePolicy(5, 10)
-	if state.City.MilitiaPopulation != 12.5 {
-		t.Fatalf("militia after target decrease = %f, want 12.5", state.City.MilitiaPopulation)
+	state.updatePolicy(13, 10)
+	if state.City.MilitiaPopulation != 13 {
+		t.Fatalf("militia after target decrease = %f, want 13", state.City.MilitiaPopulation)
 	}
-	if got := constants.RecruitablePopulation(state.City); got != 70 {
-		t.Fatalf("recruitable population after target decrease = %d, want 70", got)
+	if got := constants.RecruitablePopulation(state.City); got != 69 {
+		t.Fatalf("recruitable population after target decrease = %d, want 69", got)
+	}
+}
+
+func TestCityPolicyPreservesMilitiaAfterHousingExpansion(t *testing.T) {
+	state := cityActor{City: domain.City{
+		Population: 249, PopulationCap: 800, PopulationBasis: 250,
+		MilitiaPopulation: 25, MilitiaTarget: 25, TaxRatePercent: 10,
+	}}
+
+	state.updatePolicy(40, 10)
+	if state.City.Population != 249 {
+		t.Fatalf("population after policy change = %f, want 249", state.City.Population)
+	}
+	if state.City.MilitiaPopulation != 40 {
+		t.Fatalf("militia after housing expansion policy change = %f, want 40", state.City.MilitiaPopulation)
+	}
+	if got := constants.RecruitablePopulation(state.City); got != 71 {
+		t.Fatalf("recruitable population after housing expansion = %d, want 71", got)
 	}
 }
 
 func TestTaxPolicyChangeDoesNotRefillMilitiaLosses(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population: 220, PopulationCap: 250, MilitiaPopulation: 20,
-		MilitiaPercent: 25, TaxRatePercent: 10, PopulationGrowthRate: 100, PopulationGrowthBeforeTaxRate: 100,
+		Population: 220, PopulationCap: 250, PopulationBasis: 250, MilitiaPopulation: 20,
+		MilitiaTarget: 63, TaxRatePercent: 10, PopulationGrowthRate: 100, PopulationGrowthBeforeTaxRate: 100,
 	}}
 
-	state.updatePolicy(25, constants.MaxTaxRatePercent)
+	state.updatePolicy(63, constants.MaxTaxRatePercent)
 	if state.City.MilitiaPopulation != 20 {
 		t.Fatalf("militia after tax-only policy change = %f, want 20", state.City.MilitiaPopulation)
 	}

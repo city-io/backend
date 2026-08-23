@@ -78,14 +78,14 @@ func TestHidePrivateArmyFieldsPreservesPhysicalState(t *testing.T) {
 
 func TestHidePrivateCityFieldsPreservesPublicMilitia(t *testing.T) {
 	city := CityToProto(domain.City{
-		CityID: "city", Population: 250, PopulationCap: 250,
-		MilitiaPopulation: 25, MilitiaPercent: 10, TaxRatePercent: 20,
+		CityID: "city", Population: 250, PopulationCap: 250, PopulationBasis: 250,
+		MilitiaPopulation: 25, MilitiaTarget: 25, TaxRatePercent: 20,
 		TaxIncomeRate: 720, PopulationGrowthBeforeTaxRate: 24,
 	})
 
 	HidePrivateCityFields(city)
 
-	if city.GetMilitiaPopulation() != 25 || city.GetMilitiaPercent() != 10 {
+	if city.GetMilitiaPopulation() != 25 || city.GetMilitiaTarget() != 25 || city.GetMilitiaPercent() != 10 {
 		t.Fatalf("public militia state was hidden: %+v", city)
 	}
 	if city.GetRecruitablePopulation() != 0 || city.GetTaxRatePercent() != 0 || city.GetTaxIncome() != nil || city.GetPopulationGrowthBeforeTax() != nil {
