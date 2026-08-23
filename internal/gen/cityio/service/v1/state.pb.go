@@ -126,82 +126,6 @@ func (x *TileVisibility) GetState() TileVisibilityState {
 	return TileVisibilityState_TILE_VISIBILITY_STATE_UNSPECIFIED
 }
 
-type EntityIdBag struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserIds       []*v1.UserId           `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
-	CityIds       []*v1.CityId           `protobuf:"bytes,2,rep,name=city_ids,json=cityIds,proto3" json:"city_ids,omitempty"`
-	BuildingIds   []*v1.BuildingId       `protobuf:"bytes,3,rep,name=building_ids,json=buildingIds,proto3" json:"building_ids,omitempty"`
-	ArmyIds       []*v1.ArmyId           `protobuf:"bytes,4,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
-	TileIds       []*v1.TileId           `protobuf:"bytes,5,rep,name=tile_ids,json=tileIds,proto3" json:"tile_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EntityIdBag) Reset() {
-	*x = EntityIdBag{}
-	mi := &file_cityio_service_v1_state_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EntityIdBag) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EntityIdBag) ProtoMessage() {}
-
-func (x *EntityIdBag) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_state_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EntityIdBag.ProtoReflect.Descriptor instead.
-func (*EntityIdBag) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_state_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *EntityIdBag) GetUserIds() []*v1.UserId {
-	if x != nil {
-		return x.UserIds
-	}
-	return nil
-}
-
-func (x *EntityIdBag) GetCityIds() []*v1.CityId {
-	if x != nil {
-		return x.CityIds
-	}
-	return nil
-}
-
-func (x *EntityIdBag) GetBuildingIds() []*v1.BuildingId {
-	if x != nil {
-		return x.BuildingIds
-	}
-	return nil
-}
-
-func (x *EntityIdBag) GetArmyIds() []*v1.ArmyId {
-	if x != nil {
-		return x.ArmyIds
-	}
-	return nil
-}
-
-func (x *EntityIdBag) GetTileIds() []*v1.TileId {
-	if x != nil {
-		return x.TileIds
-	}
-	return nil
-}
-
 type StateSnapshot struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Entities       *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
@@ -212,7 +136,7 @@ type StateSnapshot struct {
 
 func (x *StateSnapshot) Reset() {
 	*x = StateSnapshot{}
-	mi := &file_cityio_service_v1_state_proto_msgTypes[2]
+	mi := &file_cityio_service_v1_state_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -224,7 +148,7 @@ func (x *StateSnapshot) String() string {
 func (*StateSnapshot) ProtoMessage() {}
 
 func (x *StateSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_state_proto_msgTypes[2]
+	mi := &file_cityio_service_v1_state_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -237,7 +161,7 @@ func (x *StateSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateSnapshot.ProtoReflect.Descriptor instead.
 func (*StateSnapshot) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_state_proto_rawDescGZIP(), []int{2}
+	return file_cityio_service_v1_state_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *StateSnapshot) GetEntities() *v1.EntityBag {
@@ -257,8 +181,8 @@ func (x *StateSnapshot) GetTileVisibility() []*TileVisibility {
 type StateDelta struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Upserts        *v1.EntityBag          `protobuf:"bytes,1,opt,name=upserts,proto3" json:"upserts,omitempty"`
-	Deleted        *EntityIdBag           `protobuf:"bytes,2,opt,name=deleted,proto3" json:"deleted,omitempty"`
-	Hidden         *EntityIdBag           `protobuf:"bytes,3,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	Deleted        *v1.EntityIdBag        `protobuf:"bytes,2,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	Hidden         *v1.EntityIdBag        `protobuf:"bytes,3,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	TileVisibility []*TileVisibility      `protobuf:"bytes,4,rep,name=tile_visibility,json=tileVisibility,proto3" json:"tile_visibility,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -266,7 +190,7 @@ type StateDelta struct {
 
 func (x *StateDelta) Reset() {
 	*x = StateDelta{}
-	mi := &file_cityio_service_v1_state_proto_msgTypes[3]
+	mi := &file_cityio_service_v1_state_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -278,7 +202,7 @@ func (x *StateDelta) String() string {
 func (*StateDelta) ProtoMessage() {}
 
 func (x *StateDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_state_proto_msgTypes[3]
+	mi := &file_cityio_service_v1_state_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -291,7 +215,7 @@ func (x *StateDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateDelta.ProtoReflect.Descriptor instead.
 func (*StateDelta) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_state_proto_rawDescGZIP(), []int{3}
+	return file_cityio_service_v1_state_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *StateDelta) GetUpserts() *v1.EntityBag {
@@ -301,14 +225,14 @@ func (x *StateDelta) GetUpserts() *v1.EntityBag {
 	return nil
 }
 
-func (x *StateDelta) GetDeleted() *EntityIdBag {
+func (x *StateDelta) GetDeleted() *v1.EntityIdBag {
 	if x != nil {
 		return x.Deleted
 	}
 	return nil
 }
 
-func (x *StateDelta) GetHidden() *EntityIdBag {
+func (x *StateDelta) GetHidden() *v1.EntityIdBag {
 	if x != nil {
 		return x.Hidden
 	}
@@ -329,21 +253,15 @@ const file_cityio_service_v1_state_proto_rawDesc = "" +
 	"\x1dcityio/service/v1/state.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/bag.proto\x1a\x1acityio/entity/v1/ids.proto\"\x81\x01\n" +
 	"\x0eTileVisibility\x121\n" +
 	"\atile_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.TileIdR\x06tileId\x12<\n" +
-	"\x05state\x18\x02 \x01(\x0e2&.cityio.service.v1.TileVisibilityStateR\x05state\"\xa2\x02\n" +
-	"\vEntityIdBag\x123\n" +
-	"\buser_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.UserIdR\auserIds\x123\n" +
-	"\bcity_ids\x18\x02 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x12?\n" +
-	"\fbuilding_ids\x18\x03 \x03(\v2\x1c.cityio.entity.v1.BuildingIdR\vbuildingIds\x123\n" +
-	"\barmy_ids\x18\x04 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x123\n" +
-	"\btile_ids\x18\x05 \x03(\v2\x18.cityio.entity.v1.TileIdR\atileIds\"\x94\x01\n" +
+	"\x05state\x18\x02 \x01(\x0e2&.cityio.service.v1.TileVisibilityStateR\x05state\"\x94\x01\n" +
 	"\rStateSnapshot\x127\n" +
 	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\x12J\n" +
-	"\x0ftile_visibility\x18\x02 \x03(\v2!.cityio.service.v1.TileVisibilityR\x0etileVisibility\"\x81\x02\n" +
+	"\x0ftile_visibility\x18\x02 \x03(\v2!.cityio.service.v1.TileVisibilityR\x0etileVisibility\"\xff\x01\n" +
 	"\n" +
 	"StateDelta\x125\n" +
-	"\aupserts\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\aupserts\x128\n" +
-	"\adeleted\x18\x02 \x01(\v2\x1e.cityio.service.v1.EntityIdBagR\adeleted\x126\n" +
-	"\x06hidden\x18\x03 \x01(\v2\x1e.cityio.service.v1.EntityIdBagR\x06hidden\x12J\n" +
+	"\aupserts\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\aupserts\x127\n" +
+	"\adeleted\x18\x02 \x01(\v2\x1d.cityio.entity.v1.EntityIdBagR\adeleted\x125\n" +
+	"\x06hidden\x18\x03 \x01(\v2\x1d.cityio.entity.v1.EntityIdBagR\x06hidden\x12J\n" +
 	"\x0ftile_visibility\x18\x04 \x03(\v2!.cityio.service.v1.TileVisibilityR\x0etileVisibility*\xa9\x01\n" +
 	"\x13TileVisibilityState\x12%\n" +
 	"!TILE_VISIBILITY_STATE_UNSPECIFIED\x10\x00\x12$\n" +
@@ -366,39 +284,30 @@ func file_cityio_service_v1_state_proto_rawDescGZIP() []byte {
 }
 
 var file_cityio_service_v1_state_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_cityio_service_v1_state_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_cityio_service_v1_state_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_cityio_service_v1_state_proto_goTypes = []any{
 	(TileVisibilityState)(0), // 0: cityio.service.v1.TileVisibilityState
 	(*TileVisibility)(nil),   // 1: cityio.service.v1.TileVisibility
-	(*EntityIdBag)(nil),      // 2: cityio.service.v1.EntityIdBag
-	(*StateSnapshot)(nil),    // 3: cityio.service.v1.StateSnapshot
-	(*StateDelta)(nil),       // 4: cityio.service.v1.StateDelta
-	(*v1.TileId)(nil),        // 5: cityio.entity.v1.TileId
-	(*v1.UserId)(nil),        // 6: cityio.entity.v1.UserId
-	(*v1.CityId)(nil),        // 7: cityio.entity.v1.CityId
-	(*v1.BuildingId)(nil),    // 8: cityio.entity.v1.BuildingId
-	(*v1.ArmyId)(nil),        // 9: cityio.entity.v1.ArmyId
-	(*v1.EntityBag)(nil),     // 10: cityio.entity.v1.EntityBag
+	(*StateSnapshot)(nil),    // 2: cityio.service.v1.StateSnapshot
+	(*StateDelta)(nil),       // 3: cityio.service.v1.StateDelta
+	(*v1.TileId)(nil),        // 4: cityio.entity.v1.TileId
+	(*v1.EntityBag)(nil),     // 5: cityio.entity.v1.EntityBag
+	(*v1.EntityIdBag)(nil),   // 6: cityio.entity.v1.EntityIdBag
 }
 var file_cityio_service_v1_state_proto_depIdxs = []int32{
-	5,  // 0: cityio.service.v1.TileVisibility.tile_id:type_name -> cityio.entity.v1.TileId
-	0,  // 1: cityio.service.v1.TileVisibility.state:type_name -> cityio.service.v1.TileVisibilityState
-	6,  // 2: cityio.service.v1.EntityIdBag.user_ids:type_name -> cityio.entity.v1.UserId
-	7,  // 3: cityio.service.v1.EntityIdBag.city_ids:type_name -> cityio.entity.v1.CityId
-	8,  // 4: cityio.service.v1.EntityIdBag.building_ids:type_name -> cityio.entity.v1.BuildingId
-	9,  // 5: cityio.service.v1.EntityIdBag.army_ids:type_name -> cityio.entity.v1.ArmyId
-	5,  // 6: cityio.service.v1.EntityIdBag.tile_ids:type_name -> cityio.entity.v1.TileId
-	10, // 7: cityio.service.v1.StateSnapshot.entities:type_name -> cityio.entity.v1.EntityBag
-	1,  // 8: cityio.service.v1.StateSnapshot.tile_visibility:type_name -> cityio.service.v1.TileVisibility
-	10, // 9: cityio.service.v1.StateDelta.upserts:type_name -> cityio.entity.v1.EntityBag
-	2,  // 10: cityio.service.v1.StateDelta.deleted:type_name -> cityio.service.v1.EntityIdBag
-	2,  // 11: cityio.service.v1.StateDelta.hidden:type_name -> cityio.service.v1.EntityIdBag
-	1,  // 12: cityio.service.v1.StateDelta.tile_visibility:type_name -> cityio.service.v1.TileVisibility
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	4, // 0: cityio.service.v1.TileVisibility.tile_id:type_name -> cityio.entity.v1.TileId
+	0, // 1: cityio.service.v1.TileVisibility.state:type_name -> cityio.service.v1.TileVisibilityState
+	5, // 2: cityio.service.v1.StateSnapshot.entities:type_name -> cityio.entity.v1.EntityBag
+	1, // 3: cityio.service.v1.StateSnapshot.tile_visibility:type_name -> cityio.service.v1.TileVisibility
+	5, // 4: cityio.service.v1.StateDelta.upserts:type_name -> cityio.entity.v1.EntityBag
+	6, // 5: cityio.service.v1.StateDelta.deleted:type_name -> cityio.entity.v1.EntityIdBag
+	6, // 6: cityio.service.v1.StateDelta.hidden:type_name -> cityio.entity.v1.EntityIdBag
+	1, // 7: cityio.service.v1.StateDelta.tile_visibility:type_name -> cityio.service.v1.TileVisibility
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_state_proto_init() }
@@ -412,7 +321,7 @@ func file_cityio_service_v1_state_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_state_proto_rawDesc), len(file_cityio_service_v1_state_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   4,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -119,7 +119,7 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 
 func diffProjectedState(previous, current *projectedState) *servicev1.StateDelta {
 	delta := &servicev1.StateDelta{
-		Upserts: &entityv1.EntityBag{}, Deleted: &servicev1.EntityIdBag{}, Hidden: &servicev1.EntityIdBag{},
+		Upserts: &entityv1.EntityBag{}, Deleted: &entityv1.EntityIdBag{}, Hidden: &entityv1.EntityIdBag{},
 	}
 	prevBag, currBag := previous.snapshot.GetEntities(), current.snapshot.GetEntities()
 
