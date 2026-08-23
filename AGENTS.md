@@ -154,8 +154,9 @@ the "Client / frontend API reference" section below.
   tile).
 - **Cities:** a `size`×`size` block (capitals are `CitySize` = 5). `start` is the top-left
   corner; the center is `start + size/2`. Type is `city` (player capital) or `town` (neutral,
-  unowned). A city has `population` (grows logistically toward `population_cap`), and the cap is
-  the sum of its buildings' population contributions.
+  unowned). New player cities temporarily start with a completed level-1 farm and barracks in
+  addition to their city center. A city has `population` (grows logistically toward
+  `population_cap`), and the cap is the sum of its buildings' population contributions.
 - **Buildings:** typed structures inside a city. Types: `city_center`, `town_center`, `barracks`,
   `house`, `farm`, `mine`. Levels 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
   construction time; while under construction `level != target_level`. City/town centers can't be
