@@ -52,30 +52,6 @@ SET
     updated_at      = NOW()
 WHERE city_id = sqlc.arg(city_id);
 
--- name: FindEmptyCityBlock :one
--- Picks a uniformly random empty (size × size) block, enforcing a 1-tile gap
--- from the map boundary on every side as well as from every other city.
--- Range [1, mapWidth - size - 1] guarantees the block's footprint never
--- touches the map edge.
-SELECT
-  x::int4 AS x,
-  y::int4 AS y
-FROM generate_series(1, sqlc.arg(map_width)::int4  - sqlc.arg(size)::int4 - 1)  AS x
-CROSS JOIN generate_series(1, sqlc.arg(map_height)::int4 - sqlc.arg(size)::int4 - 1) AS y
-WHERE NOT EXISTS (
-  SELECT 1
-  FROM cities c
-  WHERE
-    -- X overlap with 1-tile gap
-    (c.start_coords).x + c.size >= x
-    AND (c.start_coords).x <= x + sqlc.arg(size)::int4
-    -- Y overlap with 1-tile gap
-    AND (c.start_coords).y + c.size >= y
-    AND (c.start_coords).y <= y + sqlc.arg(size)::int4
-)
-ORDER BY random()
-LIMIT 1;
-
 -- name: BatchCreateCities :exec
 INSERT INTO cities (
     city_id,

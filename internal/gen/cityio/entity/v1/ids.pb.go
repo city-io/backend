@@ -197,6 +197,58 @@ func (x *ArmyId) GetValue() string {
 	return ""
 }
 
+type TileId struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	X             int32                  `protobuf:"varint,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y             int32                  `protobuf:"varint,2,opt,name=y,proto3" json:"y,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TileId) Reset() {
+	*x = TileId{}
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TileId) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TileId) ProtoMessage() {}
+
+func (x *TileId) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TileId.ProtoReflect.Descriptor instead.
+func (*TileId) Descriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TileId) GetX() int32 {
+	if x != nil {
+		return x.X
+	}
+	return 0
+}
+
+func (x *TileId) GetY() int32 {
+	if x != nil {
+		return x.Y
+	}
+	return 0
+}
+
 var File_cityio_entity_v1_ids_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_ids_proto_rawDesc = "" +
@@ -210,7 +262,10 @@ const file_cityio_entity_v1_ids_proto_rawDesc = "" +
 	"BuildingId\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\"\x1e\n" +
 	"\x06ArmyId\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\tR\x05valueB\xb1\x01\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"$\n" +
+	"\x06TileId\x12\f\n" +
+	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
+	"\x01y\x18\x02 \x01(\x05R\x01yB\xb1\x01\n" +
 	"\x14com.cityio.entity.v1B\bIdsProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -225,12 +280,13 @@ func file_cityio_entity_v1_ids_proto_rawDescGZIP() []byte {
 	return file_cityio_entity_v1_ids_proto_rawDescData
 }
 
-var file_cityio_entity_v1_ids_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_cityio_entity_v1_ids_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_cityio_entity_v1_ids_proto_goTypes = []any{
 	(*UserId)(nil),     // 0: cityio.entity.v1.UserId
 	(*CityId)(nil),     // 1: cityio.entity.v1.CityId
 	(*BuildingId)(nil), // 2: cityio.entity.v1.BuildingId
 	(*ArmyId)(nil),     // 3: cityio.entity.v1.ArmyId
+	(*TileId)(nil),     // 4: cityio.entity.v1.TileId
 }
 var file_cityio_entity_v1_ids_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -251,7 +307,7 @@ func file_cityio_entity_v1_ids_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_ids_proto_rawDesc), len(file_cityio_entity_v1_ids_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

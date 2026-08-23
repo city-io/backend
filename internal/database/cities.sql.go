@@ -184,49 +184,6 @@ func (q *Queries) DeleteCity(ctx context.Context, cityID string) error {
 	return err
 }
 
-const findEmptyCityBlock = `-- name: FindEmptyCityBlock :one
-SELECT
-  x::int4 AS x,
-  y::int4 AS y
-FROM generate_series(1, $1::int4  - $2::int4 - 1)  AS x
-CROSS JOIN generate_series(1, $3::int4 - $2::int4 - 1) AS y
-WHERE NOT EXISTS (
-  SELECT 1
-  FROM cities c
-  WHERE
-    -- X overlap with 1-tile gap
-    (c.start_coords).x + c.size >= x
-    AND (c.start_coords).x <= x + $2::int4
-    -- Y overlap with 1-tile gap
-    AND (c.start_coords).y + c.size >= y
-    AND (c.start_coords).y <= y + $2::int4
-)
-ORDER BY random()
-LIMIT 1
-`
-
-type FindEmptyCityBlockParams struct {
-	MapWidth  int32 `json:"map_width"`
-	Size      int32 `json:"size"`
-	MapHeight int32 `json:"map_height"`
-}
-
-type FindEmptyCityBlockRow struct {
-	X int32 `json:"x"`
-	Y int32 `json:"y"`
-}
-
-// Picks a uniformly random empty (size × size) block, enforcing a 1-tile gap
-// from the map boundary on every side as well as from every other city.
-// Range [1, mapWidth - size - 1] guarantees the block's footprint never
-// touches the map edge.
-func (q *Queries) FindEmptyCityBlock(ctx context.Context, arg FindEmptyCityBlockParams) (FindEmptyCityBlockRow, error) {
-	row := q.db.QueryRow(ctx, findEmptyCityBlock, arg.MapWidth, arg.Size, arg.MapHeight)
-	var i FindEmptyCityBlockRow
-	err := row.Scan(&i.X, &i.Y)
-	return i, err
-}
-
 const getAllCities = `-- name: GetAllCities :many
 SELECT
     city_id,

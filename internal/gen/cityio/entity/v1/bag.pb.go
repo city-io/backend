@@ -28,6 +28,7 @@ type EntityBag struct {
 	Cities        []*City                `protobuf:"bytes,2,rep,name=cities,proto3" json:"cities,omitempty"`
 	Buildings     []*Building            `protobuf:"bytes,3,rep,name=buildings,proto3" json:"buildings,omitempty"`
 	Armies        []*Army                `protobuf:"bytes,4,rep,name=armies,proto3" json:"armies,omitempty"`
+	Tiles         []*Tile                `protobuf:"bytes,5,rep,name=tiles,proto3" json:"tiles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -90,16 +91,24 @@ func (x *EntityBag) GetArmies() []*Army {
 	return nil
 }
 
+func (x *EntityBag) GetTiles() []*Tile {
+	if x != nil {
+		return x.Tiles
+	}
+	return nil
+}
+
 var File_cityio_entity_v1_bag_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_bag_proto_rawDesc = "" +
 	"\n" +
-	"\x1acityio/entity/v1/bag.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1fcityio/entity/v1/building.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1bcityio/entity/v1/user.proto\"\xd3\x01\n" +
+	"\x1acityio/entity/v1/bag.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1fcityio/entity/v1/building.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1bcityio/entity/v1/tile.proto\x1a\x1bcityio/entity/v1/user.proto\"\x81\x02\n" +
 	"\tEntityBag\x12,\n" +
 	"\x05users\x18\x01 \x03(\v2\x16.cityio.entity.v1.UserR\x05users\x12.\n" +
 	"\x06cities\x18\x02 \x03(\v2\x16.cityio.entity.v1.CityR\x06cities\x128\n" +
 	"\tbuildings\x18\x03 \x03(\v2\x1a.cityio.entity.v1.BuildingR\tbuildings\x12.\n" +
-	"\x06armies\x18\x04 \x03(\v2\x16.cityio.entity.v1.ArmyR\x06armiesB\xb1\x01\n" +
+	"\x06armies\x18\x04 \x03(\v2\x16.cityio.entity.v1.ArmyR\x06armies\x12,\n" +
+	"\x05tiles\x18\x05 \x03(\v2\x16.cityio.entity.v1.TileR\x05tilesB\xb1\x01\n" +
 	"\x14com.cityio.entity.v1B\bBagProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -121,17 +130,19 @@ var file_cityio_entity_v1_bag_proto_goTypes = []any{
 	(*City)(nil),      // 2: cityio.entity.v1.City
 	(*Building)(nil),  // 3: cityio.entity.v1.Building
 	(*Army)(nil),      // 4: cityio.entity.v1.Army
+	(*Tile)(nil),      // 5: cityio.entity.v1.Tile
 }
 var file_cityio_entity_v1_bag_proto_depIdxs = []int32{
 	1, // 0: cityio.entity.v1.EntityBag.users:type_name -> cityio.entity.v1.User
 	2, // 1: cityio.entity.v1.EntityBag.cities:type_name -> cityio.entity.v1.City
 	3, // 2: cityio.entity.v1.EntityBag.buildings:type_name -> cityio.entity.v1.Building
 	4, // 3: cityio.entity.v1.EntityBag.armies:type_name -> cityio.entity.v1.Army
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 4: cityio.entity.v1.EntityBag.tiles:type_name -> cityio.entity.v1.Tile
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_bag_proto_init() }
@@ -142,6 +153,7 @@ func file_cityio_entity_v1_bag_proto_init() {
 	file_cityio_entity_v1_army_proto_init()
 	file_cityio_entity_v1_building_proto_init()
 	file_cityio_entity_v1_city_proto_init()
+	file_cityio_entity_v1_tile_proto_init()
 	file_cityio_entity_v1_user_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

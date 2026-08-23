@@ -7,7 +7,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
-	servicev1 "cityio/internal/gen/cityio/service/v1"
 
 	"cityio/internal/domain"
 )
@@ -38,6 +37,17 @@ var buildingTypeFromProto = map[entityv1.BuildingType]domain.BuildingType{
 	entityv1.BuildingType_BUILDING_TYPE_HOUSE:       domain.BuildingTypeHouse,
 	entityv1.BuildingType_BUILDING_TYPE_FARM:        domain.BuildingTypeFarm,
 	entityv1.BuildingType_BUILDING_TYPE_MINE:        domain.BuildingTypeMine,
+}
+
+var terrainTypeToProto = map[domain.TerrainType]entityv1.TerrainType{
+	domain.TerrainTypeGrassland: entityv1.TerrainType_TERRAIN_TYPE_GRASSLAND,
+	domain.TerrainTypePlains:    entityv1.TerrainType_TERRAIN_TYPE_PLAINS,
+	domain.TerrainTypeForest:    entityv1.TerrainType_TERRAIN_TYPE_FOREST,
+	domain.TerrainTypeHills:     entityv1.TerrainType_TERRAIN_TYPE_HILLS,
+	domain.TerrainTypeMountains: entityv1.TerrainType_TERRAIN_TYPE_MOUNTAINS,
+	domain.TerrainTypeDesert:    entityv1.TerrainType_TERRAIN_TYPE_DESERT,
+	domain.TerrainTypeMarsh:     entityv1.TerrainType_TERRAIN_TYPE_MARSH,
+	domain.TerrainTypeWater:     entityv1.TerrainType_TERRAIN_TYPE_WATER,
 }
 
 var troopTypeToProto = map[domain.TroopType]entityv1.TroopType{
@@ -72,6 +82,11 @@ func ToBuildingId(id string) *entityv1.BuildingId {
 // ToArmyId wraps a raw string into a typed proto ID.
 func ToArmyId(id string) *entityv1.ArmyId {
 	return &entityv1.ArmyId{Value: id}
+}
+
+// ToTileId identifies a tile by its immutable map coordinates.
+func ToTileId(x, y int) *entityv1.TileId {
+	return &entityv1.TileId{X: int32(x), Y: int32(y)}
 }
 
 // TroopTypeToProto maps a domain troop type to its proto enum.
@@ -157,9 +172,14 @@ func HidePrivateCityFields(c *entityv1.City) {
 	c.NetFoodFlow = nil
 }
 
-// TileToProto builds a proto Tile from raw occupancy data.
-func TileToProto(cityID, buildingID *string, armyIDs []string, x, y int) *servicev1.Tile {
-	t := &servicev1.Tile{X: int32(x), Y: int32(y)}
+// TerrainToProto converts a domain terrain type to its protobuf enum.
+func TerrainToProto(terrain domain.TerrainType) entityv1.TerrainType {
+	return terrainTypeToProto[terrain]
+}
+
+// TileToProto builds a proto Tile from terrain and occupancy data.
+func TileToProto(cityID, buildingID *string, armyIDs []string, terrain domain.TerrainType, x, y int) *entityv1.Tile {
+	t := &entityv1.Tile{TileId: ToTileId(x, y), Terrain: TerrainToProto(terrain)}
 	if cityID != nil {
 		t.CityId = ToCityId(*cityID)
 	}
@@ -170,6 +190,50 @@ func TileToProto(cityID, buildingID *string, armyIDs []string, x, y int) *servic
 		t.ArmyIds = append(t.ArmyIds, ToArmyId(id))
 	}
 	return t
+}
+
+// MapTilesToProto builds the map's tile entities and their root IDs.
+func MapTilesToProto(grid domain.TerrainGrid, cities []domain.City, buildings []domain.Building, armies []domain.Army) ([]*entityv1.TileId, []*entityv1.Tile) {
+	cityAt := make(map[int]string)
+	for _, city := range cities {
+		for y := max(0, city.StartY); y < min(grid.Height, city.StartY+city.Size); y++ {
+			for x := max(0, city.StartX); x < min(grid.Width, city.StartX+city.Size); x++ {
+				cityAt[y*grid.Width+x] = city.CityID
+			}
+		}
+	}
+
+	buildingAt := make(map[int]string)
+	for _, building := range buildings {
+		if _, ok := grid.At(building.X, building.Y); ok {
+			buildingAt[building.Y*grid.Width+building.X] = building.BuildingID
+		}
+	}
+
+	armiesAt := make(map[int][]string)
+	for _, army := range armies {
+		if _, ok := grid.At(army.X, army.Y); ok {
+			idx := army.Y*grid.Width + army.X
+			armiesAt[idx] = append(armiesAt[idx], army.ArmyID)
+		}
+	}
+
+	tileIDs := make([]*entityv1.TileId, len(grid.Tiles))
+	tiles := make([]*entityv1.Tile, len(grid.Tiles))
+	for idx, terrain := range grid.Tiles {
+		x, y := idx%grid.Width, idx/grid.Width
+		var cityID, buildingID *string
+		if id, ok := cityAt[idx]; ok {
+			cityID = &id
+		}
+		if id, ok := buildingAt[idx]; ok {
+			buildingID = &id
+		}
+		tile := TileToProto(cityID, buildingID, armiesAt[idx], terrain, x, y)
+		tileIDs[idx] = tile.TileId
+		tiles[idx] = tile
+	}
+	return tileIDs, tiles
 }
 
 // BuildingToProto converts a domain building to its proto representation.

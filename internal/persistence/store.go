@@ -82,18 +82,6 @@ func (s *Store) Stop(ctx context.Context) {
 	s.flush(ctx)
 }
 
-func (s *Store) FindEmptyCityBlock(ctx context.Context, size int) (domain.Coordinates, error) {
-	row, err := s.db.FindEmptyCityBlock(ctx, database.FindEmptyCityBlockParams{
-		MapWidth:  constants.MapSize,
-		MapHeight: constants.MapSize,
-		Size:      int32(size),
-	})
-	if err != nil {
-		return domain.Coordinates{}, err
-	}
-	return domain.Coordinates{X: int(row.X), Y: int(row.Y)}, nil
-}
-
 func (s *Store) GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error) {
 	row, err := s.db.GetUserByIdentifier(ctx, identifier)
 	if errors.Is(err, pgx.ErrNoRows) {

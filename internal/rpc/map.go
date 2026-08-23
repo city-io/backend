@@ -9,7 +9,6 @@ import (
 	"cityio/internal/auth"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
-	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -43,16 +42,9 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
 	armyList = domain.FilterArmies(owned, armyList, constants.VisionRadius)
 
-	cityIDs := make([]*entityv1.CityId, 0, len(cityList))
-	for _, c := range cityList {
-		cityIDs = append(cityIDs, mapping.ToCityId(c.CityID))
-	}
-	buildingIDs := make([]*entityv1.BuildingId, 0, len(buildingList))
-	for _, b := range buildingList {
-		buildingIDs = append(buildingIDs, mapping.ToBuildingId(b.BuildingID))
-	}
-
 	bag := mapping.EntitiesToBag(nil, cityList, buildingList, armyList)
+	tileIDs, tiles := mapping.MapTilesToProto(h.srv.world.Terrain(), cityList, buildingList, armyList)
+	bag.Tiles = tiles
 	// Strip owner-only fields (production/upkeep rates) from any city the caller
 	// doesn't own. Population, cap, and starving stay public.
 	claims, _ := auth.ClaimsFromContext(ctx)
@@ -63,21 +55,24 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	}
 
 	return connect.NewResponse(&servicev1.GetMapResponse{
-		CityIds:     cityIDs,
-		BuildingIds: buildingIDs,
-		Entities:    bag,
+		TileIds:  tileIDs,
+		Entities: bag,
 	}), nil
 }
 
 func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1.GetTileRequest]) (*connect.Response[servicev1.GetTileResponse], error) {
-	x := int(req.Msg.GetCoords().GetX())
-	y := int(req.Msg.GetCoords().GetY())
+	x := int(req.Msg.GetTileId().GetX())
+	y := int(req.Msg.GetTileId().GetY())
 
 	owned, err := h.srv.ownedCities(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if !domain.PointVisible(owned, x, y, constants.VisionRadius) {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
+	}
+	terrain, ok := h.srv.world.TerrainAt(x, y)
+	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 
@@ -90,6 +85,6 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 	return connect.NewResponse(&servicev1.GetTileResponse{
-		Tile: mapping.TileToProto(resp.CityID, resp.BuildingID, resp.ArmyIDs, x, y),
+		Tile: mapping.TileToProto(resp.CityID, resp.BuildingID, resp.ArmyIDs, terrain, x, y),
 	}), nil
 }
