@@ -285,6 +285,50 @@ func (x *BattleId) GetValue() string {
 	return ""
 }
 
+type MailboxMessageId struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MailboxMessageId) Reset() {
+	*x = MailboxMessageId{}
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MailboxMessageId) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MailboxMessageId) ProtoMessage() {}
+
+func (x *MailboxMessageId) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MailboxMessageId.ProtoReflect.Descriptor instead.
+func (*MailboxMessageId) Descriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *MailboxMessageId) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 type TrainingOrderId struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
@@ -294,7 +338,7 @@ type TrainingOrderId struct {
 
 func (x *TrainingOrderId) Reset() {
 	*x = TrainingOrderId{}
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[6]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +350,7 @@ func (x *TrainingOrderId) String() string {
 func (*TrainingOrderId) ProtoMessage() {}
 
 func (x *TrainingOrderId) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[6]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,7 +363,7 @@ func (x *TrainingOrderId) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrainingOrderId.ProtoReflect.Descriptor instead.
 func (*TrainingOrderId) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{6}
+	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *TrainingOrderId) GetValue() string {
@@ -339,7 +383,7 @@ type TileId struct {
 
 func (x *TileId) Reset() {
 	*x = TileId{}
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[7]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -351,7 +395,7 @@ func (x *TileId) String() string {
 func (*TileId) ProtoMessage() {}
 
 func (x *TileId) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[7]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -364,7 +408,7 @@ func (x *TileId) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TileId.ProtoReflect.Descriptor instead.
 func (*TileId) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{7}
+	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TileId) GetX() int32 {
@@ -382,21 +426,22 @@ func (x *TileId) GetY() int32 {
 }
 
 type EntityIdBag struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserIds       []*UserId              `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
-	CityIds       []*CityId              `protobuf:"bytes,2,rep,name=city_ids,json=cityIds,proto3" json:"city_ids,omitempty"`
-	BuildingIds   []*BuildingId          `protobuf:"bytes,3,rep,name=building_ids,json=buildingIds,proto3" json:"building_ids,omitempty"`
-	ArmyIds       []*ArmyId              `protobuf:"bytes,4,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
-	TileIds       []*TileId              `protobuf:"bytes,5,rep,name=tile_ids,json=tileIds,proto3" json:"tile_ids,omitempty"`
-	ArmyOrderIds  []*ArmyOrderId         `protobuf:"bytes,6,rep,name=army_order_ids,json=armyOrderIds,proto3" json:"army_order_ids,omitempty"`
-	BattleIds     []*BattleId            `protobuf:"bytes,7,rep,name=battle_ids,json=battleIds,proto3" json:"battle_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	UserIds           []*UserId              `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	CityIds           []*CityId              `protobuf:"bytes,2,rep,name=city_ids,json=cityIds,proto3" json:"city_ids,omitempty"`
+	BuildingIds       []*BuildingId          `protobuf:"bytes,3,rep,name=building_ids,json=buildingIds,proto3" json:"building_ids,omitempty"`
+	ArmyIds           []*ArmyId              `protobuf:"bytes,4,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
+	TileIds           []*TileId              `protobuf:"bytes,5,rep,name=tile_ids,json=tileIds,proto3" json:"tile_ids,omitempty"`
+	ArmyOrderIds      []*ArmyOrderId         `protobuf:"bytes,6,rep,name=army_order_ids,json=armyOrderIds,proto3" json:"army_order_ids,omitempty"`
+	BattleIds         []*BattleId            `protobuf:"bytes,7,rep,name=battle_ids,json=battleIds,proto3" json:"battle_ids,omitempty"`
+	MailboxMessageIds []*MailboxMessageId    `protobuf:"bytes,8,rep,name=mailbox_message_ids,json=mailboxMessageIds,proto3" json:"mailbox_message_ids,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *EntityIdBag) Reset() {
 	*x = EntityIdBag{}
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[8]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +453,7 @@ func (x *EntityIdBag) String() string {
 func (*EntityIdBag) ProtoMessage() {}
 
 func (x *EntityIdBag) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[8]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +466,7 @@ func (x *EntityIdBag) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityIdBag.ProtoReflect.Descriptor instead.
 func (*EntityIdBag) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{8}
+	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *EntityIdBag) GetUserIds() []*UserId {
@@ -473,6 +518,13 @@ func (x *EntityIdBag) GetBattleIds() []*BattleId {
 	return nil
 }
 
+func (x *EntityIdBag) GetMailboxMessageIds() []*MailboxMessageId {
+	if x != nil {
+		return x.MailboxMessageIds
+	}
+	return nil
+}
+
 var File_cityio_entity_v1_ids_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_ids_proto_rawDesc = "" +
@@ -490,12 +542,14 @@ const file_cityio_entity_v1_ids_proto_rawDesc = "" +
 	"\vArmyOrderId\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\" \n" +
 	"\bBattleId\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"(\n" +
+	"\x10MailboxMessageId\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\"'\n" +
 	"\x0fTrainingOrderId\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\"$\n" +
 	"\x06TileId\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
-	"\x01y\x18\x02 \x01(\x05R\x01y\"\xa2\x03\n" +
+	"\x01y\x18\x02 \x01(\x05R\x01y\"\xf6\x03\n" +
 	"\vEntityIdBag\x123\n" +
 	"\buser_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.UserIdR\auserIds\x123\n" +
 	"\bcity_ids\x18\x02 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x12?\n" +
@@ -504,7 +558,8 @@ const file_cityio_entity_v1_ids_proto_rawDesc = "" +
 	"\btile_ids\x18\x05 \x03(\v2\x18.cityio.entity.v1.TileIdR\atileIds\x12C\n" +
 	"\x0earmy_order_ids\x18\x06 \x03(\v2\x1d.cityio.entity.v1.ArmyOrderIdR\farmyOrderIds\x129\n" +
 	"\n" +
-	"battle_ids\x18\a \x03(\v2\x1a.cityio.entity.v1.BattleIdR\tbattleIdsB\xb1\x01\n" +
+	"battle_ids\x18\a \x03(\v2\x1a.cityio.entity.v1.BattleIdR\tbattleIds\x12R\n" +
+	"\x13mailbox_message_ids\x18\b \x03(\v2\".cityio.entity.v1.MailboxMessageIdR\x11mailboxMessageIdsB\xb1\x01\n" +
 	"\x14com.cityio.entity.v1B\bIdsProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -519,31 +574,33 @@ func file_cityio_entity_v1_ids_proto_rawDescGZIP() []byte {
 	return file_cityio_entity_v1_ids_proto_rawDescData
 }
 
-var file_cityio_entity_v1_ids_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_cityio_entity_v1_ids_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_cityio_entity_v1_ids_proto_goTypes = []any{
-	(*UserId)(nil),          // 0: cityio.entity.v1.UserId
-	(*CityId)(nil),          // 1: cityio.entity.v1.CityId
-	(*BuildingId)(nil),      // 2: cityio.entity.v1.BuildingId
-	(*ArmyId)(nil),          // 3: cityio.entity.v1.ArmyId
-	(*ArmyOrderId)(nil),     // 4: cityio.entity.v1.ArmyOrderId
-	(*BattleId)(nil),        // 5: cityio.entity.v1.BattleId
-	(*TrainingOrderId)(nil), // 6: cityio.entity.v1.TrainingOrderId
-	(*TileId)(nil),          // 7: cityio.entity.v1.TileId
-	(*EntityIdBag)(nil),     // 8: cityio.entity.v1.EntityIdBag
+	(*UserId)(nil),           // 0: cityio.entity.v1.UserId
+	(*CityId)(nil),           // 1: cityio.entity.v1.CityId
+	(*BuildingId)(nil),       // 2: cityio.entity.v1.BuildingId
+	(*ArmyId)(nil),           // 3: cityio.entity.v1.ArmyId
+	(*ArmyOrderId)(nil),      // 4: cityio.entity.v1.ArmyOrderId
+	(*BattleId)(nil),         // 5: cityio.entity.v1.BattleId
+	(*MailboxMessageId)(nil), // 6: cityio.entity.v1.MailboxMessageId
+	(*TrainingOrderId)(nil),  // 7: cityio.entity.v1.TrainingOrderId
+	(*TileId)(nil),           // 8: cityio.entity.v1.TileId
+	(*EntityIdBag)(nil),      // 9: cityio.entity.v1.EntityIdBag
 }
 var file_cityio_entity_v1_ids_proto_depIdxs = []int32{
 	0, // 0: cityio.entity.v1.EntityIdBag.user_ids:type_name -> cityio.entity.v1.UserId
 	1, // 1: cityio.entity.v1.EntityIdBag.city_ids:type_name -> cityio.entity.v1.CityId
 	2, // 2: cityio.entity.v1.EntityIdBag.building_ids:type_name -> cityio.entity.v1.BuildingId
 	3, // 3: cityio.entity.v1.EntityIdBag.army_ids:type_name -> cityio.entity.v1.ArmyId
-	7, // 4: cityio.entity.v1.EntityIdBag.tile_ids:type_name -> cityio.entity.v1.TileId
+	8, // 4: cityio.entity.v1.EntityIdBag.tile_ids:type_name -> cityio.entity.v1.TileId
 	4, // 5: cityio.entity.v1.EntityIdBag.army_order_ids:type_name -> cityio.entity.v1.ArmyOrderId
 	5, // 6: cityio.entity.v1.EntityIdBag.battle_ids:type_name -> cityio.entity.v1.BattleId
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	6, // 7: cityio.entity.v1.EntityIdBag.mailbox_message_ids:type_name -> cityio.entity.v1.MailboxMessageId
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_ids_proto_init() }
@@ -557,7 +614,7 @@ func file_cityio_entity_v1_ids_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_ids_proto_rawDesc), len(file_cityio_entity_v1_ids_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

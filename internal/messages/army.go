@@ -42,10 +42,10 @@ type ApplyCasualtiesResponseMessage struct {
 
 type CreateBattleMessage struct {
 	Battle domain.Battle
+	Armies []domain.Army
 }
 type JoinBattleMessage struct {
-	ArmyID               string
-	Owner                string
+	Army                 domain.Army
 	OpposesArmyID        string
 	OpposesMilitiaCityID string
 }

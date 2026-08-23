@@ -153,6 +153,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(servicev1connect.NewArmyServiceHandler(&armyHandler{s}, opts))
 	mux.Handle(servicev1connect.NewMapServiceHandler(&mapHandler{s}, opts))
 	mux.Handle(servicev1connect.NewConfigServiceHandler(&configHandler{s}, opts))
+	mux.Handle(servicev1connect.NewMailboxServiceHandler(&mailboxHandler{s}, opts))
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

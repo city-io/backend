@@ -164,6 +164,18 @@ func (s *Store) GetTrainingOrdersByBarracks(ctx context.Context, barracksID stri
 	return orders, nil
 }
 
+func (s *Store) GetMailboxMessagesByRecipient(ctx context.Context, userID string) ([]domain.MailboxMessage, error) {
+	rows, err := s.db.GetMailboxMessagesByRecipient(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	messages := make([]domain.MailboxMessage, 0, len(rows))
+	for _, message := range rows {
+		messages = append(messages, *message.ToModel())
+	}
+	return messages, nil
+}
+
 func (s *Store) GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error) {
 	rows, err := s.db.GetCitiesByOwner(ctx, &owner)
 	if err != nil {
@@ -289,12 +301,47 @@ func (s *Store) CreateTrainingOrder(ctx context.Context, order domain.TrainingOr
 	})
 }
 
+func (s *Store) CreateMailboxMessage(ctx context.Context, message domain.MailboxMessage) error {
+	kind := ""
+	var content any
+	if message.BattleReport != nil {
+		kind = "battle_report"
+		content = message.BattleReport
+	}
+	if kind == "" {
+		return errors.New("mailbox message has no content")
+	}
+	payload, err := json.Marshal(content)
+	if err != nil {
+		return err
+	}
+	return s.db.CreateMailboxMessage(ctx, database.CreateMailboxMessageParams{
+		MailboxMessageID: message.MailboxMessageID,
+		RecipientID:      message.RecipientID,
+		Kind:             kind,
+		Payload:          payload,
+		CreatedAt:        database.ToPGTimestamp(&message.CreatedAt),
+		ReadAt:           database.ToPGTimestamp(message.ReadAt.Time),
+	})
+}
+
 func (s *Store) StartTrainingOrder(ctx context.Context, orderID string, startedAt, completesAt time.Time) error {
 	return s.db.StartTrainingOrder(ctx, database.StartTrainingOrderParams{
 		TrainingOrderID: orderID,
 		StartedAt:       database.ToPGTimestamp(&startedAt),
 		CompletesAt:     database.ToPGTimestamp(&completesAt),
 	})
+}
+
+func (s *Store) MarkMailboxMessageRead(ctx context.Context, messageID, userID string) (*domain.MailboxMessage, error) {
+	row, err := s.db.MarkMailboxMessageRead(ctx, database.MarkMailboxMessageReadParams{MailboxMessageID: messageID, RecipientID: userID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return row.ToModel(), nil
 }
 
 func (s *Store) DeleteUser(ctx context.Context, userID string) error {

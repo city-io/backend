@@ -185,3 +185,19 @@ func (o TrainingOrder) ToModel() *domain.TrainingOrder {
 		CreatedAt:       o.CreatedAt.Time,
 	}
 }
+
+func (m MailboxMessage) ToModel() *domain.MailboxMessage {
+	message := &domain.MailboxMessage{
+		MailboxMessageID: m.MailboxMessageID,
+		RecipientID:      m.RecipientID,
+		CreatedAt:        m.CreatedAt.Time,
+		ReadAt:           toNullTime(m.ReadAt),
+	}
+	if m.Kind == "battle_report" {
+		var report domain.BattleReport
+		if json.Unmarshal(m.Payload, &report) == nil {
+			message.BattleReport = &report
+		}
+	}
+	return message
+}

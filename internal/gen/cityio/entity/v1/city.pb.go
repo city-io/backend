@@ -23,17 +23,13 @@ const (
 
 // City is a settlement on the map, owned by a player or neutral.
 //
-// Visibility: public fields are returned to anyone whose vision covers the
-// city (population, population_cap, starving, identity, location). Private
-// fields (food rates, recruitable population, core floor, and tax policy/rate)
-// are economy intel and only populated when the requester is the city's owner;
-// for non-owners they arrive unset. The owner-only restriction is enforced in
-// mapping.HidePrivateCityFields, called from GetMap and GetCity.
-// StreamState is already owner-scoped (publishes only to *City.Owner) so it
-// always carries the full set.
+// Visibility: identity, ownership, type, and location are visible when the
+// settlement is in vision. Exact demographics, defensive strength, and
+// economy are owner-only until a future scouting system discloses them.
+// demographics_visible tells clients whether those numeric fields are real.
 type City struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// --- Public ---
+	// --- Identity, location, and disclosure-gated demographics ---
 	CityId        *CityId      `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
 	Type          CityType     `protobuf:"varint,2,opt,name=type,proto3,enum=cityio.entity.v1.CityType" json:"type,omitempty"`
 	Owner         *UserId      `protobuf:"bytes,3,opt,name=owner,proto3,oneof" json:"owner,omitempty"`
@@ -42,11 +38,9 @@ type City struct {
 	PopulationCap float64      `protobuf:"fixed64,6,opt,name=population_cap,json=populationCap,proto3" json:"population_cap,omitempty"`
 	Start         *Coordinates `protobuf:"bytes,7,opt,name=start,proto3" json:"start,omitempty"`
 	Size          int32        `protobuf:"varint,8,opt,name=size,proto3" json:"size,omitempty"`
-	// starving is public: visible from outside ("refugees, failed crops").
-	Starving bool `protobuf:"varint,12,opt,name=starving,proto3" json:"starving,omitempty"`
+	Starving      bool         `protobuf:"varint,12,opt,name=starving,proto3" json:"starving,omitempty"`
 	// population_growth is the signed per-hour change in population (positive
-	// when growing, negative when declining). Public — observable from outside
-	// by anyone watching the city over time.
+	// when growing, negative when declining).
 	PopulationGrowth *Rate `protobuf:"bytes,13,opt,name=population_growth,json=populationGrowth,proto3" json:"population_growth,omitempty"`
 	// The current non-mobile defensive reserve, its exact configured target, and
 	// that target as a derived share of housing capacity. Militia losses refill
@@ -77,6 +71,10 @@ type City struct {
 	// The peak-derived civilian floor used by recruitment and militia policy.
 	// Actual core_population may be lower after severe population loss.
 	CorePopulationFloor float64 `protobuf:"fixed64,23,opt,name=core_population_floor,json=corePopulationFloor,proto3" json:"core_population_floor,omitempty"`
+	// False when demographic and defensive-strength fields are intentionally
+	// undisclosed to this viewer. Scouting systems can reveal them later by
+	// returning the same city with this flag enabled.
+	DemographicsVisible bool `protobuf:"varint,24,opt,name=demographics_visible,json=demographicsVisible,proto3" json:"demographics_visible,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -272,11 +270,18 @@ func (x *City) GetCorePopulationFloor() float64 {
 	return 0
 }
 
+func (x *City) GetDemographicsVisible() bool {
+	if x != nil {
+		return x.DemographicsVisible
+	}
+	return false
+}
+
 var File_cityio_entity_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\xdf\b\n" +
+	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x92\t\n" +
 	"\x04City\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12.\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1a.cityio.entity.v1.CityTypeR\x04type\x123\n" +
@@ -305,7 +310,8 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"tax_income\x18\x14 \x01(\v2\x16.cityio.entity.v1.RateR\ttaxIncome\x12W\n" +
 	"\x1cpopulation_growth_before_tax\x18\x15 \x01(\v2\x16.cityio.entity.v1.RateR\x19populationGrowthBeforeTax\x12'\n" +
 	"\x0fmilitia_percent\x18\x16 \x01(\x01R\x0emilitiaPercent\x122\n" +
-	"\x15core_population_floor\x18\x17 \x01(\x01R\x13corePopulationFloorB\b\n" +
+	"\x15core_population_floor\x18\x17 \x01(\x01R\x13corePopulationFloor\x121\n" +
+	"\x14demographics_visible\x18\x18 \x01(\bR\x13demographicsVisibleB\b\n" +
 	"\x06_ownerB\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tCityProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 

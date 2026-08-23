@@ -313,7 +313,7 @@ func (state *armyActor) attack(ctx actor.Context, targetID string) {
 		return
 	}
 	if target.BattleID != nil {
-		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err != nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{Army: state.Army, OpposesArmyID: target.ArmyID}); err != nil {
 			ctx.Respond(err)
 			return
 		}
@@ -445,7 +445,7 @@ func (state *armyActor) refreshAttackTarget() {
 		return
 	}
 	if target.BattleID != nil {
-		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err == nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{Army: state.Army, OpposesArmyID: target.ArmyID}); err == nil {
 			battleID := *target.BattleID
 			state.Army.BattleID = &battleID
 			state.path = nil
@@ -572,8 +572,7 @@ func (state *armyActor) startMilitiaBattle(city domain.City, fieldDefender *doma
 	}
 	if response.BattleID != proposedID {
 		if _, err := state.Cluster.Request("battle", response.BattleID, messages.JoinBattleMessage{
-			ArmyID:               state.Army.ArmyID,
-			Owner:                state.Army.Owner,
+			Army:                 state.Army,
 			OpposesMilitiaCityID: city.CityID,
 		}); err != nil {
 			slog.ErrorContext(state.Ctx(), "failed to join militia battle", "army_id", state.Army.ArmyID, "battle_id", response.BattleID, "error", err)
@@ -585,8 +584,7 @@ func (state *armyActor) startMilitiaBattle(city domain.City, fieldDefender *doma
 		state.publish()
 		if fieldDefender != nil && fieldDefender.BattleID == nil {
 			if _, err := state.Cluster.Request("battle", battleID, messages.JoinBattleMessage{
-				ArmyID:        fieldDefender.ArmyID,
-				Owner:         fieldDefender.Owner,
+				Army:          *fieldDefender,
 				OpposesArmyID: state.Army.ArmyID,
 			}); err == nil {
 				_ = state.Cluster.Tell("army", fieldDefender.ArmyID, messages.EnterBattleMessage{BattleID: battleID})
@@ -612,7 +610,11 @@ func (state *armyActor) startMilitiaBattle(city domain.City, fieldDefender *doma
 		Attackers: domain.BattleSide{UserIDs: []string{state.Army.Owner}, ArmyIDs: []string{state.Army.ArmyID}},
 		Defenders: defenders,
 	}
-	if _, err := state.Cluster.Request("battle", proposedID, &messages.CreateBattleMessage{Battle: battle}); err != nil {
+	participants := []domain.Army{state.Army}
+	if fieldDefender != nil {
+		participants = append(participants, *fieldDefender)
+	}
+	if _, err := state.Cluster.Request("battle", proposedID, &messages.CreateBattleMessage{Battle: battle, Armies: participants}); err != nil {
 		_ = state.Cluster.Tell("city", city.CityID, messages.EndMilitiaBattleMessage{BattleID: proposedID})
 		slog.ErrorContext(state.Ctx(), "failed to create militia battle", "army_id", state.Army.ArmyID, "city_id", city.CityID, "error", err)
 	}
@@ -620,7 +622,7 @@ func (state *armyActor) startMilitiaBattle(city domain.City, fieldDefender *doma
 
 func (state *armyActor) startBattle(target domain.Army) {
 	if target.BattleID != nil {
-		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err == nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{Army: state.Army, OpposesArmyID: target.ArmyID}); err == nil {
 			battleID := *target.BattleID
 			state.Army.BattleID = &battleID
 			state.path = nil
@@ -630,6 +632,7 @@ func (state *armyActor) startBattle(target domain.Army) {
 	}
 	battleID := uuid.NewString()
 	now := time.Now()
+	participants := []domain.Army{state.Army, target}
 	battle := domain.Battle{BattleID: battleID, X: state.Army.X, Y: state.Army.Y, StartedAt: now, NextTick: now.Add(constants.BattleTickInterval),
 		Attackers: domain.BattleSide{UserIDs: []string{state.Army.Owner}, ArmyIDs: []string{state.Army.ArmyID}},
 		Defenders: domain.BattleSide{UserIDs: []string{target.Owner}, ArmyIDs: []string{target.ArmyID}}}
@@ -645,14 +648,16 @@ func (state *armyActor) startBattle(target domain.Army) {
 				}
 				if army.Owner == state.Army.Owner {
 					battle.Attackers.ArmyIDs = append(battle.Attackers.ArmyIDs, id)
+					participants = append(participants, army)
 				}
 				if army.Owner == target.Owner {
 					battle.Defenders.ArmyIDs = append(battle.Defenders.ArmyIDs, id)
+					participants = append(participants, army)
 				}
 			}
 		}
 	}
-	if _, err := state.Cluster.Request("battle", battleID, &messages.CreateBattleMessage{Battle: battle}); err != nil {
+	if _, err := state.Cluster.Request("battle", battleID, &messages.CreateBattleMessage{Battle: battle, Armies: participants}); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to create battle", "army_id", state.Army.ArmyID, "target_army_id", target.ArmyID, "error", err)
 	}
 }

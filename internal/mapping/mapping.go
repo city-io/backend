@@ -96,6 +96,10 @@ func ToBattleId(id string) *entityv1.BattleId {
 	return &entityv1.BattleId{Value: id}
 }
 
+func ToMailboxMessageId(id string) *entityv1.MailboxMessageId {
+	return &entityv1.MailboxMessageId{Value: id}
+}
+
 // ToTrainingOrderId wraps a raw string into a typed proto ID.
 func ToTrainingOrderId(id string) *entityv1.TrainingOrderId {
 	return &entityv1.TrainingOrderId{Value: id}
@@ -198,6 +202,7 @@ func CityToProto(c domain.City) *entityv1.City {
 		TaxRatePercent:            int32(c.TaxRatePercent),
 		TaxIncome:                 RatePerHour(constants.TaxIncomePerHour(c)),
 		PopulationGrowthBeforeTax: RatePerHour(c.PopulationGrowthBeforeTaxRate),
+		DemographicsVisible:       true,
 	}
 	if c.Owner != nil {
 		out.Owner = ToUserId(*c.Owner)
@@ -205,12 +210,20 @@ func CityToProto(c domain.City) *entityv1.City {
 	return out
 }
 
-// HidePrivateCityFields blanks the private economy/policy fields on a city
-// proto. Call this when the viewer is not the city's owner: only the owner
-// gets food flows, recruitment capacity, tax settings, and tax income.
-// Public fields (identity, location, population, population_cap, starving)
-// stay untouched. See the visibility note on the City proto.
+// HidePrivateCityFields leaves only a settlement's identity, ownership, type,
+// and location. Exact demographic, defensive, and economic intelligence is
+// owner-only until a future scouting system explicitly discloses it.
 func HidePrivateCityFields(c *entityv1.City) {
+	c.DemographicsVisible = false
+	c.Population = 0
+	c.PopulationCap = 0
+	c.Starving = false
+	c.PopulationGrowth = nil
+	c.MilitiaPopulation = 0
+	c.MilitiaTarget = 0
+	c.MilitiaPercent = 0
+	c.CorePopulation = 0
+	c.TaxablePopulation = 0
 	c.FoodProduction = nil
 	c.FoodUpkeep = nil
 	c.NetFoodFlow = nil
@@ -413,6 +426,151 @@ func battleSideToProto(side domain.BattleSide) *entityv1.BattleSide {
 		out.MilitiaCityId = ToCityId(*side.MilitiaCityID)
 	}
 	return out
+}
+
+func MailboxMessageToProto(message domain.MailboxMessage) *entityv1.MailboxMessage {
+	out := &entityv1.MailboxMessage{
+		MailboxMessageId: ToMailboxMessageId(message.MailboxMessageID),
+		RecipientId:      ToUserId(message.RecipientID),
+		CreatedAt:        timestamppb.New(message.CreatedAt),
+	}
+	if message.ReadAt.Time != nil {
+		out.ReadAt = timestamppb.New(*message.ReadAt.Time)
+	}
+	if message.BattleReport != nil {
+		out.Content = &entityv1.MailboxMessage_BattleReport{BattleReport: battleReportToProto(*message.BattleReport)}
+	}
+	return out
+}
+
+func battleReportToProto(report domain.BattleReport) *entityv1.BattleReport {
+	out := &entityv1.BattleReport{
+		BattleId:   ToBattleId(report.BattleID),
+		TileId:     ToTileId(report.X, report.Y),
+		Role:       battleReportRoleToProto(report.Role),
+		Outcome:    battleReportOutcomeToProto(report.Outcome),
+		Engagement: battleReportEngagementToProto(report.Engagement),
+		Resolution: battleReportResolutionToProto(report.Resolution),
+		Attackers:  battleReportSideToProto(report.Attackers),
+		Defenders:  battleReportSideToProto(report.Defenders),
+		StartedAt:  timestamppb.New(report.StartedAt),
+		EndedAt:    timestamppb.New(report.EndedAt),
+	}
+	for _, round := range report.Rounds {
+		mapped := &entityv1.BattleReportRound{
+			Number:         int32(round.Number),
+			OccurredAt:     timestamppb.New(round.OccurredAt),
+			AttackerPower:  round.AttackerPower,
+			DefenderPower:  round.DefenderPower,
+			AttackerLosses: battleReportLossesToProto(round.AttackerLosses),
+			DefenderLosses: battleReportLossesToProto(round.DefenderLosses),
+		}
+		out.Rounds = append(out.Rounds, mapped)
+	}
+	return out
+}
+
+func battleReportSideToProto(side domain.BattleReportSide) *entityv1.BattleReportSide {
+	out := &entityv1.BattleReportSide{
+		StartingMilitia:  side.StartingMilitia,
+		SurvivingMilitia: side.SurvivingMilitia,
+	}
+	for _, userID := range side.UserIDs {
+		out.UserIds = append(out.UserIds, ToUserId(userID))
+	}
+	for _, commander := range side.Commanders {
+		out.Commanders = append(out.Commanders, &entityv1.BattleReportCommander{
+			UserId: ToUserId(commander.UserID), Username: commander.Username,
+		})
+	}
+	for _, army := range side.Armies {
+		out.Armies = append(out.Armies, &entityv1.BattleReportArmy{
+			ArmyId:          ToArmyId(army.ArmyID),
+			OwnerId:         ToUserId(army.OwnerID),
+			StartingTroops:  troopCountsToProto(army.StartingTroops),
+			SurvivingTroops: troopCountsToProto(army.SurvivingTroops),
+			Retreated:       army.Retreated,
+			Destroyed:       army.Destroyed,
+		})
+	}
+	if side.MilitiaCityID != nil {
+		out.MilitiaCityId = ToCityId(*side.MilitiaCityID)
+	}
+	if side.Settlement != nil {
+		out.Settlement = &entityv1.BattleReportSettlement{
+			CityId:             ToCityId(side.Settlement.CityID),
+			Name:               side.Settlement.Name,
+			Type:               CityTypeToProto(side.Settlement.Type),
+			StartingPopulation: side.Settlement.StartingPopulation,
+			EndingPopulation:   side.Settlement.EndingPopulation,
+		}
+		if side.Settlement.OwnerID != nil {
+			out.Settlement.OwnerId = ToUserId(*side.Settlement.OwnerID)
+		}
+	}
+	return out
+}
+
+func battleReportLossesToProto(losses []domain.BattleReportLoss) []*entityv1.BattleReportLoss {
+	out := make([]*entityv1.BattleReportLoss, 0, len(losses))
+	for _, loss := range losses {
+		mapped := &entityv1.BattleReportLoss{Troops: troopCountsToProto(loss.Troops), Militia: loss.Militia}
+		if loss.ArmyID != nil {
+			mapped.ArmyId = ToArmyId(*loss.ArmyID)
+		}
+		if loss.MilitiaCityID != nil {
+			mapped.MilitiaCityId = ToCityId(*loss.MilitiaCityID)
+		}
+		out = append(out, mapped)
+	}
+	return out
+}
+
+func troopCountsToProto(troops map[domain.TroopType]int64) []*entityv1.TroopStack {
+	out := make([]*entityv1.TroopStack, 0, len(troops))
+	for _, troopType := range constants.AllTroopTypes() {
+		if count := troops[troopType]; count > 0 {
+			mappedCount := int32(count)
+			out = append(out, &entityv1.TroopStack{Type: TroopTypeToProto(troopType), Count: &mappedCount})
+		}
+	}
+	return out
+}
+
+func battleReportRoleToProto(role domain.BattleReportRole) entityv1.BattleReportRole {
+	if role == domain.BattleReportRoleAttacker {
+		return entityv1.BattleReportRole_BATTLE_REPORT_ROLE_ATTACKER
+	}
+	return entityv1.BattleReportRole_BATTLE_REPORT_ROLE_DEFENDER
+}
+
+func battleReportOutcomeToProto(outcome domain.BattleReportOutcome) entityv1.BattleReportOutcome {
+	switch outcome {
+	case domain.BattleReportOutcomeVictory:
+		return entityv1.BattleReportOutcome_BATTLE_REPORT_OUTCOME_VICTORY
+	case domain.BattleReportOutcomeDraw:
+		return entityv1.BattleReportOutcome_BATTLE_REPORT_OUTCOME_DRAW
+	default:
+		return entityv1.BattleReportOutcome_BATTLE_REPORT_OUTCOME_DEFEAT
+	}
+}
+
+func battleReportEngagementToProto(engagement domain.BattleReportEngagement) entityv1.BattleReportEngagement {
+	if engagement == domain.BattleReportEngagementSiege {
+		return entityv1.BattleReportEngagement_BATTLE_REPORT_ENGAGEMENT_SETTLEMENT_SIEGE
+	}
+	return entityv1.BattleReportEngagement_BATTLE_REPORT_ENGAGEMENT_FIELD_BATTLE
+}
+
+func battleReportResolutionToProto(resolution domain.BattleReportResolution) entityv1.BattleReportResolution {
+	switch resolution {
+	case domain.BattleReportResolutionRetreat:
+		return entityv1.BattleReportResolution_BATTLE_REPORT_RESOLUTION_RETREAT
+	case domain.BattleReportResolutionMutualDestruction:
+		return entityv1.BattleReportResolution_BATTLE_REPORT_RESOLUTION_MUTUAL_DESTRUCTION
+	default:
+		return entityv1.BattleReportResolution_BATTLE_REPORT_RESOLUTION_ELIMINATION
+	}
 }
 
 // EntitiesToBag builds an EntityBag from slices of domain entities.

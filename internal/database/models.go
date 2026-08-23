@@ -57,6 +57,15 @@ type ExploredTile struct {
 	DiscoveredAt pgtype.Timestamp `json:"discovered_at"`
 }
 
+type MailboxMessage struct {
+	MailboxMessageID string           `json:"mailbox_message_id"`
+	RecipientID      string           `json:"recipient_id"`
+	Kind             string           `json:"kind"`
+	Payload          []byte           `json:"payload"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	ReadAt           pgtype.Timestamp `json:"read_at"`
+}
+
 type TrainingOrder struct {
 	TrainingOrderID string           `json:"training_order_id"`
 	ArmyID          string           `json:"army_id"`

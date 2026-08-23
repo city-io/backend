@@ -30,7 +30,7 @@ func TestBattleJoinAllowsDifferentUsersOnSameSide(t *testing.T) {
 		Defenders: domain.BattleSide{UserIDs: []string{"enemy"}, ArmyIDs: []string{"defender"}},
 	}}
 
-	if !state.join(messages.JoinBattleMessage{ArmyID: "ally", Owner: "second", OpposesArmyID: "defender"}) {
+	if !state.join(messages.JoinBattleMessage{Army: domain.Army{ArmyID: "ally", Owner: "second"}, OpposesArmyID: "defender"}) {
 		t.Fatal("allied participant was rejected")
 	}
 	if !contains(state.Battle.Attackers.UserIDs, "second") || !contains(state.Battle.Attackers.ArmyIDs, "ally") {
@@ -45,7 +45,7 @@ func TestBattleJoinAllowsAlliesAgainstSettlementMilitia(t *testing.T) {
 		Defenders: domain.BattleSide{MilitiaCityID: &cityID, MilitiaCount: 20},
 	}}
 
-	if !state.join(messages.JoinBattleMessage{ArmyID: "ally", Owner: "second", OpposesMilitiaCityID: cityID}) {
+	if !state.join(messages.JoinBattleMessage{Army: domain.Army{ArmyID: "ally", Owner: "second"}, OpposesMilitiaCityID: cityID}) {
 		t.Fatal("allied participant was rejected")
 	}
 	if !contains(state.Battle.Attackers.UserIDs, "second") || !contains(state.Battle.Attackers.ArmyIDs, "ally") {

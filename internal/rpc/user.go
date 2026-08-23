@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/auth"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -198,9 +199,17 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			// auth-error path runs (clears JWT, redirects to /login) — same
 			// shape it would see if the JWT had expired mid-session.
 			return connect.NewError(connect.CodeUnauthenticated, errors.New("server shutting down"))
-		case _, ok := <-ch:
+		case update, ok := <-ch:
 			if !ok {
 				return nil
+			}
+			if update.MailboxMessage != nil {
+				revision++
+				delta := &servicev1.StateDelta{Upserts: &entityv1.EntityBag{MailboxMessages: []*entityv1.MailboxMessage{mapping.MailboxMessageToProto(*update.MailboxMessage)}}}
+				if err := out.Send(&servicev1.StreamStateResponse{Revision: revision, Frame: &servicev1.StreamStateResponse_Delta{Delta: delta}}); err != nil {
+					return err
+				}
+				continue
 			}
 			if err := sendDelta(); err != nil {
 				return connect.NewError(connect.CodeInternal, err)

@@ -49,7 +49,6 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 	if err != nil {
 		return nil, err
 	}
-
 	ownedCities := make([]domain.City, 0)
 	ownedArmies := make([]domain.Army, 0)
 	for _, city := range cities {
@@ -106,7 +105,6 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle))
 		}
 	}
-
 	tileVisibility := make([]*servicev1.TileVisibility, 0, len(exploredCoords))
 	for _, coords := range exploredCoords {
 		state := servicev1.TileVisibilityState_TILE_VISIBILITY_STATE_EXPLORED
@@ -340,7 +338,7 @@ func tileKey(id *entityv1.TileId) string {
 
 func stateDeltaEmpty(delta *servicev1.StateDelta) bool {
 	bag, deleted, hidden := delta.GetUpserts(), delta.GetDeleted(), delta.GetHidden()
-	return len(bag.GetUsers()) == 0 && len(bag.GetCities()) == 0 && len(bag.GetBuildings()) == 0 && len(bag.GetArmies()) == 0 && len(bag.GetTiles()) == 0 && len(bag.GetArmyOrders()) == 0 && len(bag.GetBattles()) == 0 &&
-		len(deleted.GetUserIds()) == 0 && len(deleted.GetCityIds()) == 0 && len(deleted.GetBuildingIds()) == 0 && len(deleted.GetArmyIds()) == 0 && len(deleted.GetTileIds()) == 0 && len(deleted.GetArmyOrderIds()) == 0 && len(deleted.GetBattleIds()) == 0 &&
+	return len(bag.GetUsers()) == 0 && len(bag.GetCities()) == 0 && len(bag.GetBuildings()) == 0 && len(bag.GetArmies()) == 0 && len(bag.GetTiles()) == 0 && len(bag.GetArmyOrders()) == 0 && len(bag.GetBattles()) == 0 && len(bag.GetMailboxMessages()) == 0 &&
+		len(deleted.GetUserIds()) == 0 && len(deleted.GetCityIds()) == 0 && len(deleted.GetBuildingIds()) == 0 && len(deleted.GetArmyIds()) == 0 && len(deleted.GetTileIds()) == 0 && len(deleted.GetArmyOrderIds()) == 0 && len(deleted.GetBattleIds()) == 0 && len(deleted.GetMailboxMessageIds()) == 0 &&
 		len(hidden.GetUserIds()) == 0 && len(hidden.GetCityIds()) == 0 && len(hidden.GetBuildingIds()) == 0 && len(hidden.GetArmyIds()) == 0 && len(hidden.GetTileIds()) == 0 && len(hidden.GetArmyOrderIds()) == 0 && len(hidden.GetBattleIds()) == 0 && len(delta.GetTileVisibility()) == 0
 }

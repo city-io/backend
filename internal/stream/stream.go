@@ -22,6 +22,7 @@ type StateUpdate struct {
 	DeletedArmyID     *string
 	Battle            *domain.Battle
 	DeletedBattleID   *string
+	MailboxMessage    *domain.MailboxMessage
 }
 
 type subscriber struct {
@@ -133,5 +134,8 @@ func recordPublish(state StateUpdate) {
 	}
 	if state.DeletedBattleID != nil {
 		metrics.StreamPublishesTotal.WithLabelValues("deletion").Inc()
+	}
+	if state.MailboxMessage != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("mailbox_message").Inc()
 	}
 }

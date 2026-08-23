@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/google/uuid"
 
 	"cityio/internal/battles"
 	"cityio/internal/constants"
@@ -18,10 +19,13 @@ import (
 
 type battleActor struct {
 	baseActor
-	Battle        domain.Battle
-	ticker        *time.Ticker
-	stop          chan struct{}
-	casualtyCarry map[string]float64
+	Battle          domain.Battle
+	ticker          *time.Ticker
+	stop            chan struct{}
+	casualtyCarry   map[string]float64
+	reportAttackers domain.BattleReportSide
+	reportDefenders domain.BattleReportSide
+	reportRounds    []domain.BattleReportRound
 }
 
 func NewBattleActor() BaseActorInterface { return &battleActor{} }
@@ -36,6 +40,13 @@ func (state *battleActor) Receive(ctx actor.Context) {
 		}
 		state.Battle = msg.Battle
 		state.casualtyCarry = make(map[string]float64)
+		armySnapshots := make(map[string]domain.Army, len(msg.Armies))
+		for _, army := range msg.Armies {
+			armySnapshots[army.ArmyID] = army
+		}
+		state.reportAttackers = state.snapshotReportSide(state.Battle.Attackers, armySnapshots)
+		state.reportDefenders = state.snapshotReportSide(state.Battle.Defenders, armySnapshots)
+		state.reportRounds = nil
 		for _, id := range append(append([]string{}, state.Battle.Attackers.ArmyIDs...), state.Battle.Defenders.ArmyIDs...) {
 			if err := state.Cluster.Tell("army", id, messages.EnterBattleMessage{BattleID: state.Battle.BattleID}); err != nil {
 				slog.WarnContext(state.Ctx(), "failed to enroll army in battle", "battle_id", state.Battle.BattleID, "army_id", id, "error", err)
@@ -47,15 +58,17 @@ func (state *battleActor) Receive(ctx actor.Context) {
 	case messages.GetBattleMessage:
 		ctx.Respond(&messages.GetBattleResponseMessage{Battle: state.Battle})
 	case messages.RetreatFromBattleMessage:
+		state.markRetreated(msg.ArmyID)
 		state.removeArmy(msg.ArmyID)
 		state.publish()
-		state.resolveIfFinished(ctx)
+		state.resolveIfFinished(ctx, domain.BattleReportResolutionRetreat)
 		ctx.Respond(messages.Ack{})
 	case messages.JoinBattleMessage:
 		if !state.join(msg) {
 			ctx.Respond(&messages.InternalError{})
 			return
 		}
+		state.recordJoinedArmy(msg.Army)
 		state.publish()
 		ctx.Respond(messages.Ack{})
 	case messages.PeriodicOperationMessage:
@@ -64,27 +77,150 @@ func (state *battleActor) Receive(ctx actor.Context) {
 }
 
 func (state *battleActor) join(msg messages.JoinBattleMessage) bool {
+	armyID, owner := msg.Army.ArmyID, msg.Army.Owner
 	if state.Battle.Defenders.MilitiaCityID != nil && *state.Battle.Defenders.MilitiaCityID == msg.OpposesMilitiaCityID {
-		state.Battle.Attackers.UserIDs = appendUnique(state.Battle.Attackers.UserIDs, msg.Owner)
-		state.Battle.Attackers.ArmyIDs = appendUnique(state.Battle.Attackers.ArmyIDs, msg.ArmyID)
+		state.Battle.Attackers.UserIDs = appendUnique(state.Battle.Attackers.UserIDs, owner)
+		state.Battle.Attackers.ArmyIDs = appendUnique(state.Battle.Attackers.ArmyIDs, armyID)
 		return true
 	}
 	if state.Battle.Attackers.MilitiaCityID != nil && *state.Battle.Attackers.MilitiaCityID == msg.OpposesMilitiaCityID {
-		state.Battle.Defenders.UserIDs = appendUnique(state.Battle.Defenders.UserIDs, msg.Owner)
-		state.Battle.Defenders.ArmyIDs = appendUnique(state.Battle.Defenders.ArmyIDs, msg.ArmyID)
+		state.Battle.Defenders.UserIDs = appendUnique(state.Battle.Defenders.UserIDs, owner)
+		state.Battle.Defenders.ArmyIDs = appendUnique(state.Battle.Defenders.ArmyIDs, armyID)
 		return true
 	}
 	if contains(state.Battle.Defenders.ArmyIDs, msg.OpposesArmyID) {
-		state.Battle.Attackers.UserIDs = appendUnique(state.Battle.Attackers.UserIDs, msg.Owner)
-		state.Battle.Attackers.ArmyIDs = appendUnique(state.Battle.Attackers.ArmyIDs, msg.ArmyID)
+		state.Battle.Attackers.UserIDs = appendUnique(state.Battle.Attackers.UserIDs, owner)
+		state.Battle.Attackers.ArmyIDs = appendUnique(state.Battle.Attackers.ArmyIDs, armyID)
 		return true
 	}
 	if contains(state.Battle.Attackers.ArmyIDs, msg.OpposesArmyID) {
-		state.Battle.Defenders.UserIDs = appendUnique(state.Battle.Defenders.UserIDs, msg.Owner)
-		state.Battle.Defenders.ArmyIDs = appendUnique(state.Battle.Defenders.ArmyIDs, msg.ArmyID)
+		state.Battle.Defenders.UserIDs = appendUnique(state.Battle.Defenders.UserIDs, owner)
+		state.Battle.Defenders.ArmyIDs = appendUnique(state.Battle.Defenders.ArmyIDs, armyID)
 		return true
 	}
 	return false
+}
+
+func (state *battleActor) snapshotReportSide(side domain.BattleSide, armies map[string]domain.Army) domain.BattleReportSide {
+	report := domain.BattleReportSide{
+		UserIDs:          append([]string(nil), side.UserIDs...),
+		MilitiaCityID:    side.MilitiaCityID,
+		StartingMilitia:  side.MilitiaCount,
+		SurvivingMilitia: side.MilitiaCount,
+	}
+	state.snapshotCommanders(&report)
+	state.snapshotSettlement(&report)
+	for _, armyID := range side.ArmyIDs {
+		if army, ok := armies[armyID]; ok {
+			state.addArmyToReport(&report, army)
+		}
+	}
+	return report
+}
+
+func (state *battleActor) addArmyToReport(report *domain.BattleReportSide, army domain.Army) {
+	report.Armies = append(report.Armies, domain.BattleReportArmy{
+		ArmyID:          army.ArmyID,
+		OwnerID:         army.Owner,
+		StartingTroops:  cloneTroops(army.Troops),
+		SurvivingTroops: cloneTroops(army.Troops),
+	})
+}
+
+func (state *battleActor) recordJoinedArmy(army domain.Army) {
+	armyID := army.ArmyID
+	if contains(state.Battle.Attackers.ArmyIDs, armyID) && state.reportArmy(&state.reportAttackers, armyID) == nil {
+		state.reportAttackers.UserIDs = append([]string(nil), state.Battle.Attackers.UserIDs...)
+		state.snapshotCommanders(&state.reportAttackers)
+		state.addArmyToReport(&state.reportAttackers, army)
+	}
+	if contains(state.Battle.Defenders.ArmyIDs, armyID) && state.reportArmy(&state.reportDefenders, armyID) == nil {
+		state.reportDefenders.UserIDs = append([]string(nil), state.Battle.Defenders.UserIDs...)
+		state.snapshotCommanders(&state.reportDefenders)
+		state.addArmyToReport(&state.reportDefenders, army)
+	}
+}
+
+func (state *battleActor) snapshotCommanders(side *domain.BattleReportSide) {
+	for _, userID := range side.UserIDs {
+		found := false
+		for _, commander := range side.Commanders {
+			if commander.UserID == userID {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		commander := domain.BattleReportCommander{UserID: userID}
+		if user, err := state.Store.GetUserByID(state.Ctx(), userID); err == nil {
+			commander.Username = user.Username
+		}
+		side.Commanders = append(side.Commanders, commander)
+	}
+}
+
+func (state *battleActor) snapshotSettlement(side *domain.BattleReportSide) {
+	if side.MilitiaCityID == nil {
+		return
+	}
+	res, err := state.Cluster.Request("city", *side.MilitiaCityID, messages.GetCityMessage{})
+	if err != nil {
+		return
+	}
+	response, ok := res.(*messages.GetCityResponseMessage)
+	if !ok {
+		return
+	}
+	city := response.City
+	side.Settlement = &domain.BattleReportSettlement{
+		CityID:             city.CityID,
+		Name:               city.Name,
+		Type:               city.Type,
+		OwnerID:            city.Owner,
+		StartingPopulation: city.Population,
+		EndingPopulation:   city.Population,
+	}
+}
+
+func (state *battleActor) refreshReportSettlement(side *domain.BattleReportSide) {
+	if side.Settlement == nil {
+		return
+	}
+	res, err := state.Cluster.Request("city", side.Settlement.CityID, messages.GetCityMessage{})
+	if err != nil {
+		return
+	}
+	if response, ok := res.(*messages.GetCityResponseMessage); ok {
+		side.Settlement.EndingPopulation = response.City.Population
+	}
+}
+
+func cloneTroops(troops map[domain.TroopType]int64) map[domain.TroopType]int64 {
+	result := make(map[domain.TroopType]int64, len(troops))
+	for troopType, count := range troops {
+		result[troopType] = count
+	}
+	return result
+}
+
+func (state *battleActor) reportArmy(side *domain.BattleReportSide, armyID string) *domain.BattleReportArmy {
+	for i := range side.Armies {
+		if side.Armies[i].ArmyID == armyID {
+			return &side.Armies[i]
+		}
+	}
+	return nil
+}
+
+func (state *battleActor) markRetreated(armyID string) {
+	for _, side := range []*domain.BattleReportSide{&state.reportAttackers, &state.reportDefenders} {
+		if army := state.reportArmy(side, armyID); army != nil {
+			army.Retreated = true
+			return
+		}
+	}
 }
 
 type battleArmy struct {
@@ -171,28 +307,81 @@ func (state *battleActor) tick(ctx actor.Context) {
 	state.Battle.Defenders.ArmyIDs = armyIDs(defenders)
 	state.refreshMilitia(&state.Battle.Attackers)
 	state.refreshMilitia(&state.Battle.Defenders)
-	if state.resolveIfFinished(ctx) {
+	if state.resolveIfFinished(ctx, domain.BattleReportResolutionElimination) {
 		return
 	}
-	toDefenders, defenderMilitiaLosses := state.casualties(defenders, state.Battle.Defenders.MilitiaCityID, state.Battle.Defenders.MilitiaCount, attackPower(attackers, state.Battle.Attackers.MilitiaCount))
-	toAttackers, attackerMilitiaLosses := state.casualties(attackers, state.Battle.Attackers.MilitiaCityID, state.Battle.Attackers.MilitiaCount, attackPower(defenders, state.Battle.Defenders.MilitiaCount))
+	attackerPower := attackPower(attackers, state.Battle.Attackers.MilitiaCount)
+	defenderPower := attackPower(defenders, state.Battle.Defenders.MilitiaCount)
+	toDefenders, defenderMilitiaLosses := state.casualties(defenders, state.Battle.Defenders.MilitiaCityID, state.Battle.Defenders.MilitiaCount, attackerPower)
+	toAttackers, attackerMilitiaLosses := state.casualties(attackers, state.Battle.Attackers.MilitiaCityID, state.Battle.Attackers.MilitiaCount, defenderPower)
+	state.reportRounds = append(state.reportRounds, domain.BattleReportRound{
+		Number:         len(state.reportRounds) + 1,
+		OccurredAt:     time.Now(),
+		AttackerPower:  attackerPower,
+		DefenderPower:  defenderPower,
+		AttackerLosses: reportLosses(toAttackers, state.Battle.Attackers.MilitiaCityID, attackerMilitiaLosses),
+		DefenderLosses: reportLosses(toDefenders, state.Battle.Defenders.MilitiaCityID, defenderMilitiaLosses),
+	})
 	for armyID, casualties := range toDefenders {
+		state.recordTroopLosses(&state.reportDefenders, armyID, casualties)
 		if !state.apply(armyID, casualties) {
+			state.markDestroyed(&state.reportDefenders, armyID)
 			state.removeArmy(armyID)
 		}
 	}
 	for armyID, casualties := range toAttackers {
+		state.recordTroopLosses(&state.reportAttackers, armyID, casualties)
 		if !state.apply(armyID, casualties) {
+			state.markDestroyed(&state.reportAttackers, armyID)
 			state.removeArmy(armyID)
 		}
 	}
+	state.recordMilitiaLosses(&state.reportDefenders, defenderMilitiaLosses)
+	state.recordMilitiaLosses(&state.reportAttackers, attackerMilitiaLosses)
 	state.applyMilitiaLosses(&state.Battle.Defenders, defenderMilitiaLosses)
 	state.applyMilitiaLosses(&state.Battle.Attackers, attackerMilitiaLosses)
-	if state.resolveIfFinished(ctx) {
+	if state.resolveIfFinished(ctx, domain.BattleReportResolutionElimination) {
 		return
 	}
 	state.Battle.NextTick = time.Now().Add(constants.BattleTickInterval)
 	state.publish()
+}
+
+func (state *battleActor) recordTroopLosses(side *domain.BattleReportSide, armyID string, casualties map[domain.TroopType]int64) {
+	army := state.reportArmy(side, armyID)
+	if army == nil {
+		return
+	}
+	for troopType, count := range casualties {
+		army.SurvivingTroops[troopType] = max(army.SurvivingTroops[troopType]-count, 0)
+	}
+}
+
+func (state *battleActor) markDestroyed(side *domain.BattleReportSide, armyID string) {
+	if army := state.reportArmy(side, armyID); army != nil {
+		army.Destroyed = true
+	}
+}
+
+func reportLosses(losses map[string]map[domain.TroopType]int64, militiaCityID *string, militia int64) []domain.BattleReportLoss {
+	ids := make([]string, 0, len(losses))
+	for armyID := range losses {
+		ids = append(ids, armyID)
+	}
+	sort.Strings(ids)
+	result := make([]domain.BattleReportLoss, 0, len(ids)+1)
+	for _, armyID := range ids {
+		id := armyID
+		result = append(result, domain.BattleReportLoss{ArmyID: &id, Troops: cloneTroops(losses[armyID])})
+	}
+	if militiaCityID != nil && militia > 0 {
+		result = append(result, domain.BattleReportLoss{MilitiaCityID: militiaCityID, Militia: militia})
+	}
+	return result
+}
+
+func (state *battleActor) recordMilitiaLosses(side *domain.BattleReportSide, count int64) {
+	side.SurvivingMilitia = max(side.SurvivingMilitia-count, 0)
 }
 
 func (state *battleActor) refreshMilitia(side *domain.BattleSide) {
@@ -278,16 +467,22 @@ func appendUnique(ids []string, id string) []string {
 	return append(ids, id)
 }
 
-func (state *battleActor) resolveIfFinished(ctx actor.Context) bool {
+func (state *battleActor) resolveIfFinished(ctx actor.Context, resolution domain.BattleReportResolution) bool {
 	attackersActive := len(state.Battle.Attackers.ArmyIDs) > 0 || state.Battle.Attackers.MilitiaCount > 0
 	defendersActive := len(state.Battle.Defenders.ArmyIDs) > 0 || state.Battle.Defenders.MilitiaCount > 0
 	if attackersActive && defendersActive {
 		return false
 	}
 	winners := state.Battle.Attackers.ArmyIDs
-	if !attackersActive {
+	attackersWon := attackersActive && !defendersActive
+	draw := !attackersActive && !defendersActive
+	if draw {
+		resolution = domain.BattleReportResolutionMutualDestruction
+	}
+	if !attackersWon {
 		winners = state.Battle.Defenders.ArmyIDs
 	}
+	state.createMailboxMessages(attackersWon, draw, resolution)
 	state.endMilitiaBattle(state.Battle.Attackers.MilitiaCityID)
 	state.endMilitiaBattle(state.Battle.Defenders.MilitiaCityID)
 	for _, id := range winners {
@@ -299,6 +494,66 @@ func (state *battleActor) resolveIfFinished(ctx actor.Context) bool {
 	stream.Publish("", stream.StateUpdate{DeletedBattleID: &id})
 	ctx.Stop(ctx.Self())
 	return true
+}
+
+func (state *battleActor) createMailboxMessages(attackersWon, draw bool, resolution domain.BattleReportResolution) {
+	endedAt := time.Now()
+	state.refreshReportSettlement(&state.reportAttackers)
+	state.refreshReportSettlement(&state.reportDefenders)
+	recipients := appendUniqueStrings(state.reportAttackers.UserIDs, state.reportDefenders.UserIDs...)
+	for _, userID := range recipients {
+		role := domain.BattleReportRoleDefender
+		onWinningSide := !attackersWon
+		if contains(state.reportAttackers.UserIDs, userID) {
+			role = domain.BattleReportRoleAttacker
+			onWinningSide = attackersWon
+		}
+		outcome := domain.BattleReportOutcomeDefeat
+		if draw {
+			outcome = domain.BattleReportOutcomeDraw
+		} else if onWinningSide {
+			outcome = domain.BattleReportOutcomeVictory
+		}
+		engagement := domain.BattleReportEngagementField
+		if state.reportAttackers.MilitiaCityID != nil || state.reportDefenders.MilitiaCityID != nil {
+			engagement = domain.BattleReportEngagementSiege
+		}
+		report := &domain.BattleReport{
+			BattleID:   state.Battle.BattleID,
+			X:          state.Battle.X,
+			Y:          state.Battle.Y,
+			Role:       role,
+			Outcome:    outcome,
+			Engagement: engagement,
+			Resolution: resolution,
+			Attackers:  state.reportAttackers,
+			Defenders:  state.reportDefenders,
+			Rounds:     append([]domain.BattleReportRound(nil), state.reportRounds...),
+			StartedAt:  state.Battle.StartedAt,
+			EndedAt:    endedAt,
+		}
+		message := domain.MailboxMessage{
+			MailboxMessageID: uuid.NewString(),
+			RecipientID:      userID,
+			CreatedAt:        endedAt,
+			BattleReport:     report,
+		}
+		if err := state.Store.CreateMailboxMessage(state.Ctx(), message); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to create battle mailbox message", "battle_id", state.Battle.BattleID, "user_id", userID, "error", err)
+			continue
+		}
+		stream.Publish(userID, stream.StateUpdate{MailboxMessage: &message})
+	}
+}
+
+func appendUniqueStrings(existing []string, values ...string) []string {
+	result := append([]string(nil), existing...)
+	for _, value := range values {
+		if !contains(result, value) {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func (state *battleActor) endMilitiaBattle(cityID *string) {
