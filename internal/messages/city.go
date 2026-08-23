@@ -15,6 +15,8 @@ type UpdateCityOwnerMessage struct {
 	Owner *string
 }
 
+type CaptureCityMessage struct{ Owner string }
+
 // SetBuildingPopulationMessage reports a building's absolute contribution to its
 // city's population cap. Keyed by building so resends are idempotent and the cap
 // can be fully rebuilt from its buildings.

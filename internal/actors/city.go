@@ -117,6 +117,16 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		if state.City.Owner != nil {
 			state.recordExploration(*state.City.Owner, domain.Vision{Cities: []domain.City{state.City}})
 		}
+		state.Store.EnqueueCity(state.City)
+		state.publishWorld()
+
+	case messages.CaptureCityMessage:
+		owner := msg.Owner
+		state.City.Owner = &owner
+		state.recordExploration(owner, domain.Vision{Cities: []domain.City{state.City}})
+		state.Store.EnqueueCity(state.City)
+		state.publishWorld()
+		ctx.Respond(messages.Ack{})
 
 	case messages.BuildingStateChangedMessage:
 		// Real state change (created, upgrade started, upgrade complete) — push
@@ -436,6 +446,15 @@ func (state *cityActor) publish() {
 	}
 	c := state.City
 	stream.Publish(*state.City.Owner, stream.StateUpdate{City: &c})
+}
+
+func (state *cityActor) publishWorld() {
+	c := state.City
+	owner := ""
+	if state.City.Owner != nil {
+		owner = *state.City.Owner
+	}
+	stream.Publish(owner, stream.StateUpdate{City: &c})
 }
 
 func (state *cityActor) startPeriodicOperation(ctx actor.Context) {

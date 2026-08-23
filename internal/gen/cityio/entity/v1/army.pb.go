@@ -126,8 +126,8 @@ func (x *TroopStack) GetCount() int32 {
 	return 0
 }
 
-// Army is the physical state of a mobile group of troops. March orders are
-// separate entities because their disclosure can differ from army visibility.
+// Army is the physical state of a mobile group of troops. Active orders and
+// battles are separate entities because their disclosure can differ.
 type Army struct {
 	state                 protoimpl.MessageState    `protogen:"open.v1"`
 	ArmyId                *ArmyId                   `protobuf:"bytes,1,opt,name=army_id,json=armyId,proto3" json:"army_id,omitempty"`
@@ -135,7 +135,8 @@ type Army struct {
 	Coords                *Coordinates              `protobuf:"bytes,3,opt,name=coords,proto3" json:"coords,omitempty"`
 	Troops                []*TroopStack             `protobuf:"bytes,4,rep,name=troops,proto3" json:"troops,omitempty"`
 	CompositionVisibility ArmyCompositionVisibility `protobuf:"varint,6,opt,name=composition_visibility,json=compositionVisibility,proto3,enum=cityio.entity.v1.ArmyCompositionVisibility" json:"composition_visibility,omitempty"`
-	MarchId               *ArmyMarchId              `protobuf:"bytes,7,opt,name=march_id,json=marchId,proto3,oneof" json:"march_id,omitempty"`
+	OrderId               *ArmyOrderId              `protobuf:"bytes,7,opt,name=order_id,json=orderId,proto3,oneof" json:"order_id,omitempty"`
+	BattleId              *BattleId                 `protobuf:"bytes,8,opt,name=battle_id,json=battleId,proto3,oneof" json:"battle_id,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -205,9 +206,16 @@ func (x *Army) GetCompositionVisibility() ArmyCompositionVisibility {
 	return ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED
 }
 
-func (x *Army) GetMarchId() *ArmyMarchId {
+func (x *Army) GetOrderId() *ArmyOrderId {
 	if x != nil {
-		return x.MarchId
+		return x.OrderId
+	}
+	return nil
+}
+
+func (x *Army) GetBattleId() *BattleId {
+	if x != nil {
+		return x.BattleId
 	}
 	return nil
 }
@@ -221,15 +229,18 @@ const file_cityio_entity_v1_army_proto_rawDesc = "" +
 	"TroopStack\x12/\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x19\n" +
 	"\x05count\x18\x02 \x01(\x05H\x00R\x05count\x88\x01\x01B\b\n" +
-	"\x06_count\"\x8c\x03\n" +
+	"\x06_count\"\xd8\x03\n" +
 	"\x04Army\x121\n" +
 	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x12.\n" +
 	"\x05owner\x18\x02 \x01(\v2\x18.cityio.entity.v1.UserIdR\x05owner\x125\n" +
 	"\x06coords\x18\x03 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\x124\n" +
 	"\x06troops\x18\x04 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x06troops\x12b\n" +
 	"\x16composition_visibility\x18\x06 \x01(\x0e2+.cityio.entity.v1.ArmyCompositionVisibilityR\x15compositionVisibility\x12=\n" +
-	"\bmarch_id\x18\a \x01(\v2\x1d.cityio.entity.v1.ArmyMarchIdH\x00R\amarchId\x88\x01\x01B\v\n" +
-	"\t_march_idJ\x04\b\x05\x10\x06*\xc3\x01\n" +
+	"\border_id\x18\a \x01(\v2\x1d.cityio.entity.v1.ArmyOrderIdH\x00R\aorderId\x88\x01\x01\x12<\n" +
+	"\tbattle_id\x18\b \x01(\v2\x1a.cityio.entity.v1.BattleIdH\x01R\bbattleId\x88\x01\x01B\v\n" +
+	"\t_order_idB\f\n" +
+	"\n" +
+	"_battle_idJ\x04\b\x05\x10\x06*\xc3\x01\n" +
 	"\x19ArmyCompositionVisibility\x12+\n" +
 	"'ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ARMY_COMPOSITION_VISIBILITY_HIDDEN\x10\x01\x12*\n" +
@@ -259,7 +270,8 @@ var file_cityio_entity_v1_army_proto_goTypes = []any{
 	(*ArmyId)(nil),                 // 4: cityio.entity.v1.ArmyId
 	(*UserId)(nil),                 // 5: cityio.entity.v1.UserId
 	(*Coordinates)(nil),            // 6: cityio.entity.v1.Coordinates
-	(*ArmyMarchId)(nil),            // 7: cityio.entity.v1.ArmyMarchId
+	(*ArmyOrderId)(nil),            // 7: cityio.entity.v1.ArmyOrderId
+	(*BattleId)(nil),               // 8: cityio.entity.v1.BattleId
 }
 var file_cityio_entity_v1_army_proto_depIdxs = []int32{
 	3, // 0: cityio.entity.v1.TroopStack.type:type_name -> cityio.entity.v1.TroopType
@@ -268,12 +280,13 @@ var file_cityio_entity_v1_army_proto_depIdxs = []int32{
 	6, // 3: cityio.entity.v1.Army.coords:type_name -> cityio.entity.v1.Coordinates
 	1, // 4: cityio.entity.v1.Army.troops:type_name -> cityio.entity.v1.TroopStack
 	0, // 5: cityio.entity.v1.Army.composition_visibility:type_name -> cityio.entity.v1.ArmyCompositionVisibility
-	7, // 6: cityio.entity.v1.Army.march_id:type_name -> cityio.entity.v1.ArmyMarchId
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	7, // 6: cityio.entity.v1.Army.order_id:type_name -> cityio.entity.v1.ArmyOrderId
+	8, // 7: cityio.entity.v1.Army.battle_id:type_name -> cityio.entity.v1.BattleId
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_army_proto_init() }

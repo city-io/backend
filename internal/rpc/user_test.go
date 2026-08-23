@@ -49,29 +49,29 @@ func TestDiffProjectedStateEmitsTileKnowledgeChanges(t *testing.T) {
 	}
 }
 
-func TestDiffProjectedStateDeletesCompletedMarch(t *testing.T) {
+func TestDiffProjectedStateDeletesCompletedOrder(t *testing.T) {
 	previous := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{
-		ArmyMarches: []*entityv1.ArmyMarch{{ArmyMarchId: mapping.ToArmyMarchId("completed")}},
+		ArmyOrders: []*entityv1.ArmyOrder{{ArmyOrderId: mapping.ToArmyOrderId("completed")}},
 	}}}
-	current := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{}}, existingMarches: map[string]struct{}{}}
+	current := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{}}, existingOrders: map[string]struct{}{}}
 
 	delta := diffProjectedState(previous, current)
-	if got := delta.GetDeleted().GetArmyMarchIds(); len(got) != 1 || got[0].GetValue() != "completed" {
-		t.Fatalf("deleted marches = %v", got)
+	if got := delta.GetDeleted().GetArmyOrderIds(); len(got) != 1 || got[0].GetValue() != "completed" {
+		t.Fatalf("deleted orders = %v", got)
 	}
 }
 
-func TestDiffProjectedStateHidesStillActiveMarch(t *testing.T) {
+func TestDiffProjectedStateHidesStillActiveOrder(t *testing.T) {
 	previous := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{
-		ArmyMarches: []*entityv1.ArmyMarch{{ArmyMarchId: mapping.ToArmyMarchId("restricted")}},
+		ArmyOrders: []*entityv1.ArmyOrder{{ArmyOrderId: mapping.ToArmyOrderId("restricted")}},
 	}}}
 	current := &projectedState{
-		snapshot:        &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{}},
-		existingMarches: map[string]struct{}{"restricted": {}},
+		snapshot:       &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{}},
+		existingOrders: map[string]struct{}{"restricted": {}},
 	}
 
 	delta := diffProjectedState(previous, current)
-	if got := delta.GetHidden().GetArmyMarchIds(); len(got) != 1 || got[0].GetValue() != "restricted" {
-		t.Fatalf("hidden marches = %v", got)
+	if got := delta.GetHidden().GetArmyOrderIds(); len(got) != 1 || got[0].GetValue() != "restricted" {
+		t.Fatalf("hidden orders = %v", got)
 	}
 }

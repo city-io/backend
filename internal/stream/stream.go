@@ -20,6 +20,8 @@ type StateUpdate struct {
 	DeletedBuildingID *string
 	Army              *domain.Army
 	DeletedArmyID     *string
+	Battle            *domain.Battle
+	DeletedBattleID   *string
 }
 
 type subscriber struct {
@@ -77,7 +79,7 @@ func Publish(userID string, state StateUpdate) {
 	defer mu.Unlock()
 
 	targets := []subscriber(nil)
-	if state.City != nil || state.Building != nil || state.DeletedBuildingID != nil || state.Army != nil || state.DeletedArmyID != nil {
+	if state.City != nil || state.Building != nil || state.DeletedBuildingID != nil || state.Army != nil || state.DeletedArmyID != nil || state.Battle != nil || state.DeletedBattleID != nil {
 		for _, list := range subs {
 			targets = append(targets, list...)
 		}
@@ -124,6 +126,12 @@ func recordPublish(state StateUpdate) {
 		metrics.StreamPublishesTotal.WithLabelValues("army").Inc()
 	}
 	if state.DeletedArmyID != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("deletion").Inc()
+	}
+	if state.Battle != nil {
+		metrics.StreamPublishesTotal.WithLabelValues("battle").Inc()
+	}
+	if state.DeletedBattleID != nil {
 		metrics.StreamPublishesTotal.WithLabelValues("deletion").Inc()
 	}
 }

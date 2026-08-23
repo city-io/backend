@@ -10,11 +10,15 @@ import (
 // reserved as standing army. The rest is an untrainable civilian core.
 const MilitaryPopulationFraction = 0.35
 
+const (
+	BattleTickInterval        = time.Second
+	SettlementCaptureDuration = 30 * time.Second
+)
+
 // TroopStat holds the tier-1 stat profile for a troop type. Gold is the
 // per-troop training cost; TrainTime is per troop in seconds; FoodUpkeep is per hour;
 // PopCost is the population reserved per troop. MovementDuration is the base
-// time needed to enter normal terrain. Attack/Defense/HP are
-// stored now but unused until combat.
+// time needed to enter normal terrain. Attack/Defense/HP drive battle losses.
 type TroopStat struct {
 	Gold             int64
 	TrainTime        int64

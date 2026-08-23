@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"cityio/internal/auth"
+	"cityio/internal/battles"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
@@ -150,13 +151,97 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		if march := h.srv.projectOwnedArmyMarch(army, exploredSet(explored)); march != nil {
-			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		if order := h.srv.projectOwnedArmyOrder(army, exploredSet(explored)); order != nil {
+			bag.ArmyOrders = append(bag.ArmyOrders, order)
 		}
 	} else {
 		mapping.HidePrivateArmyFields(protoArmy)
 	}
+	if army.BattleID != nil {
+		if battle, ok := battles.Get(*army.BattleID); ok {
+			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle))
+		}
+	}
 	return connect.NewResponse(&servicev1.GetArmyResponse{ArmyId: mapping.ToArmyId(army.ArmyID), Entities: bag}), nil
+}
+
+func (h *armyHandler) AttackArmy(ctx context.Context, req *connect.Request[servicev1.AttackArmyRequest]) (*connect.Response[servicev1.AttackArmyResponse], error) {
+	armyID, targetID := req.Msg.GetArmyId().GetValue(), req.Msg.GetTargetArmyId().GetValue()
+	if armyID == targetID {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("army cannot attack itself"))
+	}
+	if _, err := h.requireArmyOwnership(ctx, armyID); err != nil {
+		return nil, err
+	}
+	target, err := h.getArmy(targetID)
+	if err != nil {
+		return nil, err
+	}
+	claims, _ := auth.ClaimsFromContext(ctx)
+	if target.Owner == claims.UserID {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("cannot attack an owned army"))
+	}
+	vision, err := h.srv.ownedVision(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !vision.PointVisible(target.X, target.Y, constants.VisionRadius) {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("target army not found"))
+	}
+	if err := services.AttackArmy(ctx, h.srv.cluster, armyID, targetID); err != nil {
+		return nil, armyOrderError(err)
+	}
+	return connect.NewResponse(&servicev1.AttackArmyResponse{}), nil
+}
+
+func (h *armyHandler) ConquerSettlement(ctx context.Context, req *connect.Request[servicev1.ConquerSettlementRequest]) (*connect.Response[servicev1.ConquerSettlementResponse], error) {
+	armyID, cityID := req.Msg.GetArmyId().GetValue(), req.Msg.GetCityId().GetValue()
+	if _, err := h.requireArmyOwnership(ctx, armyID); err != nil {
+		return nil, err
+	}
+	res, err := h.srv.cluster.Request("city", cityID, messages.GetCityMessage{})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	city, ok := res.(*messages.GetCityResponseMessage)
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("settlement not found"))
+	}
+	claims, _ := auth.ClaimsFromContext(ctx)
+	if city.City.Owner != nil && *city.City.Owner == claims.UserID {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("settlement already owned"))
+	}
+	vision, err := h.srv.ownedVision(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !vision.PointVisible(city.City.StartX+city.City.Size/2, city.City.StartY+city.City.Size/2, constants.VisionRadius) {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("settlement not found"))
+	}
+	if err := services.ConquerSettlement(ctx, h.srv.cluster, armyID, cityID); err != nil {
+		return nil, armyOrderError(err)
+	}
+	return connect.NewResponse(&servicev1.ConquerSettlementResponse{}), nil
+}
+
+func (h *armyHandler) RetreatArmy(ctx context.Context, req *connect.Request[servicev1.RetreatArmyRequest]) (*connect.Response[servicev1.RetreatArmyResponse], error) {
+	armyID := req.Msg.GetArmyId().GetValue()
+	if _, err := h.requireArmyOwnership(ctx, armyID); err != nil {
+		return nil, err
+	}
+	if err := services.RetreatArmy(ctx, h.srv.cluster, armyID); err != nil {
+		return nil, armyOrderError(err)
+	}
+	return connect.NewResponse(&servicev1.RetreatArmyResponse{}), nil
+}
+
+func armyOrderError(err error) error {
+	var unreachable *messages.UnreachableDestinationError
+	var inBattle *messages.ArmyInBattleError
+	if errors.As(err, &unreachable) || errors.As(err, &inBattle) {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	return connect.NewError(connect.CodeInternal, err)
 }
 
 func (h *armyHandler) MoveArmy(ctx context.Context, req *connect.Request[servicev1.MoveArmyRequest]) (*connect.Response[servicev1.MoveArmyResponse], error) {
@@ -215,6 +300,10 @@ func (h *armyHandler) MergeArmies(ctx context.Context, req *connect.Request[serv
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("armies must be on the same tile to merge"))
 	}
 	if err := services.MergeArmies(ctx, h.srv.cluster, targetID, sourceID); err != nil {
+		var inBattle *messages.ArmyInBattleError
+		if errors.As(err, &inBattle) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&servicev1.MergeArmiesResponse{}), nil
@@ -246,8 +335,13 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 	}
 	known := exploredSet(explored)
 	for _, army := range owned {
-		if march := h.srv.projectOwnedArmyMarch(army, known); march != nil {
-			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		if order := h.srv.projectOwnedArmyOrder(army, known); order != nil {
+			bag.ArmyOrders = append(bag.ArmyOrders, order)
+		}
+	}
+	for _, battle := range battles.All() {
+		if battleVisibleToUser(battle, claims.UserID, map[domain.Coordinates]struct{}{}) {
+			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle))
 		}
 	}
 	return connect.NewResponse(&servicev1.ListArmiesResponse{

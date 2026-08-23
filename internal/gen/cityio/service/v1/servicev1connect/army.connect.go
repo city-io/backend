@@ -45,6 +45,13 @@ const (
 	ArmyServicePreviewArmyRouteProcedure = "/cityio.service.v1.ArmyService/PreviewArmyRoute"
 	// ArmyServiceMoveArmyProcedure is the fully-qualified name of the ArmyService's MoveArmy RPC.
 	ArmyServiceMoveArmyProcedure = "/cityio.service.v1.ArmyService/MoveArmy"
+	// ArmyServiceAttackArmyProcedure is the fully-qualified name of the ArmyService's AttackArmy RPC.
+	ArmyServiceAttackArmyProcedure = "/cityio.service.v1.ArmyService/AttackArmy"
+	// ArmyServiceConquerSettlementProcedure is the fully-qualified name of the ArmyService's
+	// ConquerSettlement RPC.
+	ArmyServiceConquerSettlementProcedure = "/cityio.service.v1.ArmyService/ConquerSettlement"
+	// ArmyServiceRetreatArmyProcedure is the fully-qualified name of the ArmyService's RetreatArmy RPC.
+	ArmyServiceRetreatArmyProcedure = "/cityio.service.v1.ArmyService/RetreatArmy"
 	// ArmyServiceMergeArmiesProcedure is the fully-qualified name of the ArmyService's MergeArmies RPC.
 	ArmyServiceMergeArmiesProcedure = "/cityio.service.v1.ArmyService/MergeArmies"
 	// ArmyServiceListArmiesProcedure is the fully-qualified name of the ArmyService's ListArmies RPC.
@@ -58,6 +65,9 @@ type ArmyServiceClient interface {
 	GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error)
 	PreviewArmyRoute(context.Context, *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error)
 	MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error)
+	AttackArmy(context.Context, *connect.Request[v1.AttackArmyRequest]) (*connect.Response[v1.AttackArmyResponse], error)
+	ConquerSettlement(context.Context, *connect.Request[v1.ConquerSettlementRequest]) (*connect.Response[v1.ConquerSettlementResponse], error)
+	RetreatArmy(context.Context, *connect.Request[v1.RetreatArmyRequest]) (*connect.Response[v1.RetreatArmyResponse], error)
 	MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error)
 	ListArmies(context.Context, *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error)
 }
@@ -103,6 +113,24 @@ func NewArmyServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(armyServiceMethods.ByName("MoveArmy")),
 			connect.WithClientOptions(opts...),
 		),
+		attackArmy: connect.NewClient[v1.AttackArmyRequest, v1.AttackArmyResponse](
+			httpClient,
+			baseURL+ArmyServiceAttackArmyProcedure,
+			connect.WithSchema(armyServiceMethods.ByName("AttackArmy")),
+			connect.WithClientOptions(opts...),
+		),
+		conquerSettlement: connect.NewClient[v1.ConquerSettlementRequest, v1.ConquerSettlementResponse](
+			httpClient,
+			baseURL+ArmyServiceConquerSettlementProcedure,
+			connect.WithSchema(armyServiceMethods.ByName("ConquerSettlement")),
+			connect.WithClientOptions(opts...),
+		),
+		retreatArmy: connect.NewClient[v1.RetreatArmyRequest, v1.RetreatArmyResponse](
+			httpClient,
+			baseURL+ArmyServiceRetreatArmyProcedure,
+			connect.WithSchema(armyServiceMethods.ByName("RetreatArmy")),
+			connect.WithClientOptions(opts...),
+		),
 		mergeArmies: connect.NewClient[v1.MergeArmiesRequest, v1.MergeArmiesResponse](
 			httpClient,
 			baseURL+ArmyServiceMergeArmiesProcedure,
@@ -125,6 +153,9 @@ type armyServiceClient struct {
 	getArmy            *connect.Client[v1.GetArmyRequest, v1.GetArmyResponse]
 	previewArmyRoute   *connect.Client[v1.PreviewArmyRouteRequest, v1.PreviewArmyRouteResponse]
 	moveArmy           *connect.Client[v1.MoveArmyRequest, v1.MoveArmyResponse]
+	attackArmy         *connect.Client[v1.AttackArmyRequest, v1.AttackArmyResponse]
+	conquerSettlement  *connect.Client[v1.ConquerSettlementRequest, v1.ConquerSettlementResponse]
+	retreatArmy        *connect.Client[v1.RetreatArmyRequest, v1.RetreatArmyResponse]
 	mergeArmies        *connect.Client[v1.MergeArmiesRequest, v1.MergeArmiesResponse]
 	listArmies         *connect.Client[v1.ListArmiesRequest, v1.ListArmiesResponse]
 }
@@ -154,6 +185,21 @@ func (c *armyServiceClient) MoveArmy(ctx context.Context, req *connect.Request[v
 	return c.moveArmy.CallUnary(ctx, req)
 }
 
+// AttackArmy calls cityio.service.v1.ArmyService.AttackArmy.
+func (c *armyServiceClient) AttackArmy(ctx context.Context, req *connect.Request[v1.AttackArmyRequest]) (*connect.Response[v1.AttackArmyResponse], error) {
+	return c.attackArmy.CallUnary(ctx, req)
+}
+
+// ConquerSettlement calls cityio.service.v1.ArmyService.ConquerSettlement.
+func (c *armyServiceClient) ConquerSettlement(ctx context.Context, req *connect.Request[v1.ConquerSettlementRequest]) (*connect.Response[v1.ConquerSettlementResponse], error) {
+	return c.conquerSettlement.CallUnary(ctx, req)
+}
+
+// RetreatArmy calls cityio.service.v1.ArmyService.RetreatArmy.
+func (c *armyServiceClient) RetreatArmy(ctx context.Context, req *connect.Request[v1.RetreatArmyRequest]) (*connect.Response[v1.RetreatArmyResponse], error) {
+	return c.retreatArmy.CallUnary(ctx, req)
+}
+
 // MergeArmies calls cityio.service.v1.ArmyService.MergeArmies.
 func (c *armyServiceClient) MergeArmies(ctx context.Context, req *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error) {
 	return c.mergeArmies.CallUnary(ctx, req)
@@ -171,6 +217,9 @@ type ArmyServiceHandler interface {
 	GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error)
 	PreviewArmyRoute(context.Context, *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error)
 	MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error)
+	AttackArmy(context.Context, *connect.Request[v1.AttackArmyRequest]) (*connect.Response[v1.AttackArmyResponse], error)
+	ConquerSettlement(context.Context, *connect.Request[v1.ConquerSettlementRequest]) (*connect.Response[v1.ConquerSettlementResponse], error)
+	RetreatArmy(context.Context, *connect.Request[v1.RetreatArmyRequest]) (*connect.Response[v1.RetreatArmyResponse], error)
 	MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error)
 	ListArmies(context.Context, *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error)
 }
@@ -212,6 +261,24 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(armyServiceMethods.ByName("MoveArmy")),
 		connect.WithHandlerOptions(opts...),
 	)
+	armyServiceAttackArmyHandler := connect.NewUnaryHandler(
+		ArmyServiceAttackArmyProcedure,
+		svc.AttackArmy,
+		connect.WithSchema(armyServiceMethods.ByName("AttackArmy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	armyServiceConquerSettlementHandler := connect.NewUnaryHandler(
+		ArmyServiceConquerSettlementProcedure,
+		svc.ConquerSettlement,
+		connect.WithSchema(armyServiceMethods.ByName("ConquerSettlement")),
+		connect.WithHandlerOptions(opts...),
+	)
+	armyServiceRetreatArmyHandler := connect.NewUnaryHandler(
+		ArmyServiceRetreatArmyProcedure,
+		svc.RetreatArmy,
+		connect.WithSchema(armyServiceMethods.ByName("RetreatArmy")),
+		connect.WithHandlerOptions(opts...),
+	)
 	armyServiceMergeArmiesHandler := connect.NewUnaryHandler(
 		ArmyServiceMergeArmiesProcedure,
 		svc.MergeArmies,
@@ -236,6 +303,12 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 			armyServicePreviewArmyRouteHandler.ServeHTTP(w, r)
 		case ArmyServiceMoveArmyProcedure:
 			armyServiceMoveArmyHandler.ServeHTTP(w, r)
+		case ArmyServiceAttackArmyProcedure:
+			armyServiceAttackArmyHandler.ServeHTTP(w, r)
+		case ArmyServiceConquerSettlementProcedure:
+			armyServiceConquerSettlementHandler.ServeHTTP(w, r)
+		case ArmyServiceRetreatArmyProcedure:
+			armyServiceRetreatArmyHandler.ServeHTTP(w, r)
 		case ArmyServiceMergeArmiesProcedure:
 			armyServiceMergeArmiesHandler.ServeHTTP(w, r)
 		case ArmyServiceListArmiesProcedure:
@@ -267,6 +340,18 @@ func (UnimplementedArmyServiceHandler) PreviewArmyRoute(context.Context, *connec
 
 func (UnimplementedArmyServiceHandler) MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.MoveArmy is not implemented"))
+}
+
+func (UnimplementedArmyServiceHandler) AttackArmy(context.Context, *connect.Request[v1.AttackArmyRequest]) (*connect.Response[v1.AttackArmyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.AttackArmy is not implemented"))
+}
+
+func (UnimplementedArmyServiceHandler) ConquerSettlement(context.Context, *connect.Request[v1.ConquerSettlementRequest]) (*connect.Response[v1.ConquerSettlementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.ConquerSettlement is not implemented"))
+}
+
+func (UnimplementedArmyServiceHandler) RetreatArmy(context.Context, *connect.Request[v1.RetreatArmyRequest]) (*connect.Response[v1.RetreatArmyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.RetreatArmy is not implemented"))
 }
 
 func (UnimplementedArmyServiceHandler) MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error) {

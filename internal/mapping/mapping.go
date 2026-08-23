@@ -87,9 +87,12 @@ func ToArmyId(id string) *entityv1.ArmyId {
 	return &entityv1.ArmyId{Value: id}
 }
 
-// ToArmyMarchId wraps a raw string into a typed proto ID.
-func ToArmyMarchId(id string) *entityv1.ArmyMarchId {
-	return &entityv1.ArmyMarchId{Value: id}
+func ToArmyOrderId(id string) *entityv1.ArmyOrderId {
+	return &entityv1.ArmyOrderId{Value: id}
+}
+
+func ToBattleId(id string) *entityv1.BattleId {
+	return &entityv1.BattleId{Value: id}
 }
 
 // ToTrainingOrderId wraps a raw string into a typed proto ID.
@@ -353,8 +356,11 @@ func ArmyToProto(a domain.Army) *entityv1.Army {
 		protoCount := int32(count)
 		out.Troops = append(out.Troops, &entityv1.TroopStack{Type: TroopTypeToProto(troopType), Count: &protoCount})
 	}
-	if a.MarchID != nil && a.DestX != nil && a.DestY != nil {
-		out.MarchId = ToArmyMarchId(*a.MarchID)
+	if a.OrderID != nil {
+		out.OrderId = ToArmyOrderId(*a.OrderID)
+	}
+	if a.BattleID != nil {
+		out.BattleId = ToBattleId(*a.BattleID)
 	}
 	return out
 }
@@ -364,7 +370,31 @@ func ArmyToProto(a domain.Army) *entityv1.Army {
 func HidePrivateArmyFields(a *entityv1.Army) {
 	a.CompositionVisibility = entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_HIDDEN
 	a.Troops = nil
-	a.MarchId = nil
+	a.OrderId = nil
+	a.BattleId = nil
+}
+
+func BattleToProto(b domain.Battle) *entityv1.Battle {
+	out := &entityv1.Battle{
+		BattleId:   ToBattleId(b.BattleID),
+		TileId:     ToTileId(b.X, b.Y),
+		Attackers:  battleSideToProto(b.Attackers),
+		Defenders:  battleSideToProto(b.Defenders),
+		StartedAt:  timestamppb.New(b.StartedAt),
+		NextTickAt: timestamppb.New(b.NextTick),
+	}
+	return out
+}
+
+func battleSideToProto(side domain.BattleSide) *entityv1.BattleSide {
+	out := &entityv1.BattleSide{}
+	for _, id := range side.UserIDs {
+		out.UserIds = append(out.UserIds, ToUserId(id))
+	}
+	for _, id := range side.ArmyIDs {
+		out.ArmyIds = append(out.ArmyIds, ToArmyId(id))
+	}
+	return out
 }
 
 // EntitiesToBag builds an EntityBag from slices of domain entities.
