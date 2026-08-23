@@ -1,14 +1,83 @@
 package actors
 
 import (
+	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/asynkron/protoactor-go/actor"
+
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
+	"cityio/internal/stream"
 )
+
+type armyOperationTestStore struct {
+	contracts.Store
+	mu      sync.Mutex
+	deleted []string
+}
+
+func (s *armyOperationTestStore) AddExploredTiles(context.Context, string, []domain.Coordinates) error {
+	return nil
+}
+
+func (s *armyOperationTestStore) GetCitiesByOwner(context.Context, string) ([]domain.City, error) {
+	return nil, nil
+}
+
+func (s *armyOperationTestStore) DeleteArmy(_ context.Context, armyID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.deleted = append(s.deleted, armyID)
+	return nil
+}
+
+func (*armyOperationTestStore) EnqueueArmy(domain.Army) {}
+
+type armyOperationTestCluster struct {
+	contracts.ClusterProvider
+	request func(kind, identity string, message any) (any, error)
+}
+
+func (c *armyOperationTestCluster) Request(kind, identity string, message any) (any, error) {
+	if c.request != nil {
+		return c.request(kind, identity, message)
+	}
+	return nil, errors.New("unexpected request")
+}
+
+func (*armyOperationTestCluster) Tell(string, string, any) error { return nil }
+
+func spawnArmyOperationTestActor(store contracts.Store, cluster contracts.ClusterProvider) (*actor.ActorSystem, *actor.PID) {
+	system := actor.NewActorSystem()
+	pid := system.Root.Spawn(actor.PropsFromProducer(func() actor.Actor {
+		return &armyActor{baseActor: baseActor{Store: store, Cluster: cluster}}
+	}))
+	return system, pid
+}
+
+func requestArmyOperation(t *testing.T, system *actor.ActorSystem, pid *actor.PID, message any) any {
+	t.Helper()
+	result, err := system.Root.RequestFuture(pid, message, time.Second).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
+func expectNoArmyStreamUpdate(t *testing.T, updates <-chan stream.StateUpdate) {
+	t.Helper()
+	select {
+	case update := <-updates:
+		t.Fatalf("unexpected army stream update: %+v", update)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
 
 type movementTestWorld struct {
 	grid domain.TerrainGrid
@@ -171,4 +240,96 @@ func TestSplitCompositionRejectsUnavailableTroops(t *testing.T) {
 	if !errors.As(err, &insufficient) {
 		t.Fatalf("error = %T, want InsufficientTroopsError", err)
 	}
+}
+
+func TestSurrenderCleansUpBeforeReplyWithoutIntermediatePublish(t *testing.T) {
+	store := &armyOperationTestStore{}
+	cluster := &armyOperationTestCluster{}
+	system, pid := spawnArmyOperationTestActor(store, cluster)
+	owner := "surrender-owner"
+	requestArmyOperation(t, system, pid, &messages.CreateArmyMessage{
+		Army: domain.Army{
+			ArmyID: "source-army",
+			Owner:  owner,
+			Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 4},
+		},
+		Restore: true,
+	})
+	updates, unsubscribe := stream.Subscribe(owner)
+	defer unsubscribe()
+
+	result := requestArmyOperation(t, system, pid, messages.SurrenderTroopsMessage{})
+	response, ok := result.(*messages.SurrenderTroopsResponseMessage)
+	if !ok {
+		t.Fatalf("surrender response = %T, want SurrenderTroopsResponseMessage", result)
+	}
+	if response.Troops[domain.TroopTypeSoldier] != 4 {
+		t.Fatalf("surrendered troops = %v, want 4 soldiers", response.Troops)
+	}
+	store.mu.Lock()
+	deleted := append([]string(nil), store.deleted...)
+	store.mu.Unlock()
+	if len(deleted) != 1 || deleted[0] != "source-army" {
+		t.Fatalf("deleted armies = %v, want source-army", deleted)
+	}
+	expectNoArmyStreamUpdate(t, updates)
+}
+
+func TestSplitPublishesOnlyFinalSourceComposition(t *testing.T) {
+	store := &armyOperationTestStore{}
+	var createMessage *messages.CreateArmyMessage
+	cluster := &armyOperationTestCluster{request: func(kind, _ string, message any) (any, error) {
+		if kind != "army" {
+			return nil, errors.New("unexpected split request target")
+		}
+		var ok bool
+		createMessage, ok = message.(*messages.CreateArmyMessage)
+		if !ok {
+			return nil, errors.New("unexpected split request message")
+		}
+		return messages.Ack{}, nil
+	}}
+	system, pid := spawnArmyOperationTestActor(store, cluster)
+	owner := "split-owner"
+	requestArmyOperation(t, system, pid, &messages.CreateArmyMessage{
+		Army: domain.Army{
+			ArmyID: "source-army",
+			Owner:  owner,
+			Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 10},
+		},
+		Restore: true,
+	})
+	updates, unsubscribe := stream.Subscribe(owner)
+	defer unsubscribe()
+
+	result := requestArmyOperation(t, system, pid, messages.SplitArmyMessage{
+		Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 4},
+	})
+	response, ok := result.(*messages.SplitArmyResponseMessage)
+	if !ok {
+		t.Fatalf("split response = %T, want SplitArmyResponseMessage", result)
+	}
+	if createMessage == nil || !createMessage.SuppressPublish {
+		t.Fatal("split army create did not suppress its intermediate publish")
+	}
+	if got := response.Source.Troops[domain.TroopTypeSoldier]; got != 6 {
+		t.Fatalf("source soldier count = %d, want 6", got)
+	}
+	if got := response.Army.Troops[domain.TroopTypeSoldier]; got != 4 {
+		t.Fatalf("split soldier count = %d, want 4", got)
+	}
+	select {
+	case update := <-updates:
+		if update.Army == nil || update.Army.ArmyID != "source-army" {
+			t.Fatalf("split stream update = %+v, want source army", update)
+		}
+		if got := update.Army.Troops[domain.TroopTypeSoldier]; got != 6 {
+			t.Fatalf("streamed source soldier count = %d, want 6", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for split stream update")
+	}
+	expectNoArmyStreamUpdate(t, updates)
+
+	system.Root.Send(pid, messages.DeleteArmyMessage{})
 }

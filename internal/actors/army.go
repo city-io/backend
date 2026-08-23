@@ -68,7 +68,7 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		state.updateUpkeepCity()
 		state.restorePath()
 		state.startPeriodicOperation(ctx)
-		if !msg.Restore {
+		if !msg.Restore && !msg.SuppressPublish {
 			state.publish()
 		}
 		ctx.Respond(messages.Ack{})
@@ -169,8 +169,13 @@ func (state *armyActor) Receive(ctx actor.Context) {
 			ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
 			return
 		}
-		ctx.Respond(&messages.SurrenderTroopsResponseMessage{Troops: state.Army.Troops})
-		state.teardown(ctx)
+		troops := make(map[domain.TroopType]int64, len(state.Army.Troops))
+		for troopType, count := range state.Army.Troops {
+			troops[troopType] = count
+		}
+		state.cleanup()
+		ctx.Respond(&messages.SurrenderTroopsResponseMessage{Troops: troops})
+		ctx.Stop(ctx.Self())
 
 	case messages.DeleteArmyMessage:
 		state.teardown(ctx)
@@ -225,7 +230,10 @@ func (state *armyActor) split(ctx actor.Context, requested map[domain.TroopType]
 		Y:      state.Army.Y,
 		Troops: detached,
 	}
-	res, err := state.Cluster.Request("army", newArmy.ArmyID, &messages.CreateArmyMessage{Army: newArmy})
+	res, err := state.Cluster.Request("army", newArmy.ArmyID, &messages.CreateArmyMessage{
+		Army:            newArmy,
+		SuppressPublish: true,
+	})
 	if err != nil {
 		ctx.Respond(err)
 		return
@@ -869,9 +877,10 @@ func (state *armyActor) removeTile(x, y int) {
 	}
 }
 
-// teardown releases the army's tile presence and upkeep, deletes it from the
-// store, notifies the owner's stream, and stops the actor.
-func (state *armyActor) teardown(ctx actor.Context) {
+// cleanup releases an army's world presence and deletes its persisted state.
+// Compound operations call it without publishing so their final mutation can
+// produce one coherent stream delta.
+func (state *armyActor) cleanup() {
 	state.stopPeriodicOperation()
 	state.removeTile(state.Army.X, state.Army.Y)
 	if state.Army.UpkeepCityID != nil {
@@ -882,6 +891,11 @@ func (state *armyActor) teardown(ctx actor.Context) {
 	if err := state.Store.DeleteArmy(state.Ctx(), state.Army.ArmyID); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to delete army", "army_id", state.Army.ArmyID, "error", err)
 	}
+}
+
+// teardown cleans up an army, publishes its deletion, and stops the actor.
+func (state *armyActor) teardown(ctx actor.Context) {
+	state.cleanup()
 	state.publishDeleted()
 	slog.DebugContext(state.Ctx(), "shutting down ArmyActor", "army_id", state.Army.ArmyID)
 	ctx.Stop(ctx.Self())
