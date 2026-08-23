@@ -17,6 +17,23 @@ type UpdateCityOwnerMessage struct {
 
 type CaptureCityMessage struct{ Owner string }
 
+type UpdateCityPolicyMessage struct {
+	GarrisonPercent int
+	TaxRatePercent  int
+}
+
+type ApplyGarrisonCasualtiesMessage struct{ Count int64 }
+type ApplyGarrisonCasualtiesResponseMessage struct {
+	Survived bool
+}
+
+type BeginGarrisonBattleMessage struct{ BattleID string }
+type BeginGarrisonBattleResponseMessage struct {
+	BattleID string
+	Count    int64
+}
+type EndGarrisonBattleMessage struct{ BattleID string }
+
 // SetBuildingPopulationMessage reports a building's absolute contribution to its
 // city's population cap. Keyed by building so resends are idempotent and the cap
 // can be fully rebuilt from its buildings.
@@ -67,6 +84,18 @@ type DeleteCityMessage struct {
 // Errors
 type CityNotFoundError struct {
 	CityId string
+}
+
+type InvalidCityPolicyError struct{}
+
+func (*InvalidCityPolicyError) Error() string {
+	return "garrison must be 0-30% and tax rate must be 0-100%"
+}
+
+type CityPolicyLockedError struct{}
+
+func (*CityPolicyLockedError) Error() string {
+	return "city policy cannot change while its garrison is in battle"
 }
 
 func (e *CityNotFoundError) Error() string {

@@ -45,8 +45,10 @@ const (
 )
 
 type BattleSide struct {
-	UserIDs []string
-	ArmyIDs []string
+	UserIDs        []string
+	ArmyIDs        []string
+	GarrisonCityID *string
+	GarrisonCount  int64
 }
 
 type Battle struct {

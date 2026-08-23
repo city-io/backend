@@ -92,7 +92,7 @@ func (b *barracksImpl) handleTrain(ctx actor.Context, state *buildingActor, msg 
 
 	popCost := msg.Count * constants.GetTroopPopCost(msg.Type)
 	goldCost := msg.Count * constants.GetTroopGoldCost(msg.Type)
-	if !b.reservePopulation(ctx, state, popCost) {
+	if !b.recruitPopulation(ctx, state, popCost) {
 		return
 	}
 	if !b.deductGold(ctx, state, goldCost) {
@@ -125,10 +125,10 @@ func (b *barracksImpl) handleTrain(ctx actor.Context, state *buildingActor, msg 
 	ctx.Respond(&messages.TrainTroopsResponseMessage{Order: b.queue[len(b.queue)-1]})
 }
 
-func (b *barracksImpl) reservePopulation(ctx actor.Context, state *buildingActor, count int64) bool {
-	res, err := state.Cluster.Request("city", state.Building.CityID, messages.ReserveMilitaryPopulationMessage{Count: count})
+func (b *barracksImpl) recruitPopulation(ctx actor.Context, state *buildingActor, count int64) bool {
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.RecruitPopulationMessage{Count: count})
 	if err != nil {
-		slog.ErrorContext(state.Ctx(), "failed to reserve military population", "error", err)
+		slog.ErrorContext(state.Ctx(), "failed to recruit city population", "error", err)
 		ctx.Respond(&messages.InternalError{})
 		return false
 	}
@@ -174,13 +174,13 @@ func (b *barracksImpl) rollbackCost(state *buildingActor, order domain.TrainingO
 }
 
 func (b *barracksImpl) releasePopulation(state *buildingActor, count int64) {
-	res, err := state.Cluster.Request("city", state.Building.CityID, messages.ReleaseMilitaryPopulationMessage{Count: count})
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.ReturnRecruitsMessage{Count: count})
 	if err != nil {
-		slog.ErrorContext(state.Ctx(), "failed to release military population on rollback", "error", err)
+		slog.ErrorContext(state.Ctx(), "failed to return recruits on rollback", "error", err)
 		return
 	}
 	if _, ok := res.(messages.Ack); !ok {
-		slog.ErrorContext(state.Ctx(), "military population release returned unexpected response", "building_id", state.Building.BuildingID)
+		slog.ErrorContext(state.Ctx(), "recruit rollback returned unexpected response", "building_id", state.Building.BuildingID)
 	}
 }
 

@@ -50,6 +50,7 @@ type cityActor struct {
 	// per-hour deficit rate. Carrying the remainder makes the long-run pool
 	// drain exactly match the displayed FoodUpkeep.
 	demandRemainder int64
+	taxRemainder    int64
 
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
@@ -68,6 +69,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 
 	case *messages.CreateCityMessage:
 		state.City = msg.City
+		state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 		state.populationContributions = make(map[string]float64)
 		state.foodProduction = make(map[string]int64)
 		state.armyUpkeep = make(map[string]int64)
@@ -134,6 +136,53 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.publishWorld()
 		ctx.Respond(messages.Ack{})
 
+	case messages.UpdateCityPolicyMessage:
+		if state.City.GarrisonBattleID != nil {
+			ctx.Respond(&messages.CityPolicyLockedError{})
+			return
+		}
+		if msg.GarrisonPercent < 0 || msg.GarrisonPercent > constants.MaxGarrisonPercent || msg.TaxRatePercent < 0 || msg.TaxRatePercent > constants.MaxTaxRatePercent {
+			ctx.Respond(&messages.InvalidCityPolicyError{})
+			return
+		}
+		garrisonChanged := state.City.GarrisonPercent != msg.GarrisonPercent
+		state.City.GarrisonPercent = msg.GarrisonPercent
+		state.City.TaxRatePercent = msg.TaxRatePercent
+		// Raising the target reserves future growth for the garrison; it never
+		// conjures defenders from civilians. Lowering it releases any excess.
+		if garrisonChanged {
+			target := constants.GarrisonTarget(state.City)
+			state.City.GarrisonPopulation = min(state.City.GarrisonPopulation, target)
+		}
+		state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
+		state.Store.EnqueueCity(state.City)
+		state.publish()
+		ctx.Respond(&messages.GetCityResponseMessage{City: state.City})
+
+	case messages.ApplyGarrisonCasualtiesMessage:
+		survived := state.applyGarrisonCasualties(msg.Count)
+		state.Store.EnqueueCity(state.City)
+		state.publishWorld()
+		ctx.Respond(&messages.ApplyGarrisonCasualtiesResponseMessage{Survived: survived})
+
+	case messages.BeginGarrisonBattleMessage:
+		if state.City.GarrisonBattleID != nil {
+			ctx.Respond(&messages.BeginGarrisonBattleResponseMessage{BattleID: *state.City.GarrisonBattleID, Count: int64(math.Floor(state.City.GarrisonPopulation))})
+			return
+		}
+		if state.City.GarrisonPopulation < 1 {
+			ctx.Respond(&messages.BeginGarrisonBattleResponseMessage{})
+			return
+		}
+		battleID := msg.BattleID
+		state.City.GarrisonBattleID = &battleID
+		ctx.Respond(&messages.BeginGarrisonBattleResponseMessage{BattleID: battleID, Count: int64(math.Floor(state.City.GarrisonPopulation))})
+
+	case messages.EndGarrisonBattleMessage:
+		if state.City.GarrisonBattleID != nil && *state.City.GarrisonBattleID == msg.BattleID {
+			state.City.GarrisonBattleID = nil
+		}
+
 	case messages.BuildingStateChangedMessage:
 		// Real state change (created, upgrade started, upgrade complete) — push
 		// the building proto and the city snapshot together so the player sees
@@ -199,27 +248,18 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.City.NetFoodFlow = state.City.FoodProductionRate - state.City.FoodUpkeep
 		state.publish()
 
-	case messages.ReserveMilitaryPopulationMessage:
-		// Standing army from a city is hard-capped at MilitaryPopulationFraction
-		// of its current population (bounded by the population cap). Reserving is
-		// idempotent-safe: it only ever grows MilitaryPopulation and rejects when
-		// the request would breach the cap.
-		limit := int64(constants.MilitaryPopulationFraction * state.City.Population)
-		available := limit - int64(state.City.MilitaryPopulation)
-		if msg.Count > available {
-			ctx.Respond(&messages.InsufficientPopulationError{Available: max(available, 0), Requested: msg.Count})
+	case messages.RecruitPopulationMessage:
+		if err := state.recruitPopulation(msg.Count); err != nil {
+			ctx.Respond(err)
 			return
 		}
-		state.City.MilitaryPopulation += float64(msg.Count)
 		state.Store.EnqueueCity(state.City)
 		state.publish()
 		ctx.Respond(messages.Ack{})
 
-	case messages.ReleaseMilitaryPopulationMessage:
-		state.City.MilitaryPopulation -= float64(msg.Count)
-		if state.City.MilitaryPopulation < 0 {
-			state.City.MilitaryPopulation = 0
-		}
+	case messages.ReturnRecruitsMessage:
+		state.City.Population += float64(msg.Count)
+		state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 		state.Store.EnqueueCity(state.City)
 		state.publish()
 		if ctx.Sender() != nil {
@@ -314,6 +354,24 @@ func (state *cityActor) Receive(ctx actor.Context) {
 	}
 }
 
+func (state *cityActor) recruitPopulation(count int64) *messages.InsufficientPopulationError {
+	available := constants.RecruitablePopulation(state.City)
+	if count > available {
+		return &messages.InsufficientPopulationError{Available: available, Requested: count}
+	}
+	state.City.Population -= float64(count)
+	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
+	return nil
+}
+
+func (state *cityActor) applyGarrisonCasualties(count int64) bool {
+	removed := min(float64(count), state.City.GarrisonPopulation)
+	state.City.GarrisonPopulation -= removed
+	state.City.Population = max(state.City.Population-removed, 0)
+	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
+	return state.City.GarrisonPopulation >= 1
+}
+
 // armyUpkeepTotal is the sum of food upkeep (per hour) for all armies currently
 // attributed to this city.
 func (state *cityActor) armyUpkeepTotal() int64 {
@@ -380,13 +438,9 @@ func (state *cityActor) tickFoodAndPopulation() {
 	state.pendingFoodIncome = 0
 
 	tickSecs := constants.CityTickInterval
-	// Only civilians (population minus the reserved military) draw city food
-	// upkeep; standing armies add their own upkeep on top, wherever they are.
-	civilians := state.City.Population - state.City.MilitaryPopulation
-	if civilians < 0 {
-		civilians = 0
-	}
-	upkeepPerHour := int64(math.Round(civilians*float64(constants.FoodPerPopPerHour))) + state.armyUpkeepTotal()
+	// Everyone physically resident in the city—including its garrison—eats
+	// here. Field armies are charged separately to their nearest settlement.
+	upkeepPerHour := int64(math.Round(state.City.Population*float64(constants.FoodPerPopPerHour))) + state.armyUpkeepTotal()
 
 	// Carry the sub-tick remainder so actual inventory transfers average to the
 	// precise hourly upkeep. The remainder does not determine biological state.
@@ -396,6 +450,12 @@ func (state *cityActor) tickFoodAndPopulation() {
 	state.City.FoodProductionRate = productionPerHour
 	state.City.FoodUpkeep = upkeepPerHour
 	state.City.NetFoodFlow = productionPerHour - upkeepPerHour
+	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
+	if tax := rateAmountForTick(state.City.TaxIncomeRate, tickSecs, &state.taxRemainder); tax > 0 {
+		if _, err := state.Cluster.Request("user", *state.City.Owner, messages.CreditUserMessage{Gold: tax}); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to credit city tax income", "city_id", state.City.CityID, "error", err)
+		}
+	}
 
 	// Settle whole food units independently from the stable rate comparison.
 	if surplus := production - demand; surplus > 0 {
@@ -472,9 +532,15 @@ func (state *cityActor) growPopulation(starving bool, deficitRatio, surplusRatio
 		// at saturation; beyond that, more farms give no further speedup.
 		bonus := math.Min(surplusRatio, 1.0) * constants.SurplusGrowthBonus
 		fedFactor := 1.0 + bonus
-		newPop = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)*fedFactor
+		newPop = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)*fedFactor*constants.PositiveGrowthMultiplier(state.City.TaxRatePercent)
 	}
 	delta := newPop - currentPopulation
+	if delta > 0 && state.City.GarrisonBattleID == nil {
+		shortfall := max(constants.GarrisonTarget(state.City)-state.City.GarrisonPopulation, 0)
+		state.City.GarrisonPopulation += min(delta, shortfall)
+	} else if state.City.GarrisonPopulation > newPop {
+		state.City.GarrisonPopulation = max(newPop, 0)
+	}
 	state.City.PopulationGrowthRate = int64(math.Round(delta * float64(constants.SecondsPerHour) / float64(constants.CityTickInterval)))
 	state.City.Population = newPop
 }

@@ -174,8 +174,8 @@ the "Client / frontend API reference" section below.
   population) live in `constants/buildings.go` and are exposed to clients via
   `ConfigService.GetGameConfig`.
 - **Resources & economy:** two resources, `gold` and `food`, pooled per **user** (not per city).
-  Centers/mines produce gold; farms produce food. Each city consumes food upkeep =
-  `(population − military_population) × FoodPerPopPerHour` (48/hr) **plus** the upkeep of any
+  Centers/mines and city taxes produce gold; farms produce food. Every resident, including the
+  garrison, consumes `FoodPerPopPerHour` (48/hr), **plus** the upkeep of any
   armies attributed to it. A city consumes its own food first, deposits surplus to the user pool,
   and draws the shortfall from the pool. Starvation and population change compare stable hourly
   production/upkeep rates rather than rounded per-tick food units, while the pool still transfers
@@ -198,14 +198,18 @@ the "Client / frontend API reference" section below.
     or wounded state. A zero-unit army is deleted. A side can contain multiple users: additional
     attackers targeting a participant join the opposing side, leaving formal alliance policy for
     the future diplomacy layer.
-  - **Conquest:** an army ordered to conquer fights defenders on the settlement center tile and
-    then must hold it uncontested for 30 seconds. Any new defender resets capture progress.
-    Completion transfers the existing settlement and its buildings to the attacker.
-  - **Population carve-out:** training reserves population into `city.military_population`, capped
-    at `MilitaryPopulationFraction` (0.35) of the city's population. Civilians
-    (`population − military_population`) drive city food upkeep, so a standing army is
-    exploit-free. Reserved population is not released on merge (troops keep their origin's
-    reservation); a release path will come with combat/disband later.
+  - **Conquest:** an army ordered to conquer fights field defenders and the settlement's passive
+    garrison on the center tile, then must hold it uncontested for 30 seconds. Garrison casualties
+    reduce both the garrison and settlement population. Completion transfers the existing
+    settlement and its buildings to the attacker.
+  - **Population transfer:** 55% of housing capacity is a protected civilian core. A city targets
+    a configurable 0–30% passive garrison (10% by default; neutral towns start at 30%); residents
+    above the core plus garrison target are recruitable. Starting a training order immediately
+    removes its population cost from the settlement. Armies own that manpower thereafter, deaths
+    are permanent, and future settlement growth can create new recruitable surplus.
+  - **Tax policy:** each owned city has a 0–100% tax rate (10% by default). Every non-garrison
+    resident is taxable. At 100%, each taxable resident yields 16 gold/hour and positive population
+    growth is fully suppressed; income and growth effects scale linearly with the configured rate.
   - **Food upkeep:** each army's food upkeep is added to its **nearest owned settlement's**
     upkeep, recomputed (by Chebyshev distance) as the army marches. Cities and captured towns
     both qualify because they share the `City` domain model.
@@ -286,8 +290,9 @@ for TypeScript) rather than hand-writing request types.
   password is never sent.
 - **City** — public fields: `city_id, type, owner? (UserId), name, population (double),
   population_cap (double), start (Coordinates, top-left), size, starving (bool),
-  population_growth (Rate), military_population (double)`. **Owner-only** fields (nil for
-  non-owners): `food_production, food_upkeep, net_food_flow (Rate)`. See
+  population_growth (Rate), garrison_population, garrison_percent, core_population,
+  taxable_population`. **Owner-only** fields (nil/zero for non-owners): `food_production,
+  food_upkeep, net_food_flow (Rate), recruitable_population, tax_rate_percent, tax_income`. See
   `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
@@ -301,7 +306,8 @@ for TypeScript) rather than hand-writing request types.
   cancellation, failure, or replacement produces a tombstone; there are no terminal status/reason
   records.
 - **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
-  active combat. Both sides contain repeated user and army IDs so future allies can share a side.
+  active combat. Both sides contain repeated user and army IDs so future allies can share a side;
+  a side may additionally contain a settlement garrison and its live defender count.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -337,6 +343,8 @@ for TypeScript) rather than hand-writing request types.
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.
 - `CreateCity(type, owner?, name, size) → { city }` — placed on a random empty block.
 - `ListCities() → { city_ids[], entities(cities) }` — your owned cities.
+- `UpdateCityPolicy(city_id, garrison_percent, tax_rate_percent) → { city }` — owner-only;
+  garrison must be 0–30 and tax must be 0–100. Policy changes stream immediately.
 
 **BuildingService**
 - `CreateBuilding(city_id, type, coords) → { building }` — must own the city; starts construction
@@ -351,8 +359,9 @@ for TypeScript) rather than hand-writing request types.
 
 **ArmyService**
 - `TrainTroops(barracks_id, type, count) → { order }` — must own the barracks' city; the
-  barracks must be finished (not under construction); `count` ∈ `[1, 5 × barracksLevel]`. Reserves
-  `count × popCost` military population (≤ 35% of city population) and deducts `count × goldCost`.
+  barracks must be finished (not under construction); `count` ∈ `[1, 5 × barracksLevel]`.
+  Immediately transfers `count × popCost` recruitable residents out of the city and deducts
+  `count × goldCost`.
   Errors: `FailedPrecondition` (`InsufficientGold`, insufficient trainable population, training
   capacity exceeded, construction in progress); `InvalidArgument` (bad count/type). After the
   batch's total train time (`count × per-troop time`) an `Army` spawns at the barracks tile
@@ -403,7 +412,8 @@ for TypeScript) rather than hand-writing request types.
 **ConfigService**
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),
   city_tick (Duration), buildings[]: { type, levels[]: { level, cost[], construction_time
-  (Duration), production[], population } } }` — *public*, static tunables for the client. Note:
+  (Duration), production[], population } }, population_policy }` — *public*, static tunables for
+  the client, including civilian/garrison/tax limits and the tax yield rate. Note:
   troop stats are **not** exposed here yet (see Game model → troop stat table).
 
 ### Error codes (Connect)

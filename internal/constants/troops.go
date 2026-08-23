@@ -6,9 +6,23 @@ import (
 	"cityio/internal/domain"
 )
 
-// MilitaryPopulationFraction is the share of a city's population that can be
-// reserved as standing army. The rest is an untrainable civilian core.
-const MilitaryPopulationFraction = 0.35
+const (
+	// CoreCivilianPercent is the housing share protected from recruitment.
+	CoreCivilianPercent = 55
+
+	// Garrison is a non-mobile settlement reserve. Players start at 10%; neutral
+	// towns start at the maximum so they cannot be captured undefended.
+	DefaultGarrisonPercent = 10
+	NeutralGarrisonPercent = 30
+	MaxGarrisonPercent     = 30
+
+	// Tax is configured as a whole-number percentage. At 100%, each taxable
+	// resident yields TaxGoldPerPopPerHour gold/hour and positive population
+	// growth is fully suppressed.
+	DefaultTaxRatePercent       = 10
+	MaxTaxRatePercent           = 100
+	TaxGoldPerPopPerHour  int64 = 16
+)
 
 const (
 	BattleTickInterval        = time.Second

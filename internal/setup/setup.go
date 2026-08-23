@@ -143,17 +143,21 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 			populationCap += constants.GetBuildingPopulation(building.Type, building.Level)
 		}
 
-		cities = append(cities, domain.City{
-			CityID:        cityID,
-			Type:          domain.CityTypeTown,
-			Owner:         nil,
-			Name:          town.Name,
-			Population:    populationCap,
-			PopulationCap: populationCap,
-			StartX:        town.X,
-			StartY:        town.Y,
-			Size:          town.Size,
-		})
+		city := domain.City{
+			CityID:          cityID,
+			Type:            domain.CityTypeTown,
+			Owner:           nil,
+			Name:            town.Name,
+			Population:      populationCap,
+			PopulationCap:   populationCap,
+			GarrisonPercent: constants.NeutralGarrisonPercent,
+			TaxRatePercent:  0,
+			StartX:          town.X,
+			StartY:          town.Y,
+			Size:            town.Size,
+		}
+		city.GarrisonPopulation = constants.GarrisonTarget(city)
+		cities = append(cities, city)
 		for _, building := range town.Buildings {
 			buildings = append(buildings, domain.Building{
 				BuildingID:        uuid.New().String(),
@@ -175,15 +179,18 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 		chunk := cities[i:end]
 
 		params := database.BatchCreateCitiesParams{
-			CityIds:        make([]string, 0, len(chunk)),
-			Types:          make([]string, 0, len(chunk)),
-			Owners:         make([]string, 0, len(chunk)),
-			Names:          make([]string, 0, len(chunk)),
-			Populations:    make([]float64, 0, len(chunk)),
-			PopulationCaps: make([]float64, 0, len(chunk)),
-			StartXs:        make([]int32, 0, len(chunk)),
-			StartYs:        make([]int32, 0, len(chunk)),
-			Sizes:          make([]int32, 0, len(chunk)),
+			CityIds:             make([]string, 0, len(chunk)),
+			Types:               make([]string, 0, len(chunk)),
+			Owners:              make([]string, 0, len(chunk)),
+			Names:               make([]string, 0, len(chunk)),
+			Populations:         make([]float64, 0, len(chunk)),
+			PopulationCaps:      make([]float64, 0, len(chunk)),
+			GarrisonPopulations: make([]float64, 0, len(chunk)),
+			GarrisonPercents:    make([]int32, 0, len(chunk)),
+			TaxRatePercents:     make([]int32, 0, len(chunk)),
+			StartXs:             make([]int32, 0, len(chunk)),
+			StartYs:             make([]int32, 0, len(chunk)),
+			Sizes:               make([]int32, 0, len(chunk)),
 		}
 
 		for _, city := range chunk {
@@ -200,6 +207,9 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 			params.Names = append(params.Names, city.Name)
 			params.Populations = append(params.Populations, city.Population)
 			params.PopulationCaps = append(params.PopulationCaps, city.PopulationCap)
+			params.GarrisonPopulations = append(params.GarrisonPopulations, city.GarrisonPopulation)
+			params.GarrisonPercents = append(params.GarrisonPercents, int32(city.GarrisonPercent))
+			params.TaxRatePercents = append(params.TaxRatePercents, int32(city.TaxRatePercent))
 			params.StartXs = append(params.StartXs, int32(city.StartX))
 			params.StartYs = append(params.StartYs, int32(city.StartY))
 			params.Sizes = append(params.Sizes, int32(city.Size))

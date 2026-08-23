@@ -6,6 +6,9 @@ SELECT
     name,
     population,
     population_cap,
+    garrison_population,
+    garrison_percent,
+    tax_rate_percent,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -21,6 +24,9 @@ INSERT INTO cities (
     name,
     population,
     population_cap,
+    garrison_population,
+    garrison_percent,
+    tax_rate_percent,
     start_coords,
     size
 )
@@ -31,6 +37,9 @@ VALUES (
     sqlc.arg(name),
     sqlc.arg(population),
     sqlc.arg(population_cap),
+    sqlc.arg(garrison_population),
+    sqlc.arg(garrison_percent),
+    sqlc.arg(tax_rate_percent),
     ROW(sqlc.arg(start_x)::int4, sqlc.arg(start_y)::int4)::coordinates,
     sqlc.arg(size)
 );
@@ -47,6 +56,9 @@ SET
     name            = sqlc.arg(name),
     population      = sqlc.arg(population),
     population_cap  = sqlc.arg(population_cap),
+    garrison_population = sqlc.arg(garrison_population),
+    garrison_percent = sqlc.arg(garrison_percent),
+    tax_rate_percent = sqlc.arg(tax_rate_percent),
     start_coords    = ROW(sqlc.arg(start_x)::int4, sqlc.arg(start_y)::int4)::coordinates,
     size            = sqlc.arg(size),
     updated_at      = NOW()
@@ -60,6 +72,9 @@ INSERT INTO cities (
     name,
     population,
     population_cap,
+    garrison_population,
+    garrison_percent,
+    tax_rate_percent,
     start_coords,
     size
 )
@@ -70,6 +85,9 @@ SELECT
     v.name,
     v.population,
     v.population_cap,
+    v.garrison_population,
+    v.garrison_percent,
+    v.tax_rate_percent,
     ROW(v.start_x, v.start_y)::coordinates,
     v.size
 FROM (
@@ -80,6 +98,9 @@ FROM (
         UNNEST(sqlc.arg(names)::text[])              AS name,
         UNNEST(sqlc.arg(populations)::float8[])      AS population,
         UNNEST(sqlc.arg(population_caps)::float8[])  AS population_cap,
+        UNNEST(sqlc.arg(garrison_populations)::float8[]) AS garrison_population,
+        UNNEST(sqlc.arg(garrison_percents)::int[])   AS garrison_percent,
+        UNNEST(sqlc.arg(tax_rate_percents)::int[])  AS tax_rate_percent,
         UNNEST(sqlc.arg(start_xs)::int[])            AS start_x,
         UNNEST(sqlc.arg(start_ys)::int[])            AS start_y,
         UNNEST(sqlc.arg(sizes)::int[])               AS size
@@ -93,6 +114,9 @@ SELECT
     name,
     population,
     population_cap,
+    garrison_population,
+    garrison_percent,
+    tax_rate_percent,
     (start_coords).x::int4 AS start_x,
     (start_coords).y::int4 AS start_y,
     size,
@@ -109,6 +133,9 @@ SET
     name            = v.name,
     population      = v.population,
     population_cap  = v.population_cap,
+    garrison_population = v.garrison_population,
+    garrison_percent = v.garrison_percent,
+    tax_rate_percent = v.tax_rate_percent,
     start_coords    = ROW(v.start_x, v.start_y)::coordinates,
     size            = v.size
 FROM (
@@ -119,6 +146,9 @@ FROM (
         UNNEST(sqlc.arg(names)::text[])             AS name,
         UNNEST(sqlc.arg(populations)::float8[])     AS population,
         UNNEST(sqlc.arg(population_caps)::float8[]) AS population_cap,
+        UNNEST(sqlc.arg(garrison_populations)::float8[]) AS garrison_population,
+        UNNEST(sqlc.arg(garrison_percents)::int[])  AS garrison_percent,
+        UNNEST(sqlc.arg(tax_rate_percents)::int[])  AS tax_rate_percent,
         UNNEST(sqlc.arg(start_xs)::int[])           AS start_x,
         UNNEST(sqlc.arg(start_ys)::int[])           AS start_y,
         UNNEST(sqlc.arg(sizes)::int[])              AS size

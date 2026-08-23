@@ -34,16 +34,19 @@ type Building struct {
 }
 
 type City struct {
-	CityID        string             `json:"city_id"`
-	Type          string             `json:"type"`
-	Owner         *string            `json:"owner"`
-	Name          string             `json:"name"`
-	Population    float64            `json:"population"`
-	PopulationCap float64            `json:"population_cap"`
-	StartCoords   domain.Coordinates `json:"start_coords"`
-	Size          int32              `json:"size"`
-	CreatedAt     pgtype.Timestamp   `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
+	CityID             string             `json:"city_id"`
+	Type               string             `json:"type"`
+	Owner              *string            `json:"owner"`
+	Name               string             `json:"name"`
+	Population         float64            `json:"population"`
+	PopulationCap      float64            `json:"population_cap"`
+	StartCoords        domain.Coordinates `json:"start_coords"`
+	Size               int32              `json:"size"`
+	CreatedAt          pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt          pgtype.Timestamp   `json:"updated_at"`
+	GarrisonPopulation float64            `json:"garrison_population"`
+	GarrisonPercent    int32              `json:"garrison_percent"`
+	TaxRatePercent     int32              `json:"tax_rate_percent"`
 }
 
 type ExploredTile struct {

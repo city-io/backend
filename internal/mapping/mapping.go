@@ -11,6 +11,7 @@ import (
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 
+	"cityio/internal/constants"
 	"cityio/internal/domain"
 )
 
@@ -175,19 +176,25 @@ func UserToProto(u domain.User) *entityv1.User {
 // CityToProto converts a domain city to its proto representation.
 func CityToProto(c domain.City) *entityv1.City {
 	out := &entityv1.City{
-		CityId:             ToCityId(c.CityID),
-		Type:               CityTypeToProto(c.Type),
-		Name:               c.Name,
-		Population:         c.Population,
-		PopulationCap:      c.PopulationCap,
-		Start:              &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
-		Size:               int32(c.Size),
-		FoodProduction:     RatePerHour(c.FoodProductionRate),
-		FoodUpkeep:         RatePerHour(c.FoodUpkeep),
-		NetFoodFlow:        RatePerHour(c.NetFoodFlow),
-		Starving:           c.Starving,
-		PopulationGrowth:   RatePerHour(c.PopulationGrowthRate),
-		MilitaryPopulation: c.MilitaryPopulation,
+		CityId:                ToCityId(c.CityID),
+		Type:                  CityTypeToProto(c.Type),
+		Name:                  c.Name,
+		Population:            c.Population,
+		PopulationCap:         c.PopulationCap,
+		Start:                 &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
+		Size:                  int32(c.Size),
+		FoodProduction:        RatePerHour(c.FoodProductionRate),
+		FoodUpkeep:            RatePerHour(c.FoodUpkeep),
+		NetFoodFlow:           RatePerHour(c.NetFoodFlow),
+		Starving:              c.Starving,
+		PopulationGrowth:      RatePerHour(c.PopulationGrowthRate),
+		GarrisonPopulation:    c.GarrisonPopulation,
+		GarrisonPercent:       int32(c.GarrisonPercent),
+		CorePopulation:        constants.CorePopulation(c),
+		RecruitablePopulation: float64(constants.RecruitablePopulation(c)),
+		TaxablePopulation:     constants.TaxablePopulation(c),
+		TaxRatePercent:        int32(c.TaxRatePercent),
+		TaxIncome:             RatePerHour(constants.TaxIncomePerHour(c)),
 	}
 	if c.Owner != nil {
 		out.Owner = ToUserId(*c.Owner)
@@ -195,15 +202,18 @@ func CityToProto(c domain.City) *entityv1.City {
 	return out
 }
 
-// HidePrivateCityFields blanks the production/upkeep rate fields on a city
+// HidePrivateCityFields blanks the private economy/policy fields on a city
 // proto. Call this when the viewer is not the city's owner: only the owner
-// gets to see economic intel (food_production, food_upkeep, net_food_flow).
+// gets food flows, recruitment capacity, tax settings, and tax income.
 // Public fields (identity, location, population, population_cap, starving)
 // stay untouched. See the visibility note on the City proto.
 func HidePrivateCityFields(c *entityv1.City) {
 	c.FoodProduction = nil
 	c.FoodUpkeep = nil
 	c.NetFoodFlow = nil
+	c.TaxRatePercent = 0
+	c.TaxIncome = nil
+	c.RecruitablePopulation = 0
 }
 
 // TerrainToProto converts a domain terrain type to its protobuf enum.
@@ -387,12 +397,15 @@ func BattleToProto(b domain.Battle) *entityv1.Battle {
 }
 
 func battleSideToProto(side domain.BattleSide) *entityv1.BattleSide {
-	out := &entityv1.BattleSide{}
+	out := &entityv1.BattleSide{GarrisonCount: side.GarrisonCount}
 	for _, id := range side.UserIDs {
 		out.UserIds = append(out.UserIds, ToUserId(id))
 	}
 	for _, id := range side.ArmyIDs {
 		out.ArmyIds = append(out.ArmyIds, ToArmyId(id))
+	}
+	if side.GarrisonCityID != nil {
+		out.GarrisonCityId = ToCityId(*side.GarrisonCityID)
 	}
 	return out
 }

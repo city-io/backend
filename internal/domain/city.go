@@ -18,10 +18,12 @@ type City struct {
 	Name          string   `json:"name"`
 	Population    float64  `json:"population"`
 	PopulationCap float64  `json:"populationCap"`
-	// MilitaryPopulation is the share of Population reserved as standing army.
-	// Civilians (Population − MilitaryPopulation) drive food upkeep; the reserve
-	// is bounded by MilitaryPopulationFraction × Population.
-	MilitaryPopulation float64 `json:"militaryPopulation"`
+	// GarrisonPopulation is the non-mobile defensive reserve currently present
+	// in the settlement. GarrisonPercent is its target share of housing capacity;
+	// losses refill from future population growth rather than appearing for free.
+	GarrisonPopulation float64 `json:"garrisonPopulation"`
+	GarrisonPercent    int     `json:"garrisonPercent"`
+	TaxRatePercent     int     `json:"taxRatePercent"`
 	StartX             int     `json:"startX"`
 	StartY             int     `json:"startY"`
 	Size               int     `json:"size"`
@@ -40,7 +42,9 @@ type City struct {
 	// PopulationGrowthRate is the current per-hour population change. Positive
 	// when the city is growing, negative when starving and population is
 	// declining. Computed from the per-tick delta applied in growPopulation.
-	PopulationGrowthRate int64 `json:"populationGrowthRate"`
+	PopulationGrowthRate int64   `json:"populationGrowthRate"`
+	TaxIncomeRate        int64   `json:"taxIncomeRate"`
+	GarrisonBattleID     *string `json:"-"`
 
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`

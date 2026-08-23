@@ -83,3 +83,33 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 		Entities: mapping.EntitiesToBag(nil, cityList, nil, nil),
 	}), nil
 }
+
+func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request[servicev1.UpdateCityPolicyRequest]) (*connect.Response[servicev1.UpdateCityPolicyResponse], error) {
+	cityID := req.Msg.GetCityId().GetValue()
+	owns, err := h.srv.ownsCity(ctx, cityID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !owns {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
+	}
+	res, err := h.srv.cluster.Request("city", cityID, messages.UpdateCityPolicyMessage{
+		GarrisonPercent: int(req.Msg.GetGarrisonPercent()),
+		TaxRatePercent:  int(req.Msg.GetTaxRatePercent()),
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	switch response := res.(type) {
+	case *messages.GetCityResponseMessage:
+		return connect.NewResponse(&servicev1.UpdateCityPolicyResponse{City: mapping.CityToProto(response.City)}), nil
+	case *messages.InvalidCityPolicyError:
+		return nil, connect.NewError(connect.CodeInvalidArgument, response)
+	case *messages.CityPolicyLockedError:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, response)
+	case error:
+		return nil, connect.NewError(connect.CodeInternal, response)
+	default:
+		return nil, connect.NewError(connect.CodeInternal, errors.New("unexpected city policy response"))
+	}
+}

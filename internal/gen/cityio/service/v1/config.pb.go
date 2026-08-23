@@ -293,21 +293,123 @@ func (*GetGameConfigRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{4}
 }
 
+type PopulationPolicyConfig struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	CoreCivilianPercent    int32                  `protobuf:"varint,1,opt,name=core_civilian_percent,json=coreCivilianPercent,proto3" json:"core_civilian_percent,omitempty"`
+	DefaultGarrisonPercent int32                  `protobuf:"varint,2,opt,name=default_garrison_percent,json=defaultGarrisonPercent,proto3" json:"default_garrison_percent,omitempty"`
+	NeutralGarrisonPercent int32                  `protobuf:"varint,3,opt,name=neutral_garrison_percent,json=neutralGarrisonPercent,proto3" json:"neutral_garrison_percent,omitempty"`
+	MaxGarrisonPercent     int32                  `protobuf:"varint,4,opt,name=max_garrison_percent,json=maxGarrisonPercent,proto3" json:"max_garrison_percent,omitempty"`
+	MaxMilitaryPercent     int32                  `protobuf:"varint,5,opt,name=max_military_percent,json=maxMilitaryPercent,proto3" json:"max_military_percent,omitempty"`
+	DefaultTaxRatePercent  int32                  `protobuf:"varint,6,opt,name=default_tax_rate_percent,json=defaultTaxRatePercent,proto3" json:"default_tax_rate_percent,omitempty"`
+	MaxTaxRatePercent      int32                  `protobuf:"varint,7,opt,name=max_tax_rate_percent,json=maxTaxRatePercent,proto3" json:"max_tax_rate_percent,omitempty"`
+	// Gold per taxable resident at a 100% tax rate.
+	TaxGoldPerPopulation *v1.Rate `protobuf:"bytes,8,opt,name=tax_gold_per_population,json=taxGoldPerPopulation,proto3" json:"tax_gold_per_population,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *PopulationPolicyConfig) Reset() {
+	*x = PopulationPolicyConfig{}
+	mi := &file_cityio_service_v1_config_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PopulationPolicyConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PopulationPolicyConfig) ProtoMessage() {}
+
+func (x *PopulationPolicyConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_config_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PopulationPolicyConfig.ProtoReflect.Descriptor instead.
+func (*PopulationPolicyConfig) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *PopulationPolicyConfig) GetCoreCivilianPercent() int32 {
+	if x != nil {
+		return x.CoreCivilianPercent
+	}
+	return 0
+}
+
+func (x *PopulationPolicyConfig) GetDefaultGarrisonPercent() int32 {
+	if x != nil {
+		return x.DefaultGarrisonPercent
+	}
+	return 0
+}
+
+func (x *PopulationPolicyConfig) GetNeutralGarrisonPercent() int32 {
+	if x != nil {
+		return x.NeutralGarrisonPercent
+	}
+	return 0
+}
+
+func (x *PopulationPolicyConfig) GetMaxGarrisonPercent() int32 {
+	if x != nil {
+		return x.MaxGarrisonPercent
+	}
+	return 0
+}
+
+func (x *PopulationPolicyConfig) GetMaxMilitaryPercent() int32 {
+	if x != nil {
+		return x.MaxMilitaryPercent
+	}
+	return 0
+}
+
+func (x *PopulationPolicyConfig) GetDefaultTaxRatePercent() int32 {
+	if x != nil {
+		return x.DefaultTaxRatePercent
+	}
+	return 0
+}
+
+func (x *PopulationPolicyConfig) GetMaxTaxRatePercent() int32 {
+	if x != nil {
+		return x.MaxTaxRatePercent
+	}
+	return 0
+}
+
+func (x *PopulationPolicyConfig) GetTaxGoldPerPopulation() *v1.Rate {
+	if x != nil {
+		return x.TaxGoldPerPopulation
+	}
+	return nil
+}
+
 type GetGameConfigResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MapSize       int32                  `protobuf:"varint,1,opt,name=map_size,json=mapSize,proto3" json:"map_size,omitempty"`
-	CitySize      int32                  `protobuf:"varint,2,opt,name=city_size,json=citySize,proto3" json:"city_size,omitempty"`
-	VisionRadius  int32                  `protobuf:"varint,3,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
-	BuildingTick  *durationpb.Duration   `protobuf:"bytes,4,opt,name=building_tick,json=buildingTick,proto3" json:"building_tick,omitempty"`
-	Buildings     []*BuildingConfig      `protobuf:"bytes,5,rep,name=buildings,proto3" json:"buildings,omitempty"`
-	CityTick      *durationpb.Duration   `protobuf:"bytes,6,opt,name=city_tick,json=cityTick,proto3" json:"city_tick,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState  `protogen:"open.v1"`
+	MapSize          int32                   `protobuf:"varint,1,opt,name=map_size,json=mapSize,proto3" json:"map_size,omitempty"`
+	CitySize         int32                   `protobuf:"varint,2,opt,name=city_size,json=citySize,proto3" json:"city_size,omitempty"`
+	VisionRadius     int32                   `protobuf:"varint,3,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
+	BuildingTick     *durationpb.Duration    `protobuf:"bytes,4,opt,name=building_tick,json=buildingTick,proto3" json:"building_tick,omitempty"`
+	Buildings        []*BuildingConfig       `protobuf:"bytes,5,rep,name=buildings,proto3" json:"buildings,omitempty"`
+	CityTick         *durationpb.Duration    `protobuf:"bytes,6,opt,name=city_tick,json=cityTick,proto3" json:"city_tick,omitempty"`
+	PopulationPolicy *PopulationPolicyConfig `protobuf:"bytes,7,opt,name=population_policy,json=populationPolicy,proto3" json:"population_policy,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GetGameConfigResponse) Reset() {
 	*x = GetGameConfigResponse{}
-	mi := &file_cityio_service_v1_config_proto_msgTypes[5]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -319,7 +421,7 @@ func (x *GetGameConfigResponse) String() string {
 func (*GetGameConfigResponse) ProtoMessage() {}
 
 func (x *GetGameConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_config_proto_msgTypes[5]
+	mi := &file_cityio_service_v1_config_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -332,7 +434,7 @@ func (x *GetGameConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGameConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetGameConfigResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{5}
+	return file_cityio_service_v1_config_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetGameConfigResponse) GetMapSize() int32 {
@@ -377,6 +479,13 @@ func (x *GetGameConfigResponse) GetCityTick() *durationpb.Duration {
 	return nil
 }
 
+func (x *GetGameConfigResponse) GetPopulationPolicy() *PopulationPolicyConfig {
+	if x != nil {
+		return x.PopulationPolicy
+	}
+	return nil
+}
+
 var File_cityio_service_v1_config_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_config_proto_rawDesc = "" +
@@ -401,14 +510,24 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x0eBuildingConfig\x122\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x12=\n" +
 	"\x06levels\x18\x02 \x03(\v2%.cityio.service.v1.BuildingLevelStatsR\x06levels\"\x16\n" +
-	"\x14GetGameConfigRequest\"\xad\x02\n" +
+	"\x14GetGameConfigRequest\"\xdd\x03\n" +
+	"\x16PopulationPolicyConfig\x122\n" +
+	"\x15core_civilian_percent\x18\x01 \x01(\x05R\x13coreCivilianPercent\x128\n" +
+	"\x18default_garrison_percent\x18\x02 \x01(\x05R\x16defaultGarrisonPercent\x128\n" +
+	"\x18neutral_garrison_percent\x18\x03 \x01(\x05R\x16neutralGarrisonPercent\x120\n" +
+	"\x14max_garrison_percent\x18\x04 \x01(\x05R\x12maxGarrisonPercent\x120\n" +
+	"\x14max_military_percent\x18\x05 \x01(\x05R\x12maxMilitaryPercent\x127\n" +
+	"\x18default_tax_rate_percent\x18\x06 \x01(\x05R\x15defaultTaxRatePercent\x12/\n" +
+	"\x14max_tax_rate_percent\x18\a \x01(\x05R\x11maxTaxRatePercent\x12M\n" +
+	"\x17tax_gold_per_population\x18\b \x01(\v2\x16.cityio.entity.v1.RateR\x14taxGoldPerPopulation\"\x85\x03\n" +
 	"\x15GetGameConfigResponse\x12\x19\n" +
 	"\bmap_size\x18\x01 \x01(\x05R\amapSize\x12\x1b\n" +
 	"\tcity_size\x18\x02 \x01(\x05R\bcitySize\x12#\n" +
 	"\rvision_radius\x18\x03 \x01(\x05R\fvisionRadius\x12>\n" +
 	"\rbuilding_tick\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\fbuildingTick\x12?\n" +
 	"\tbuildings\x18\x05 \x03(\v2!.cityio.service.v1.BuildingConfigR\tbuildings\x126\n" +
-	"\tcity_tick\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\bcityTick2s\n" +
+	"\tcity_tick\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\bcityTick\x12V\n" +
+	"\x11population_policy\x18\a \x01(\v2).cityio.service.v1.PopulationPolicyConfigR\x10populationPolicy2s\n" +
 	"\rConfigService\x12b\n" +
 	"\rGetGameConfig\x12'.cityio.service.v1.GetGameConfigRequest\x1a(.cityio.service.v1.GetGameConfigResponseB\xbb\x01\n" +
 	"\x15com.cityio.service.v1B\vConfigProtoP\x01Z/cityio/internal/gen/cityio/service/v1;servicev1\xa2\x02\x03CSX\xaa\x02\x11Cityio.Service.V1\xca\x02\x11Cityio\\Service\\V1\xe2\x02\x1dCityio\\Service\\V1\\GPBMetadata\xea\x02\x13Cityio::Service::V1b\x06proto3"
@@ -425,35 +544,38 @@ func file_cityio_service_v1_config_proto_rawDescGZIP() []byte {
 	return file_cityio_service_v1_config_proto_rawDescData
 }
 
-var file_cityio_service_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_cityio_service_v1_config_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_cityio_service_v1_config_proto_goTypes = []any{
-	(*ResourceAmount)(nil),        // 0: cityio.service.v1.ResourceAmount
-	(*ResourceRate)(nil),          // 1: cityio.service.v1.ResourceRate
-	(*BuildingLevelStats)(nil),    // 2: cityio.service.v1.BuildingLevelStats
-	(*BuildingConfig)(nil),        // 3: cityio.service.v1.BuildingConfig
-	(*GetGameConfigRequest)(nil),  // 4: cityio.service.v1.GetGameConfigRequest
-	(*GetGameConfigResponse)(nil), // 5: cityio.service.v1.GetGameConfigResponse
-	(*v1.Rate)(nil),               // 6: cityio.entity.v1.Rate
-	(*durationpb.Duration)(nil),   // 7: google.protobuf.Duration
-	(v1.BuildingType)(0),          // 8: cityio.entity.v1.BuildingType
+	(*ResourceAmount)(nil),         // 0: cityio.service.v1.ResourceAmount
+	(*ResourceRate)(nil),           // 1: cityio.service.v1.ResourceRate
+	(*BuildingLevelStats)(nil),     // 2: cityio.service.v1.BuildingLevelStats
+	(*BuildingConfig)(nil),         // 3: cityio.service.v1.BuildingConfig
+	(*GetGameConfigRequest)(nil),   // 4: cityio.service.v1.GetGameConfigRequest
+	(*PopulationPolicyConfig)(nil), // 5: cityio.service.v1.PopulationPolicyConfig
+	(*GetGameConfigResponse)(nil),  // 6: cityio.service.v1.GetGameConfigResponse
+	(*v1.Rate)(nil),                // 7: cityio.entity.v1.Rate
+	(*durationpb.Duration)(nil),    // 8: google.protobuf.Duration
+	(v1.BuildingType)(0),           // 9: cityio.entity.v1.BuildingType
 }
 var file_cityio_service_v1_config_proto_depIdxs = []int32{
-	6,  // 0: cityio.service.v1.ResourceRate.rate:type_name -> cityio.entity.v1.Rate
+	7,  // 0: cityio.service.v1.ResourceRate.rate:type_name -> cityio.entity.v1.Rate
 	0,  // 1: cityio.service.v1.BuildingLevelStats.cost:type_name -> cityio.service.v1.ResourceAmount
-	7,  // 2: cityio.service.v1.BuildingLevelStats.construction_time:type_name -> google.protobuf.Duration
+	8,  // 2: cityio.service.v1.BuildingLevelStats.construction_time:type_name -> google.protobuf.Duration
 	1,  // 3: cityio.service.v1.BuildingLevelStats.production:type_name -> cityio.service.v1.ResourceRate
-	8,  // 4: cityio.service.v1.BuildingConfig.type:type_name -> cityio.entity.v1.BuildingType
+	9,  // 4: cityio.service.v1.BuildingConfig.type:type_name -> cityio.entity.v1.BuildingType
 	2,  // 5: cityio.service.v1.BuildingConfig.levels:type_name -> cityio.service.v1.BuildingLevelStats
-	7,  // 6: cityio.service.v1.GetGameConfigResponse.building_tick:type_name -> google.protobuf.Duration
-	3,  // 7: cityio.service.v1.GetGameConfigResponse.buildings:type_name -> cityio.service.v1.BuildingConfig
-	7,  // 8: cityio.service.v1.GetGameConfigResponse.city_tick:type_name -> google.protobuf.Duration
-	4,  // 9: cityio.service.v1.ConfigService.GetGameConfig:input_type -> cityio.service.v1.GetGameConfigRequest
-	5,  // 10: cityio.service.v1.ConfigService.GetGameConfig:output_type -> cityio.service.v1.GetGameConfigResponse
-	10, // [10:11] is the sub-list for method output_type
-	9,  // [9:10] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	7,  // 6: cityio.service.v1.PopulationPolicyConfig.tax_gold_per_population:type_name -> cityio.entity.v1.Rate
+	8,  // 7: cityio.service.v1.GetGameConfigResponse.building_tick:type_name -> google.protobuf.Duration
+	3,  // 8: cityio.service.v1.GetGameConfigResponse.buildings:type_name -> cityio.service.v1.BuildingConfig
+	8,  // 9: cityio.service.v1.GetGameConfigResponse.city_tick:type_name -> google.protobuf.Duration
+	5,  // 10: cityio.service.v1.GetGameConfigResponse.population_policy:type_name -> cityio.service.v1.PopulationPolicyConfig
+	4,  // 11: cityio.service.v1.ConfigService.GetGameConfig:input_type -> cityio.service.v1.GetGameConfigRequest
+	6,  // 12: cityio.service.v1.ConfigService.GetGameConfig:output_type -> cityio.service.v1.GetGameConfigResponse
+	12, // [12:13] is the sub-list for method output_type
+	11, // [11:12] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_config_proto_init() }
@@ -467,7 +589,7 @@ func file_cityio_service_v1_config_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_config_proto_rawDesc), len(file_cityio_service_v1_config_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
