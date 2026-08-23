@@ -24,9 +24,6 @@ type Deps struct {
 }
 
 func Run(ctx context.Context, deps *Deps) {
-	if err := reset(ctx, deps); err != nil {
-		panic(err)
-	}
 	ctx = logger.With(ctx, "phase", "init")
 	db := deps.DB
 	cluster := deps.Cluster
@@ -34,6 +31,43 @@ func Run(ctx context.Context, deps *Deps) {
 	users, err := db.GetAllUsers(ctx)
 	if err != nil {
 		panic(err)
+	}
+	cities, err := db.GetAllCities(ctx)
+	if err != nil {
+		panic(err)
+	}
+	armies, err := db.GetAllArmies(ctx)
+	if err != nil {
+		panic(err)
+	}
+	buildings, err := db.GetAllBuildings(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	databaseEmpty := len(users) == 0 && len(cities) == 0 && len(armies) == 0 && len(buildings) == 0
+	if databaseEmpty {
+		if err := seedWorld(ctx, deps); err != nil {
+			panic(err)
+		}
+		cities, err = db.GetAllCities(ctx)
+		if err != nil {
+			panic(err)
+		}
+		buildings, err = db.GetAllBuildings(ctx)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		slog.InfoContext(ctx, "preserving existing world state",
+			"users", len(users),
+			"cities", len(cities),
+			"buildings", len(buildings),
+			"armies", len(armies),
+		)
+	}
+	for _, city := range cities {
+		deps.World.RestoreSettlement(*city.ToModel())
 	}
 
 	for _, user := range users {
@@ -44,11 +78,6 @@ func Run(ctx context.Context, deps *Deps) {
 	}
 	slog.InfoContext(ctx, "spawned user actors", "count", len(users))
 
-	cities, err := db.GetAllCities(ctx)
-	if err != nil {
-		panic(err)
-	}
-
 	for _, city := range cities {
 		err := services.RestoreCity(ctx, cluster, city.ToModel())
 		if err != nil {
@@ -56,11 +85,6 @@ func Run(ctx context.Context, deps *Deps) {
 		}
 	}
 	slog.InfoContext(ctx, "spawned city actors", "count", len(cities))
-
-	armies, err := db.GetAllArmies(ctx)
-	if err != nil {
-		panic(err)
-	}
 
 	for _, army := range armies {
 		err := services.RestoreArmy(ctx, cluster, army.ToModel())
@@ -70,11 +94,6 @@ func Run(ctx context.Context, deps *Deps) {
 	}
 	slog.InfoContext(ctx, "spawned army actors", "count", len(armies))
 
-	buildings, err := db.GetAllBuildings(ctx)
-	if err != nil {
-		panic(err)
-	}
-
 	for _, building := range buildings {
 		err := services.RestoreBuilding(ctx, cluster, building.ToModel())
 		if err != nil {
@@ -83,28 +102,35 @@ func Run(ctx context.Context, deps *Deps) {
 	}
 	slog.InfoContext(ctx, "spawned building actors", "count", len(buildings))
 
-	// Create the test user AFTER the bulk restore. Restoration must not see
-	// the test user's entities, otherwise the cityActor and building actors
-	// receive a second CreateCityMessage / CreateBuildingMessage and call
-	// startPeriodicOperation again — producing duplicate tickers that emit
-	// staggered credits, breaking the food loop's tick alignment.
+	// Create the test user AFTER the bulk restore only when it does not already
+	// exist. Recreating it would violate the unique email constraint now that
+	// development restarts preserve the database.
 	// TODO: remove test user registration once real registration is the only
 	// path.
-	userID, err := services.CreateUser(ctx, cluster, &services.CreateUserRequest{
-		Email:    "cityio@example.com",
-		Username: "cityio",
-		Password: "cityio",
-	})
-	if err != nil {
-		panic(err)
+	testUserExists := false
+	for _, user := range users {
+		if user.Email == "cityio@example.com" || user.Username == "cityio" {
+			testUserExists = true
+			break
+		}
 	}
-	slog.InfoContext(ctx, "registered test user", "user_id", userID)
+	if !testUserExists {
+		userID, err := services.CreateUser(ctx, cluster, &services.CreateUserRequest{
+			Email:    "cityio@example.com",
+			Username: "cityio",
+			Password: "cityio",
+		})
+		if err != nil {
+			panic(err)
+		}
+		slog.InfoContext(ctx, "registered test user", "user_id", userID)
+	}
 
 	slog.InfoContext(ctx, "initialization complete")
 }
 
-func reset(ctx context.Context, deps *Deps) error {
-	ctx = logger.With(ctx, "phase", "reset")
+func seedWorld(ctx context.Context, deps *Deps) error {
+	ctx = logger.With(ctx, "phase", "seed")
 	db := deps.DB
 
 	townPlans := deps.World.Towns()
@@ -220,6 +246,6 @@ func reset(ctx context.Context, deps *Deps) error {
 		}
 	}
 
-	slog.DebugContext(ctx, "reset complete")
+	slog.DebugContext(ctx, "world seed complete")
 	return nil
 }

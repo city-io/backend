@@ -55,6 +55,27 @@ func TestGenerateVariesBySeed(t *testing.T) {
 	}
 }
 
+func TestRestoreSettlementSkipsAssignedCapitalSite(t *testing.T) {
+	world, err := Generate(testConfig(42))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assigned := world.capitalSite[0]
+	world.RestoreSettlement(domain.City{
+		StartX: assigned.X,
+		StartY: assigned.Y,
+		Size:   world.config.CapitalSize,
+	})
+
+	got, err := world.ReserveCity(world.config.CapitalSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != world.capitalSite[1] {
+		t.Fatalf("reserved capital = %+v, want %+v", got, world.capitalSite[1])
+	}
+}
+
 func TestGeneratedSettlementsAreValid(t *testing.T) {
 	for seed := int64(0); seed < 25; seed++ {
 		world, err := Generate(testConfig(seed))

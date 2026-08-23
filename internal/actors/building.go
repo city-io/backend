@@ -32,6 +32,12 @@ type buildingActor struct {
 	pendingGold int64
 	pendingFood int64
 
+	// Production remainders preserve exact long-run hourly rates when a modifier
+	// such as 75% upgrade capacity does not divide evenly into a three-second
+	// tick.
+	goldProductionRemainder int64
+	foodProductionRemainder int64
+
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 
@@ -88,6 +94,7 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 		}
 
 		state.Impl.Create(ctx, state)
+		state.reportFoodProduction()
 		_, err := state.Cluster.Request("tile", utils.GetTileIndex(state.Building.X, state.Building.Y), messages.UpdateTileBuildingMessage{
 			BuildingID: &state.Building.BuildingID,
 		})
@@ -127,6 +134,7 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 		state.Impl.Destroy(ctx, state)
 		state.stopPeriodicOperation()
 		state.reportPopulation(0)
+		state.reportFoodProductionRate(0)
 		state.Cluster.Tell("city", state.Building.CityID, messages.BuildingDestroyedMessage{
 			BuildingID: state.Building.BuildingID,
 		})
@@ -139,6 +147,7 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 	case messages.PeriodicOperationMessage:
 		state.reaffirmTile()
 		state.checkConstructionComplete()
+		state.reportFoodProduction()
 		if state.Impl != nil {
 			state.Impl.Handle(ctx, state)
 		}
@@ -185,6 +194,7 @@ func (state *buildingActor) checkConstructionComplete() {
 	state.Building.ConstructionStart = domain.NullTime{}
 	state.Building.ConstructionEnd = domain.NullTime{}
 	state.Store.EnqueueBuilding(state.Building)
+	state.reportFoodProduction()
 	state.notifyStateChanged()
 	metrics.ConstructionCompletesTotal.WithLabelValues(bt, fmt.Sprintf("%d", state.Building.Level)).Inc()
 	slog.InfoContext(state.Ctx(), "construction complete",
@@ -246,6 +256,7 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 	state.Building.ConstructionEnd = domain.NullTime{Time: &end}
 
 	state.Store.EnqueueBuilding(state.Building)
+	state.reportFoodProduction()
 	state.notifyStateChanged()
 	state.scheduleConstructionComplete(ctx)
 	metrics.UpgradesStartedTotal.WithLabelValues(string(buildingType), fmt.Sprintf("%d", targetLevel)).Inc()
@@ -309,6 +320,54 @@ func (state *buildingActor) reportPopulation(population float64) {
 	}); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to report building population to city", "error", err)
 	}
+}
+
+// reportFoodProduction tells the city this building's stable hourly food
+// capacity. New level-zero construction reports zero, while an upgrade reports
+// its reduced current-level capacity. Periodic idempotent resends rebuild city
+// state after either actor is restored.
+func (state *buildingActor) reportFoodProduction() {
+	state.reportFoodProductionRate(state.currentProductionRate("food"))
+}
+
+func (state *buildingActor) reportFoodProductionRate(amountPerHour int64) {
+	if !state.produces("food") {
+		return
+	}
+	if err := state.Cluster.Tell("city", state.Building.CityID, messages.SetBuildingFoodProductionMessage{
+		BuildingID:    state.Building.BuildingID,
+		AmountPerHour: amountPerHour,
+	}); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to report building food production to city", "error", err)
+	}
+}
+
+func (state *buildingActor) produces(resource string) bool {
+	for _, production := range constants.GetBuildingProductionEntries(state.Building.BuildingType()) {
+		if production.Resource == resource {
+			return true
+		}
+	}
+	return false
+}
+
+func (state *buildingActor) currentProductionRate(resource string) int64 {
+	if state.Building.Level <= 0 {
+		return 0
+	}
+	rate := constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level, resource)
+	if state.constructionActive() {
+		rate = rate * constants.UpgradeProductionCapacityPercent / 100
+	}
+	return rate
+}
+
+func (state *buildingActor) productionForTick(resource string) int64 {
+	remainder := &state.goldProductionRemainder
+	if resource == "food" {
+		remainder = &state.foodProductionRemainder
+	}
+	return rateAmountForTick(state.currentProductionRate(resource), constants.BuildingTickInterval, remainder)
 }
 
 // scheduleConstructionComplete arms a one-shot timer that fires a

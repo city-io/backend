@@ -26,16 +26,19 @@ func NewDB(ctx context.Context, dsn string) Querier {
 		os.Exit(1)
 	}
 
-	if err := goose.RunContext(
-		ctx,
-		"down-to",
-		migrations,
-		"db/migrations",
-		"0",
-	); err != nil {
-		slog.ErrorContext(ctx, "failed to open goose reset migration", "error", err)
-		os.Exit(1)
-	}
+	// Temporarily disabled so development restarts preserve world and player
+	// progress. Re-enable this reset when a breaking schema change requires a
+	// clean database.
+	// if err := goose.RunContext(
+	// 	ctx,
+	// 	"down-to",
+	// 	migrations,
+	// 	"db/migrations",
+	// 	"0",
+	// ); err != nil {
+	// 	slog.ErrorContext(ctx, "failed to run goose reset migration", "error", err)
+	// 	os.Exit(1)
+	// }
 
 	if err := goose.RunContext(
 		ctx,

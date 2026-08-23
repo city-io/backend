@@ -8,9 +8,12 @@ import (
 
 // CreateArmyMessage spawns (or restores) an army actor. Restore skips the
 // persistence create so a boot-time restore doesn't re-write existing rows.
+// SuppressPublish lets a compound operation publish only after every involved
+// army has reached its final state.
 type CreateArmyMessage struct {
-	Army    domain.Army
-	Restore bool
+	Army            domain.Army
+	Restore         bool
+	SuppressPublish bool
 }
 
 type GetArmyMessage struct{}

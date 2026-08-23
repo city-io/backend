@@ -11,9 +11,8 @@ type BuildingProductionEntry struct {
 	Amounts  []int64
 }
 
-// All production values are per hour. Chosen so per-tick math
-// (amount * tickSeconds / SecondsPerHour) is exact integer division for the
-// current 3s tick: each value is a multiple of 1200 = 3600/3.
+// All production values are per hour. Building actors carry fractional
+// per-tick output so modifiers preserve these long-run rates exactly.
 var buildingProduction = map[domain.BuildingType][]BuildingProductionEntry{
 	domain.BuildingTypeCityCenter: {{"gold", []int64{3600, 7200, 10800, 14400, 18000, 21600, 25200, 28800, 32400, 36000}}},
 	domain.BuildingTypeTownCenter: {{"gold", []int64{3600, 7200, 10800, 14400, 18000, 21600, 25200, 28800, 32400, 36000}}},
@@ -56,13 +55,6 @@ func GetBuildingProduction(buildingType domain.BuildingType, level int, resource
 		}
 	}
 	return 0
-}
-
-// PerTickAmount converts a per-hour rate to the amount emitted in one tick of
-// tickSeconds duration. Exact integer division for rates that are multiples of
-// SecondsPerHour / tickSeconds.
-func PerTickAmount(perHour int64, tickSeconds int) int64 {
-	return perHour * int64(tickSeconds) / SecondsPerHour
 }
 
 func GetBuildingProductionEntries(buildingType domain.BuildingType) []BuildingProductionEntry {

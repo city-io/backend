@@ -76,3 +76,8 @@ type User struct {
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
+
+type WorldState struct {
+	ID   int16 `json:"id"`
+	Seed int64 `json:"seed"`
+}

@@ -29,8 +29,9 @@ type City struct {
 	// FoodProductionRate is the food this city's own farms produce per hour.
 	// FoodUpkeep is the food this city's population consumes per hour. NetFoodFlow
 	// = production - upkeep (positive = surplus exported to the user pool;
-	// negative = imported from it). Starving is true when the city could not
-	// cover its demand even after drawing from the pool.
+	// negative = imported from it). Starving is true when the city's stable
+	// local production rate is below its upkeep rate; pool imports do not make a
+	// structurally under-producing city grow.
 	FoodProductionRate int64 `json:"foodProductionRate"`
 	FoodUpkeep         int64 `json:"foodUpkeep"`
 	NetFoodFlow        int64 `json:"netFoodFlow"`

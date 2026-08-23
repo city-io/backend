@@ -31,10 +31,10 @@ type TroopStat struct {
 }
 
 var troopStats = map[domain.TroopType]TroopStat{
-	domain.TroopTypeSoldier:   {Gold: 50, TrainTime: 5, FoodUpkeep: 60, PopCost: 1, MovementDuration: 1100 * time.Millisecond, Attack: 10, Defense: 10, HP: 100},
-	domain.TroopTypeArcher:    {Gold: 75, TrainTime: 7, FoodUpkeep: 60, PopCost: 1, MovementDuration: 1100 * time.Millisecond, Attack: 15, Defense: 5, HP: 70},
-	domain.TroopTypeCavalry:   {Gold: 150, TrainTime: 10, FoodUpkeep: 180, PopCost: 1, MovementDuration: 550 * time.Millisecond, Attack: 20, Defense: 12, HP: 120},
-	domain.TroopTypeArtillery: {Gold: 300, TrainTime: 15, FoodUpkeep: 120, PopCost: 3, MovementDuration: 1650 * time.Millisecond, Attack: 40, Defense: 3, HP: 60},
+	domain.TroopTypeSoldier:   {Gold: 50, TrainTime: 5, FoodUpkeep: 60, PopCost: 1, MovementDuration: 1650 * time.Millisecond, Attack: 10, Defense: 10, HP: 100},
+	domain.TroopTypeArcher:    {Gold: 75, TrainTime: 7, FoodUpkeep: 60, PopCost: 1, MovementDuration: 1650 * time.Millisecond, Attack: 15, Defense: 5, HP: 70},
+	domain.TroopTypeCavalry:   {Gold: 150, TrainTime: 10, FoodUpkeep: 180, PopCost: 1, MovementDuration: 825 * time.Millisecond, Attack: 20, Defense: 12, HP: 120},
+	domain.TroopTypeArtillery: {Gold: 300, TrainTime: 15, FoodUpkeep: 120, PopCost: 3, MovementDuration: 2475 * time.Millisecond, Attack: 40, Defense: 3, HP: 60},
 }
 
 // GetTroopStat returns the full stat profile for a troop type.

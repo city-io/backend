@@ -39,6 +39,10 @@ const (
 	// decline — a city has to be locally self-sufficient to hold or grow.
 	StarvationDeclineRate = 0.005
 
+	// UpgradeProductionCapacityPercent is the share of a building's current
+	// completed-level production that remains online while it upgrades.
+	UpgradeProductionCapacityPercent int64 = 75
+
 	InitialPlayerCityPopulation = 250
 
 	InitialPlayerGold = 5000

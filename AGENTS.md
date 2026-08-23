@@ -88,7 +88,7 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
   snapshot every five seconds.
 - **`internal/battles`** — concurrency-safe registry of active battle snapshots. Battle actors
   update it; RPC projections read it for unary/list/stream entity bags. Battles are intentionally
-  ephemeral while the development world is rebuilt on every boot.
+  ephemeral and are not restored after a process restart.
 - **`internal/gen`** — generated Connect/protobuf code (from `buf`). Two sub-packages:
   - `internal/gen/cityio/entity/v1` (`entityv1`) — entity messages (`User`, `City`,
     `Building`, `Army`, `ArmyOrder`, `Battle`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`,
@@ -110,11 +110,12 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/metrics`** — Prometheus metric definitions + the RPC interceptor + a periodic
   world-snapshot gauge filler.
 - **`internal/worldgen`** — deterministic terrain and settlement generation. A cryptographic
-  seed is chosen on every boot; smooth elevation/moisture fields produce coherent terrain
-  regions, and footprint-aware placement reserves capital sites before generating neutral towns.
-  `World` also allocates terrain-valid sites for later registrations.
-- **`internal/setup`** — `Run()` persists the generated neutral-town plan, restores actors, and
-  registers the development test user on every boot (see gotcha below).
+  seed is chosen for an empty database and persisted in `world_state`; smooth elevation/moisture
+  fields reproduce the same coherent terrain regions on later boots. Footprint-aware placement
+  reserves capital sites before generating neutral towns. `World` also restores occupied
+  settlement footprints and allocates terrain-valid sites for later registrations.
+- **`internal/setup`** — `Run()` seeds neutral towns only when all gameplay tables are empty,
+  restores persisted actors, and registers the development test user only when it is missing.
 - **`scripts/troops.py`** — a dev-only helper that drives `ArmyService` over the Connect JSON
   API (no `grpcurl` needed). See "Client / frontend API reference → Local testing".
 
@@ -154,8 +155,9 @@ the "Client / frontend API reference" section below.
 
 - **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)` and has one of
   eight terrain types: grassland, plains, forest, hills, mountains, desert, marsh, or water.
-  Terrain is regenerated coherently from a new seed on every boot and revealed as raw tile
-  entities only after exploration; it affects settlement placement and army movement, but not production.
+  Terrain is reconstructed from the persisted world seed on every boot and revealed as raw tile
+  entities only after exploration; a new seed is created only for an empty database. Terrain
+  affects settlement placement and army movement, but not production.
   Buildings and armies live on tiles; armies stack (multiple armies + a building can share a
   tile).
 - **Cities:** a `size`×`size` block (capitals are `CitySize` = 5). `start` is the top-left
@@ -166,22 +168,27 @@ the "Client / frontend API reference" section below.
 - **Buildings:** typed structures inside a city. Types: `city_center`, `town_center`, `barracks`,
   `house`, `farm`, `mine`. Levels 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
   construction time; while under construction `level != target_level`. City/town centers can't be
-  demolished. Stat tables (cost, construction time, production, population) live in
-  `constants/buildings.go` and are exposed to clients via `ConfigService.GetGameConfig`.
+  demolished. New level-0 construction produces nothing; an existing building continues operating
+  at 75% of its current completed level's production while upgrading. Fractional per-tick output is
+  carried so the long-run rate remains exact. Stat tables (cost, construction time, production,
+  population) live in `constants/buildings.go` and are exposed to clients via
+  `ConfigService.GetGameConfig`.
 - **Resources & economy:** two resources, `gold` and `food`, pooled per **user** (not per city).
   Centers/mines produce gold; farms produce food. Each city consumes food upkeep =
   `(population − military_population) × FoodPerPopPerHour` (48/hr) **plus** the upkeep of any
   armies attributed to it. A city consumes its own food first, deposits surplus to the user pool,
-  and draws the shortfall from the pool; a locally-under-fed city is `starving` and its
-  population declines. All rates are per-hour.
+  and draws the shortfall from the pool. Starvation and population change compare stable hourly
+  production/upkeep rates rather than rounded per-tick food units, while the pool still transfers
+  whole units using carried remainders. A locally-under-producing city is consistently `starving`
+  and its population declines. All rates are per-hour.
 - **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
   position and optional references to its active `ArmyOrder` and `Battle`. Orders own their
   objective, remaining route, and ETA. Movement follows a lowest-time route choosing among
   all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
   250ms timing quantum with carried fractional progress, but state is streamed only when the army actually enters a tile. An
-  army moves at the speed of its slowest troop: cavalry takes 550ms per normal tile,
-  soldiers/archers take 1.1s, and artillery takes 1.65s. Marsh multiplies that time by two,
+  army moves at the speed of its slowest troop: cavalry takes 825ms per normal tile,
+  soldiers/archers take 1.65s, and artillery takes 2.475s. Marsh multiplies that time by two,
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
   same-owner armies on the same tile can be merged.
   - **Combat:** hostile armies sharing a tile enter a battle. Battles tick once per second and
@@ -207,10 +214,10 @@ the "Client / frontend API reference" section below.
 
     | Type      | Gold | Train/unit (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
     |-----------|------|----------------|----------|---------|-----|-----|-----|-----|
-    | soldier   | 50   | 5              | 1.10     | 60      | 1   | 10  | 10  | 100 |
-    | archer    | 75   | 7              | 1.10     | 60      | 1   | 15  | 5   | 70  |
-    | cavalry   | 150  | 10             | 0.55     | 180     | 1   | 20  | 12  | 120 |
-    | artillery | 300  | 15             | 1.65     | 120     | 3   | 40  | 3   | 60  |
+    | soldier   | 50   | 5              | 1.650    | 60      | 1   | 10  | 10  | 100 |
+    | archer    | 75   | 7              | 1.650    | 60      | 1   | 15  | 5   | 70  |
+    | cavalry   | 150  | 10             | 0.825    | 180     | 1   | 20  | 12  | 120 |
+    | artillery | 300  | 15             | 2.475    | 120     | 3   | 40  | 3   | 60  |
 
   - **Barracks training capacity** (troops per in-progress batch) = `5 × barracksLevel`. Extra
     orders persist and queue FIFO per barracks; more barracks = more concurrent training. A
@@ -500,7 +507,7 @@ psql -h localhost -p 5432 -U cityio -d cityio
 
 Migrations can be run manually (the app also runs them itself — see gotcha). Migrations live in
 `db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`,
-`00004_add_training_orders`, `00005_add_explored_tiles`):
+`00004_add_training_orders`, `00005_add_explored_tiles`, `00006_add_world_state`):
 
 ```bash
 GOOSE_DRIVER=postgres \
@@ -510,12 +517,12 @@ goose -dir db/migrations up
 
 ## Critical gotchas
 
-- **The world is destroyed and rebuilt on every boot.** `NewDB` runs goose `down-to 0` (drops
-  all tables) then `up`; startup then generates new terrain, reserves capital sites, seeds neutral
-  towns, and registers a hardcoded test user (`cityio@example.com`). Restarting the app —
-  including a **production deploy** — wipes state. This reset is deliberate for current
-  development. (A corollary: because migrations run `up` on boot, new migrations apply
-  automatically; a manual `goose up` is only useful if a running instance stays on old code.)
+- **World and player state survive restarts.** `NewDB` runs goose `up` without rolling migrations
+  down. The world seed is stored in `world_state`, neutral towns are seeded only when every
+  gameplay table is empty, and the hardcoded test user (`cityio@example.com`) is created only when
+  missing. The commented `down-to 0` block in `NewDB` can be re-enabled for an intentional clean
+  reset after a breaking change. New migrations still apply automatically on boot; a manual
+  `goose up` is only useful if a running instance stays on old code.
 - **The API is Connect RPC, served over h2c.** Handlers live in `internal/rpc`; auth is a JWT
   Connect interceptor. Live state is pushed to clients via the server-streaming `StreamState`
   RPC (backed by `internal/stream`), not websockets.

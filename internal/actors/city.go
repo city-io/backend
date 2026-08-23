@@ -26,6 +26,11 @@ type cityActor struct {
 	// is idempotent under resends and fully rebuilt from buildings on restore.
 	populationContributions map[string]float64
 
+	// foodProduction holds each building's current per-hour food capacity.
+	// Structural food state uses this stable rate; pendingFoodIncome remains the
+	// integer accounting channel for actual resource transfers.
+	foodProduction map[string]int64
+
 	// armyUpkeep holds each army's food upkeep (per hour) currently attributed
 	// to this city, keyed by army ID. The city's army food demand is their sum,
 	// so it is idempotent under resends. Armies re-attribute themselves to the
@@ -64,6 +69,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 	case *messages.CreateCityMessage:
 		state.City = msg.City
 		state.populationContributions = make(map[string]float64)
+		state.foodProduction = make(map[string]int64)
 		state.armyUpkeep = make(map[string]int64)
 
 		if !msg.Restore {
@@ -141,11 +147,14 @@ func (state *cityActor) Receive(ctx actor.Context) {
 
 	case messages.BuildingDestroyedMessage:
 		delete(state.populationContributions, msg.BuildingID)
+		delete(state.foodProduction, msg.BuildingID)
 		var cap float64
 		for _, p := range state.populationContributions {
 			cap += p
 		}
 		state.City.PopulationCap = cap
+		state.City.FoodProductionRate = state.foodProductionTotal()
+		state.City.NetFoodFlow = state.City.FoodProductionRate - state.City.FoodUpkeep
 		// Real state change — emit the deletion id and the updated city
 		// snapshot (with the lower cap) together.
 		if state.City.Owner != nil {
@@ -171,6 +180,23 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			cap += p
 		}
 		state.City.PopulationCap = cap
+		state.publish()
+
+	case messages.SetBuildingFoodProductionMessage:
+		if state.foodProduction == nil {
+			state.foodProduction = make(map[string]int64)
+		}
+		existing, exists := state.foodProduction[msg.BuildingID]
+		if existing == msg.AmountPerHour && (exists || msg.AmountPerHour == 0) {
+			return
+		}
+		if msg.AmountPerHour == 0 {
+			delete(state.foodProduction, msg.BuildingID)
+		} else {
+			state.foodProduction[msg.BuildingID] = msg.AmountPerHour
+		}
+		state.City.FoodProductionRate = state.foodProductionTotal()
+		state.City.NetFoodFlow = state.City.FoodProductionRate - state.City.FoodUpkeep
 		state.publish()
 
 	case messages.ReserveMilitaryPopulationMessage:
@@ -298,6 +324,14 @@ func (state *cityActor) armyUpkeepTotal() int64 {
 	return sum
 }
 
+func (state *cityActor) foodProductionTotal() int64 {
+	var sum int64
+	for _, production := range state.foodProduction {
+		sum += production
+	}
+	return sum
+}
+
 // spawnInitialBuilding kicks off a fully-built level-1 building inside the
 // city block. Used during city creation for its fully-built starter buildings.
 func (state *cityActor) spawnInitialBuilding(buildingType domain.BuildingType, x, y int) {
@@ -354,58 +388,68 @@ func (state *cityActor) tickFoodAndPopulation() {
 	}
 	upkeepPerHour := int64(math.Round(civilians*float64(constants.FoodPerPopPerHour))) + state.armyUpkeepTotal()
 
-	// Carry the sub-tick remainder so the actual per-tick demand averages
-	// exactly to upkeepPerHour over time. See demandRemainder doc.
-	scaled := upkeepPerHour*int64(tickSecs) + state.demandRemainder
-	demand := scaled / int64(constants.SecondsPerHour)
-	state.demandRemainder = scaled % int64(constants.SecondsPerHour)
-
-	productionPerHour := production * int64(constants.SecondsPerHour) / int64(tickSecs)
+	// Carry the sub-tick remainder so actual inventory transfers average to the
+	// precise hourly upkeep. The remainder does not determine biological state.
+	demand := rateAmountForTick(upkeepPerHour, tickSecs, &state.demandRemainder)
+	productionPerHour := state.foodProductionTotal()
 
 	state.City.FoodProductionRate = productionPerHour
 	state.City.FoodUpkeep = upkeepPerHour
 	state.City.NetFoodFlow = productionPerHour - upkeepPerHour
 
-	if production >= demand {
-		// Local surplus: deposit, no starvation, scale growth by surplus.
-		if surplus := production - demand; surplus > 0 {
-			if err := state.Cluster.Tell("user", *state.City.Owner, messages.DepositFoodMessage{Amount: surplus}); err != nil {
-				slog.ErrorContext(state.Ctx(), "failed to deposit surplus food to pool", "error", err)
-			} else {
-				metrics.FoodDepositedTotal.Add(float64(surplus))
+	// Settle whole food units independently from the stable rate comparison.
+	if surplus := production - demand; surplus > 0 {
+		if err := state.Cluster.Tell("user", *state.City.Owner, messages.DepositFoodMessage{Amount: surplus}); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to deposit surplus food to pool", "error", err)
+		} else {
+			metrics.FoodDepositedTotal.Add(float64(surplus))
+		}
+	} else if shortfall := demand - production; shortfall > 0 {
+		res, err := state.Cluster.Request("user", *state.City.Owner, messages.RequestFoodFromPoolMessage{Amount: shortfall})
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to request food from pool", "error", err)
+			metrics.FoodPoolGrantsTotal.WithLabelValues("empty").Inc()
+		} else if resp, ok := res.(messages.RequestFoodFromPoolResponse); ok {
+			metrics.FoodWithdrawnTotal.Add(float64(resp.Granted))
+			switch {
+			case resp.Granted >= shortfall:
+				metrics.FoodPoolGrantsTotal.WithLabelValues("full").Inc()
+			case resp.Granted > 0:
+				metrics.FoodPoolGrantsTotal.WithLabelValues("partial").Inc()
+			default:
+				metrics.FoodPoolGrantsTotal.WithLabelValues("empty").Inc()
 			}
 		}
-		state.City.Starving = false
-		var surplusRatio float64
-		if demand > 0 {
-			surplusRatio = float64(production-demand) / float64(demand)
-		}
-		state.growPopulation(false, 0, surplusRatio)
-		return
 	}
 
-	// Local deficit: still draw from the pool (so the user's food drains as the
-	// city imports), but the city is starving from its own perspective and its
-	// population declines regardless of whether the pool covered the shortfall.
-	shortfall := demand - production
-	res, err := state.Cluster.Request("user", *state.City.Owner, messages.RequestFoodFromPoolMessage{Amount: shortfall})
-	if err != nil {
-		slog.ErrorContext(state.Ctx(), "failed to request food from pool", "error", err)
-		metrics.FoodPoolGrantsTotal.WithLabelValues("empty").Inc()
-	} else if resp, ok := res.(messages.RequestFoodFromPoolResponse); ok {
-		metrics.FoodWithdrawnTotal.Add(float64(resp.Granted))
-		switch {
-		case resp.Granted >= shortfall:
-			metrics.FoodPoolGrantsTotal.WithLabelValues("full").Inc()
-		case resp.Granted > 0:
-			metrics.FoodPoolGrantsTotal.WithLabelValues("partial").Inc()
-		default:
-			metrics.FoodPoolGrantsTotal.WithLabelValues("empty").Inc()
+	balance := calculateCityFoodBalance(productionPerHour, upkeepPerHour)
+	state.City.Starving = balance.starving
+	state.growPopulation(balance.starving, balance.deficitRatio, balance.surplusRatio)
+}
+
+type cityFoodBalance struct {
+	starving     bool
+	deficitRatio float64
+	surplusRatio float64
+}
+
+func calculateCityFoodBalance(productionPerHour, upkeepPerHour int64) cityFoodBalance {
+	if productionPerHour < upkeepPerHour {
+		return cityFoodBalance{
+			starving:     true,
+			deficitRatio: float64(upkeepPerHour-productionPerHour) / float64(upkeepPerHour),
 		}
 	}
-	state.City.Starving = true
-	deficitRatio := float64(shortfall) / float64(demand)
-	state.growPopulation(true, deficitRatio, 0)
+	if upkeepPerHour > 0 {
+		return cityFoodBalance{surplusRatio: float64(productionPerHour-upkeepPerHour) / float64(upkeepPerHour)}
+	}
+	return cityFoodBalance{}
+}
+
+func rateAmountForTick(perHour int64, tickSeconds int, remainder *int64) int64 {
+	scaled := perHour*int64(tickSeconds) + *remainder
+	*remainder = scaled % int64(constants.SecondsPerHour)
+	return scaled / int64(constants.SecondsPerHour)
 }
 
 // growPopulation moves the population for one tick: logistic growth scaled by
