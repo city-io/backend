@@ -9,17 +9,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/database"
 	"cityio/internal/domain"
 	"cityio/internal/logger"
-	"cityio/internal/ports"
 	"cityio/internal/services"
 	"cityio/internal/worldgen"
 )
 
 type Deps struct {
 	DB      database.Querier
-	Cluster ports.ClusterProvider
+	Cluster contracts.ClusterProvider
 	World   *worldgen.World
 }
 

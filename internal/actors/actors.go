@@ -6,24 +6,24 @@ import (
 
 	"github.com/asynkron/protoactor-go/actor"
 
-	"cityio/internal/ports"
+	"cityio/internal/contracts"
 )
 
 type baseActor struct {
 	actor.Actor
 	ctx     context.Context
-	Cluster ports.ClusterProvider
-	Store   ports.Store
-	World   ports.WorldProvider
+	Cluster contracts.ClusterProvider
+	Store   contracts.Store
+	World   contracts.WorldProvider
 }
 
 // SetContext stores the base logging context for the actor. Attributes carried
 // on this context (such as the actor type) are emitted by every slog call the
 // actor makes.
-func (b *baseActor) SetContext(ctx context.Context)           { b.ctx = ctx }
-func (b *baseActor) SetCluster(cluster ports.ClusterProvider) { b.Cluster = cluster }
-func (b *baseActor) SetStore(store ports.Store)               { b.Store = store }
-func (b *baseActor) SetWorld(world ports.WorldProvider)       { b.World = world }
+func (b *baseActor) SetContext(ctx context.Context)               { b.ctx = ctx }
+func (b *baseActor) SetCluster(cluster contracts.ClusterProvider) { b.Cluster = cluster }
+func (b *baseActor) SetStore(store contracts.Store)               { b.Store = store }
+func (b *baseActor) SetWorld(world contracts.WorldProvider)       { b.World = world }
 
 // Ctx returns the actor's base logging context, falling back to a background
 // context when none has been set.
@@ -38,7 +38,7 @@ type BaseActorInterface interface {
 	ActorType() string
 	Receive(ctx actor.Context)
 	SetContext(ctx context.Context)
-	SetCluster(cluster ports.ClusterProvider)
-	SetStore(store ports.Store)
-	SetWorld(world ports.WorldProvider)
+	SetCluster(cluster contracts.ClusterProvider)
+	SetStore(store contracts.Store)
+	SetWorld(world contracts.WorldProvider)
 }

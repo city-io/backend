@@ -12,17 +12,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"cityio/internal/auth"
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/gen/cityio/service/v1/servicev1connect"
 	"cityio/internal/metrics"
-	"cityio/internal/ports"
 )
 
 // Server wires the Connect services to the actor cluster and persistence store.
 type Server struct {
-	cluster   ports.ClusterProvider
-	store     ports.Store
-	world     ports.WorldProvider
+	cluster   contracts.ClusterProvider
+	store     contracts.Store
+	world     contracts.WorldProvider
 	jwtSecret string
 
 	// shutdownCtx is cancelled when the process is shutting down. Long-lived
@@ -35,7 +35,7 @@ type Server struct {
 // NewServer constructs an RPC server backed by the given cluster and store.
 // shutdownCtx is cancelled by main on SIGINT/SIGTERM; streaming handlers
 // observe it and close their streams.
-func NewServer(shutdownCtx context.Context, cluster ports.ClusterProvider, store ports.Store, world ports.WorldProvider, jwtSecret string) *Server {
+func NewServer(shutdownCtx context.Context, cluster contracts.ClusterProvider, store contracts.Store, world contracts.WorldProvider, jwtSecret string) *Server {
 	return &Server{cluster: cluster, store: store, world: world, jwtSecret: jwtSecret, shutdownCtx: shutdownCtx}
 }
 

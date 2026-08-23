@@ -1,4 +1,4 @@
-package ports
+package contracts
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"cityio/internal/domain"
 )
 
-// Store is the persistence port. Reads, creates and deletes hit the database
+// Store is the persistence contract. Reads, creates and deletes hit the database
 // immediately; updates are coalesced per entity (latest-write-wins) and flushed
 // in batches by a background writer, so the hot in-memory state is backed up
 // without a write per tick.

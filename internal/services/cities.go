@@ -7,13 +7,13 @@ import (
 	"github.com/google/uuid"
 
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/logger"
 	"cityio/internal/messages"
-	"cityio/internal/ports"
 )
 
-func RestoreCity(ctx context.Context, cluster ports.ClusterProvider, city *domain.City) error {
+func RestoreCity(ctx context.Context, cluster contracts.ClusterProvider, city *domain.City) error {
 	if _, err := cluster.Request("city", city.CityID, &messages.CreateCityMessage{City: *city, Restore: true}); err != nil {
 		slog.ErrorContext(ctx, "failed to restore city actor", "city_id", city.CityID, "error", err)
 		return err
@@ -22,7 +22,7 @@ func RestoreCity(ctx context.Context, cluster ports.ClusterProvider, city *domai
 	return nil
 }
 
-func CreateCity(ctx context.Context, cluster ports.ClusterProvider, store ports.Store, world ports.WorldProvider, city *CityInput) (*domain.City, error) {
+func CreateCity(ctx context.Context, cluster contracts.ClusterProvider, store contracts.Store, world contracts.WorldProvider, city *CityInput) (*domain.City, error) {
 	cityID := uuid.New().String()
 	ctx = logger.With(ctx, "city_id", cityID)
 	slog.InfoContext(ctx, "creating new city actor", "name", city.Name)

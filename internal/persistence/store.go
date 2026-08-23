@@ -28,7 +28,7 @@ const batchSize = 5000
 // ErrNotFound is returned by lookups when no matching row exists.
 var ErrNotFound = errors.New("not found")
 
-// Store implements ports.Store over a sqlc Querier backed by a pgx pool.
+// Store implements contracts.Store over a sqlc Querier backed by a pgx pool.
 type Store struct {
 	db database.Querier
 

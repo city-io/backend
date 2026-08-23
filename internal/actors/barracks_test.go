@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/ports"
 )
 
 type trainingTestStore struct {
-	ports.Store
+	contracts.Store
 	deleteCalls int
 }
 
@@ -22,7 +22,7 @@ func (s *trainingTestStore) DeleteTrainingOrder(_ context.Context, _ string) err
 }
 
 type trainingTestCluster struct {
-	ports.ClusterProvider
+	contracts.ClusterProvider
 	spawnCalls int
 }
 

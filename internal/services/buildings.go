@@ -6,13 +6,13 @@ import (
 
 	"github.com/google/uuid"
 
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/logger"
 	"cityio/internal/messages"
-	"cityio/internal/ports"
 )
 
-func RestoreBuilding(ctx context.Context, cluster ports.ClusterProvider, building *domain.Building) error {
+func RestoreBuilding(ctx context.Context, cluster contracts.ClusterProvider, building *domain.Building) error {
 	if _, err := cluster.Request("building", building.BuildingID, &messages.CreateBuildingMessage{Building: *building, Restore: true}); err != nil {
 		slog.ErrorContext(ctx, "failed to restore building actor", "building_id", building.BuildingID, "error", err)
 		return err
@@ -21,7 +21,7 @@ func RestoreBuilding(ctx context.Context, cluster ports.ClusterProvider, buildin
 	return nil
 }
 
-func CreateBuilding(ctx context.Context, cluster ports.ClusterProvider, building *BuildingInput) (*domain.Building, error) {
+func CreateBuilding(ctx context.Context, cluster contracts.ClusterProvider, building *BuildingInput) (*domain.Building, error) {
 	buildingID := uuid.New().String()
 	ctx = logger.With(ctx, "building_id", buildingID)
 	slog.InfoContext(ctx, "creating new building actor", "type", building.Type)

@@ -14,8 +14,8 @@ import (
 
 	"cityio/internal/actors"
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/logger"
-	"cityio/internal/ports"
 )
 
 type ClusterProvider struct {
@@ -23,7 +23,7 @@ type ClusterProvider struct {
 	cluster *cluster.Cluster
 }
 
-func NewRuntime(ctx context.Context, store ports.Store, world ports.WorldProvider, environment string) *ClusterProvider {
+func NewRuntime(ctx context.Context, store contracts.Store, world contracts.WorldProvider, environment string) *ClusterProvider {
 	system := actor.NewActorSystem()
 
 	cp := &ClusterProvider{

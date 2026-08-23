@@ -25,12 +25,12 @@ moved and merged, but not fought.
 ## Architecture at a glance
 
 ```
-Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvider)  ──▶  actors  ──┐
+Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterProvider)  ──▶  actors  ──┐
         │                                                                │             │
    stream (pub/sub) ◀───────────────────────── actors publish ──────────┘   per-entity in-memory
         │                                                                    state + tickers
    StreamState RPC ──▶ client                                                     │
-                                                          persistence.Store (ports.Store)  ──▶  Postgres
+                                                          persistence.Store (contracts.Store)  ──▶  Postgres
 ```
 
 - **`cmd/main.go`** — composition root. Loads config, sets up logging, connects the DB,
@@ -51,9 +51,9 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
   - `armyActor` (`army.go`) owns one army: persistence, an every-`TroopMovementDuration` movement
     ticker, tile presence, nearest-owned-settlement food-upkeep attribution, weighted
     8-directional terrain pathfinding, and merging.
-  - Actors persist through the injected `ports.Store` (`state.Store`): reads/creates/deletes
+  - Actors persist through the injected `contracts.Store` (`state.Store`): reads/creates/deletes
     hit the DB immediately; `Enqueue*` coalesces updates for the background writer.
-- **`internal/persistence`** — `Store` (implements `ports.Store`), the single sink for
+- **`internal/persistence`** — `Store` (implements `contracts.Store`), the single sink for
   persistence. Reads, creates and deletes go straight to the `database.Querier` (the pgx pool
   is concurrency-safe). `Enqueue*` buffers updates per entity (`user`/`city`/`building`/`army`)
   in mutex-guarded maps (latest-write-wins); a background goroutine started by `Start` flushes
@@ -65,11 +65,11 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
   `BuildingInput`, `ArmyInput`). Files: `users.go`, `cities.go`, `buildings.go`, `armies.go`.
 - **`internal/messages`** — the actor message types (the protocol). Plain structs, grouped by
   domain (`user.go`, `city.go`, `buildings.go`, `tile.go`, `army.go`, `general.go`).
-- **`internal/cluster`** — implements `ports.ClusterProvider`. Registers the actor "kinds"
-  (`user`, `city`, `tile`, `building`, `army`), injects the `ports.Store` and logging context
+- **`internal/cluster`** — implements `contracts.ClusterProvider`. Registers the actor "kinds"
+  (`user`, `city`, `tile`, `building`, `army`), injects the `contracts.Store` and logging context
   onto each actor. Uses the in-memory test cluster provider in non-prod and consul in prod.
-- **`internal/ports`** — interfaces that decouple layers (`ClusterProvider`, `Store`), so
-  `services`/`actors`/`rpc` depend on an interface rather than the concrete package.
+- **`internal/contracts`** — shared dependency interfaces (`ClusterProvider`, `Store`,
+  `WorldProvider`) that keep `services`/`actors`/`rpc` independent of concrete infrastructure.
 - **`internal/rpc`** — Connect RPC handlers (one file per service: `user.go`, `city.go`,
   `building.go`, `army.go`, `map.go`, `config.go`, plus `rpc.go` for wiring) over the generated
   code in `internal/gen`. `NewServer(shutdownCtx, cluster, store, jwtSecret)` builds the handler;
@@ -372,7 +372,7 @@ curl -s http://localhost:8080/cityio.service.v1.UserService/Login \
 - **Fire-and-forget:** `cluster.Tell(kind, identity, msg)` or `ctx.Send(...)`. Used for state
   nudges (resource production, population cap changes, army food-upkeep set/remove, tile
   add/remove army). Errors are only logged, not propagated.
-- **Persistence:** actors call the injected `ports.Store` directly — `Create*`/`Delete*`/reads
+- **Persistence:** actors call the injected `contracts.Store` directly — `Create*`/`Delete*`/reads
   hit Postgres immediately; `Enqueue*` buffers updates that the store's background writer
   batch-flushes.
 - **Timers:** most actors start a `time.Ticker` goroutine that sends themselves a
@@ -470,8 +470,8 @@ goose -dir db/migrations up
   `state.Ctx()` as the context. Enrich context with `logger.With(ctx, "key", val)` rather than
   formatting values into the message string. Don't introduce a new logger or `fmt.Printf`.
 - **Layering:** keep `domain` framework-free. Actors talk to other actors through
-  `ports.ClusterProvider`, never by importing `cluster` directly, and persist through
-  `ports.Store`. Services orchestrate; they don't hold game logic that belongs in an actor.
+  `contracts.ClusterProvider`, never by importing `cluster` directly, and persist through
+  `contracts.Store`. Services orchestrate; they don't hold game logic that belongs in an actor.
 - **Messages are the contract.** Add a new struct in `internal/messages` and handle it in the
   relevant actor's `Receive` (or a building impl's `Handle`) rather than adding ad-hoc methods.
 - **New building types:** add the enum to `domain/building.go` + `common.proto`
@@ -487,7 +487,7 @@ goose -dir db/migrations up
   `internal/worldgen`.
 - **New actor kind:** register it in `internal/cluster/cluster.go`'s `kinds` list (via the
   `spawn` closure so it gets `Store` + logging context injected), add a `New<Kind>Actor`
-  constructor implementing `BaseActorInterface`, and wire persistence into `ports.Store` +
+  constructor implementing `BaseActorInterface`, and wire persistence into `contracts.Store` +
   `internal/persistence` if it has its own table.
 - **New streamed entity:** extend `stream.StateUpdate` (+ `recordPublish`), then handle the new
   field in BOTH the `StreamState` initial snapshot and the update loop in `internal/rpc/user.go`,
