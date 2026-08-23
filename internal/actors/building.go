@@ -114,12 +114,23 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 		})
 
 	case messages.DeleteBuildingMessage:
+		if barracks, ok := state.Impl.(*barracksImpl); ok {
+			if !barracks.loaded && !barracks.loadQueue(ctx, state) {
+				ctx.Respond(&messages.InternalError{})
+				return
+			}
+			if len(barracks.queue) > 0 {
+				ctx.Respond(&messages.TrainingInProgressError{BarracksID: state.Building.BuildingID})
+				return
+			}
+		}
 		state.Impl.Destroy(ctx, state)
 		state.stopPeriodicOperation()
 		state.reportPopulation(0)
 		state.Cluster.Tell("city", state.Building.CityID, messages.BuildingDestroyedMessage{
 			BuildingID: state.Building.BuildingID,
 		})
+		ctx.Respond(messages.Ack{})
 		state.destroy(ctx)
 
 	case messages.ReconcileTilesMessage:
@@ -190,6 +201,14 @@ func (state *buildingActor) constructionActive() bool {
 func (state *buildingActor) upgrade(ctx actor.Context) error {
 	if state.constructionActive() {
 		return &messages.ConstructionInProgressError{BuildingID: state.Building.BuildingID}
+	}
+	if barracks, ok := state.Impl.(*barracksImpl); ok {
+		if !barracks.loaded && !barracks.loadQueue(ctx, state) {
+			return &messages.InternalError{}
+		}
+		if len(barracks.queue) > 0 {
+			return &messages.TrainingInProgressError{BarracksID: state.Building.BuildingID}
+		}
 	}
 	buildingType := state.Building.BuildingType()
 	if state.Building.Level >= constants.MAX_BUILDING_LEVEL {

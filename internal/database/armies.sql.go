@@ -132,6 +132,7 @@ VALUES (
     $7,
     $8
 )
+ON CONFLICT (army_id) DO NOTHING
 `
 
 type CreateArmyParams struct {

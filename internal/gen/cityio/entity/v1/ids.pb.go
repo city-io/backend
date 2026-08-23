@@ -197,6 +197,50 @@ func (x *ArmyId) GetValue() string {
 	return ""
 }
 
+type TrainingOrderId struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrainingOrderId) Reset() {
+	*x = TrainingOrderId{}
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrainingOrderId) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrainingOrderId) ProtoMessage() {}
+
+func (x *TrainingOrderId) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrainingOrderId.ProtoReflect.Descriptor instead.
+func (*TrainingOrderId) Descriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TrainingOrderId) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 type TileId struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	X             int32                  `protobuf:"varint,1,opt,name=x,proto3" json:"x,omitempty"`
@@ -207,7 +251,7 @@ type TileId struct {
 
 func (x *TileId) Reset() {
 	*x = TileId{}
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[4]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -219,7 +263,7 @@ func (x *TileId) String() string {
 func (*TileId) ProtoMessage() {}
 
 func (x *TileId) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_ids_proto_msgTypes[4]
+	mi := &file_cityio_entity_v1_ids_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +276,7 @@ func (x *TileId) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TileId.ProtoReflect.Descriptor instead.
 func (*TileId) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{4}
+	return file_cityio_entity_v1_ids_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TileId) GetX() int32 {
@@ -262,6 +306,8 @@ const file_cityio_entity_v1_ids_proto_rawDesc = "" +
 	"BuildingId\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\"\x1e\n" +
 	"\x06ArmyId\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value\"'\n" +
+	"\x0fTrainingOrderId\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\tR\x05value\"$\n" +
 	"\x06TileId\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
@@ -280,13 +326,14 @@ func file_cityio_entity_v1_ids_proto_rawDescGZIP() []byte {
 	return file_cityio_entity_v1_ids_proto_rawDescData
 }
 
-var file_cityio_entity_v1_ids_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_cityio_entity_v1_ids_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_cityio_entity_v1_ids_proto_goTypes = []any{
-	(*UserId)(nil),     // 0: cityio.entity.v1.UserId
-	(*CityId)(nil),     // 1: cityio.entity.v1.CityId
-	(*BuildingId)(nil), // 2: cityio.entity.v1.BuildingId
-	(*ArmyId)(nil),     // 3: cityio.entity.v1.ArmyId
-	(*TileId)(nil),     // 4: cityio.entity.v1.TileId
+	(*UserId)(nil),          // 0: cityio.entity.v1.UserId
+	(*CityId)(nil),          // 1: cityio.entity.v1.CityId
+	(*BuildingId)(nil),      // 2: cityio.entity.v1.BuildingId
+	(*ArmyId)(nil),          // 3: cityio.entity.v1.ArmyId
+	(*TrainingOrderId)(nil), // 4: cityio.entity.v1.TrainingOrderId
+	(*TileId)(nil),          // 5: cityio.entity.v1.TileId
 }
 var file_cityio_entity_v1_ids_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -307,7 +354,7 @@ func file_cityio_entity_v1_ids_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_ids_proto_rawDesc), len(file_cityio_entity_v1_ids_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

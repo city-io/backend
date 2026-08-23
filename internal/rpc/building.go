@@ -69,11 +69,11 @@ func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
 
-	owned, err := h.srv.ownedCities(ctx)
+	vision, err := h.srv.ownedVision(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !domain.PointVisible(owned, resp.Building.X, resp.Building.Y, constants.VisionRadius) {
+	if !vision.PointVisible(resp.Building.X, resp.Building.Y, constants.VisionRadius) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
 
@@ -97,6 +97,8 @@ func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
 	case *messages.ConstructionInProgressError:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
+	case *messages.TrainingInProgressError:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
 	case *messages.MaxLevelReachedError:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
 	case error:
@@ -116,10 +118,20 @@ func (h *buildingHandler) DeleteBuilding(ctx context.Context, req *connect.Reque
 	case domain.BuildingTypeCityCenter, domain.BuildingTypeTownCenter:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("city center and town center cannot be demolished"))
 	}
-	if err := h.srv.cluster.Tell("building", bid, messages.DeleteBuildingMessage{BuildingID: bid}); err != nil {
+	res, err := h.srv.cluster.Request("building", bid, messages.DeleteBuildingMessage{BuildingID: bid})
+	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&servicev1.DeleteBuildingResponse{}), nil
+	switch response := res.(type) {
+	case messages.Ack:
+		return connect.NewResponse(&servicev1.DeleteBuildingResponse{}), nil
+	case *messages.TrainingInProgressError:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, response)
+	case error:
+		return nil, connect.NewError(connect.CodeInternal, response)
+	default:
+		return nil, connect.NewError(connect.CodeInternal, errors.New("unexpected delete response"))
+	}
 }
 
 func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Request[servicev1.ListBuildingsRequest]) (*connect.Response[servicev1.ListBuildingsResponse], error) {
@@ -128,11 +140,11 @@ func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Reques
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	owned, err := h.srv.ownedCities(ctx)
+	vision, err := h.srv.ownedVision(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
+	buildingList = vision.FilterBuildings(buildingList, constants.VisionRadius)
 
 	buildings := make([]*entityv1.Building, 0, len(buildingList))
 	for _, b := range buildingList {

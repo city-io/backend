@@ -8,7 +8,6 @@ import (
 
 	"cityio/internal/auth"
 	"cityio/internal/constants"
-	"cityio/internal/domain"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -20,11 +19,6 @@ type mapHandler struct {
 }
 
 func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.GetMapRequest]) (*connect.Response[servicev1.GetMapResponse], error) {
-	owned, err := h.srv.ownedCities(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
 	cityList, err := h.srv.store.GetAllCities(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -33,14 +27,18 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	armyList, err := h.srv.store.GetAllArmies(ctx)
+	armyList, err := h.srv.liveArmies(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	vision, err := h.srv.ownedVisionWithArmies(ctx, armyList)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	cityList = domain.FilterCities(owned, cityList, constants.VisionRadius)
-	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
-	armyList = domain.FilterArmies(owned, armyList, constants.VisionRadius)
+	cityList = vision.FilterCities(cityList, constants.VisionRadius)
+	buildingList = vision.FilterBuildings(buildingList, constants.VisionRadius)
+	armyList = vision.FilterArmies(armyList, constants.VisionRadius)
 
 	bag := mapping.EntitiesToBag(nil, cityList, buildingList, armyList)
 	tileIDs, tiles := mapping.MapTilesToProto(h.srv.world.Terrain(), cityList, buildingList, armyList)
@@ -64,11 +62,11 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 	x := int(req.Msg.GetTileId().GetX())
 	y := int(req.Msg.GetTileId().GetY())
 
-	owned, err := h.srv.ownedCities(ctx)
+	vision, err := h.srv.ownedVision(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !domain.PointVisible(owned, x, y, constants.VisionRadius) {
+	if !vision.PointVisible(x, y, constants.VisionRadius) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 	terrain, ok := h.srv.world.TerrainAt(x, y)

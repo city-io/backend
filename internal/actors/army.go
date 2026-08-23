@@ -22,7 +22,10 @@ type armyActor struct {
 
 	// movesSinceBackup counts tile steps since the last DB enqueue so movement
 	// is only persisted every TroopMovementBackupFrequency tiles.
-	movesSinceBackup int
+	movesSinceBackup    int
+	path                []domain.Coordinates
+	waitTicks           int
+	ticksSinceReconcile int
 }
 
 func NewArmyActor() BaseActorInterface {
@@ -37,6 +40,10 @@ func (state *armyActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 
 	case *messages.CreateArmyMessage:
+		if state.Army.ArmyID == msg.Army.ArmyID {
+			ctx.Respond(messages.Ack{})
+			return
+		}
 		state.Army = msg.Army
 		if state.Army.Troops == nil {
 			state.Army.Troops = make(map[domain.TroopType]int64)
@@ -44,10 +51,14 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		if !msg.Restore {
 			if err := state.Store.CreateArmy(state.Ctx(), state.Army); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist army create", "army_id", state.Army.ArmyID, "error", err)
+				ctx.Respond(&messages.InternalError{})
+				ctx.Stop(ctx.Self())
+				return
 			}
 		}
 		state.addTile(state.Army.X, state.Army.Y)
 		state.updateUpkeepCity()
+		state.restorePath()
 		state.startPeriodicOperation(ctx)
 		if !msg.Restore {
 			state.publish()
@@ -59,8 +70,19 @@ func (state *armyActor) Receive(ctx actor.Context) {
 
 	case messages.MoveArmyMessage:
 		x, y := clampCoord(msg.X), clampCoord(msg.Y)
+		path, ok := domain.FindLandPath(state.World.Terrain(), domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, domain.Coordinates{X: x, Y: y})
+		if !ok {
+			ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
+			return
+		}
 		state.Army.DestX = &x
 		state.Army.DestY = &y
+		state.path = path
+		state.waitTicks = state.nextWaitTicks()
+		if len(path) == 0 {
+			state.Army.DestX = nil
+			state.Army.DestY = nil
+		}
 		state.Store.EnqueueArmy(state.Army)
 		state.publish()
 		ctx.Respond(messages.Ack{})
@@ -95,22 +117,22 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 		ctx.Respond(&messages.InvalidResponseTypeError{})
 		return
 	}
+	elapsedTicks := state.elapsedStepTicks()
 	for t, c := range resp.Troops {
 		state.Army.Troops[t] += c
 	}
+	state.waitTicks = max(state.currentStepTicks()-elapsedTicks-1, 0)
 	state.Store.EnqueueArmy(state.Army)
 	state.updateUpkeepCity()
 	state.publish()
 	ctx.Respond(messages.Ack{})
 }
 
-// step advances the army one tile toward its destination each movement tick,
-// choosing among all 8 neighbours by the sign of each axis delta (Chebyshev
-// king-move). Idle when no destination is set.
+// step advances an army along its terrain-weighted route.
 func (state *armyActor) step() {
-	// Idempotent tile reaffirm repairs any drift in the derived occupancy index.
-	state.addTile(state.Army.X, state.Army.Y)
+	state.ticksSinceReconcile++
 	if state.Army.DestX == nil || state.Army.DestY == nil {
+		state.reconcileTileIfDue()
 		return
 	}
 	destX, destY := *state.Army.DestX, *state.Army.DestY
@@ -121,12 +143,24 @@ func (state *armyActor) step() {
 		state.publish()
 		return
 	}
+	if len(state.path) == 0 && !state.restorePath() {
+		state.reconcileTileIfDue()
+		return
+	}
+	if state.waitTicks > 0 {
+		state.waitTicks--
+		state.reconcileTileIfDue()
+		return
+	}
 
 	oldX, oldY := state.Army.X, state.Army.Y
-	state.Army.X += sign(destX - oldX)
-	state.Army.Y += sign(destY - oldY)
+	next := state.path[0]
+	state.path = state.path[1:]
+	state.Army.X = next.X
+	state.Army.Y = next.Y
 	state.removeTile(oldX, oldY)
 	state.addTile(state.Army.X, state.Army.Y)
+	state.ticksSinceReconcile = 0
 	state.updateUpkeepCity()
 
 	arrived := state.Army.X == destX && state.Army.Y == destY
@@ -134,12 +168,77 @@ func (state *armyActor) step() {
 		state.Army.DestX = nil
 		state.Army.DestY = nil
 	}
+	state.waitTicks = state.nextWaitTicks()
 	state.movesSinceBackup++
 	if arrived || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
 		state.Store.EnqueueArmy(state.Army)
 		state.movesSinceBackup = 0
 	}
 	state.publish()
+}
+
+func (state *armyActor) restorePath() bool {
+	if state.Army.DestX == nil || state.Army.DestY == nil {
+		return true
+	}
+	destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
+	path, ok := domain.FindLandPath(state.World.Terrain(), domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination)
+	if !ok {
+		slog.WarnContext(state.Ctx(), "clearing unreachable army destination", "army_id", state.Army.ArmyID, "x", destination.X, "y", destination.Y)
+		state.Army.DestX = nil
+		state.Army.DestY = nil
+		state.path = nil
+		state.waitTicks = 0
+		state.Store.EnqueueArmy(state.Army)
+		return false
+	}
+	state.path = path
+	state.waitTicks = state.nextWaitTicks()
+	return true
+}
+
+func (state *armyActor) nextWaitTicks() int {
+	return max(state.currentStepTicks()-1, 0)
+}
+
+func (state *armyActor) currentStepTicks() int {
+	if len(state.path) == 0 {
+		return 0
+	}
+	terrain, ok := state.World.TerrainAt(state.path[0].X, state.path[0].Y)
+	if !ok {
+		return 0
+	}
+	return state.baseMovementTicks() * domain.TerrainMovementCost(terrain)
+}
+
+func (state *armyActor) baseMovementTicks() int {
+	ticks := 0
+	for troopType, count := range state.Army.Troops {
+		if count > 0 {
+			ticks = max(ticks, constants.GetTroopMovementTicks(troopType))
+		}
+	}
+	if ticks == 0 {
+		return constants.GetTroopMovementTicks(domain.TroopTypeSoldier)
+	}
+	return ticks
+}
+
+func (state *armyActor) elapsedStepTicks() int {
+	total := state.currentStepTicks()
+	if total == 0 {
+		return 0
+	}
+	return max(total-state.waitTicks-1, 0)
+}
+
+func (state *armyActor) reconcileTileIfDue() {
+	if state.ticksSinceReconcile < constants.TroopTileReconcileFrequency {
+		return
+	}
+	state.addTile(state.Army.X, state.Army.Y)
+	state.ticksSinceReconcile = 0
 }
 
 // upkeepSum is the army's total food upkeep per hour (sum over troop counts).
@@ -227,7 +326,7 @@ func (state *armyActor) publishDeleted() {
 }
 
 func (state *armyActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(constants.TroopMovementDuration * time.Second)
+	state.ticker = time.NewTicker(constants.TroopMovementTickInterval)
 	state.stopTickerCh = make(chan struct{})
 
 	pid := ctx.Self()
@@ -250,19 +349,6 @@ func (state *armyActor) stopPeriodicOperation() {
 	case <-state.stopTickerCh:
 	default:
 		close(state.stopTickerCh)
-	}
-}
-
-// sign returns -1, 0 or +1 matching the sign of v, used to take one 8-direction
-// king-move step per axis toward a destination.
-func sign(v int) int {
-	switch {
-	case v > 0:
-		return 1
-	case v < 0:
-		return -1
-	default:
-		return 0
 	}
 }
 

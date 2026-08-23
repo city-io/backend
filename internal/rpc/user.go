@@ -3,12 +3,15 @@ package rpc
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"connectrpc.com/connect"
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/auth"
+	"cityio/internal/constants"
+	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
@@ -166,6 +169,48 @@ func stateUpdateToResponse(update stream.StateUpdate) *servicev1.StreamStateResp
 	return response
 }
 
+func (h *userHandler) armyVisionBag(ctx context.Context, userID string, moved domain.Army) (*entityv1.EntityBag, error) {
+	cities, err := h.srv.store.GetAllCities(ctx)
+	if err != nil {
+		return nil, err
+	}
+	buildings, err := h.srv.store.GetAllBuildings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	armies, err := h.srv.liveArmies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	found := false
+	for i := range armies {
+		if armies[i].ArmyID == moved.ArmyID {
+			armies[i] = moved
+			found = true
+			break
+		}
+	}
+	if !found {
+		armies = append(armies, moved)
+	}
+
+	vision := domain.Vision{Armies: []domain.Army{moved}}
+	cities = vision.FilterCities(cities, constants.VisionRadius)
+	buildings = vision.FilterBuildings(buildings, constants.VisionRadius)
+	armies = vision.FilterArmies(armies, constants.VisionRadius)
+	bag := mapping.EntitiesToBag(nil, cities, buildings, armies)
+	bag.Tiles = mapping.MapTilesAroundPointToProto(
+		h.srv.world.Terrain(), moved.X, moved.Y, constants.VisionRadius,
+		cities, buildings, armies,
+	)
+	for _, city := range bag.Cities {
+		if city.GetOwner() == nil || city.GetOwner().GetValue() != userID {
+			mapping.HidePrivateCityFields(city)
+		}
+	}
+	return bag, nil
+}
+
 func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[servicev1.StreamStateRequest], out *connect.ServerStream[servicev1.StreamStateResponse]) error {
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {
@@ -233,7 +278,16 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			if !ok {
 				return nil
 			}
-			if err := out.Send(stateUpdateToResponse(update)); err != nil {
+			response := stateUpdateToResponse(update)
+			if update.Army != nil {
+				bag, err := h.armyVisionBag(ctx, claims.UserID, *update.Army)
+				if err != nil {
+					slog.ErrorContext(ctx, "failed to build army vision update", "army_id", update.Army.ArmyID, "error", err)
+				} else {
+					response.Entities = bag
+				}
+			}
+			if err := out.Send(response); err != nil {
 				return err
 			}
 		}

@@ -28,7 +28,7 @@ const batchSize = 5000
 // ErrNotFound is returned by lookups when no matching row exists.
 var ErrNotFound = errors.New("not found")
 
-// Store implements ports.Store over a sqlc Querier backed by a pgx pool.
+// Store implements contracts.Store over a sqlc Querier backed by a pgx pool.
 type Store struct {
 	db database.Querier
 
@@ -141,6 +141,18 @@ func (s *Store) GetAllArmies(ctx context.Context) ([]domain.Army, error) {
 	return armies, nil
 }
 
+func (s *Store) GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]domain.TrainingOrder, error) {
+	rows, err := s.db.GetTrainingOrdersByBarracks(ctx, barracksID)
+	if err != nil {
+		return nil, err
+	}
+	orders := make([]domain.TrainingOrder, 0, len(rows))
+	for _, order := range rows {
+		orders = append(orders, *order.ToModel())
+	}
+	return orders, nil
+}
+
 func (s *Store) GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error) {
 	rows, err := s.db.GetCitiesByOwner(ctx, &owner)
 	if err != nil {
@@ -218,6 +230,29 @@ func (s *Store) CreateArmy(ctx context.Context, army domain.Army) error {
 	})
 }
 
+func (s *Store) CreateTrainingOrder(ctx context.Context, order domain.TrainingOrder) error {
+	return s.db.CreateTrainingOrder(ctx, database.CreateTrainingOrderParams{
+		TrainingOrderID: order.TrainingOrderID,
+		ArmyID:          order.ArmyID,
+		BarracksID:      order.BarracksID,
+		TroopType:       string(order.TroopType),
+		Count:           order.Count,
+		PopulationCost:  order.PopulationCost,
+		GoldCost:        order.GoldCost,
+		StartedAt:       database.ToPGTimestamp(order.StartedAt.Time),
+		CompletesAt:     database.ToPGTimestamp(order.CompletesAt.Time),
+		CreatedAt:       database.ToPGTimestamp(&order.CreatedAt),
+	})
+}
+
+func (s *Store) StartTrainingOrder(ctx context.Context, orderID string, startedAt, completesAt time.Time) error {
+	return s.db.StartTrainingOrder(ctx, database.StartTrainingOrderParams{
+		TrainingOrderID: orderID,
+		StartedAt:       database.ToPGTimestamp(&startedAt),
+		CompletesAt:     database.ToPGTimestamp(&completesAt),
+	})
+}
+
 func (s *Store) DeleteUser(ctx context.Context, userID string) error {
 	s.mu.Lock()
 	delete(s.userBuffer, userID)
@@ -244,6 +279,10 @@ func (s *Store) DeleteArmy(ctx context.Context, armyID string) error {
 	delete(s.armyBuffer, armyID)
 	s.mu.Unlock()
 	return s.db.DeleteArmy(ctx, armyID)
+}
+
+func (s *Store) DeleteTrainingOrder(ctx context.Context, orderID string) error {
+	return s.db.DeleteTrainingOrder(ctx, orderID)
 }
 
 func (s *Store) EnqueueUser(user domain.User) {

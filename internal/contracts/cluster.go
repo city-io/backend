@@ -1,4 +1,4 @@
-package ports
+package contracts
 
 import "github.com/asynkron/protoactor-go/actor"
 

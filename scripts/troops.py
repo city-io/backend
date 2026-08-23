@@ -10,6 +10,7 @@ Usage (server must be running on :8080; see `make all`):
     python3 scripts/troops.py cities                # list owned cities
     python3 scripts/troops.py barracks              # build a barracks in the first owned city
     python3 scripts/troops.py train <barracksId> soldier 5
+    python3 scripts/troops.py queue <barracksId>
     python3 scripts/troops.py armies                # list your armies
     python3 scripts/troops.py move <armyId> <x> <y>
     python3 scripts/troops.py getarmy <armyId>
@@ -104,7 +105,14 @@ def cmd_train(bid, ttype, count):
     st, r = call("cityio.service.v1.ArmyService/TrainTroops",
                  {"barracksId": {"value": bid}, "type": TROOP_ENUM[ttype],
                   "count": int(count)}, token())
-    print("train:", st, r if st != 200 else "OK")
+    print("train:", st, r)
+    return st, r
+
+
+def cmd_queue(bid):
+    st, r = call("cityio.service.v1.ArmyService/ListTrainingOrders",
+                 {"barracksId": {"value": bid}}, token())
+    pp(st, r)
 
 
 def cmd_armies():
@@ -154,24 +162,24 @@ def cmd_smoke():
     print("barracks", bid, "- waiting ~13s for construction")
     time.sleep(13)
 
-    cmd_train(bid, "soldier", 5)
+    st, training = cmd_train(bid, "soldier", 5)
+    if st != 200:
+        return
+    aid = training["order"]["armyId"]["value"]
+    cmd_queue(bid)
     _, r = call("cityio.service.v1.CityService/GetCity", {"cityId": {"value": cid}}, token())
     print("city milPop after train:", r["city"].get("militaryPopulation"))
-    print("waiting ~23s for training (soldier=20s)")
-    time.sleep(23)
+    print("waiting ~28s for training (5 soldiers at 5s each)")
+    time.sleep(28)
 
     cmd_armies()
-    st, r = call("cityio.service.v1.ArmyService/ListArmies", {}, token())
-    armies = r["entities"]["armies"]
-    if armies:
-        aid = armies[0]["armyId"]["value"]
-        cmd_move(aid, sx + 4, sy + 4)
-        time.sleep(4)
-        st, r = call("cityio.service.v1.ArmyService/GetArmy", {"armyId": {"value": aid}}, token())
-        if "army" in r:
-            print("army after ~4 move ticks:", r["army"].get("coords"), "dest", r["army"].get("destination"))
-        else:
-            print("getarmy:", st, r)
+    cmd_move(aid, sx + 4, sy + 4)
+    time.sleep(4)
+    st, r = call("cityio.service.v1.ArmyService/GetArmy", {"armyId": {"value": aid}}, token())
+    if "army" in r:
+        print("army after ~4 move ticks:", r["army"].get("coords"), "dest", r["army"].get("destination"))
+    else:
+        print("getarmy:", st, r)
 
 
 def main():
@@ -181,7 +189,7 @@ def main():
     cmd, args = sys.argv[1], sys.argv[2:]
     handlers = {
         "login": cmd_login, "cities": cmd_cities, "barracks": cmd_barracks,
-        "train": cmd_train, "armies": cmd_armies, "move": cmd_move,
+        "train": cmd_train, "queue": cmd_queue, "armies": cmd_armies, "move": cmd_move,
         "getarmy": cmd_getarmy, "merge": cmd_merge, "city": cmd_city, "smoke": cmd_smoke,
     }
     if cmd not in handlers:

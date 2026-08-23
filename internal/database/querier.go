@@ -19,10 +19,12 @@ type Querier interface {
 	CreateArmy(ctx context.Context, arg CreateArmyParams) error
 	CreateBuilding(ctx context.Context, arg CreateBuildingParams) error
 	CreateCity(ctx context.Context, arg CreateCityParams) error
+	CreateTrainingOrder(ctx context.Context, arg CreateTrainingOrderParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteArmy(ctx context.Context, armyID string) error
 	DeleteBuilding(ctx context.Context, buildingID string) error
 	DeleteCity(ctx context.Context, cityID string) error
+	DeleteTrainingOrder(ctx context.Context, trainingOrderID string) error
 	DeleteUser(ctx context.Context, userID string) error
 	GetAllArmies(ctx context.Context) ([]GetAllArmiesRow, error)
 	GetAllBuildings(ctx context.Context) ([]GetAllBuildingsRow, error)
@@ -30,7 +32,9 @@ type Querier interface {
 	GetAllUsers(ctx context.Context) ([]User, error)
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]GetBuildingsByCityRow, error)
 	GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error)
+	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]TrainingOrder, error)
 	GetUserByIdentifier(ctx context.Context, email string) (User, error)
+	StartTrainingOrder(ctx context.Context, arg StartTrainingOrderParams) error
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserStats(ctx context.Context, arg UpdateUserStatsParams) error

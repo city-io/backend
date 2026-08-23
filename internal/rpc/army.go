@@ -68,7 +68,7 @@ func (h *armyHandler) TrainTroops(ctx context.Context, req *connect.Request[serv
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("barracks not owned by caller"))
 	}
 
-	err = services.TrainTroops(ctx, h.srv.cluster, &services.ArmyInput{
+	order, err := services.TrainTroops(ctx, h.srv.cluster, &services.ArmyInput{
 		BarracksID: barracksID,
 		TroopType:  mapping.TroopTypeFromProto(req.Msg.GetType()),
 		Count:      int64(req.Msg.GetCount()),
@@ -76,7 +76,27 @@ func (h *armyHandler) TrainTroops(ctx context.Context, req *connect.Request[serv
 	if err != nil {
 		return nil, trainingError(err)
 	}
-	return connect.NewResponse(&servicev1.TrainTroopsResponse{}), nil
+	return connect.NewResponse(&servicev1.TrainTroopsResponse{Order: mapping.TrainingOrderToProto(*order)}), nil
+}
+
+func (h *armyHandler) ListTrainingOrders(ctx context.Context, req *connect.Request[servicev1.ListTrainingOrdersRequest]) (*connect.Response[servicev1.ListTrainingOrdersResponse], error) {
+	barracksID := req.Msg.GetBarracksId().GetValue()
+	building, err := (&buildingHandler{srv: h.srv}).requireBuildingOwnership(ctx, barracksID)
+	if err != nil {
+		return nil, err
+	}
+	if building.BuildingType() != domain.BuildingTypeBarracks {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("building is not a barracks"))
+	}
+	orders, err := services.GetTrainingOrders(ctx, h.srv.cluster, barracksID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	result := make([]*servicev1.TrainingOrder, 0, len(orders))
+	for _, order := range orders {
+		result = append(result, mapping.TrainingOrderToProto(order))
+	}
+	return connect.NewResponse(&servicev1.ListTrainingOrdersResponse{Orders: result}), nil
 }
 
 // trainingError maps the barracks/city rejection errors to Connect codes.
@@ -86,6 +106,7 @@ func trainingError(err error) error {
 	var capacity *messages.TrainingCapacityExceededError
 	var construction *messages.ConstructionInProgressError
 	var invalidCount *messages.InvalidTroopCountError
+	var invalidType *messages.InvalidTroopTypeError
 	switch {
 	case errors.As(err, &insufficientGold):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
@@ -96,6 +117,8 @@ func trainingError(err error) error {
 	case errors.As(err, &construction):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.As(err, &invalidCount):
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.As(err, &invalidType):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
@@ -111,11 +134,11 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 	// its tile.
 	claims, _ := auth.ClaimsFromContext(ctx)
 	if army.Owner != claims.UserID {
-		owned, err := h.srv.ownedCities(ctx)
+		vision, err := h.srv.ownedVision(ctx)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		if !domain.PointVisible(owned, army.X, army.Y, constants.VisionRadius) {
+		if !vision.PointVisible(army.X, army.Y, constants.VisionRadius) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("army not found"))
 		}
 	}
@@ -123,11 +146,18 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 }
 
 func (h *armyHandler) MoveArmy(ctx context.Context, req *connect.Request[servicev1.MoveArmyRequest]) (*connect.Response[servicev1.MoveArmyResponse], error) {
+	if req.Msg.Destination == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("destination is required"))
+	}
 	armyID := req.Msg.GetArmyId().GetValue()
 	if _, err := h.requireArmyOwnership(ctx, armyID); err != nil {
 		return nil, err
 	}
 	if err := services.MoveArmy(ctx, h.srv.cluster, armyID, int(req.Msg.GetDestination().GetX()), int(req.Msg.GetDestination().GetY())); err != nil {
+		var unreachable *messages.UnreachableDestinationError
+		if errors.As(err, &unreachable) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&servicev1.MoveArmyResponse{}), nil

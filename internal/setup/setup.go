@@ -9,17 +9,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/database"
 	"cityio/internal/domain"
 	"cityio/internal/logger"
-	"cityio/internal/ports"
 	"cityio/internal/services"
 	"cityio/internal/worldgen"
 )
 
 type Deps struct {
 	DB      database.Querier
-	Cluster ports.ClusterProvider
+	Cluster contracts.ClusterProvider
 	World   *worldgen.World
 }
 
@@ -57,19 +57,6 @@ func Run(ctx context.Context, deps *Deps) {
 	}
 	slog.InfoContext(ctx, "spawned city actors", "count", len(cities))
 
-	buildings, err := db.GetAllBuildings(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, building := range buildings {
-		err := services.RestoreBuilding(ctx, cluster, building.ToModel())
-		if err != nil {
-			panic(err)
-		}
-	}
-	slog.InfoContext(ctx, "spawned building actors", "count", len(buildings))
-
 	armies, err := db.GetAllArmies(ctx)
 	if err != nil {
 		panic(err)
@@ -82,6 +69,19 @@ func Run(ctx context.Context, deps *Deps) {
 		}
 	}
 	slog.InfoContext(ctx, "spawned army actors", "count", len(armies))
+
+	buildings, err := db.GetAllBuildings(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, building := range buildings {
+		err := services.RestoreBuilding(ctx, cluster, building.ToModel())
+		if err != nil {
+			panic(err)
+		}
+	}
+	slog.InfoContext(ctx, "spawned building actors", "count", len(buildings))
 
 	// Create the test user AFTER the bulk restore. Restoration must not see
 	// the test user's entities, otherwise the cityActor and building actors

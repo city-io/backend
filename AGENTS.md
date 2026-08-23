@@ -25,12 +25,12 @@ moved and merged, but not fought.
 ## Architecture at a glance
 
 ```
-Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvider)  ──▶  actors  ──┐
+Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterProvider)  ──▶  actors  ──┐
         │                                                                │             │
    stream (pub/sub) ◀───────────────────────── actors publish ──────────┘   per-entity in-memory
         │                                                                    state + tickers
    StreamState RPC ──▶ client                                                     │
-                                                          persistence.Store (ports.Store)  ──▶  Postgres
+                                                          persistence.Store (contracts.Store)  ──▶  Postgres
 ```
 
 - **`cmd/main.go`** — composition root. Loads config, sets up logging, connects the DB,
@@ -46,13 +46,14 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
   - `buildingActor` delegates type-specific behavior to a `buildingActorImpl`
     (`cityCenter.go`, `townCenter.go`, `house.go`, `farm.go`, `mine.go`, `barracks.go`) via
     `Create` / `Destroy` / `Handle` hooks. `barracks.go` is the troop **producer**: it holds a
-    FIFO training queue and a one-shot completion timer, and on completion spawns an `armyActor`.
-  - `armyActor` (`army.go`) owns one army: persistence, an every-`TroopMovementDuration` movement
-    ticker, tile presence, nearest-owned-city food-upkeep attribution, 8-directional movement,
-    and merging.
-  - Actors persist through the injected `ports.Store` (`state.Store`): reads/creates/deletes
+    durable FIFO training queue and a one-shot completion timer. Completed orders retry an
+    idempotent `armyActor` spawn until it succeeds.
+  - `armyActor` (`army.go`) owns one army: persistence, a 250ms movement ticker, tile presence,
+    nearest-owned-settlement food-upkeep attribution, composition-aware weighted
+    8-directional terrain pathfinding, and merging.
+  - Actors persist through the injected `contracts.Store` (`state.Store`): reads/creates/deletes
     hit the DB immediately; `Enqueue*` coalesces updates for the background writer.
-- **`internal/persistence`** — `Store` (implements `ports.Store`), the single sink for
+- **`internal/persistence`** — `Store` (implements `contracts.Store`), the single sink for
   persistence. Reads, creates and deletes go straight to the `database.Querier` (the pgx pool
   is concurrency-safe). `Enqueue*` buffers updates per entity (`user`/`city`/`building`/`army`)
   in mutex-guarded maps (latest-write-wins); a background goroutine started by `Start` flushes
@@ -64,11 +65,11 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
   `BuildingInput`, `ArmyInput`). Files: `users.go`, `cities.go`, `buildings.go`, `armies.go`.
 - **`internal/messages`** — the actor message types (the protocol). Plain structs, grouped by
   domain (`user.go`, `city.go`, `buildings.go`, `tile.go`, `army.go`, `general.go`).
-- **`internal/cluster`** — implements `ports.ClusterProvider`. Registers the actor "kinds"
-  (`user`, `city`, `tile`, `building`, `army`), injects the `ports.Store` and logging context
+- **`internal/cluster`** — implements `contracts.ClusterProvider`. Registers the actor "kinds"
+  (`user`, `city`, `tile`, `building`, `army`), injects the `contracts.Store` and logging context
   onto each actor. Uses the in-memory test cluster provider in non-prod and consul in prod.
-- **`internal/ports`** — interfaces that decouple layers (`ClusterProvider`, `Store`), so
-  `services`/`actors`/`rpc` depend on an interface rather than the concrete package.
+- **`internal/contracts`** — shared dependency interfaces (`ClusterProvider`, `Store`,
+  `WorldProvider`) that keep `services`/`actors`/`rpc` independent of concrete infrastructure.
 - **`internal/rpc`** — Connect RPC handlers (one file per service: `user.go`, `city.go`,
   `building.go`, `army.go`, `map.go`, `config.go`, plus `rpc.go` for wiring) over the generated
   code in `internal/gen`. `NewServer(shutdownCtx, cluster, store, jwtSecret)` builds the handler;
@@ -164,35 +165,44 @@ the "Client / frontend API reference" section below.
   population declines. All rates are per-hour.
 - **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
-  position and, while marching, a `destination`; it steps **one tile per movement tick toward the
-  destination choosing among all 8 neighbours** (Chebyshev / king-move — a diagonal costs the
-  same one tick as an orthogonal step, matching the vision metric). There is **no pathfinding,
-  terrain, or collision**. Two same-owner armies on the same tile can be merged.
+  position and, while marching, a `destination`; it follows a lowest-time route choosing among
+  all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
+  250ms timing quantum, but state is streamed only when the army actually enters a tile. An
+  army moves at the speed of its slowest troop: cavalry takes 500ms per normal tile,
+  soldiers/archers take 1s, and artillery takes 1.5s. Marsh multiplies that time by two,
+  mountains by three, and water is impassable to current land armies. Armies can stack, and two
+  same-owner armies on the same tile can be merged.
   - **Population carve-out:** training reserves population into `city.military_population`, capped
     at `MilitaryPopulationFraction` (0.35) of the city's population. Civilians
     (`population − military_population`) drive city food upkeep, so a standing army is
     exploit-free. Reserved population is not released on merge (troops keep their origin's
     reservation); a release path will come with combat/disband later.
-  - **Food upkeep:** each army's food upkeep is added to its **nearest owned city's** upkeep,
-    recomputed (by Chebyshev distance) as the army marches.
+  - **Food upkeep:** each army's food upkeep is added to its **nearest owned settlement's**
+    upkeep, recomputed (by Chebyshev distance) as the army marches. Cities and captured towns
+    both qualify because they share the `City` domain model.
   - **Troop stat table** (tier-1; balance knobs in `constants/troops.go`; Atk/Def/HP are stored
     but **unused until combat**):
 
-    | Type      | Gold | Train (s) | Food/hr | Pop | Atk | Def | HP  |
-    |-----------|------|-----------|---------|-----|-----|-----|-----|
-    | soldier   | 50   | 20        | 60      | 1   | 10  | 10  | 100 |
-    | archer    | 75   | 30        | 60      | 1   | 15  | 5   | 70  |
-    | cavalry   | 150  | 45        | 180     | 1   | 20  | 12  | 120 |
-    | artillery | 300  | 60        | 120     | 3   | 40  | 3   | 60  |
+    | Type      | Gold | Train/unit (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
+    |-----------|------|----------------|----------|---------|-----|-----|-----|-----|
+    | soldier   | 50   | 5              | 1.0      | 60      | 1   | 10  | 10  | 100 |
+    | archer    | 75   | 7              | 1.0      | 60      | 1   | 15  | 5   | 70  |
+    | cavalry   | 150  | 10             | 0.5      | 180     | 1   | 20  | 12  | 120 |
+    | artillery | 300  | 15             | 1.5      | 120     | 3   | 40  | 3   | 60  |
 
   - **Barracks training capacity** (troops per in-progress batch) = `5 × barracksLevel`. Extra
-    orders queue FIFO per barracks; more barracks = more concurrent training. `GetGameConfig`
+    orders persist and queue FIFO per barracks; more barracks = more concurrent training. A
+    batch takes `troop count × per-troop train time`; a barracks with pending orders cannot be
+    upgraded or demolished. `GetGameConfig`
     does **not** expose troop stats yet — a client needs them hardcoded or we should add a troop
     config message (TODO).
 - **Vision:** a player sees any tile within Chebyshev distance `VisionRadius` (3) of any tile of
-  a city they own. This gates what read RPCs return (see visibility rules below).
-- **Tick cadence** (`constants/constants.go`): city tick 3s, building tick 3s, army movement 1s,
-  DB backup flush 2s, user backup 10s. Rates are normalised to per-hour (`SecondsPerHour` 3600).
+  a city they own or the current tile of any army they own. This gates what read RPCs return
+  (see visibility rules below). Army movement updates stream the newly visible tile occupancy
+  and entities when the army enters a tile.
+- **Tick cadence** (`constants/constants.go`): city tick 3s, building tick 3s, army movement
+  quantum 250ms, DB backup flush 2s, user backup 10s. Rates are normalised to per-hour
+  (`SecondsPerHour` 3600).
 
 ## Client / frontend API reference
 
@@ -223,7 +233,8 @@ for TypeScript) rather than hand-writing request types.
 
 ### Common types
 
-- **Typed IDs** — `UserId`/`CityId`/`BuildingId`/`ArmyId` are each `{ "value": "<uuid>" }`.
+- **Typed IDs** — `UserId`/`CityId`/`BuildingId`/`ArmyId`/`TrainingOrderId` are each
+  `{ "value": "<uuid>" }`.
   `TileId` is the tile's coordinate identity: `{ "x": int32, "y": int32 }`.
 - **Coordinates** — `{ "x": int32, "y": int32 }`.
 - **Rate** — `{ "value": int64, "scale": int32 }`; the real rate is `value / scale` **per
@@ -255,12 +266,14 @@ for TypeScript) rather than hand-writing request types.
   `EntityBag`.
 - **Visibility rules** (enforced server-side):
   - Reads that expose the world (`GetMap`, `ListBuildings`) filter cities/buildings/armies to
-    those within `VisionRadius` of an owned city; non-owned city economy fields are stripped.
+    those within `VisionRadius` of an owned city or army; non-owned city economy fields are
+    stripped.
   - `GetCity`, `GetBuilding`, `GetTile` return `NotFound` if the target isn't visible.
   - `GetArmy`: the **owner** can always fetch their own army (even out of vision); others need
     vision on its tile.
-  - `ListCities`, `ListArmies`, and `StreamState` are **owner-scoped** — they return your own
-    entities regardless of vision.
+  - `ListCities` and `ListArmies` are **owner-scoped** — they return your own entities regardless
+    of vision. `StreamState` begins with the same owner-scoped snapshot and includes visible
+    world deltas revealed by moving armies.
 
 ### Services & RPCs
 
@@ -275,7 +288,8 @@ for TypeScript) rather than hand-writing request types.
   server-streaming, owner-scoped. The **first** message is a full snapshot (your user + owned
   cities + their buildings + your armies). Subsequent messages are incremental deltas as state
   changes: updated `users` (gold/food), `cities` (economy/population), `buildings`
-  (create/upgrade), `armies` (spawn/move/merge), and top-level deletion tombstones. Drive the
+  (create/upgrade), `armies` (spawn/move/merge), and top-level deletion tombstones. An owned army
+  entering a tile also sends the tiles and entities visible around its new position. Drive the
   client's live map/HUD off this.
 
 **CityService**
@@ -289,22 +303,27 @@ for TypeScript) rather than hand-writing request types.
 - `GetBuilding(building_id) → { building }` — vision-gated.
 - `UpgradeBuilding(building_id) → {}` — must own; deducts gold and starts construction to the next
   level. Errors: `FailedPrecondition` (`InsufficientGold`, `ConstructionInProgress`,
-  `MaxLevelReached`).
-- `DeleteBuilding(building_id) → {}` — must own; city/town centers can't be demolished
-  (`FailedPrecondition`).
+  `TrainingInProgress` for a barracks with queued orders, `MaxLevelReached`).
+- `DeleteBuilding(building_id) → {}` — must own; city/town centers and barracks with pending
+  training orders can't be demolished (`FailedPrecondition`).
 - `ListBuildings(city_id) → { buildings[] }` — vision-filtered.
 
 **ArmyService**
-- `TrainTroops(barracks_id, type, count) → {}` — must own the barracks' city; the barracks must
-  be finished (not under construction); `count` ∈ `[1, 5 × barracksLevel]`. Reserves
+- `TrainTroops(barracks_id, type, count) → { order }` — must own the barracks' city; the
+  barracks must be finished (not under construction); `count` ∈ `[1, 5 × barracksLevel]`. Reserves
   `count × popCost` military population (≤ 35% of city population) and deducts `count × goldCost`.
   Errors: `FailedPrecondition` (`InsufficientGold`, insufficient trainable population, training
   capacity exceeded, construction in progress); `InvalidArgument` (bad count/type). After the
-  troop's train time an `Army` spawns at the barracks tile (observe it via `StreamState`).
-  Multiple orders queue FIFO per barracks.
+  batch's total train time (`count × per-troop time`) an `Army` spawns at the barracks tile
+  (observe it via `StreamState`).
+  Multiple orders queue FIFO per barracks. The returned order includes its future `army_id` and,
+  when it is at the front, `started_at` and `completes_at`.
+- `ListTrainingOrders(barracks_id) → { orders[] }` — owner-only current FIFO queue for a
+  barracks, including the active order and orders waiting behind it.
 - `GetArmy(army_id) → { army }` — owner always; others need vision.
 - `MoveArmy(army_id, destination) → {}` — must own; sets the marching destination (clamped to the
-  map). The army then steps one tile per movement tick until it arrives, then idles.
+  map). Missing destinations are invalid and water/unreachable destinations fail with
+  `FailedPrecondition`. The army follows its weighted terrain route until it arrives, then idles.
 - `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
   tile. The source's troops fold into the target and the source army disappears.
 - `ListArmies() → { army_ids[], entities(armies) }` — your armies (all, regardless of vision).
@@ -340,6 +359,7 @@ python3 scripts/troops.py login                       # cache a token
 python3 scripts/troops.py cities                       # list owned cities (+ coords)
 python3 scripts/troops.py barracks                     # build a barracks in your first city
 python3 scripts/troops.py train <barracksId> soldier 5
+python3 scripts/troops.py queue <barracksId>            # inspect its durable FIFO queue
 python3 scripts/troops.py armies                        # list your armies
 python3 scripts/troops.py move <armyId> <x> <y>
 python3 scripts/troops.py merge <targetId> <sourceId>
@@ -362,7 +382,7 @@ curl -s http://localhost:8080/cityio.service.v1.UserService/Login \
 - **Fire-and-forget:** `cluster.Tell(kind, identity, msg)` or `ctx.Send(...)`. Used for state
   nudges (resource production, population cap changes, army food-upkeep set/remove, tile
   add/remove army). Errors are only logged, not propagated.
-- **Persistence:** actors call the injected `ports.Store` directly — `Create*`/`Delete*`/reads
+- **Persistence:** actors call the injected `contracts.Store` directly — `Create*`/`Delete*`/reads
   hit Postgres immediately; `Enqueue*` buffers updates that the store's background writer
   batch-flushes.
 - **Timers:** most actors start a `time.Ticker` goroutine that sends themselves a
@@ -419,7 +439,8 @@ psql -h localhost -p 5432 -U cityio -d cityio
 ```
 
 Migrations can be run manually (the app also runs them itself — see gotcha). Migrations live in
-`db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`):
+`db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`,
+`00004_add_training_orders`):
 
 ```bash
 GOOSE_DRIVER=postgres \
@@ -459,8 +480,8 @@ goose -dir db/migrations up
   `state.Ctx()` as the context. Enrich context with `logger.With(ctx, "key", val)` rather than
   formatting values into the message string. Don't introduce a new logger or `fmt.Printf`.
 - **Layering:** keep `domain` framework-free. Actors talk to other actors through
-  `ports.ClusterProvider`, never by importing `cluster` directly, and persist through
-  `ports.Store`. Services orchestrate; they don't hold game logic that belongs in an actor.
+  `contracts.ClusterProvider`, never by importing `cluster` directly, and persist through
+  `contracts.Store`. Services orchestrate; they don't hold game logic that belongs in an actor.
 - **Messages are the contract.** Add a new struct in `internal/messages` and handle it in the
   relevant actor's `Receive` (or a building impl's `Handle`) rather than adding ad-hoc methods.
 - **New building types:** add the enum to `domain/building.go` + `common.proto`
@@ -476,7 +497,7 @@ goose -dir db/migrations up
   `internal/worldgen`.
 - **New actor kind:** register it in `internal/cluster/cluster.go`'s `kinds` list (via the
   `spawn` closure so it gets `Store` + logging context injected), add a `New<Kind>Actor`
-  constructor implementing `BaseActorInterface`, and wire persistence into `ports.Store` +
+  constructor implementing `BaseActorInterface`, and wire persistence into `contracts.Store` +
   `internal/persistence` if it has its own table.
 - **New streamed entity:** extend `stream.StateUpdate` (+ `recordPublish`), then handle the new
   field in BOTH the `StreamState` initial snapshot and the update loop in `internal/rpc/user.go`,

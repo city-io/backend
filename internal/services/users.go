@@ -9,12 +9,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
-	"cityio/internal/ports"
 )
 
-func RestoreUser(ctx context.Context, cluster ports.ClusterProvider, user *domain.User) error {
+func RestoreUser(ctx context.Context, cluster contracts.ClusterProvider, user *domain.User) error {
 	if _, err := cluster.Request("user", user.UserID, &messages.CreateUserMessage{User: *user, Restore: true}); err != nil {
 		slog.ErrorContext(ctx, "failed to restore user actor", "username", user.Username, "error", err)
 		return err
@@ -23,7 +23,7 @@ func RestoreUser(ctx context.Context, cluster ports.ClusterProvider, user *domai
 	return nil
 }
 
-func CreateUser(ctx context.Context, cluster ports.ClusterProvider, user *CreateUserRequest) (string, error) {
+func CreateUser(ctx context.Context, cluster contracts.ClusterProvider, user *CreateUserRequest) (string, error) {
 	userID := uuid.New().String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {

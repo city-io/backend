@@ -1,12 +1,13 @@
-package ports
+package contracts
 
 import (
 	"context"
+	"time"
 
 	"cityio/internal/domain"
 )
 
-// Store is the persistence port. Reads, creates and deletes hit the database
+// Store is the persistence contract. Reads, creates and deletes hit the database
 // immediately; updates are coalesced per entity (latest-write-wins) and flushed
 // in batches by a background writer, so the hot in-memory state is backed up
 // without a write per tick.
@@ -16,6 +17,7 @@ type Store interface {
 	GetAllCities(ctx context.Context) ([]domain.City, error)
 	GetAllBuildings(ctx context.Context) ([]domain.Building, error)
 	GetAllArmies(ctx context.Context) ([]domain.Army, error)
+	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]domain.TrainingOrder, error)
 	GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error)
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]domain.Building, error)
 
@@ -23,11 +25,14 @@ type Store interface {
 	CreateCity(ctx context.Context, city domain.City) error
 	CreateBuilding(ctx context.Context, building domain.Building) error
 	CreateArmy(ctx context.Context, army domain.Army) error
+	CreateTrainingOrder(ctx context.Context, order domain.TrainingOrder) error
+	StartTrainingOrder(ctx context.Context, orderID string, startedAt, completesAt time.Time) error
 
 	DeleteUser(ctx context.Context, userID string) error
 	DeleteCity(ctx context.Context, cityID string) error
 	DeleteBuilding(ctx context.Context, buildingID string) error
 	DeleteArmy(ctx context.Context, armyID string) error
+	DeleteTrainingOrder(ctx context.Context, orderID string) error
 
 	EnqueueUser(user domain.User)
 	EnqueueCity(city domain.City)

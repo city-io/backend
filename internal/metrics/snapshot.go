@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"cityio/internal/ports"
+	"cityio/internal/contracts"
 )
 
 // SnapshotInterval is how often the snapshot goroutine refreshes
@@ -17,7 +17,7 @@ const SnapshotInterval = 5 * time.Second
 // persistence layer to populate the aggregate game-state gauges (population
 // totals, building counts, etc.). The goroutine exits when shutdownCtx is
 // cancelled.
-func StartSnapshot(shutdownCtx context.Context, store ports.Store) {
+func StartSnapshot(shutdownCtx context.Context, store contracts.Store) {
 	go func() {
 		// Take one snapshot immediately so the gauges aren't 0 at boot.
 		snapshot(shutdownCtx, store)
@@ -34,7 +34,7 @@ func StartSnapshot(shutdownCtx context.Context, store ports.Store) {
 	}()
 }
 
-func snapshot(ctx context.Context, store ports.Store) {
+func snapshot(ctx context.Context, store contracts.Store) {
 	if err := snapshotUsers(ctx, store); err != nil {
 		slog.ErrorContext(ctx, "metrics snapshot: users", "error", err)
 	}
@@ -46,7 +46,7 @@ func snapshot(ctx context.Context, store ports.Store) {
 	}
 }
 
-func snapshotUsers(ctx context.Context, store ports.Store) error {
+func snapshotUsers(ctx context.Context, store contracts.Store) error {
 	users, err := store.GetAllUsers(ctx)
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func snapshotUsers(ctx context.Context, store ports.Store) error {
 	return nil
 }
 
-func snapshotCities(ctx context.Context, store ports.Store) error {
+func snapshotCities(ctx context.Context, store contracts.Store) error {
 	cities, err := store.GetAllCities(ctx)
 	if err != nil {
 		return err
@@ -98,7 +98,7 @@ func snapshotCities(ctx context.Context, store ports.Store) error {
 	return nil
 }
 
-func snapshotBuildings(ctx context.Context, store ports.Store) error {
+func snapshotBuildings(ctx context.Context, store contracts.Store) error {
 	buildings, err := store.GetAllBuildings(ctx)
 	if err != nil {
 		return err

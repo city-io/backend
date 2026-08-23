@@ -46,6 +46,15 @@ type TrainTroopsMessage struct {
 	Count int64
 }
 
+type TrainTroopsResponseMessage struct {
+	Order domain.TrainingOrder
+}
+
+type GetTrainingOrdersMessage struct{}
+type GetTrainingOrdersResponseMessage struct {
+	Orders []domain.TrainingOrder
+}
+
 // ReserveMilitaryPopulationMessage asks a city to reserve Count of its
 // population as military. The city acks if it stays within the military cap,
 // otherwise replies InsufficientPopulationError.
@@ -87,6 +96,14 @@ type TrainingCapacityExceededError struct {
 	Capacity  int64
 }
 
+type TrainingInProgressError struct {
+	BarracksID string
+}
+
+func (e *TrainingInProgressError) Error() string {
+	return fmt.Sprintf("barracks has pending training orders: %s", e.BarracksID)
+}
+
 func (e *TrainingCapacityExceededError) Error() string {
 	return fmt.Sprintf("training batch exceeds barracks capacity: requested %d, capacity %d", e.Requested, e.Capacity)
 }
@@ -95,12 +112,29 @@ type InvalidTroopCountError struct {
 	Count int64
 }
 
+type InvalidTroopTypeError struct {
+	Type domain.TroopType
+}
+
+func (e *InvalidTroopTypeError) Error() string {
+	return fmt.Sprintf("invalid troop type: %s", e.Type)
+}
+
 func (e *InvalidTroopCountError) Error() string {
 	return fmt.Sprintf("invalid troop count: %d", e.Count)
 }
 
 type ArmyNotFoundError struct {
 	ArmyID string
+}
+
+type UnreachableDestinationError struct {
+	X int
+	Y int
+}
+
+func (e *UnreachableDestinationError) Error() string {
+	return fmt.Sprintf("army destination is unreachable: (%d, %d)", e.X, e.Y)
 }
 
 func (e *ArmyNotFoundError) Error() string {
