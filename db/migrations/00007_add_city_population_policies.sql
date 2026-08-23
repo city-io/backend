@@ -9,7 +9,11 @@ ALTER TABLE cities
 -- +goose Down
 -- +goose StatementBegin
 ALTER TABLE cities
-    DROP COLUMN tax_rate_percent,
-    DROP COLUMN militia_percent,
-    DROP COLUMN militia_population;
+    DROP COLUMN IF EXISTS tax_rate_percent,
+    DROP COLUMN IF EXISTS militia_percent,
+    DROP COLUMN IF EXISTS militia_population,
+    -- Older revisions of this unreleased migration used garrison names. The
+    -- development reset must be able to tear down either shape.
+    DROP COLUMN IF EXISTS garrison_percent,
+    DROP COLUMN IF EXISTS garrison_population;
 -- +goose StatementEnd
