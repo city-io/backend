@@ -52,10 +52,13 @@ func TestArmyOrderProjectsClosestKnownLand(t *testing.T) {
 
 	order := server.projectOwnedArmyOrder(army, explored)
 
-	if order == nil || order.GetMove().GetDestination().GetX() != 2 || len(order.GetRemainingRoute()) != 1 {
+	if order == nil || order.GetMove().GetDestination().GetX() != 2 || len(order.GetRemainingRoute().GetKnownSteps()) != 1 {
 		t.Fatalf("order projection = %+v", order)
 	}
-	last := order.GetRemainingRoute()[0].GetCoords()
+	if order.GetRemainingRoute().GetHiddenSegmentEnd() != nil {
+		t.Fatalf("hidden segment end = %+v, want nil for a fully known route", order.GetRemainingRoute().GetHiddenSegmentEnd())
+	}
+	last := order.GetRemainingRoute().GetKnownSteps()[0].GetCoords()
 	if last.GetX() != 1 || last.GetY() != 0 {
 		t.Fatalf("route endpoint = (%d,%d), want closest land (1,0)", last.GetX(), last.GetY())
 	}
@@ -87,10 +90,13 @@ func TestArmyOrderProjectsActorsRemainingPath(t *testing.T) {
 	}
 
 	order := server.projectOwnedArmyOrder(army, explored)
-	if order == nil || len(order.GetRemainingRoute()) != 2 {
+	if order == nil || len(order.GetRemainingRoute().GetKnownSteps()) != 2 {
 		t.Fatalf("order projection = %+v", order)
 	}
-	first := order.GetRemainingRoute()[0].GetCoords()
+	if order.GetRemainingRoute().GetHiddenSegmentEnd() != nil {
+		t.Fatalf("hidden segment end = %+v, want nil for a fully known route", order.GetRemainingRoute().GetHiddenSegmentEnd())
+	}
+	first := order.GetRemainingRoute().GetKnownSteps()[0].GetCoords()
 	if first.GetX() != 1 || first.GetY() != 1 {
 		t.Fatalf("projected path starts at (%d,%d), want actor path (1,1)", first.GetX(), first.GetY())
 	}
@@ -110,12 +116,15 @@ func TestArmyOrderHidesUnexploredRouteGeometry(t *testing.T) {
 	explored := map[domain.Coordinates]struct{}{{X: 0}: {}, {X: 1}: {}}
 
 	order := server.projectOwnedArmyOrder(army, explored)
-	if order == nil || len(order.GetRemainingRoute()) != 2 {
-		t.Fatalf("disclosed route = %+v, want known prefix and endpoint", order)
+	if order == nil || len(order.GetRemainingRoute().GetKnownSteps()) != 1 {
+		t.Fatalf("disclosed route = %+v, want one exact known step", order)
 	}
-	first := order.GetRemainingRoute()[0].GetCoords()
-	last := order.GetRemainingRoute()[1].GetCoords()
-	if first.GetX() != 1 || first.GetY() != 0 || last.GetX() != 3 || last.GetY() != 0 {
-		t.Fatalf("disclosed route = (%d,%d) -> (%d,%d)", first.GetX(), first.GetY(), last.GetX(), last.GetY())
+	first := order.GetRemainingRoute().GetKnownSteps()[0].GetCoords()
+	hiddenEnd := order.GetRemainingRoute().GetHiddenSegmentEnd()
+	if hiddenEnd == nil {
+		t.Fatal("hidden segment end is nil, want projected endpoint")
+	}
+	if first.GetX() != 1 || first.GetY() != 0 || hiddenEnd.GetX() != 3 || hiddenEnd.GetY() != 0 {
+		t.Fatalf("disclosed route = known (%d,%d), hidden end (%d,%d)", first.GetX(), first.GetY(), hiddenEnd.GetX(), hiddenEnd.GetY())
 	}
 }

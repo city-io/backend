@@ -67,6 +67,62 @@ func (x *ArmyRouteStep) GetCoords() *Coordinates {
 	return nil
 }
 
+// ArmyRoute separates exact, explored geometry from an undisclosed remainder.
+// When hidden_segment_end is present, clients may draw a straight uncertain
+// connector from the army or final known step to that coordinate, but must not
+// treat the connector as the route the army will actually follow.
+type ArmyRoute struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	KnownSteps       []*ArmyRouteStep       `protobuf:"bytes,1,rep,name=known_steps,json=knownSteps,proto3" json:"known_steps,omitempty"`
+	HiddenSegmentEnd *Coordinates           `protobuf:"bytes,2,opt,name=hidden_segment_end,json=hiddenSegmentEnd,proto3,oneof" json:"hidden_segment_end,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ArmyRoute) Reset() {
+	*x = ArmyRoute{}
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArmyRoute) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArmyRoute) ProtoMessage() {}
+
+func (x *ArmyRoute) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArmyRoute.ProtoReflect.Descriptor instead.
+func (*ArmyRoute) Descriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ArmyRoute) GetKnownSteps() []*ArmyRouteStep {
+	if x != nil {
+		return x.KnownSteps
+	}
+	return nil
+}
+
+func (x *ArmyRoute) GetHiddenSegmentEnd() *Coordinates {
+	if x != nil {
+		return x.HiddenSegmentEnd
+	}
+	return nil
+}
+
 type MoveObjective struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Destination   *Coordinates           `protobuf:"bytes,1,opt,name=destination,proto3" json:"destination,omitempty"`
@@ -76,7 +132,7 @@ type MoveObjective struct {
 
 func (x *MoveObjective) Reset() {
 	*x = MoveObjective{}
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[1]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -88,7 +144,7 @@ func (x *MoveObjective) String() string {
 func (*MoveObjective) ProtoMessage() {}
 
 func (x *MoveObjective) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[1]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -101,7 +157,7 @@ func (x *MoveObjective) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveObjective.ProtoReflect.Descriptor instead.
 func (*MoveObjective) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{1}
+	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *MoveObjective) GetDestination() *Coordinates {
@@ -121,7 +177,7 @@ type AttackArmyObjective struct {
 
 func (x *AttackArmyObjective) Reset() {
 	*x = AttackArmyObjective{}
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[2]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -133,7 +189,7 @@ func (x *AttackArmyObjective) String() string {
 func (*AttackArmyObjective) ProtoMessage() {}
 
 func (x *AttackArmyObjective) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[2]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -146,7 +202,7 @@ func (x *AttackArmyObjective) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttackArmyObjective.ProtoReflect.Descriptor instead.
 func (*AttackArmyObjective) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{2}
+	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AttackArmyObjective) GetTargetArmyId() *ArmyId {
@@ -175,7 +231,7 @@ type ConquerSettlementObjective struct {
 
 func (x *ConquerSettlementObjective) Reset() {
 	*x = ConquerSettlementObjective{}
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[3]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -187,7 +243,7 @@ func (x *ConquerSettlementObjective) String() string {
 func (*ConquerSettlementObjective) ProtoMessage() {}
 
 func (x *ConquerSettlementObjective) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[3]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -200,7 +256,7 @@ func (x *ConquerSettlementObjective) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConquerSettlementObjective.ProtoReflect.Descriptor instead.
 func (*ConquerSettlementObjective) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{3}
+	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ConquerSettlementObjective) GetCityId() *CityId {
@@ -241,7 +297,7 @@ type RetreatObjective struct {
 
 func (x *RetreatObjective) Reset() {
 	*x = RetreatObjective{}
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[4]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -253,7 +309,7 @@ func (x *RetreatObjective) String() string {
 func (*RetreatObjective) ProtoMessage() {}
 
 func (x *RetreatObjective) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[4]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -266,7 +322,7 @@ func (x *RetreatObjective) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetreatObjective.ProtoReflect.Descriptor instead.
 func (*RetreatObjective) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{4}
+	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RetreatObjective) GetSettlementId() *CityId {
@@ -296,7 +352,7 @@ type ArmyOrder struct {
 	//	*ArmyOrder_ConquerSettlement
 	//	*ArmyOrder_Retreat
 	Objective                  isArmyOrder_Objective `protobuf_oneof:"objective"`
-	RemainingRoute             []*ArmyRouteStep      `protobuf:"bytes,7,rep,name=remaining_route,json=remainingRoute,proto3" json:"remaining_route,omitempty"`
+	RemainingRoute             *ArmyRoute            `protobuf:"bytes,7,opt,name=remaining_route,json=remainingRoute,proto3" json:"remaining_route,omitempty"`
 	EstimatedRemainingDuration *durationpb.Duration  `protobuf:"bytes,8,opt,name=estimated_remaining_duration,json=estimatedRemainingDuration,proto3,oneof" json:"estimated_remaining_duration,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
@@ -304,7 +360,7 @@ type ArmyOrder struct {
 
 func (x *ArmyOrder) Reset() {
 	*x = ArmyOrder{}
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[5]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -316,7 +372,7 @@ func (x *ArmyOrder) String() string {
 func (*ArmyOrder) ProtoMessage() {}
 
 func (x *ArmyOrder) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[5]
+	mi := &file_cityio_entity_v1_army_order_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -329,7 +385,7 @@ func (x *ArmyOrder) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArmyOrder.ProtoReflect.Descriptor instead.
 func (*ArmyOrder) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{5}
+	return file_cityio_entity_v1_army_order_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ArmyOrder) GetArmyOrderId() *ArmyOrderId {
@@ -389,7 +445,7 @@ func (x *ArmyOrder) GetRetreat() *RetreatObjective {
 	return nil
 }
 
-func (x *ArmyOrder) GetRemainingRoute() []*ArmyRouteStep {
+func (x *ArmyOrder) GetRemainingRoute() *ArmyRoute {
 	if x != nil {
 		return x.RemainingRoute
 	}
@@ -437,7 +493,12 @@ const file_cityio_entity_v1_army_order_proto_rawDesc = "" +
 	"\n" +
 	"!cityio/entity/v1/army_order.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"F\n" +
 	"\rArmyRouteStep\x125\n" +
-	"\x06coords\x18\x01 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\"P\n" +
+	"\x06coords\x18\x01 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\"\xb6\x01\n" +
+	"\tArmyRoute\x12@\n" +
+	"\vknown_steps\x18\x01 \x03(\v2\x1f.cityio.entity.v1.ArmyRouteStepR\n" +
+	"knownSteps\x12P\n" +
+	"\x12hidden_segment_end\x18\x02 \x01(\v2\x1d.cityio.entity.v1.CoordinatesH\x00R\x10hiddenSegmentEnd\x88\x01\x01B\x15\n" +
+	"\x13_hidden_segment_end\"P\n" +
 	"\rMoveObjective\x12?\n" +
 	"\vdestination\x18\x01 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\vdestination\"\xa0\x01\n" +
 	"\x13AttackArmyObjective\x12>\n" +
@@ -452,7 +513,7 @@ const file_cityio_entity_v1_army_order_proto_rawDesc = "" +
 	"\x11_capture_duration\"\x92\x01\n" +
 	"\x10RetreatObjective\x12=\n" +
 	"\rsettlement_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\fsettlementId\x12?\n" +
-	"\vdestination\x18\x02 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\vdestination\"\xfb\x04\n" +
+	"\vdestination\x18\x02 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\vdestination\"\xf7\x04\n" +
 	"\tArmyOrder\x12A\n" +
 	"\rarmy_order_id\x18\x01 \x01(\v2\x1d.cityio.entity.v1.ArmyOrderIdR\varmyOrderId\x121\n" +
 	"\aarmy_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x125\n" +
@@ -460,8 +521,8 @@ const file_cityio_entity_v1_army_order_proto_rawDesc = "" +
 	"\vattack_army\x18\x04 \x01(\v2%.cityio.entity.v1.AttackArmyObjectiveH\x00R\n" +
 	"attackArmy\x12]\n" +
 	"\x12conquer_settlement\x18\x05 \x01(\v2,.cityio.entity.v1.ConquerSettlementObjectiveH\x00R\x11conquerSettlement\x12>\n" +
-	"\aretreat\x18\x06 \x01(\v2\".cityio.entity.v1.RetreatObjectiveH\x00R\aretreat\x12H\n" +
-	"\x0fremaining_route\x18\a \x03(\v2\x1f.cityio.entity.v1.ArmyRouteStepR\x0eremainingRoute\x12`\n" +
+	"\aretreat\x18\x06 \x01(\v2\".cityio.entity.v1.RetreatObjectiveH\x00R\aretreat\x12D\n" +
+	"\x0fremaining_route\x18\a \x01(\v2\x1b.cityio.entity.v1.ArmyRouteR\x0eremainingRoute\x12`\n" +
 	"\x1cestimated_remaining_duration\x18\b \x01(\v2\x19.google.protobuf.DurationH\x01R\x1aestimatedRemainingDuration\x88\x01\x01B\v\n" +
 	"\tobjectiveB\x1f\n" +
 	"\x1d_estimated_remaining_durationB\xb7\x01\n" +
@@ -479,45 +540,48 @@ func file_cityio_entity_v1_army_order_proto_rawDescGZIP() []byte {
 	return file_cityio_entity_v1_army_order_proto_rawDescData
 }
 
-var file_cityio_entity_v1_army_order_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_cityio_entity_v1_army_order_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_cityio_entity_v1_army_order_proto_goTypes = []any{
 	(*ArmyRouteStep)(nil),              // 0: cityio.entity.v1.ArmyRouteStep
-	(*MoveObjective)(nil),              // 1: cityio.entity.v1.MoveObjective
-	(*AttackArmyObjective)(nil),        // 2: cityio.entity.v1.AttackArmyObjective
-	(*ConquerSettlementObjective)(nil), // 3: cityio.entity.v1.ConquerSettlementObjective
-	(*RetreatObjective)(nil),           // 4: cityio.entity.v1.RetreatObjective
-	(*ArmyOrder)(nil),                  // 5: cityio.entity.v1.ArmyOrder
-	(*Coordinates)(nil),                // 6: cityio.entity.v1.Coordinates
-	(*ArmyId)(nil),                     // 7: cityio.entity.v1.ArmyId
-	(*CityId)(nil),                     // 8: cityio.entity.v1.CityId
-	(*timestamppb.Timestamp)(nil),      // 9: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),        // 10: google.protobuf.Duration
-	(*ArmyOrderId)(nil),                // 11: cityio.entity.v1.ArmyOrderId
+	(*ArmyRoute)(nil),                  // 1: cityio.entity.v1.ArmyRoute
+	(*MoveObjective)(nil),              // 2: cityio.entity.v1.MoveObjective
+	(*AttackArmyObjective)(nil),        // 3: cityio.entity.v1.AttackArmyObjective
+	(*ConquerSettlementObjective)(nil), // 4: cityio.entity.v1.ConquerSettlementObjective
+	(*RetreatObjective)(nil),           // 5: cityio.entity.v1.RetreatObjective
+	(*ArmyOrder)(nil),                  // 6: cityio.entity.v1.ArmyOrder
+	(*Coordinates)(nil),                // 7: cityio.entity.v1.Coordinates
+	(*ArmyId)(nil),                     // 8: cityio.entity.v1.ArmyId
+	(*CityId)(nil),                     // 9: cityio.entity.v1.CityId
+	(*timestamppb.Timestamp)(nil),      // 10: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),        // 11: google.protobuf.Duration
+	(*ArmyOrderId)(nil),                // 12: cityio.entity.v1.ArmyOrderId
 }
 var file_cityio_entity_v1_army_order_proto_depIdxs = []int32{
-	6,  // 0: cityio.entity.v1.ArmyRouteStep.coords:type_name -> cityio.entity.v1.Coordinates
-	6,  // 1: cityio.entity.v1.MoveObjective.destination:type_name -> cityio.entity.v1.Coordinates
-	7,  // 2: cityio.entity.v1.AttackArmyObjective.target_army_id:type_name -> cityio.entity.v1.ArmyId
-	6,  // 3: cityio.entity.v1.AttackArmyObjective.last_known_coords:type_name -> cityio.entity.v1.Coordinates
-	8,  // 4: cityio.entity.v1.ConquerSettlementObjective.city_id:type_name -> cityio.entity.v1.CityId
-	6,  // 5: cityio.entity.v1.ConquerSettlementObjective.destination:type_name -> cityio.entity.v1.Coordinates
-	9,  // 6: cityio.entity.v1.ConquerSettlementObjective.capture_started_at:type_name -> google.protobuf.Timestamp
-	10, // 7: cityio.entity.v1.ConquerSettlementObjective.capture_duration:type_name -> google.protobuf.Duration
-	8,  // 8: cityio.entity.v1.RetreatObjective.settlement_id:type_name -> cityio.entity.v1.CityId
-	6,  // 9: cityio.entity.v1.RetreatObjective.destination:type_name -> cityio.entity.v1.Coordinates
-	11, // 10: cityio.entity.v1.ArmyOrder.army_order_id:type_name -> cityio.entity.v1.ArmyOrderId
-	7,  // 11: cityio.entity.v1.ArmyOrder.army_id:type_name -> cityio.entity.v1.ArmyId
-	1,  // 12: cityio.entity.v1.ArmyOrder.move:type_name -> cityio.entity.v1.MoveObjective
-	2,  // 13: cityio.entity.v1.ArmyOrder.attack_army:type_name -> cityio.entity.v1.AttackArmyObjective
-	3,  // 14: cityio.entity.v1.ArmyOrder.conquer_settlement:type_name -> cityio.entity.v1.ConquerSettlementObjective
-	4,  // 15: cityio.entity.v1.ArmyOrder.retreat:type_name -> cityio.entity.v1.RetreatObjective
-	0,  // 16: cityio.entity.v1.ArmyOrder.remaining_route:type_name -> cityio.entity.v1.ArmyRouteStep
-	10, // 17: cityio.entity.v1.ArmyOrder.estimated_remaining_duration:type_name -> google.protobuf.Duration
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	7,  // 0: cityio.entity.v1.ArmyRouteStep.coords:type_name -> cityio.entity.v1.Coordinates
+	0,  // 1: cityio.entity.v1.ArmyRoute.known_steps:type_name -> cityio.entity.v1.ArmyRouteStep
+	7,  // 2: cityio.entity.v1.ArmyRoute.hidden_segment_end:type_name -> cityio.entity.v1.Coordinates
+	7,  // 3: cityio.entity.v1.MoveObjective.destination:type_name -> cityio.entity.v1.Coordinates
+	8,  // 4: cityio.entity.v1.AttackArmyObjective.target_army_id:type_name -> cityio.entity.v1.ArmyId
+	7,  // 5: cityio.entity.v1.AttackArmyObjective.last_known_coords:type_name -> cityio.entity.v1.Coordinates
+	9,  // 6: cityio.entity.v1.ConquerSettlementObjective.city_id:type_name -> cityio.entity.v1.CityId
+	7,  // 7: cityio.entity.v1.ConquerSettlementObjective.destination:type_name -> cityio.entity.v1.Coordinates
+	10, // 8: cityio.entity.v1.ConquerSettlementObjective.capture_started_at:type_name -> google.protobuf.Timestamp
+	11, // 9: cityio.entity.v1.ConquerSettlementObjective.capture_duration:type_name -> google.protobuf.Duration
+	9,  // 10: cityio.entity.v1.RetreatObjective.settlement_id:type_name -> cityio.entity.v1.CityId
+	7,  // 11: cityio.entity.v1.RetreatObjective.destination:type_name -> cityio.entity.v1.Coordinates
+	12, // 12: cityio.entity.v1.ArmyOrder.army_order_id:type_name -> cityio.entity.v1.ArmyOrderId
+	8,  // 13: cityio.entity.v1.ArmyOrder.army_id:type_name -> cityio.entity.v1.ArmyId
+	2,  // 14: cityio.entity.v1.ArmyOrder.move:type_name -> cityio.entity.v1.MoveObjective
+	3,  // 15: cityio.entity.v1.ArmyOrder.attack_army:type_name -> cityio.entity.v1.AttackArmyObjective
+	4,  // 16: cityio.entity.v1.ArmyOrder.conquer_settlement:type_name -> cityio.entity.v1.ConquerSettlementObjective
+	5,  // 17: cityio.entity.v1.ArmyOrder.retreat:type_name -> cityio.entity.v1.RetreatObjective
+	1,  // 18: cityio.entity.v1.ArmyOrder.remaining_route:type_name -> cityio.entity.v1.ArmyRoute
+	11, // 19: cityio.entity.v1.ArmyOrder.estimated_remaining_duration:type_name -> google.protobuf.Duration
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_army_order_proto_init() }
@@ -527,8 +591,9 @@ func file_cityio_entity_v1_army_order_proto_init() {
 	}
 	file_cityio_entity_v1_common_proto_init()
 	file_cityio_entity_v1_ids_proto_init()
-	file_cityio_entity_v1_army_order_proto_msgTypes[3].OneofWrappers = []any{}
-	file_cityio_entity_v1_army_order_proto_msgTypes[5].OneofWrappers = []any{
+	file_cityio_entity_v1_army_order_proto_msgTypes[1].OneofWrappers = []any{}
+	file_cityio_entity_v1_army_order_proto_msgTypes[4].OneofWrappers = []any{}
+	file_cityio_entity_v1_army_order_proto_msgTypes[6].OneofWrappers = []any{
 		(*ArmyOrder_Move)(nil),
 		(*ArmyOrder_AttackArmy)(nil),
 		(*ArmyOrder_ConquerSettlement)(nil),
@@ -540,7 +605,7 @@ func file_cityio_entity_v1_army_order_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_army_order_proto_rawDesc), len(file_cityio_entity_v1_army_order_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -13,7 +13,7 @@ import (
 )
 
 type projectedArmyRoute struct {
-	steps    []*entityv1.ArmyRouteStep
+	route    *entityv1.ArmyRoute
 	duration time.Duration
 }
 
@@ -37,40 +37,37 @@ func (s *Server) projectArmyPath(army domain.Army, path []domain.Coordinates, ex
 		pathCost += cost
 	}
 
-	disclosed := disclosedArmyPath(path, explored)
-	steps := make([]*entityv1.ArmyRouteStep, 0, len(disclosed))
-	for _, coords := range disclosed {
-		steps = append(steps, &entityv1.ArmyRouteStep{
+	known, hiddenEnd := disclosedArmyPath(path, explored)
+	route := &entityv1.ArmyRoute{KnownSteps: make([]*entityv1.ArmyRouteStep, 0, len(known))}
+	for _, coords := range known {
+		route.KnownSteps = append(route.KnownSteps, &entityv1.ArmyRouteStep{
 			Coords: &entityv1.Coordinates{X: int32(coords.X), Y: int32(coords.Y)},
 		})
+	}
+	if hiddenEnd != nil {
+		route.HiddenSegmentEnd = &entityv1.Coordinates{X: int32(hiddenEnd.X), Y: int32(hiddenEnd.Y)}
 	}
 
 	duration := armyMovementDuration(army) * time.Duration(pathCost)
 	if duration > 0 {
 		duration = ((duration + constants.TroopMovementTickInterval - 1) / constants.TroopMovementTickInterval) * constants.TroopMovementTickInterval
 	}
-	return projectedArmyRoute{steps: steps, duration: duration}
+	return projectedArmyRoute{route: route, duration: duration}
 }
 
-// disclosedArmyPath exposes the contiguous known prefix and the projected
-// endpoint. Intermediate unexplored geometry stays server-side; clients draw
-// the resulting coordinate gap as an uncertain straight connector.
-func disclosedArmyPath(path []domain.Coordinates, explored map[domain.Coordinates]struct{}) []domain.Coordinates {
-	disclosed := make([]domain.Coordinates, 0, len(path))
+// disclosedArmyPath separates the contiguous known prefix from the endpoint
+// of any hidden remainder so undisclosed geometry is never represented as an
+// exact route step.
+func disclosedArmyPath(path []domain.Coordinates, explored map[domain.Coordinates]struct{}) ([]domain.Coordinates, *domain.Coordinates) {
+	known := make([]domain.Coordinates, 0, len(path))
 	for _, coords := range path {
-		if _, known := explored[coords]; !known {
-			break
+		if _, isExplored := explored[coords]; !isExplored {
+			endpoint := path[len(path)-1]
+			return known, &endpoint
 		}
-		disclosed = append(disclosed, coords)
+		known = append(known, coords)
 	}
-	if len(path) == 0 {
-		return disclosed
-	}
-	endpoint := path[len(path)-1]
-	if len(disclosed) == 0 || disclosed[len(disclosed)-1] != endpoint {
-		disclosed = append(disclosed, endpoint)
-	}
-	return disclosed
+	return known, nil
 }
 
 func (s *Server) projectOwnedArmyOrder(army domain.Army, explored map[domain.Coordinates]struct{}) *entityv1.ArmyOrder {
@@ -88,7 +85,7 @@ func (s *Server) projectOwnedArmyOrder(army domain.Army, explored map[domain.Coo
 	order := &entityv1.ArmyOrder{
 		ArmyOrderId:                mapping.ToArmyOrderId(*army.OrderID),
 		ArmyId:                     mapping.ToArmyId(army.ArmyID),
-		RemainingRoute:             route.steps,
+		RemainingRoute:             route.route,
 		EstimatedRemainingDuration: durationpb.New(route.duration),
 	}
 	coords := &entityv1.Coordinates{X: int32(destination.X), Y: int32(destination.Y)}

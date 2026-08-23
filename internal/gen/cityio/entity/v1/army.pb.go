@@ -134,9 +134,9 @@ type Army struct {
 	Owner                 *UserId                   `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
 	Coords                *Coordinates              `protobuf:"bytes,3,opt,name=coords,proto3" json:"coords,omitempty"`
 	Troops                []*TroopStack             `protobuf:"bytes,4,rep,name=troops,proto3" json:"troops,omitempty"`
-	CompositionVisibility ArmyCompositionVisibility `protobuf:"varint,6,opt,name=composition_visibility,json=compositionVisibility,proto3,enum=cityio.entity.v1.ArmyCompositionVisibility" json:"composition_visibility,omitempty"`
-	OrderId               *ArmyOrderId              `protobuf:"bytes,7,opt,name=order_id,json=orderId,proto3,oneof" json:"order_id,omitempty"`
-	BattleId              *BattleId                 `protobuf:"bytes,8,opt,name=battle_id,json=battleId,proto3,oneof" json:"battle_id,omitempty"`
+	CompositionVisibility ArmyCompositionVisibility `protobuf:"varint,5,opt,name=composition_visibility,json=compositionVisibility,proto3,enum=cityio.entity.v1.ArmyCompositionVisibility" json:"composition_visibility,omitempty"`
+	OrderId               *ArmyOrderId              `protobuf:"bytes,6,opt,name=order_id,json=orderId,proto3,oneof" json:"order_id,omitempty"`
+	BattleId              *BattleId                 `protobuf:"bytes,7,opt,name=battle_id,json=battleId,proto3,oneof" json:"battle_id,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -229,18 +229,18 @@ const file_cityio_entity_v1_army_proto_rawDesc = "" +
 	"TroopStack\x12/\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x19\n" +
 	"\x05count\x18\x02 \x01(\x05H\x00R\x05count\x88\x01\x01B\b\n" +
-	"\x06_count\"\xd8\x03\n" +
+	"\x06_count\"\xd2\x03\n" +
 	"\x04Army\x121\n" +
 	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x12.\n" +
 	"\x05owner\x18\x02 \x01(\v2\x18.cityio.entity.v1.UserIdR\x05owner\x125\n" +
 	"\x06coords\x18\x03 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\x124\n" +
 	"\x06troops\x18\x04 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x06troops\x12b\n" +
-	"\x16composition_visibility\x18\x06 \x01(\x0e2+.cityio.entity.v1.ArmyCompositionVisibilityR\x15compositionVisibility\x12=\n" +
-	"\border_id\x18\a \x01(\v2\x1d.cityio.entity.v1.ArmyOrderIdH\x00R\aorderId\x88\x01\x01\x12<\n" +
-	"\tbattle_id\x18\b \x01(\v2\x1a.cityio.entity.v1.BattleIdH\x01R\bbattleId\x88\x01\x01B\v\n" +
+	"\x16composition_visibility\x18\x05 \x01(\x0e2+.cityio.entity.v1.ArmyCompositionVisibilityR\x15compositionVisibility\x12=\n" +
+	"\border_id\x18\x06 \x01(\v2\x1d.cityio.entity.v1.ArmyOrderIdH\x00R\aorderId\x88\x01\x01\x12<\n" +
+	"\tbattle_id\x18\a \x01(\v2\x1a.cityio.entity.v1.BattleIdH\x01R\bbattleId\x88\x01\x01B\v\n" +
 	"\t_order_idB\f\n" +
 	"\n" +
-	"_battle_idJ\x04\b\x05\x10\x06*\xc3\x01\n" +
+	"_battle_id*\xc3\x01\n" +
 	"\x19ArmyCompositionVisibility\x12+\n" +
 	"'ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ARMY_COMPOSITION_VISIBILITY_HIDDEN\x10\x01\x12*\n" +
