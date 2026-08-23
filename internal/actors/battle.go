@@ -64,12 +64,12 @@ func (state *battleActor) Receive(ctx actor.Context) {
 }
 
 func (state *battleActor) join(msg messages.JoinBattleMessage) bool {
-	if state.Battle.Defenders.GarrisonCityID != nil && *state.Battle.Defenders.GarrisonCityID == msg.OpposesGarrisonCityID {
+	if state.Battle.Defenders.MilitiaCityID != nil && *state.Battle.Defenders.MilitiaCityID == msg.OpposesMilitiaCityID {
 		state.Battle.Attackers.UserIDs = appendUnique(state.Battle.Attackers.UserIDs, msg.Owner)
 		state.Battle.Attackers.ArmyIDs = appendUnique(state.Battle.Attackers.ArmyIDs, msg.ArmyID)
 		return true
 	}
-	if state.Battle.Attackers.GarrisonCityID != nil && *state.Battle.Attackers.GarrisonCityID == msg.OpposesGarrisonCityID {
+	if state.Battle.Attackers.MilitiaCityID != nil && *state.Battle.Attackers.MilitiaCityID == msg.OpposesMilitiaCityID {
 		state.Battle.Defenders.UserIDs = appendUnique(state.Battle.Defenders.UserIDs, msg.Owner)
 		state.Battle.Defenders.ArmyIDs = appendUnique(state.Battle.Defenders.ArmyIDs, msg.ArmyID)
 		return true
@@ -109,18 +109,18 @@ func (state *battleActor) armies(ids []string) []battleArmy {
 	return result
 }
 
-func attackPower(armies []battleArmy, garrisonCount int64) float64 {
+func attackPower(armies []battleArmy, militiaCount int64) float64 {
 	var power float64
 	for _, participant := range armies {
 		for troopType, count := range participant.army.Troops {
 			power += float64(count * constants.GetTroopStat(troopType).Attack)
 		}
 	}
-	power += float64(garrisonCount * constants.GetTroopStat(domain.TroopTypeSoldier).Attack)
+	power += float64(militiaCount * constants.GetTroopStat(domain.TroopTypeSoldier).Attack)
 	return power
 }
 
-func (state *battleActor) casualties(targets []battleArmy, garrisonCityID *string, garrisonCount int64, incoming float64) (map[string]map[domain.TroopType]int64, int64) {
+func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string, militiaCount int64, incoming float64) (map[string]map[domain.TroopType]int64, int64) {
 	result := make(map[string]map[domain.TroopType]int64)
 	var durability float64
 	for _, target := range targets {
@@ -129,9 +129,9 @@ func (state *battleActor) casualties(targets []battleArmy, garrisonCityID *strin
 			durability += float64(count * (stat.HP + 5*stat.Defense))
 		}
 	}
-	if garrisonCount > 0 {
+	if militiaCount > 0 {
 		stat := constants.GetTroopStat(domain.TroopTypeSoldier)
-		durability += float64(garrisonCount * (stat.HP + 5*stat.Defense))
+		durability += float64(militiaCount * (stat.HP + 5*stat.Defense))
 	}
 	if durability <= 0 || incoming <= 0 {
 		return result, 0
@@ -154,14 +154,14 @@ func (state *battleActor) casualties(targets []battleArmy, garrisonCityID *strin
 			}
 		}
 	}
-	var garrisonKills int64
-	if garrisonCityID != nil && garrisonCount > 0 {
-		key := "garrison:" + *garrisonCityID
-		expected := incoming*float64(garrisonCount)/durability + state.casualtyCarry[key]
-		garrisonKills = min(garrisonCount, int64(math.Floor(expected)))
-		state.casualtyCarry[key] = expected - float64(garrisonKills)
+	var militiaKills int64
+	if militiaCityID != nil && militiaCount > 0 {
+		key := "militia:" + *militiaCityID
+		expected := incoming*float64(militiaCount)/durability + state.casualtyCarry[key]
+		militiaKills = min(militiaCount, int64(math.Floor(expected)))
+		state.casualtyCarry[key] = expected - float64(militiaKills)
 	}
-	return result, garrisonKills
+	return result, militiaKills
 }
 
 func (state *battleActor) tick(ctx actor.Context) {
@@ -169,13 +169,13 @@ func (state *battleActor) tick(ctx actor.Context) {
 	defenders := state.armies(state.Battle.Defenders.ArmyIDs)
 	state.Battle.Attackers.ArmyIDs = armyIDs(attackers)
 	state.Battle.Defenders.ArmyIDs = armyIDs(defenders)
-	state.refreshGarrison(&state.Battle.Attackers)
-	state.refreshGarrison(&state.Battle.Defenders)
+	state.refreshMilitia(&state.Battle.Attackers)
+	state.refreshMilitia(&state.Battle.Defenders)
 	if state.resolveIfFinished(ctx) {
 		return
 	}
-	toDefenders, defenderGarrisonLosses := state.casualties(defenders, state.Battle.Defenders.GarrisonCityID, state.Battle.Defenders.GarrisonCount, attackPower(attackers, state.Battle.Attackers.GarrisonCount))
-	toAttackers, attackerGarrisonLosses := state.casualties(attackers, state.Battle.Attackers.GarrisonCityID, state.Battle.Attackers.GarrisonCount, attackPower(defenders, state.Battle.Defenders.GarrisonCount))
+	toDefenders, defenderMilitiaLosses := state.casualties(defenders, state.Battle.Defenders.MilitiaCityID, state.Battle.Defenders.MilitiaCount, attackPower(attackers, state.Battle.Attackers.MilitiaCount))
+	toAttackers, attackerMilitiaLosses := state.casualties(attackers, state.Battle.Attackers.MilitiaCityID, state.Battle.Attackers.MilitiaCount, attackPower(defenders, state.Battle.Defenders.MilitiaCount))
 	for armyID, casualties := range toDefenders {
 		if !state.apply(armyID, casualties) {
 			state.removeArmy(armyID)
@@ -186,8 +186,8 @@ func (state *battleActor) tick(ctx actor.Context) {
 			state.removeArmy(armyID)
 		}
 	}
-	state.applyGarrisonLosses(&state.Battle.Defenders, defenderGarrisonLosses)
-	state.applyGarrisonLosses(&state.Battle.Attackers, attackerGarrisonLosses)
+	state.applyMilitiaLosses(&state.Battle.Defenders, defenderMilitiaLosses)
+	state.applyMilitiaLosses(&state.Battle.Attackers, attackerMilitiaLosses)
 	if state.resolveIfFinished(ctx) {
 		return
 	}
@@ -195,37 +195,37 @@ func (state *battleActor) tick(ctx actor.Context) {
 	state.publish()
 }
 
-func (state *battleActor) refreshGarrison(side *domain.BattleSide) {
-	if side.GarrisonCityID == nil {
-		side.GarrisonCount = 0
+func (state *battleActor) refreshMilitia(side *domain.BattleSide) {
+	if side.MilitiaCityID == nil {
+		side.MilitiaCount = 0
 		return
 	}
-	res, err := state.Cluster.Request("city", *side.GarrisonCityID, messages.GetCityMessage{})
+	res, err := state.Cluster.Request("city", *side.MilitiaCityID, messages.GetCityMessage{})
 	if err != nil {
-		side.GarrisonCount = 0
+		side.MilitiaCount = 0
 		return
 	}
 	response, ok := res.(*messages.GetCityResponseMessage)
 	if !ok {
-		side.GarrisonCount = 0
+		side.MilitiaCount = 0
 		return
 	}
-	side.GarrisonCount = int64(math.Floor(response.City.GarrisonPopulation))
+	side.MilitiaCount = int64(math.Floor(response.City.MilitiaPopulation))
 }
 
-func (state *battleActor) applyGarrisonLosses(side *domain.BattleSide, count int64) {
-	if side.GarrisonCityID == nil || count <= 0 {
+func (state *battleActor) applyMilitiaLosses(side *domain.BattleSide, count int64) {
+	if side.MilitiaCityID == nil || count <= 0 {
 		return
 	}
-	res, err := state.Cluster.Request("city", *side.GarrisonCityID, messages.ApplyGarrisonCasualtiesMessage{Count: count})
+	res, err := state.Cluster.Request("city", *side.MilitiaCityID, messages.ApplyMilitiaCasualtiesMessage{Count: count})
 	if err != nil {
-		slog.WarnContext(state.Ctx(), "failed to apply garrison casualties", "battle_id", state.Battle.BattleID, "city_id", *side.GarrisonCityID, "error", err)
+		slog.WarnContext(state.Ctx(), "failed to apply militia casualties", "battle_id", state.Battle.BattleID, "city_id", *side.MilitiaCityID, "error", err)
 		return
 	}
-	if response, ok := res.(*messages.ApplyGarrisonCasualtiesResponseMessage); ok && !response.Survived {
-		side.GarrisonCount = 0
+	if response, ok := res.(*messages.ApplyMilitiaCasualtiesResponseMessage); ok && !response.Survived {
+		side.MilitiaCount = 0
 	} else {
-		side.GarrisonCount = max(side.GarrisonCount-count, 0)
+		side.MilitiaCount = max(side.MilitiaCount-count, 0)
 	}
 }
 
@@ -279,8 +279,8 @@ func appendUnique(ids []string, id string) []string {
 }
 
 func (state *battleActor) resolveIfFinished(ctx actor.Context) bool {
-	attackersActive := len(state.Battle.Attackers.ArmyIDs) > 0 || state.Battle.Attackers.GarrisonCount > 0
-	defendersActive := len(state.Battle.Defenders.ArmyIDs) > 0 || state.Battle.Defenders.GarrisonCount > 0
+	attackersActive := len(state.Battle.Attackers.ArmyIDs) > 0 || state.Battle.Attackers.MilitiaCount > 0
+	defendersActive := len(state.Battle.Defenders.ArmyIDs) > 0 || state.Battle.Defenders.MilitiaCount > 0
 	if attackersActive && defendersActive {
 		return false
 	}
@@ -288,8 +288,8 @@ func (state *battleActor) resolveIfFinished(ctx actor.Context) bool {
 	if !attackersActive {
 		winners = state.Battle.Defenders.ArmyIDs
 	}
-	state.endGarrisonBattle(state.Battle.Attackers.GarrisonCityID)
-	state.endGarrisonBattle(state.Battle.Defenders.GarrisonCityID)
+	state.endMilitiaBattle(state.Battle.Attackers.MilitiaCityID)
+	state.endMilitiaBattle(state.Battle.Defenders.MilitiaCityID)
 	for _, id := range winners {
 		_ = state.Cluster.Tell("army", id, messages.LeaveBattleMessage{BattleID: state.Battle.BattleID})
 	}
@@ -301,9 +301,9 @@ func (state *battleActor) resolveIfFinished(ctx actor.Context) bool {
 	return true
 }
 
-func (state *battleActor) endGarrisonBattle(cityID *string) {
+func (state *battleActor) endMilitiaBattle(cityID *string) {
 	if cityID != nil {
-		_ = state.Cluster.Tell("city", *cityID, messages.EndGarrisonBattleMessage{BattleID: state.Battle.BattleID})
+		_ = state.Cluster.Tell("city", *cityID, messages.EndMilitiaBattleMessage{BattleID: state.Battle.BattleID})
 	}
 }
 

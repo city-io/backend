@@ -137,50 +137,50 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateCityPolicyMessage:
-		if state.City.GarrisonBattleID != nil {
+		if state.City.MilitiaBattleID != nil {
 			ctx.Respond(&messages.CityPolicyLockedError{})
 			return
 		}
-		if msg.GarrisonPercent < constants.MinGarrisonPercent || msg.GarrisonPercent > constants.MaxGarrisonPercent || msg.TaxRatePercent < 0 || msg.TaxRatePercent > constants.MaxTaxRatePercent {
+		if msg.MilitiaPercent < constants.MinMilitiaPercent || msg.MilitiaPercent > constants.MaxMilitiaPercent || msg.TaxRatePercent < 0 || msg.TaxRatePercent > constants.MaxTaxRatePercent {
 			ctx.Respond(&messages.InvalidCityPolicyError{})
 			return
 		}
-		garrisonChanged := state.City.GarrisonPercent != msg.GarrisonPercent
-		state.City.GarrisonPercent = msg.GarrisonPercent
+		militiaChanged := state.City.MilitiaPercent != msg.MilitiaPercent
+		state.City.MilitiaPercent = msg.MilitiaPercent
 		state.City.TaxRatePercent = msg.TaxRatePercent
-		// Raising the target reserves future growth for the garrison; it never
+		// Raising the target reserves future growth for the militia; it never
 		// conjures defenders from civilians. Lowering it releases any excess.
-		if garrisonChanged {
-			target := constants.GarrisonTarget(state.City)
-			state.City.GarrisonPopulation = min(state.City.GarrisonPopulation, target)
+		if militiaChanged {
+			target := constants.MilitiaTarget(state.City)
+			state.City.MilitiaPopulation = min(state.City.MilitiaPopulation, target)
 		}
 		state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 		state.Store.EnqueueCity(state.City)
 		state.publish()
 		ctx.Respond(&messages.GetCityResponseMessage{City: state.City})
 
-	case messages.ApplyGarrisonCasualtiesMessage:
-		survived := state.applyGarrisonCasualties(msg.Count)
+	case messages.ApplyMilitiaCasualtiesMessage:
+		survived := state.applyMilitiaCasualties(msg.Count)
 		state.Store.EnqueueCity(state.City)
 		state.publishWorld()
-		ctx.Respond(&messages.ApplyGarrisonCasualtiesResponseMessage{Survived: survived})
+		ctx.Respond(&messages.ApplyMilitiaCasualtiesResponseMessage{Survived: survived})
 
-	case messages.BeginGarrisonBattleMessage:
-		if state.City.GarrisonBattleID != nil {
-			ctx.Respond(&messages.BeginGarrisonBattleResponseMessage{BattleID: *state.City.GarrisonBattleID, Count: int64(math.Floor(state.City.GarrisonPopulation))})
+	case messages.BeginMilitiaBattleMessage:
+		if state.City.MilitiaBattleID != nil {
+			ctx.Respond(&messages.BeginMilitiaBattleResponseMessage{BattleID: *state.City.MilitiaBattleID, Count: int64(math.Floor(state.City.MilitiaPopulation))})
 			return
 		}
-		if state.City.GarrisonPopulation < 1 {
-			ctx.Respond(&messages.BeginGarrisonBattleResponseMessage{})
+		if state.City.MilitiaPopulation < 1 {
+			ctx.Respond(&messages.BeginMilitiaBattleResponseMessage{})
 			return
 		}
 		battleID := msg.BattleID
-		state.City.GarrisonBattleID = &battleID
-		ctx.Respond(&messages.BeginGarrisonBattleResponseMessage{BattleID: battleID, Count: int64(math.Floor(state.City.GarrisonPopulation))})
+		state.City.MilitiaBattleID = &battleID
+		ctx.Respond(&messages.BeginMilitiaBattleResponseMessage{BattleID: battleID, Count: int64(math.Floor(state.City.MilitiaPopulation))})
 
-	case messages.EndGarrisonBattleMessage:
-		if state.City.GarrisonBattleID != nil && *state.City.GarrisonBattleID == msg.BattleID {
-			state.City.GarrisonBattleID = nil
+	case messages.EndMilitiaBattleMessage:
+		if state.City.MilitiaBattleID != nil && *state.City.MilitiaBattleID == msg.BattleID {
+			state.City.MilitiaBattleID = nil
 		}
 
 	case messages.BuildingStateChangedMessage:
@@ -364,12 +364,12 @@ func (state *cityActor) recruitPopulation(count int64) *messages.InsufficientPop
 	return nil
 }
 
-func (state *cityActor) applyGarrisonCasualties(count int64) bool {
-	removed := min(float64(count), state.City.GarrisonPopulation)
-	state.City.GarrisonPopulation -= removed
+func (state *cityActor) applyMilitiaCasualties(count int64) bool {
+	removed := min(float64(count), state.City.MilitiaPopulation)
+	state.City.MilitiaPopulation -= removed
 	state.City.Population = max(state.City.Population-removed, 0)
 	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
-	return state.City.GarrisonPopulation >= 1
+	return state.City.MilitiaPopulation >= 1
 }
 
 // armyUpkeepTotal is the sum of food upkeep (per hour) for all armies currently
@@ -438,7 +438,7 @@ func (state *cityActor) tickFoodAndPopulation() {
 	state.pendingFoodIncome = 0
 
 	tickSecs := constants.CityTickInterval
-	// Everyone physically resident in the city—including its garrison—eats
+	// Everyone physically resident in the city—including its militia—eats
 	// here. Field armies are charged separately to their nearest settlement.
 	upkeepPerHour := int64(math.Round(state.City.Population*float64(constants.FoodPerPopPerHour))) + state.armyUpkeepTotal()
 
@@ -535,11 +535,11 @@ func (state *cityActor) growPopulation(starving bool, deficitRatio, surplusRatio
 		newPop = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)*fedFactor*constants.PositiveGrowthMultiplier(state.City.TaxRatePercent)
 	}
 	delta := newPop - currentPopulation
-	if delta > 0 && state.City.GarrisonBattleID == nil {
-		shortfall := max(constants.GarrisonTarget(state.City)-state.City.GarrisonPopulation, 0)
-		state.City.GarrisonPopulation += min(delta, shortfall)
-	} else if state.City.GarrisonPopulation > newPop {
-		state.City.GarrisonPopulation = max(newPop, 0)
+	if delta > 0 && state.City.MilitiaBattleID == nil {
+		shortfall := max(constants.MilitiaTarget(state.City)-state.City.MilitiaPopulation, 0)
+		state.City.MilitiaPopulation += min(delta, shortfall)
+	} else if state.City.MilitiaPopulation > newPop {
+		state.City.MilitiaPopulation = max(newPop, 0)
 	}
 	state.City.PopulationGrowthRate = int64(math.Round(delta * float64(constants.SecondsPerHour) / float64(constants.CityTickInterval)))
 	state.City.Population = newPop

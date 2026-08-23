@@ -23,13 +23,13 @@ const (
 )
 
 type BattleSide struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	UserIds        []*UserId              `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
-	ArmyIds        []*ArmyId              `protobuf:"bytes,2,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
-	GarrisonCityId *CityId                `protobuf:"bytes,3,opt,name=garrison_city_id,json=garrisonCityId,proto3,oneof" json:"garrison_city_id,omitempty"`
-	GarrisonCount  int64                  `protobuf:"varint,4,opt,name=garrison_count,json=garrisonCount,proto3" json:"garrison_count,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserIds       []*UserId              `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	ArmyIds       []*ArmyId              `protobuf:"bytes,2,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
+	MilitiaCityId *CityId                `protobuf:"bytes,3,opt,name=militia_city_id,json=militiaCityId,proto3,oneof" json:"militia_city_id,omitempty"`
+	MilitiaCount  int64                  `protobuf:"varint,4,opt,name=militia_count,json=militiaCount,proto3" json:"militia_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BattleSide) Reset() {
@@ -76,16 +76,16 @@ func (x *BattleSide) GetArmyIds() []*ArmyId {
 	return nil
 }
 
-func (x *BattleSide) GetGarrisonCityId() *CityId {
+func (x *BattleSide) GetMilitiaCityId() *CityId {
 	if x != nil {
-		return x.GarrisonCityId
+		return x.MilitiaCityId
 	}
 	return nil
 }
 
-func (x *BattleSide) GetGarrisonCount() int64 {
+func (x *BattleSide) GetMilitiaCount() int64 {
 	if x != nil {
-		return x.GarrisonCount
+		return x.MilitiaCount
 	}
 	return 0
 }
@@ -181,14 +181,14 @@ var File_cityio_entity_v1_battle_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_battle_proto_rawDesc = "" +
 	"\n" +
-	"\x1dcityio/entity/v1/battle.proto\x12\x10cityio.entity.v1\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfb\x01\n" +
+	"\x1dcityio/entity/v1/battle.proto\x12\x10cityio.entity.v1\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf6\x01\n" +
 	"\n" +
 	"BattleSide\x123\n" +
 	"\buser_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.UserIdR\auserIds\x123\n" +
-	"\barmy_ids\x18\x02 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x12G\n" +
-	"\x10garrison_city_id\x18\x03 \x01(\v2\x18.cityio.entity.v1.CityIdH\x00R\x0egarrisonCityId\x88\x01\x01\x12%\n" +
-	"\x0egarrison_count\x18\x04 \x01(\x03R\rgarrisonCountB\x13\n" +
-	"\x11_garrison_city_id\"\xe5\x02\n" +
+	"\barmy_ids\x18\x02 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x12E\n" +
+	"\x0fmilitia_city_id\x18\x03 \x01(\v2\x18.cityio.entity.v1.CityIdH\x00R\rmilitiaCityId\x88\x01\x01\x12#\n" +
+	"\rmilitia_count\x18\x04 \x01(\x03R\fmilitiaCountB\x12\n" +
+	"\x10_militia_city_id\"\xe5\x02\n" +
 	"\x06Battle\x127\n" +
 	"\tbattle_id\x18\x01 \x01(\v2\x1a.cityio.entity.v1.BattleIdR\bbattleId\x121\n" +
 	"\atile_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.TileIdR\x06tileId\x12:\n" +
@@ -226,7 +226,7 @@ var file_cityio_entity_v1_battle_proto_goTypes = []any{
 var file_cityio_entity_v1_battle_proto_depIdxs = []int32{
 	2, // 0: cityio.entity.v1.BattleSide.user_ids:type_name -> cityio.entity.v1.UserId
 	3, // 1: cityio.entity.v1.BattleSide.army_ids:type_name -> cityio.entity.v1.ArmyId
-	4, // 2: cityio.entity.v1.BattleSide.garrison_city_id:type_name -> cityio.entity.v1.CityId
+	4, // 2: cityio.entity.v1.BattleSide.militia_city_id:type_name -> cityio.entity.v1.CityId
 	5, // 3: cityio.entity.v1.Battle.battle_id:type_name -> cityio.entity.v1.BattleId
 	6, // 4: cityio.entity.v1.Battle.tile_id:type_name -> cityio.entity.v1.TileId
 	0, // 5: cityio.entity.v1.Battle.attackers:type_name -> cityio.entity.v1.BattleSide

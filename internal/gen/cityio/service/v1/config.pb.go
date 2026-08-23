@@ -294,17 +294,17 @@ func (*GetGameConfigRequest) Descriptor() ([]byte, []int) {
 }
 
 type PopulationPolicyConfig struct {
-	state                  protoimpl.MessageState `protogen:"open.v1"`
-	CoreCivilianPercent    int32                  `protobuf:"varint,1,opt,name=core_civilian_percent,json=coreCivilianPercent,proto3" json:"core_civilian_percent,omitempty"`
-	DefaultGarrisonPercent int32                  `protobuf:"varint,2,opt,name=default_garrison_percent,json=defaultGarrisonPercent,proto3" json:"default_garrison_percent,omitempty"`
-	NeutralGarrisonPercent int32                  `protobuf:"varint,3,opt,name=neutral_garrison_percent,json=neutralGarrisonPercent,proto3" json:"neutral_garrison_percent,omitempty"`
-	MaxGarrisonPercent     int32                  `protobuf:"varint,4,opt,name=max_garrison_percent,json=maxGarrisonPercent,proto3" json:"max_garrison_percent,omitempty"`
-	MaxMilitaryPercent     int32                  `protobuf:"varint,5,opt,name=max_military_percent,json=maxMilitaryPercent,proto3" json:"max_military_percent,omitempty"`
-	DefaultTaxRatePercent  int32                  `protobuf:"varint,6,opt,name=default_tax_rate_percent,json=defaultTaxRatePercent,proto3" json:"default_tax_rate_percent,omitempty"`
-	MaxTaxRatePercent      int32                  `protobuf:"varint,7,opt,name=max_tax_rate_percent,json=maxTaxRatePercent,proto3" json:"max_tax_rate_percent,omitempty"`
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	CoreCivilianPercent   int32                  `protobuf:"varint,1,opt,name=core_civilian_percent,json=coreCivilianPercent,proto3" json:"core_civilian_percent,omitempty"`
+	DefaultMilitiaPercent int32                  `protobuf:"varint,2,opt,name=default_militia_percent,json=defaultMilitiaPercent,proto3" json:"default_militia_percent,omitempty"`
+	NeutralMilitiaPercent int32                  `protobuf:"varint,3,opt,name=neutral_militia_percent,json=neutralMilitiaPercent,proto3" json:"neutral_militia_percent,omitempty"`
+	MaxMilitiaPercent     int32                  `protobuf:"varint,4,opt,name=max_militia_percent,json=maxMilitiaPercent,proto3" json:"max_militia_percent,omitempty"`
+	MaxMilitaryPercent    int32                  `protobuf:"varint,5,opt,name=max_military_percent,json=maxMilitaryPercent,proto3" json:"max_military_percent,omitempty"`
+	DefaultTaxRatePercent int32                  `protobuf:"varint,6,opt,name=default_tax_rate_percent,json=defaultTaxRatePercent,proto3" json:"default_tax_rate_percent,omitempty"`
+	MaxTaxRatePercent     int32                  `protobuf:"varint,7,opt,name=max_tax_rate_percent,json=maxTaxRatePercent,proto3" json:"max_tax_rate_percent,omitempty"`
 	// Gold per taxable resident at a 100% tax rate.
 	TaxGoldPerPopulation *v1.Rate `protobuf:"bytes,8,opt,name=tax_gold_per_population,json=taxGoldPerPopulation,proto3" json:"tax_gold_per_population,omitempty"`
-	MinGarrisonPercent   int32    `protobuf:"varint,9,opt,name=min_garrison_percent,json=minGarrisonPercent,proto3" json:"min_garrison_percent,omitempty"`
+	MinMilitiaPercent    int32    `protobuf:"varint,9,opt,name=min_militia_percent,json=minMilitiaPercent,proto3" json:"min_militia_percent,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -346,23 +346,23 @@ func (x *PopulationPolicyConfig) GetCoreCivilianPercent() int32 {
 	return 0
 }
 
-func (x *PopulationPolicyConfig) GetDefaultGarrisonPercent() int32 {
+func (x *PopulationPolicyConfig) GetDefaultMilitiaPercent() int32 {
 	if x != nil {
-		return x.DefaultGarrisonPercent
+		return x.DefaultMilitiaPercent
 	}
 	return 0
 }
 
-func (x *PopulationPolicyConfig) GetNeutralGarrisonPercent() int32 {
+func (x *PopulationPolicyConfig) GetNeutralMilitiaPercent() int32 {
 	if x != nil {
-		return x.NeutralGarrisonPercent
+		return x.NeutralMilitiaPercent
 	}
 	return 0
 }
 
-func (x *PopulationPolicyConfig) GetMaxGarrisonPercent() int32 {
+func (x *PopulationPolicyConfig) GetMaxMilitiaPercent() int32 {
 	if x != nil {
-		return x.MaxGarrisonPercent
+		return x.MaxMilitiaPercent
 	}
 	return 0
 }
@@ -395,9 +395,9 @@ func (x *PopulationPolicyConfig) GetTaxGoldPerPopulation() *v1.Rate {
 	return nil
 }
 
-func (x *PopulationPolicyConfig) GetMinGarrisonPercent() int32 {
+func (x *PopulationPolicyConfig) GetMinMilitiaPercent() int32 {
 	if x != nil {
-		return x.MinGarrisonPercent
+		return x.MinMilitiaPercent
 	}
 	return 0
 }
@@ -518,17 +518,17 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x0eBuildingConfig\x122\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x12=\n" +
 	"\x06levels\x18\x02 \x03(\v2%.cityio.service.v1.BuildingLevelStatsR\x06levels\"\x16\n" +
-	"\x14GetGameConfigRequest\"\x8f\x04\n" +
+	"\x14GetGameConfigRequest\"\x87\x04\n" +
 	"\x16PopulationPolicyConfig\x122\n" +
-	"\x15core_civilian_percent\x18\x01 \x01(\x05R\x13coreCivilianPercent\x128\n" +
-	"\x18default_garrison_percent\x18\x02 \x01(\x05R\x16defaultGarrisonPercent\x128\n" +
-	"\x18neutral_garrison_percent\x18\x03 \x01(\x05R\x16neutralGarrisonPercent\x120\n" +
-	"\x14max_garrison_percent\x18\x04 \x01(\x05R\x12maxGarrisonPercent\x120\n" +
+	"\x15core_civilian_percent\x18\x01 \x01(\x05R\x13coreCivilianPercent\x126\n" +
+	"\x17default_militia_percent\x18\x02 \x01(\x05R\x15defaultMilitiaPercent\x126\n" +
+	"\x17neutral_militia_percent\x18\x03 \x01(\x05R\x15neutralMilitiaPercent\x12.\n" +
+	"\x13max_militia_percent\x18\x04 \x01(\x05R\x11maxMilitiaPercent\x120\n" +
 	"\x14max_military_percent\x18\x05 \x01(\x05R\x12maxMilitaryPercent\x127\n" +
 	"\x18default_tax_rate_percent\x18\x06 \x01(\x05R\x15defaultTaxRatePercent\x12/\n" +
 	"\x14max_tax_rate_percent\x18\a \x01(\x05R\x11maxTaxRatePercent\x12M\n" +
-	"\x17tax_gold_per_population\x18\b \x01(\v2\x16.cityio.entity.v1.RateR\x14taxGoldPerPopulation\x120\n" +
-	"\x14min_garrison_percent\x18\t \x01(\x05R\x12minGarrisonPercent\"\x85\x03\n" +
+	"\x17tax_gold_per_population\x18\b \x01(\v2\x16.cityio.entity.v1.RateR\x14taxGoldPerPopulation\x12.\n" +
+	"\x13min_militia_percent\x18\t \x01(\x05R\x11minMilitiaPercent\"\x85\x03\n" +
 	"\x15GetGameConfigResponse\x12\x19\n" +
 	"\bmap_size\x18\x01 \x01(\x05R\amapSize\x12\x1b\n" +
 	"\tcity_size\x18\x02 \x01(\x05R\bcitySize\x12#\n" +

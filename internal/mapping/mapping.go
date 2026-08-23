@@ -188,8 +188,8 @@ func CityToProto(c domain.City) *entityv1.City {
 		NetFoodFlow:           RatePerHour(c.NetFoodFlow),
 		Starving:              c.Starving,
 		PopulationGrowth:      RatePerHour(c.PopulationGrowthRate),
-		GarrisonPopulation:    c.GarrisonPopulation,
-		GarrisonPercent:       int32(c.GarrisonPercent),
+		MilitiaPopulation:     c.MilitiaPopulation,
+		MilitiaPercent:        int32(c.MilitiaPercent),
 		CorePopulation:        constants.CorePopulation(c),
 		RecruitablePopulation: float64(constants.RecruitablePopulation(c)),
 		TaxablePopulation:     constants.TaxablePopulation(c),
@@ -397,15 +397,15 @@ func BattleToProto(b domain.Battle) *entityv1.Battle {
 }
 
 func battleSideToProto(side domain.BattleSide) *entityv1.BattleSide {
-	out := &entityv1.BattleSide{GarrisonCount: side.GarrisonCount}
+	out := &entityv1.BattleSide{MilitiaCount: side.MilitiaCount}
 	for _, id := range side.UserIDs {
 		out.UserIds = append(out.UserIds, ToUserId(id))
 	}
 	for _, id := range side.ArmyIDs {
 		out.ArmyIds = append(out.ArmyIds, ToArmyId(id))
 	}
-	if side.GarrisonCityID != nil {
-		out.GarrisonCityId = ToCityId(*side.GarrisonCityID)
+	if side.MilitiaCityID != nil {
+		out.MilitiaCityId = ToCityId(*side.MilitiaCityID)
 	}
 	return out
 }

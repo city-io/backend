@@ -38,18 +38,18 @@ func TestBattleJoinAllowsDifferentUsersOnSameSide(t *testing.T) {
 	}
 }
 
-func TestBattleJoinAllowsAlliesAgainstSettlementGarrison(t *testing.T) {
+func TestBattleJoinAllowsAlliesAgainstSettlementMilitia(t *testing.T) {
 	cityID := "town"
 	state := &battleActor{Battle: domain.Battle{
 		Attackers: domain.BattleSide{UserIDs: []string{"first"}, ArmyIDs: []string{"attacker"}},
-		Defenders: domain.BattleSide{GarrisonCityID: &cityID, GarrisonCount: 20},
+		Defenders: domain.BattleSide{MilitiaCityID: &cityID, MilitiaCount: 20},
 	}}
 
-	if !state.join(messages.JoinBattleMessage{ArmyID: "ally", Owner: "second", OpposesGarrisonCityID: cityID}) {
+	if !state.join(messages.JoinBattleMessage{ArmyID: "ally", Owner: "second", OpposesMilitiaCityID: cityID}) {
 		t.Fatal("allied participant was rejected")
 	}
 	if !contains(state.Battle.Attackers.UserIDs, "second") || !contains(state.Battle.Attackers.ArmyIDs, "ally") {
-		t.Fatalf("allied participant not added against garrison: %+v", state.Battle.Attackers)
+		t.Fatalf("allied participant not added against militia: %+v", state.Battle.Attackers)
 	}
 }
 
@@ -64,11 +64,11 @@ func TestBattleCasualtiesAreCappedAtAvailableUnits(t *testing.T) {
 	}
 }
 
-func TestBattleGarrisonCasualtiesAreCappedAtAvailableDefenders(t *testing.T) {
+func TestBattleMilitiaCasualtiesAreCappedAtAvailableDefenders(t *testing.T) {
 	state := &battleActor{casualtyCarry: make(map[string]float64)}
 	cityID := "town"
 	_, got := state.casualties(nil, &cityID, 3, 1_000_000)
 	if got != 3 {
-		t.Fatalf("garrison casualties = %d, want available count 3", got)
+		t.Fatalf("militia casualties = %d, want available count 3", got)
 	}
 }

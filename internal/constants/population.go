@@ -10,13 +10,13 @@ const (
 	// CoreCivilianPercent is the housing share protected from recruitment.
 	CoreCivilianPercent = 55
 
-	// Garrison is a non-mobile settlement reserve. Players start at 10%; neutral
+	// Militia is a non-mobile settlement reserve. Players start at 10%; neutral
 	// towns commit the full non-core population share so they have no recruitable
 	// surplus and cannot be captured undefended.
-	DefaultGarrisonPercent = 10
-	NeutralGarrisonPercent = 45
-	MinGarrisonPercent     = 5
-	MaxGarrisonPercent     = 100 - CoreCivilianPercent
+	DefaultMilitiaPercent = 10
+	NeutralMilitiaPercent = 45
+	MinMilitiaPercent     = 5
+	MaxMilitiaPercent     = 100 - CoreCivilianPercent
 
 	// Tax is configured as a whole-number percentage. At 100%, each taxable
 	// resident yields TaxGoldPerPopPerHour gold/hour and positive population
@@ -31,17 +31,17 @@ func CorePopulation(city domain.City) float64 {
 	return city.PopulationCap * float64(CoreCivilianPercent) / 100
 }
 
-func GarrisonTarget(city domain.City) float64 {
-	return city.PopulationCap * float64(city.GarrisonPercent) / 100
+func MilitiaTarget(city domain.City) float64 {
+	return city.PopulationCap * float64(city.MilitiaPercent) / 100
 }
 
 func RecruitablePopulation(city domain.City) int64 {
-	available := city.Population - CorePopulation(city) - GarrisonTarget(city)
+	available := city.Population - CorePopulation(city) - MilitiaTarget(city)
 	return max(int64(math.Floor(available)), 0)
 }
 
 func TaxablePopulation(city domain.City) float64 {
-	return max(city.Population-city.GarrisonPopulation, 0)
+	return max(city.Population-city.MilitiaPopulation, 0)
 }
 
 func TaxIncomePerHour(city domain.City) int64 {

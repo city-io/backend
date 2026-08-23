@@ -174,7 +174,7 @@ the "Client / frontend API reference" section below.
   `ConfigService.GetGameConfig`.
 - **Resources & economy:** two resources, `gold` and `food`, pooled per **user** (not per city).
   Centers/mines and city taxes produce gold; farms produce food. Every resident, including the
-  garrison, consumes `FoodPerPopPerHour` (48/hr), **plus** the upkeep of any
+  militia, consumes `FoodPerPopPerHour` (48/hr), **plus** the upkeep of any
   armies attributed to it. A city consumes its own food first, deposits surplus to the user pool,
   and draws the shortfall from the pool. Starvation and population change compare stable hourly
   production/upkeep rates rather than rounded per-tick food units, while the pool still transfers
@@ -198,15 +198,15 @@ the "Client / frontend API reference" section below.
     attackers targeting a participant join the opposing side, leaving formal alliance policy for
     the future diplomacy layer.
   - **Conquest:** an army ordered to conquer fights field defenders and the settlement's passive
-    garrison on the center tile, then must hold it uncontested for 30 seconds. Garrison casualties
-    reduce both the garrison and settlement population. Completion transfers the existing
+    militia on the center tile, then must hold it uncontested for 30 seconds. Militia casualties
+    reduce both the militia and settlement population. Completion transfers the existing
     settlement and its buildings to the attacker.
   - **Population transfer:** 55% of housing capacity is a protected civilian core. A city targets
-    a configurable 5–45% passive garrison (10% by default; neutral towns start at 45%); residents
-    above the core plus garrison target are recruitable. Starting a training order immediately
+    a configurable 5–45% passive militia (10% by default; neutral towns start at 45%); residents
+    above the core plus militia target are recruitable. Starting a training order immediately
     removes its population cost from the settlement. Armies own that manpower thereafter, deaths
     are permanent, and future settlement growth can create new recruitable surplus.
-  - **Tax policy:** each owned city has a 0–100% tax rate (10% by default). Every non-garrison
+  - **Tax policy:** each owned city has a 0–100% tax rate (10% by default). Every non-militia
     resident is taxable. At 100%, each taxable resident yields 16 gold/hour and positive population
     growth is fully suppressed; income and growth effects scale linearly with the configured rate.
   - **Food upkeep:** each army's food upkeep is added to its **nearest owned settlement's**
@@ -289,7 +289,7 @@ for TypeScript) rather than hand-writing request types.
   password is never sent.
 - **City** — public fields: `city_id, type, owner? (UserId), name, population (double),
   population_cap (double), start (Coordinates, top-left), size, starving (bool),
-  population_growth (Rate), garrison_population, garrison_percent, core_population,
+  population_growth (Rate), militia_population, militia_percent, core_population,
   taxable_population`. **Owner-only** fields (nil/zero for non-owners): `food_production,
   food_upkeep, net_food_flow (Rate), recruitable_population, tax_rate_percent, tax_income`. See
   `mapping.HidePrivateCityFields`.
@@ -306,7 +306,7 @@ for TypeScript) rather than hand-writing request types.
   records.
 - **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
   active combat. Both sides contain repeated user and army IDs so future allies can share a side;
-  a side may additionally contain a settlement garrison and its live defender count.
+  a side may additionally contain a settlement militia and its live defender count.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -342,8 +342,8 @@ for TypeScript) rather than hand-writing request types.
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.
 - `CreateCity(type, owner?, name, size) → { city }` — placed on a random empty block.
 - `ListCities() → { city_ids[], entities(cities) }` — your owned cities.
-- `UpdateCityPolicy(city_id, garrison_percent, tax_rate_percent) → { city }` — owner-only;
-  garrison must be 5–45 and tax must be 0–100. The RPC rejects values outside those code-owned
+- `UpdateCityPolicy(city_id, militia_percent, tax_rate_percent) → { city }` — owner-only;
+  militia must be 5–45 and tax must be 0–100. The RPC rejects values outside those code-owned
   ranges before dispatching to the city actor. Policy changes stream immediately.
 
 **BuildingService**
@@ -413,7 +413,7 @@ for TypeScript) rather than hand-writing request types.
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),
   city_tick (Duration), buildings[]: { type, levels[]: { level, cost[], construction_time
   (Duration), production[], population } }, population_policy }` — *public*, static tunables for
-  the client, including civilian/garrison/tax limits and the tax yield rate. Note:
+  the client, including civilian/militia/tax limits and the tax yield rate. Note:
   troop stats are **not** exposed here yet (see Game model → troop stat table).
 
 ### Error codes (Connect)

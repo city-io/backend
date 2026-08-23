@@ -18,15 +18,15 @@ type City struct {
 	Name          string   `json:"name"`
 	Population    float64  `json:"population"`
 	PopulationCap float64  `json:"populationCap"`
-	// GarrisonPopulation is the non-mobile defensive reserve currently present
-	// in the settlement. GarrisonPercent is its target share of housing capacity;
+	// MilitiaPopulation is the non-mobile defensive reserve currently present
+	// in the settlement. MilitiaPercent is its target share of housing capacity;
 	// losses refill from future population growth rather than appearing for free.
-	GarrisonPopulation float64 `json:"garrisonPopulation"`
-	GarrisonPercent    int     `json:"garrisonPercent"`
-	TaxRatePercent     int     `json:"taxRatePercent"`
-	StartX             int     `json:"startX"`
-	StartY             int     `json:"startY"`
-	Size               int     `json:"size"`
+	MilitiaPopulation float64 `json:"militiaPopulation"`
+	MilitiaPercent    int     `json:"militiaPercent"`
+	TaxRatePercent    int     `json:"taxRatePercent"`
+	StartX            int     `json:"startX"`
+	StartY            int     `json:"startY"`
+	Size              int     `json:"size"`
 
 	// FoodProductionRate is the food this city's own farms produce per hour.
 	// FoodUpkeep is the food this city's population consumes per hour. NetFoodFlow
@@ -44,7 +44,7 @@ type City struct {
 	// declining. Computed from the per-tick delta applied in growPopulation.
 	PopulationGrowthRate int64   `json:"populationGrowthRate"`
 	TaxIncomeRate        int64   `json:"taxIncomeRate"`
-	GarrisonBattleID     *string `json:"-"`
+	MilitiaBattleID      *string `json:"-"`
 
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`

@@ -8,11 +8,11 @@ import (
 
 func TestPopulationPolicyBuckets(t *testing.T) {
 	city := domain.City{
-		Population:         250,
-		PopulationCap:      250,
-		GarrisonPopulation: 25,
-		GarrisonPercent:    10,
-		TaxRatePercent:     10,
+		Population:        250,
+		PopulationCap:     250,
+		MilitiaPopulation: 25,
+		MilitiaPercent:    10,
+		TaxRatePercent:    10,
 	}
 	if got := CorePopulation(city); got != 137.5 {
 		t.Fatalf("core population = %v, want 137.5", got)
@@ -28,31 +28,31 @@ func TestPopulationPolicyBuckets(t *testing.T) {
 	}
 }
 
-func TestRecruitablePopulationProtectsTargetGarrisonAfterLosses(t *testing.T) {
+func TestRecruitablePopulationProtectsTargetMilitiaAfterLosses(t *testing.T) {
 	city := domain.City{
-		Population:         200,
-		PopulationCap:      250,
-		GarrisonPopulation: 5,
-		GarrisonPercent:    10,
+		Population:        200,
+		PopulationCap:     250,
+		MilitiaPopulation: 5,
+		MilitiaPercent:    10,
 	}
 	if got := RecruitablePopulation(city); got != 37 {
 		t.Fatalf("recruitable population = %d, want 37", got)
 	}
 }
 
-func TestNeutralGarrisonUsesEntireNonCorePopulationShare(t *testing.T) {
-	if NeutralGarrisonPercent != MaxGarrisonPercent {
-		t.Fatalf("neutral garrison = %d%%, maximum = %d%%", NeutralGarrisonPercent, MaxGarrisonPercent)
+func TestNeutralMilitiaUsesEntireNonCorePopulationShare(t *testing.T) {
+	if NeutralMilitiaPercent != MaxMilitiaPercent {
+		t.Fatalf("neutral militia = %d%%, maximum = %d%%", NeutralMilitiaPercent, MaxMilitiaPercent)
 	}
-	if CoreCivilianPercent+NeutralGarrisonPercent != 100 {
-		t.Fatalf("core plus neutral garrison = %d%%, want 100%%", CoreCivilianPercent+NeutralGarrisonPercent)
+	if CoreCivilianPercent+NeutralMilitiaPercent != 100 {
+		t.Fatalf("core plus neutral militia = %d%%, want 100%%", CoreCivilianPercent+NeutralMilitiaPercent)
 	}
 
 	town := domain.City{
-		Population:         250,
-		PopulationCap:      250,
-		GarrisonPopulation: 250 * float64(NeutralGarrisonPercent) / 100,
-		GarrisonPercent:    NeutralGarrisonPercent,
+		Population:        250,
+		PopulationCap:     250,
+		MilitiaPopulation: 250 * float64(NeutralMilitiaPercent) / 100,
+		MilitiaPercent:    NeutralMilitiaPercent,
 	}
 	if got := RecruitablePopulation(town); got != 0 {
 		t.Fatalf("neutral town recruitable population = %d, want 0", got)

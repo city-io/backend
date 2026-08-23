@@ -85,9 +85,9 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 }
 
 func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request[servicev1.UpdateCityPolicyRequest]) (*connect.Response[servicev1.UpdateCityPolicyResponse], error) {
-	garrisonPercent := int(req.Msg.GetGarrisonPercent())
+	militiaPercent := int(req.Msg.GetMilitiaPercent())
 	taxRatePercent := int(req.Msg.GetTaxRatePercent())
-	if err := validateCityPolicy(garrisonPercent, taxRatePercent); err != nil {
+	if err := validateCityPolicy(militiaPercent, taxRatePercent); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
@@ -100,8 +100,8 @@ func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
 	}
 	res, err := h.srv.cluster.Request("city", cityID, messages.UpdateCityPolicyMessage{
-		GarrisonPercent: garrisonPercent,
-		TaxRatePercent:  taxRatePercent,
+		MilitiaPercent: militiaPercent,
+		TaxRatePercent: taxRatePercent,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -120,8 +120,8 @@ func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request
 	}
 }
 
-func validateCityPolicy(garrisonPercent, taxRatePercent int) error {
-	if garrisonPercent < constants.MinGarrisonPercent || garrisonPercent > constants.MaxGarrisonPercent ||
+func validateCityPolicy(militiaPercent, taxRatePercent int) error {
+	if militiaPercent < constants.MinMilitiaPercent || militiaPercent > constants.MaxMilitiaPercent ||
 		taxRatePercent < 0 || taxRatePercent > constants.MaxTaxRatePercent {
 		return &messages.InvalidCityPolicyError{}
 	}

@@ -44,10 +44,10 @@ type CreateBattleMessage struct {
 	Battle domain.Battle
 }
 type JoinBattleMessage struct {
-	ArmyID                string
-	Owner                 string
-	OpposesArmyID         string
-	OpposesGarrisonCityID string
+	ArmyID               string
+	Owner                string
+	OpposesArmyID        string
+	OpposesMilitiaCityID string
 }
 
 type GetBattleMessage struct{}
@@ -94,7 +94,7 @@ type GetTrainingOrdersResponseMessage struct {
 
 // RecruitPopulationMessage transfers Count residents out of a city and into a
 // durable training order. It rejects requests that would cross the protected
-// civilian floor plus the city's configured garrison target.
+// civilian floor plus the city's configured militia target.
 type RecruitPopulationMessage struct {
 	Count int64
 }

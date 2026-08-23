@@ -43,29 +43,29 @@ func TestCityFoodProductionTotalsBuildingRates(t *testing.T) {
 	}
 }
 
-func TestCityGrowthRefillsGarrisonBeforeTaxablePopulation(t *testing.T) {
+func TestCityGrowthRefillsMilitiaBeforeTaxablePopulation(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population:         200,
-		PopulationCap:      250,
-		GarrisonPopulation: 5,
-		GarrisonPercent:    10,
+		Population:        200,
+		PopulationCap:     250,
+		MilitiaPopulation: 5,
+		MilitiaPercent:    10,
 	}}
 	state.growPopulation(false, 0, 0)
 	delta := state.City.Population - 200
 	if delta <= 0 {
 		t.Fatal("population did not grow")
 	}
-	if math.Abs(state.City.GarrisonPopulation-(5+delta)) > 1e-12 {
-		t.Fatalf("garrison = %f, want %f", state.City.GarrisonPopulation, 5+delta)
+	if math.Abs(state.City.MilitiaPopulation-(5+delta)) > 1e-12 {
+		t.Fatalf("militia = %f, want %f", state.City.MilitiaPopulation, 5+delta)
 	}
 }
 
 func TestMaximumTaxStopsPositiveGrowth(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population:      200,
-		PopulationCap:   250,
-		TaxRatePercent:  constants.MaxTaxRatePercent,
-		GarrisonPercent: 10,
+		Population:     200,
+		PopulationCap:  250,
+		TaxRatePercent: constants.MaxTaxRatePercent,
+		MilitiaPercent: 10,
 	}}
 	state.growPopulation(false, 0, 1)
 	if state.City.Population != 200 || state.City.PopulationGrowthRate != 0 {
@@ -75,8 +75,8 @@ func TestMaximumTaxStopsPositiveGrowth(t *testing.T) {
 
 func TestRecruitmentTransfersResidentsOutOfCity(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population: 250, PopulationCap: 250, GarrisonPopulation: 25,
-		GarrisonPercent: 10, TaxRatePercent: 10,
+		Population: 250, PopulationCap: 250, MilitiaPopulation: 25,
+		MilitiaPercent: 10, TaxRatePercent: 10,
 	}}
 	if err := state.recruitPopulation(45); err != nil {
 		t.Fatalf("recruitment failed: %v", err)
@@ -89,10 +89,10 @@ func TestRecruitmentTransfersResidentsOutOfCity(t *testing.T) {
 	}
 }
 
-func TestRecruitmentCannotCrossCoreAndGarrisonFloor(t *testing.T) {
+func TestRecruitmentCannotCrossCoreAndMilitiaFloor(t *testing.T) {
 	state := cityActor{City: domain.City{
-		Population: 163, PopulationCap: 250, GarrisonPopulation: 25,
-		GarrisonPercent: 10,
+		Population: 163, PopulationCap: 250, MilitiaPopulation: 25,
+		MilitiaPercent: 10,
 	}}
 	err := state.recruitPopulation(1)
 	if err == nil || err.Available != 0 {
@@ -100,12 +100,12 @@ func TestRecruitmentCannotCrossCoreAndGarrisonFloor(t *testing.T) {
 	}
 }
 
-func TestGarrisonCasualtiesReduceSettlementPopulation(t *testing.T) {
-	state := cityActor{City: domain.City{Population: 250, GarrisonPopulation: 25}}
-	if !state.applyGarrisonCasualties(5) {
-		t.Fatal("garrison unexpectedly destroyed")
+func TestMilitiaCasualtiesReduceSettlementPopulation(t *testing.T) {
+	state := cityActor{City: domain.City{Population: 250, MilitiaPopulation: 25}}
+	if !state.applyMilitiaCasualties(5) {
+		t.Fatal("militia unexpectedly destroyed")
 	}
-	if state.City.Population != 245 || state.City.GarrisonPopulation != 20 {
+	if state.City.Population != 245 || state.City.MilitiaPopulation != 20 {
 		t.Fatalf("city after casualties = %+v", state.City)
 	}
 }

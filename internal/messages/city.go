@@ -19,21 +19,21 @@ type UpdateCityOwnerMessage struct {
 type CaptureCityMessage struct{ Owner string }
 
 type UpdateCityPolicyMessage struct {
-	GarrisonPercent int
-	TaxRatePercent  int
+	MilitiaPercent int
+	TaxRatePercent int
 }
 
-type ApplyGarrisonCasualtiesMessage struct{ Count int64 }
-type ApplyGarrisonCasualtiesResponseMessage struct {
+type ApplyMilitiaCasualtiesMessage struct{ Count int64 }
+type ApplyMilitiaCasualtiesResponseMessage struct {
 	Survived bool
 }
 
-type BeginGarrisonBattleMessage struct{ BattleID string }
-type BeginGarrisonBattleResponseMessage struct {
+type BeginMilitiaBattleMessage struct{ BattleID string }
+type BeginMilitiaBattleResponseMessage struct {
 	BattleID string
 	Count    int64
 }
-type EndGarrisonBattleMessage struct{ BattleID string }
+type EndMilitiaBattleMessage struct{ BattleID string }
 
 // SetBuildingPopulationMessage reports a building's absolute contribution to its
 // city's population cap. Keyed by building so resends are idempotent and the cap
@@ -91,9 +91,9 @@ type InvalidCityPolicyError struct{}
 
 func (*InvalidCityPolicyError) Error() string {
 	return fmt.Sprintf(
-		"garrison must be %d-%d%% and tax rate must be 0-%d%%",
-		constants.MinGarrisonPercent,
-		constants.MaxGarrisonPercent,
+		"militia must be %d-%d%% and tax rate must be 0-%d%%",
+		constants.MinMilitiaPercent,
+		constants.MaxMilitiaPercent,
 		constants.MaxTaxRatePercent,
 	)
 }
@@ -101,7 +101,7 @@ func (*InvalidCityPolicyError) Error() string {
 type CityPolicyLockedError struct{}
 
 func (*CityPolicyLockedError) Error() string {
-	return "city policy cannot change while its garrison is in battle"
+	return "city policy cannot change while its militia is in battle"
 }
 
 func (e *CityNotFoundError) Error() string {
