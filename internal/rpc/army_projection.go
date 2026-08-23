@@ -32,8 +32,7 @@ func (s *Server) projectArmyRoute(army domain.Army, destination domain.Coordinat
 		}
 		pathCost += cost
 		steps = append(steps, &entityv1.ArmyRouteStep{
-			Coords:   &entityv1.Coordinates{X: int32(coords.X), Y: int32(coords.Y)},
-			Explored: known,
+			Coords: &entityv1.Coordinates{X: int32(coords.X), Y: int32(coords.Y)},
 		})
 	}
 

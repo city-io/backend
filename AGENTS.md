@@ -335,10 +335,11 @@ for TypeScript) rather than hand-writing request types.
   barracks, including the active order and orders waiting behind it.
 - `GetArmy(army_id) → { army_id, entities(army, army_march?) }` — owner always; others need
   vision and receive the sanitized army without private march state.
-- `PreviewArmyRoute(army_id, destination) → { steps[{coords, explored}], estimated_duration }` —
+- `PreviewArmyRoute(army_id, destination) → { steps[{coords}], estimated_duration }` —
   owner-only backend route preview. The UI derives whether the requested destination is reached
   by comparing it with the final step. Unknown tiles are assumed to be
-  ordinary land without revealing terrain; known and unknown route segments are marked.
+  ordinary land without revealing terrain; clients derive known and unknown route segments from
+  their current tile-visibility state.
 - `MoveArmy(army_id, destination) → {}` — must own; sets the marching destination (clamped to the
   map). Missing destinations are invalid. Unknown terrain is planned as ordinary land and the
   route is recomputed after every reveal; if the target proves to be water or becomes unreachable,

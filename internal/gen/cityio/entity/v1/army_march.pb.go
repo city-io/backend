@@ -77,7 +77,6 @@ func (ArmyMarchDisclosure) EnumDescriptor() ([]byte, []int) {
 type ArmyRouteStep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Coords        *Coordinates           `protobuf:"bytes,1,opt,name=coords,proto3" json:"coords,omitempty"`
-	Explored      bool                   `protobuf:"varint,2,opt,name=explored,proto3" json:"explored,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -117,13 +116,6 @@ func (x *ArmyRouteStep) GetCoords() *Coordinates {
 		return x.Coords
 	}
 	return nil
-}
-
-func (x *ArmyRouteStep) GetExplored() bool {
-	if x != nil {
-		return x.Explored
-	}
-	return false
 }
 
 // ArmyMarch is the active movement order and its current projected route.
@@ -216,10 +208,9 @@ var File_cityio_entity_v1_army_march_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_army_march_proto_rawDesc = "" +
 	"\n" +
-	"!cityio/entity/v1/army_march.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1egoogle/protobuf/duration.proto\"b\n" +
+	"!cityio/entity/v1/army_march.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1egoogle/protobuf/duration.proto\"F\n" +
 	"\rArmyRouteStep\x125\n" +
-	"\x06coords\x18\x01 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\x12\x1a\n" +
-	"\bexplored\x18\x02 \x01(\bR\bexplored\"\xeb\x03\n" +
+	"\x06coords\x18\x01 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\"\xeb\x03\n" +
 	"\tArmyMarch\x12A\n" +
 	"\rarmy_march_id\x18\x01 \x01(\v2\x1d.cityio.entity.v1.ArmyMarchIdR\varmyMarchId\x121\n" +
 	"\aarmy_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x12E\n" +
