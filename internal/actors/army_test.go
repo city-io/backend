@@ -43,13 +43,13 @@ func TestArmyWaitsForSlowTerrain(t *testing.T) {
 	}
 
 	state.path = []domain.Coordinates{{X: 1}}
-	if got := state.currentStepDuration(); got != 2200*time.Millisecond {
-		t.Fatalf("marsh duration = %s, want 2.2s", got)
+	if got := state.currentStepDuration(); got != 3300*time.Millisecond {
+		t.Fatalf("marsh duration = %s, want 3.3s", got)
 	}
 
 	state.path = []domain.Coordinates{{X: 2}}
-	if got := state.currentStepDuration(); got != 3300*time.Millisecond {
-		t.Fatalf("mountain duration = %s, want 3.3s", got)
+	if got := state.currentStepDuration(); got != 4950*time.Millisecond {
+		t.Fatalf("mountain duration = %s, want 4.95s", got)
 	}
 }
 
@@ -59,10 +59,10 @@ func TestArmyUsesSlowestTroopMovement(t *testing.T) {
 		troops map[domain.TroopType]int64
 		want   time.Duration
 	}{
-		{name: "cavalry", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10}, want: 550 * time.Millisecond},
-		{name: "soldiers", troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 10}, want: 1100 * time.Millisecond},
-		{name: "artillery", troops: map[domain.TroopType]int64{domain.TroopTypeArtillery: 10}, want: 1650 * time.Millisecond},
-		{name: "mixed", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10, domain.TroopTypeArtillery: 1}, want: 1650 * time.Millisecond},
+		{name: "cavalry", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10}, want: 825 * time.Millisecond},
+		{name: "soldiers", troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 10}, want: 1650 * time.Millisecond},
+		{name: "artillery", troops: map[domain.TroopType]int64{domain.TroopTypeArtillery: 10}, want: 2475 * time.Millisecond},
+		{name: "mixed", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10, domain.TroopTypeArtillery: 1}, want: 2475 * time.Millisecond},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -90,8 +90,8 @@ func TestArmyMergePreservesMovementProgressAtNewSlowestSpeed(t *testing.T) {
 	if state.movementProgress != 250*time.Millisecond {
 		t.Fatalf("movement progress = %s, want 250ms", state.movementProgress)
 	}
-	if remaining := state.currentStepDuration() - state.movementProgress; remaining != 1400*time.Millisecond {
-		t.Fatalf("remaining movement = %s, want 1.4s", remaining)
+	if remaining := state.currentStepDuration() - state.movementProgress; remaining != 2225*time.Millisecond {
+		t.Fatalf("remaining movement = %s, want 2.225s", remaining)
 	}
 }
 
@@ -107,13 +107,13 @@ func TestArmyCarriesFractionalMovementProgressBetweenTiles(t *testing.T) {
 		path: []domain.Coordinates{{}},
 	}
 	moves := 0
-	for range 22 {
+	for range 33 {
 		if state.advanceMovementClock() {
 			moves++
 		}
 	}
 	if moves != 5 || state.movementProgress != 0 {
-		t.Fatalf("after 5.5s: moves=%d progress=%s, want 5 moves and no remainder", moves, state.movementProgress)
+		t.Fatalf("after 8.25s: moves=%d progress=%s, want 5 moves and no remainder", moves, state.movementProgress)
 	}
 }
 

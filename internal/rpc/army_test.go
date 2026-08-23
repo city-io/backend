@@ -62,8 +62,8 @@ func TestArmyOrderProjectsClosestKnownLand(t *testing.T) {
 	if last.GetX() != 1 || last.GetY() != 0 {
 		t.Fatalf("route endpoint = (%d,%d), want closest land (1,0)", last.GetX(), last.GetY())
 	}
-	if got := order.GetEstimatedRemainingDuration().AsDuration(); got != 1250*time.Millisecond {
-		t.Fatalf("estimated duration = %s, want 1.25s", got)
+	if got := order.GetEstimatedRemainingDuration().AsDuration(); got != 1750*time.Millisecond {
+		t.Fatalf("estimated duration = %s, want 1.75s", got)
 	}
 }
 

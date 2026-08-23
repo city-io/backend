@@ -166,22 +166,27 @@ the "Client / frontend API reference" section below.
 - **Buildings:** typed structures inside a city. Types: `city_center`, `town_center`, `barracks`,
   `house`, `farm`, `mine`. Levels 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
   construction time; while under construction `level != target_level`. City/town centers can't be
-  demolished. Stat tables (cost, construction time, production, population) live in
-  `constants/buildings.go` and are exposed to clients via `ConfigService.GetGameConfig`.
+  demolished. New level-0 construction produces nothing; an existing building continues operating
+  at 75% of its current completed level's production while upgrading. Fractional per-tick output is
+  carried so the long-run rate remains exact. Stat tables (cost, construction time, production,
+  population) live in `constants/buildings.go` and are exposed to clients via
+  `ConfigService.GetGameConfig`.
 - **Resources & economy:** two resources, `gold` and `food`, pooled per **user** (not per city).
   Centers/mines produce gold; farms produce food. Each city consumes food upkeep =
   `(population − military_population) × FoodPerPopPerHour` (48/hr) **plus** the upkeep of any
   armies attributed to it. A city consumes its own food first, deposits surplus to the user pool,
-  and draws the shortfall from the pool; a locally-under-fed city is `starving` and its
-  population declines. All rates are per-hour.
+  and draws the shortfall from the pool. Starvation and population change compare stable hourly
+  production/upkeep rates rather than rounded per-tick food units, while the pool still transfers
+  whole units using carried remainders. A locally-under-producing city is consistently `starving`
+  and its population declines. All rates are per-hour.
 - **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
   position and optional references to its active `ArmyOrder` and `Battle`. Orders own their
   objective, remaining route, and ETA. Movement follows a lowest-time route choosing among
   all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
   250ms timing quantum with carried fractional progress, but state is streamed only when the army actually enters a tile. An
-  army moves at the speed of its slowest troop: cavalry takes 550ms per normal tile,
-  soldiers/archers take 1.1s, and artillery takes 1.65s. Marsh multiplies that time by two,
+  army moves at the speed of its slowest troop: cavalry takes 825ms per normal tile,
+  soldiers/archers take 1.65s, and artillery takes 2.475s. Marsh multiplies that time by two,
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
   same-owner armies on the same tile can be merged.
   - **Combat:** hostile armies sharing a tile enter a battle. Battles tick once per second and
@@ -207,10 +212,10 @@ the "Client / frontend API reference" section below.
 
     | Type      | Gold | Train/unit (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
     |-----------|------|----------------|----------|---------|-----|-----|-----|-----|
-    | soldier   | 50   | 5              | 1.10     | 60      | 1   | 10  | 10  | 100 |
-    | archer    | 75   | 7              | 1.10     | 60      | 1   | 15  | 5   | 70  |
-    | cavalry   | 150  | 10             | 0.55     | 180     | 1   | 20  | 12  | 120 |
-    | artillery | 300  | 15             | 1.65     | 120     | 3   | 40  | 3   | 60  |
+    | soldier   | 50   | 5              | 1.650    | 60      | 1   | 10  | 10  | 100 |
+    | archer    | 75   | 7              | 1.650    | 60      | 1   | 15  | 5   | 70  |
+    | cavalry   | 150  | 10             | 0.825    | 180     | 1   | 20  | 12  | 120 |
+    | artillery | 300  | 15             | 2.475    | 120     | 3   | 40  | 3   | 60  |
 
   - **Barracks training capacity** (troops per in-progress batch) = `5 × barracksLevel`. Extra
     orders persist and queue FIFO per barracks; more barracks = more concurrent training. A

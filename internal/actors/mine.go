@@ -3,7 +3,6 @@ package actors
 import (
 	"github.com/asynkron/protoactor-go/actor"
 
-	"cityio/internal/constants"
 	"cityio/internal/messages"
 )
 
@@ -19,10 +18,6 @@ func (c *mineImpl) Handle(ctx actor.Context, state *buildingActor) {
 	switch ctx.Message().(type) {
 
 	case messages.PeriodicOperationMessage:
-		if state.constructionActive() {
-			return
-		}
-		perDay := constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level, "gold")
-		state.creditProduction(constants.PerTickAmount(perDay, constants.BuildingTickInterval), 0)
+		state.creditProduction(state.productionForTick("gold"), 0)
 	}
 }

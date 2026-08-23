@@ -22,11 +22,7 @@ func (c *townCenterImpl) Handle(ctx actor.Context, state *buildingActor) {
 	switch ctx.Message().(type) {
 
 	case messages.PeriodicOperationMessage:
-		if state.constructionActive() {
-			return
-		}
 		state.reportPopulation(constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, state.populationLevel()))
-		perDay := constants.GetBuildingProduction(state.Building.BuildingType(), state.Building.Level, "gold")
-		state.creditProduction(constants.PerTickAmount(perDay, constants.BuildingTickInterval), 0)
+		state.creditProduction(state.productionForTick("gold"), 0)
 	}
 }

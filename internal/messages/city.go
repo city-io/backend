@@ -25,6 +25,14 @@ type SetBuildingPopulationMessage struct {
 	Population float64
 }
 
+// SetBuildingFoodProductionMessage reports a building's current hourly food
+// capacity. Keying by building makes restore-time and periodic resends
+// idempotent, just like population-cap contributions.
+type SetBuildingFoodProductionMessage struct {
+	BuildingID    string
+	AmountPerHour int64
+}
+
 // CreditProductionMessage routes a building's produced resources to its city,
 // which forwards them to the city's owner (if any). The city owns the owner, so
 // buildings never cache it.
