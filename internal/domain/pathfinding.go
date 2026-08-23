@@ -29,8 +29,8 @@ var pathDirections = [...]Coordinates{
 	{X: -1, Y: 1}, {X: 0, Y: 1}, {X: 1, Y: 1},
 }
 
-// TerrainMovementCost returns the number of movement ticks needed to enter a tile.
-// Zero means current land armies cannot enter it.
+// TerrainMovementCost returns a tile's movement-time multiplier. Zero means
+// current land armies cannot enter it.
 func TerrainMovementCost(terrain TerrainType) int {
 	switch terrain {
 	case TerrainTypeWater:

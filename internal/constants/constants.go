@@ -1,6 +1,8 @@
 // Package constants contains global constants used throughout the game server.
 package constants
 
+import "time"
+
 const (
 	MapSize  = 75 // generate a map of size MapSize x MapSize
 	CitySize = 5
@@ -43,6 +45,8 @@ const (
 	InitialPlayerFood = 5000
 
 	TroopMovementBackupFrequency = 5 // number of tile movements before state saved to db
+	TroopMovementTickInterval    = 250 * time.Millisecond
+	TroopTileReconcileFrequency  = 4 // movement updates between idle tile-index repairs
 
 	// in seconds
 	DBBackupFrequency    = 2  // frequency of database flushing buffer queue and writing to database
@@ -53,7 +57,6 @@ const (
 	ActorTimeoutDuration = 2 // timeout on actor response await
 
 	TroopTrainingDuration = 5
-	TroopMovementDuration = 1 // time it takes to cross 1 tile
 
 	VisionRadius = 3 // Chebyshev distance beyond owned city edges that a player can see
 )

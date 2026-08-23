@@ -48,8 +48,8 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
     `Create` / `Destroy` / `Handle` hooks. `barracks.go` is the troop **producer**: it holds a
     durable FIFO training queue and a one-shot completion timer. Completed orders retry an
     idempotent `armyActor` spawn until it succeeds.
-  - `armyActor` (`army.go`) owns one army: persistence, an every-`TroopMovementDuration` movement
-    ticker, tile presence, nearest-owned-settlement food-upkeep attribution, weighted
+  - `armyActor` (`army.go`) owns one army: persistence, a 250ms movement ticker, tile presence,
+    nearest-owned-settlement food-upkeep attribution, composition-aware weighted
     8-directional terrain pathfinding, and merging.
   - Actors persist through the injected `contracts.Store` (`state.Store`): reads/creates/deletes
     hit the DB immediately; `Enqueue*` coalesces updates for the background writer.
@@ -166,10 +166,12 @@ the "Client / frontend API reference" section below.
 - **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
   position and, while marching, a `destination`; it follows a lowest-time route choosing among
-  all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Grassland, plains,
-  forest, hills, and desert cost one movement tick; marsh costs two; mountains cost three; water
-  is impassable to current land armies. Armies can stack, and two same-owner armies on the same
-  tile can be merged.
+  all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
+  250ms timing quantum, but state is streamed only when the army actually enters a tile. An
+  army moves at the speed of its slowest troop: cavalry takes 500ms per normal tile,
+  soldiers/archers take 1s, and artillery takes 1.5s. Marsh multiplies that time by two,
+  mountains by three, and water is impassable to current land armies. Armies can stack, and two
+  same-owner armies on the same tile can be merged.
   - **Population carve-out:** training reserves population into `city.military_population`, capped
     at `MilitaryPopulationFraction` (0.35) of the city's population. Civilians
     (`population − military_population`) drive city food upkeep, so a standing army is
@@ -181,12 +183,12 @@ the "Client / frontend API reference" section below.
   - **Troop stat table** (tier-1; balance knobs in `constants/troops.go`; Atk/Def/HP are stored
     but **unused until combat**):
 
-    | Type      | Gold | Train (s) | Food/hr | Pop | Atk | Def | HP  |
-    |-----------|------|-----------|---------|-----|-----|-----|-----|
-    | soldier   | 50   | 20        | 60      | 1   | 10  | 10  | 100 |
-    | archer    | 75   | 30        | 60      | 1   | 15  | 5   | 70  |
-    | cavalry   | 150  | 45        | 180     | 1   | 20  | 12  | 120 |
-    | artillery | 300  | 60        | 120     | 3   | 40  | 3   | 60  |
+    | Type      | Gold | Train (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
+    |-----------|------|-----------|----------|---------|-----|-----|-----|-----|
+    | soldier   | 50   | 20        | 1.0      | 60      | 1   | 10  | 10  | 100 |
+    | archer    | 75   | 30        | 1.0      | 60      | 1   | 15  | 5   | 70  |
+    | cavalry   | 150  | 45        | 0.5      | 180     | 1   | 20  | 12  | 120 |
+    | artillery | 300  | 60        | 1.5      | 120     | 3   | 40  | 3   | 60  |
 
   - **Barracks training capacity** (troops per in-progress batch) = `5 × barracksLevel`. Extra
     orders persist and queue FIFO per barracks; more barracks = more concurrent training. A
@@ -195,8 +197,9 @@ the "Client / frontend API reference" section below.
     config message (TODO).
 - **Vision:** a player sees any tile within Chebyshev distance `VisionRadius` (3) of any tile of
   a city they own. This gates what read RPCs return (see visibility rules below).
-- **Tick cadence** (`constants/constants.go`): city tick 3s, building tick 3s, army movement 1s,
-  DB backup flush 2s, user backup 10s. Rates are normalised to per-hour (`SecondsPerHour` 3600).
+- **Tick cadence** (`constants/constants.go`): city tick 3s, building tick 3s, army movement
+  quantum 250ms, DB backup flush 2s, user backup 10s. Rates are normalised to per-hour
+  (`SecondsPerHour` 3600).
 
 ## Client / frontend API reference
 

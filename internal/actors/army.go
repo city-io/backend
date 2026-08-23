@@ -22,9 +22,10 @@ type armyActor struct {
 
 	// movesSinceBackup counts tile steps since the last DB enqueue so movement
 	// is only persisted every TroopMovementBackupFrequency tiles.
-	movesSinceBackup int
-	path             []domain.Coordinates
-	waitTicks        int
+	movesSinceBackup    int
+	path                []domain.Coordinates
+	waitTicks           int
+	ticksSinceReconcile int
 }
 
 func NewArmyActor() BaseActorInterface {
@@ -116,9 +117,11 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 		ctx.Respond(&messages.InvalidResponseTypeError{})
 		return
 	}
+	elapsedTicks := state.elapsedStepTicks()
 	for t, c := range resp.Troops {
 		state.Army.Troops[t] += c
 	}
+	state.waitTicks = max(state.currentStepTicks()-elapsedTicks-1, 0)
 	state.Store.EnqueueArmy(state.Army)
 	state.updateUpkeepCity()
 	state.publish()
@@ -127,9 +130,9 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 
 // step advances an army along its terrain-weighted route.
 func (state *armyActor) step() {
-	// Idempotent tile reaffirm repairs any drift in the derived occupancy index.
-	state.addTile(state.Army.X, state.Army.Y)
+	state.ticksSinceReconcile++
 	if state.Army.DestX == nil || state.Army.DestY == nil {
+		state.reconcileTileIfDue()
 		return
 	}
 	destX, destY := *state.Army.DestX, *state.Army.DestY
@@ -141,10 +144,12 @@ func (state *armyActor) step() {
 		return
 	}
 	if len(state.path) == 0 && !state.restorePath() {
+		state.reconcileTileIfDue()
 		return
 	}
 	if state.waitTicks > 0 {
 		state.waitTicks--
+		state.reconcileTileIfDue()
 		return
 	}
 
@@ -155,6 +160,7 @@ func (state *armyActor) step() {
 	state.Army.Y = next.Y
 	state.removeTile(oldX, oldY)
 	state.addTile(state.Army.X, state.Army.Y)
+	state.ticksSinceReconcile = 0
 	state.updateUpkeepCity()
 
 	arrived := state.Army.X == destX && state.Army.Y == destY
@@ -192,6 +198,10 @@ func (state *armyActor) restorePath() bool {
 }
 
 func (state *armyActor) nextWaitTicks() int {
+	return max(state.currentStepTicks()-1, 0)
+}
+
+func (state *armyActor) currentStepTicks() int {
 	if len(state.path) == 0 {
 		return 0
 	}
@@ -199,7 +209,36 @@ func (state *armyActor) nextWaitTicks() int {
 	if !ok {
 		return 0
 	}
-	return max(domain.TerrainMovementCost(terrain)-1, 0)
+	return state.baseMovementTicks() * domain.TerrainMovementCost(terrain)
+}
+
+func (state *armyActor) baseMovementTicks() int {
+	ticks := 0
+	for troopType, count := range state.Army.Troops {
+		if count > 0 {
+			ticks = max(ticks, constants.GetTroopMovementTicks(troopType))
+		}
+	}
+	if ticks == 0 {
+		return constants.GetTroopMovementTicks(domain.TroopTypeSoldier)
+	}
+	return ticks
+}
+
+func (state *armyActor) elapsedStepTicks() int {
+	total := state.currentStepTicks()
+	if total == 0 {
+		return 0
+	}
+	return max(total-state.waitTicks-1, 0)
+}
+
+func (state *armyActor) reconcileTileIfDue() {
+	if state.ticksSinceReconcile < constants.TroopTileReconcileFrequency {
+		return
+	}
+	state.addTile(state.Army.X, state.Army.Y)
+	state.ticksSinceReconcile = 0
 }
 
 // upkeepSum is the army's total food upkeep per hour (sum over troop counts).
@@ -287,7 +326,7 @@ func (state *armyActor) publishDeleted() {
 }
 
 func (state *armyActor) startPeriodicOperation(ctx actor.Context) {
-	state.ticker = time.NewTicker(constants.TroopMovementDuration * time.Second)
+	state.ticker = time.NewTicker(constants.TroopMovementTickInterval)
 	state.stopTickerCh = make(chan struct{})
 
 	pid := ctx.Self()
