@@ -145,16 +145,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			ctx.Respond(&messages.InvalidCityPolicyError{})
 			return
 		}
-		militiaChanged := state.City.MilitiaPercent != msg.MilitiaPercent
-		state.City.MilitiaPercent = msg.MilitiaPercent
-		state.City.TaxRatePercent = msg.TaxRatePercent
-		// Raising the target reserves future growth for the militia; it never
-		// conjures defenders from civilians. Lowering it releases any excess.
-		if militiaChanged {
-			target := constants.MilitiaTarget(state.City)
-			state.City.MilitiaPopulation = min(state.City.MilitiaPopulation, target)
-		}
-		state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
+		state.updatePolicy(msg.MilitiaPercent, msg.TaxRatePercent)
 		state.Store.EnqueueCity(state.City)
 		state.publish()
 		ctx.Respond(&messages.GetCityResponseMessage{City: state.City})
@@ -362,6 +353,20 @@ func (state *cityActor) recruitPopulation(count int64) *messages.InsufficientPop
 	state.City.Population -= float64(count)
 	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 	return nil
+}
+
+func (state *cityActor) updatePolicy(militiaPercent, taxRatePercent int) {
+	militiaChanged := state.City.MilitiaPercent != militiaPercent
+	state.City.MilitiaPercent = militiaPercent
+	state.City.TaxRatePercent = taxRatePercent
+	if militiaChanged {
+		// Reassign available non-core residents immediately when the policy
+		// changes. Population growth continues to refill militia losses later.
+		target := constants.MilitiaTarget(state.City)
+		availableNonCore := max(state.City.Population-constants.CorePopulation(state.City), 0)
+		state.City.MilitiaPopulation = min(target, availableNonCore)
+	}
+	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 }
 
 func (state *cityActor) applyMilitiaCasualties(count int64) bool {

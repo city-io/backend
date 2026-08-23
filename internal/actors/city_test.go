@@ -106,6 +106,41 @@ func TestRecruitmentCannotCrossCoreAndMilitiaFloor(t *testing.T) {
 	}
 }
 
+func TestCityPolicyReassignsNonCoreResidentsToMilitia(t *testing.T) {
+	state := cityActor{City: domain.City{
+		Population: 220, PopulationCap: 250, MilitiaPopulation: 25,
+		MilitiaPercent: 10, TaxRatePercent: 10,
+	}}
+
+	state.updatePolicy(25, 10)
+	if state.City.MilitiaPopulation != 62.5 {
+		t.Fatalf("militia after target increase = %f, want 62.5", state.City.MilitiaPopulation)
+	}
+	if got := constants.RecruitablePopulation(state.City); got != 20 {
+		t.Fatalf("recruitable population after target increase = %d, want 20", got)
+	}
+
+	state.updatePolicy(5, 10)
+	if state.City.MilitiaPopulation != 12.5 {
+		t.Fatalf("militia after target decrease = %f, want 12.5", state.City.MilitiaPopulation)
+	}
+	if got := constants.RecruitablePopulation(state.City); got != 70 {
+		t.Fatalf("recruitable population after target decrease = %d, want 70", got)
+	}
+}
+
+func TestTaxPolicyChangeDoesNotRefillMilitiaLosses(t *testing.T) {
+	state := cityActor{City: domain.City{
+		Population: 220, PopulationCap: 250, MilitiaPopulation: 20,
+		MilitiaPercent: 25, TaxRatePercent: 10,
+	}}
+
+	state.updatePolicy(25, 20)
+	if state.City.MilitiaPopulation != 20 {
+		t.Fatalf("militia after tax-only policy change = %f, want 20", state.City.MilitiaPopulation)
+	}
+}
+
 func TestMilitiaCasualtiesReduceSettlementPopulation(t *testing.T) {
 	state := cityActor{City: domain.City{Population: 250, MilitiaPopulation: 25}}
 	if !state.applyMilitiaCasualties(5) {
