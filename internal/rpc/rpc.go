@@ -65,6 +65,40 @@ func (s *Server) liveArmies(ctx context.Context) ([]domain.Army, error) {
 	return armies, nil
 }
 
+func (s *Server) liveCities(ctx context.Context) ([]domain.City, error) {
+	cities, err := s.store.GetAllCities(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range cities {
+		res, err := s.cluster.Request("city", cities[i].CityID, messages.GetCityMessage{})
+		if err != nil {
+			continue
+		}
+		if resp, ok := res.(*messages.GetCityResponseMessage); ok {
+			cities[i] = resp.City
+		}
+	}
+	return cities, nil
+}
+
+func (s *Server) liveBuildings(ctx context.Context) ([]domain.Building, error) {
+	buildings, err := s.store.GetAllBuildings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range buildings {
+		res, err := s.cluster.Request("building", buildings[i].BuildingID, messages.GetBuildingMessage{})
+		if err != nil {
+			continue
+		}
+		if resp, ok := res.(*messages.GetBuildingResponseMessage); ok {
+			buildings[i] = resp.Building
+		}
+	}
+	return buildings, nil
+}
+
 func (s *Server) ownedVision(ctx context.Context) (domain.Vision, error) {
 	armies, err := s.liveArmies(ctx)
 	if err != nil {

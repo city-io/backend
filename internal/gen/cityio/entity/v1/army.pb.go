@@ -21,11 +21,63 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ArmyCompositionVisibility int32
+
+const (
+	ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED ArmyCompositionVisibility = 0
+	ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_HIDDEN      ArmyCompositionVisibility = 1
+	ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_TYPES_ONLY  ArmyCompositionVisibility = 2
+	ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_EXACT       ArmyCompositionVisibility = 3
+)
+
+// Enum value maps for ArmyCompositionVisibility.
+var (
+	ArmyCompositionVisibility_name = map[int32]string{
+		0: "ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED",
+		1: "ARMY_COMPOSITION_VISIBILITY_HIDDEN",
+		2: "ARMY_COMPOSITION_VISIBILITY_TYPES_ONLY",
+		3: "ARMY_COMPOSITION_VISIBILITY_EXACT",
+	}
+	ArmyCompositionVisibility_value = map[string]int32{
+		"ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED": 0,
+		"ARMY_COMPOSITION_VISIBILITY_HIDDEN":      1,
+		"ARMY_COMPOSITION_VISIBILITY_TYPES_ONLY":  2,
+		"ARMY_COMPOSITION_VISIBILITY_EXACT":       3,
+	}
+)
+
+func (x ArmyCompositionVisibility) Enum() *ArmyCompositionVisibility {
+	p := new(ArmyCompositionVisibility)
+	*p = x
+	return p
+}
+
+func (x ArmyCompositionVisibility) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ArmyCompositionVisibility) Descriptor() protoreflect.EnumDescriptor {
+	return file_cityio_entity_v1_army_proto_enumTypes[0].Descriptor()
+}
+
+func (ArmyCompositionVisibility) Type() protoreflect.EnumType {
+	return &file_cityio_entity_v1_army_proto_enumTypes[0]
+}
+
+func (x ArmyCompositionVisibility) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ArmyCompositionVisibility.Descriptor instead.
+func (ArmyCompositionVisibility) EnumDescriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_army_proto_rawDescGZIP(), []int{0}
+}
+
 // TroopStack is a count of one troop type within an army.
 type TroopStack struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Type          TroopType              `protobuf:"varint,1,opt,name=type,proto3,enum=cityio.entity.v1.TroopType" json:"type,omitempty"`
-	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	Count         *int32                 `protobuf:"varint,2,opt,name=count,proto3,oneof" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -68,23 +120,24 @@ func (x *TroopStack) GetType() TroopType {
 }
 
 func (x *TroopStack) GetCount() int32 {
-	if x != nil {
-		return x.Count
+	if x != nil && x.Count != nil {
+		return *x.Count
 	}
 	return 0
 }
 
-// Army is a mobile group of troops on the map, owned by a player. destination
-// is set while the army is marching toward a tile and unset when idle.
+// Army is the physical state of a mobile group of troops. March orders are
+// separate entities because their disclosure can differ from army visibility.
 type Army struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ArmyId        *ArmyId                `protobuf:"bytes,1,opt,name=army_id,json=armyId,proto3" json:"army_id,omitempty"`
-	Owner         *UserId                `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
-	Coords        *Coordinates           `protobuf:"bytes,3,opt,name=coords,proto3" json:"coords,omitempty"`
-	Troops        []*TroopStack          `protobuf:"bytes,4,rep,name=troops,proto3" json:"troops,omitempty"`
-	Destination   *Coordinates           `protobuf:"bytes,5,opt,name=destination,proto3,oneof" json:"destination,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                 protoimpl.MessageState    `protogen:"open.v1"`
+	ArmyId                *ArmyId                   `protobuf:"bytes,1,opt,name=army_id,json=armyId,proto3" json:"army_id,omitempty"`
+	Owner                 *UserId                   `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
+	Coords                *Coordinates              `protobuf:"bytes,3,opt,name=coords,proto3" json:"coords,omitempty"`
+	Troops                []*TroopStack             `protobuf:"bytes,4,rep,name=troops,proto3" json:"troops,omitempty"`
+	CompositionVisibility ArmyCompositionVisibility `protobuf:"varint,6,opt,name=composition_visibility,json=compositionVisibility,proto3,enum=cityio.entity.v1.ArmyCompositionVisibility" json:"composition_visibility,omitempty"`
+	MarchId               *ArmyMarchId              `protobuf:"bytes,7,opt,name=march_id,json=marchId,proto3,oneof" json:"march_id,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Army) Reset() {
@@ -145,9 +198,16 @@ func (x *Army) GetTroops() []*TroopStack {
 	return nil
 }
 
-func (x *Army) GetDestination() *Coordinates {
+func (x *Army) GetCompositionVisibility() ArmyCompositionVisibility {
 	if x != nil {
-		return x.Destination
+		return x.CompositionVisibility
+	}
+	return ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED
+}
+
+func (x *Army) GetMarchId() *ArmyMarchId {
+	if x != nil {
+		return x.MarchId
 	}
 	return nil
 }
@@ -156,18 +216,25 @@ var File_cityio_entity_v1_army_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_army_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/army.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"S\n" +
+	"\x1bcityio/entity/v1/army.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"b\n" +
 	"\n" +
 	"TroopStack\x12/\n" +
-	"\x04type\x18\x01 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x14\n" +
-	"\x05count\x18\x02 \x01(\x05R\x05count\"\xac\x02\n" +
+	"\x04type\x18\x01 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x19\n" +
+	"\x05count\x18\x02 \x01(\x05H\x00R\x05count\x88\x01\x01B\b\n" +
+	"\x06_count\"\x8c\x03\n" +
 	"\x04Army\x121\n" +
 	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x12.\n" +
 	"\x05owner\x18\x02 \x01(\v2\x18.cityio.entity.v1.UserIdR\x05owner\x125\n" +
 	"\x06coords\x18\x03 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\x124\n" +
-	"\x06troops\x18\x04 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x06troops\x12D\n" +
-	"\vdestination\x18\x05 \x01(\v2\x1d.cityio.entity.v1.CoordinatesH\x00R\vdestination\x88\x01\x01B\x0e\n" +
-	"\f_destinationB\xb2\x01\n" +
+	"\x06troops\x18\x04 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x06troops\x12b\n" +
+	"\x16composition_visibility\x18\x06 \x01(\x0e2+.cityio.entity.v1.ArmyCompositionVisibilityR\x15compositionVisibility\x12=\n" +
+	"\bmarch_id\x18\a \x01(\v2\x1d.cityio.entity.v1.ArmyMarchIdH\x00R\amarchId\x88\x01\x01B\v\n" +
+	"\t_march_idJ\x04\b\x05\x10\x06*\xc3\x01\n" +
+	"\x19ArmyCompositionVisibility\x12+\n" +
+	"'ARMY_COMPOSITION_VISIBILITY_UNSPECIFIED\x10\x00\x12&\n" +
+	"\"ARMY_COMPOSITION_VISIBILITY_HIDDEN\x10\x01\x12*\n" +
+	"&ARMY_COMPOSITION_VISIBILITY_TYPES_ONLY\x10\x02\x12%\n" +
+	"!ARMY_COMPOSITION_VISIBILITY_EXACT\x10\x03B\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tArmyProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -182,27 +249,31 @@ func file_cityio_entity_v1_army_proto_rawDescGZIP() []byte {
 	return file_cityio_entity_v1_army_proto_rawDescData
 }
 
+var file_cityio_entity_v1_army_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_cityio_entity_v1_army_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_cityio_entity_v1_army_proto_goTypes = []any{
-	(*TroopStack)(nil),  // 0: cityio.entity.v1.TroopStack
-	(*Army)(nil),        // 1: cityio.entity.v1.Army
-	(TroopType)(0),      // 2: cityio.entity.v1.TroopType
-	(*ArmyId)(nil),      // 3: cityio.entity.v1.ArmyId
-	(*UserId)(nil),      // 4: cityio.entity.v1.UserId
-	(*Coordinates)(nil), // 5: cityio.entity.v1.Coordinates
+	(ArmyCompositionVisibility)(0), // 0: cityio.entity.v1.ArmyCompositionVisibility
+	(*TroopStack)(nil),             // 1: cityio.entity.v1.TroopStack
+	(*Army)(nil),                   // 2: cityio.entity.v1.Army
+	(TroopType)(0),                 // 3: cityio.entity.v1.TroopType
+	(*ArmyId)(nil),                 // 4: cityio.entity.v1.ArmyId
+	(*UserId)(nil),                 // 5: cityio.entity.v1.UserId
+	(*Coordinates)(nil),            // 6: cityio.entity.v1.Coordinates
+	(*ArmyMarchId)(nil),            // 7: cityio.entity.v1.ArmyMarchId
 }
 var file_cityio_entity_v1_army_proto_depIdxs = []int32{
-	2, // 0: cityio.entity.v1.TroopStack.type:type_name -> cityio.entity.v1.TroopType
-	3, // 1: cityio.entity.v1.Army.army_id:type_name -> cityio.entity.v1.ArmyId
-	4, // 2: cityio.entity.v1.Army.owner:type_name -> cityio.entity.v1.UserId
-	5, // 3: cityio.entity.v1.Army.coords:type_name -> cityio.entity.v1.Coordinates
-	0, // 4: cityio.entity.v1.Army.troops:type_name -> cityio.entity.v1.TroopStack
-	5, // 5: cityio.entity.v1.Army.destination:type_name -> cityio.entity.v1.Coordinates
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	3, // 0: cityio.entity.v1.TroopStack.type:type_name -> cityio.entity.v1.TroopType
+	4, // 1: cityio.entity.v1.Army.army_id:type_name -> cityio.entity.v1.ArmyId
+	5, // 2: cityio.entity.v1.Army.owner:type_name -> cityio.entity.v1.UserId
+	6, // 3: cityio.entity.v1.Army.coords:type_name -> cityio.entity.v1.Coordinates
+	1, // 4: cityio.entity.v1.Army.troops:type_name -> cityio.entity.v1.TroopStack
+	0, // 5: cityio.entity.v1.Army.composition_visibility:type_name -> cityio.entity.v1.ArmyCompositionVisibility
+	7, // 6: cityio.entity.v1.Army.march_id:type_name -> cityio.entity.v1.ArmyMarchId
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_army_proto_init() }
@@ -212,19 +283,21 @@ func file_cityio_entity_v1_army_proto_init() {
 	}
 	file_cityio_entity_v1_common_proto_init()
 	file_cityio_entity_v1_ids_proto_init()
+	file_cityio_entity_v1_army_proto_msgTypes[0].OneofWrappers = []any{}
 	file_cityio_entity_v1_army_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_army_proto_rawDesc), len(file_cityio_entity_v1_army_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_cityio_entity_v1_army_proto_goTypes,
 		DependencyIndexes: file_cityio_entity_v1_army_proto_depIdxs,
+		EnumInfos:         file_cityio_entity_v1_army_proto_enumTypes,
 		MessageInfos:      file_cityio_entity_v1_army_proto_msgTypes,
 	}.Build()
 	File_cityio_entity_v1_army_proto = out.File

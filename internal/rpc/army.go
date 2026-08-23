@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"cityio/internal/auth"
 	"cityio/internal/constants"
@@ -142,7 +143,20 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("army not found"))
 		}
 	}
-	return connect.NewResponse(&servicev1.GetArmyResponse{Army: mapping.ArmyToProto(army)}), nil
+	protoArmy := mapping.ArmyToProto(army)
+	bag := &entityv1.EntityBag{Armies: []*entityv1.Army{protoArmy}}
+	if army.Owner == claims.UserID {
+		explored, err := h.srv.store.GetExploredTiles(ctx, army.Owner)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if march := h.srv.projectOwnedArmyMarch(army, exploredSet(explored)); march != nil {
+			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		}
+	} else {
+		mapping.HidePrivateArmyFields(protoArmy)
+	}
+	return connect.NewResponse(&servicev1.GetArmyResponse{ArmyId: mapping.ToArmyId(army.ArmyID), Entities: bag}), nil
 }
 
 func (h *armyHandler) MoveArmy(ctx context.Context, req *connect.Request[servicev1.MoveArmyRequest]) (*connect.Response[servicev1.MoveArmyResponse], error) {
@@ -161,6 +175,26 @@ func (h *armyHandler) MoveArmy(ctx context.Context, req *connect.Request[service
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&servicev1.MoveArmyResponse{}), nil
+}
+
+func (h *armyHandler) PreviewArmyRoute(ctx context.Context, req *connect.Request[servicev1.PreviewArmyRouteRequest]) (*connect.Response[servicev1.PreviewArmyRouteResponse], error) {
+	if req.Msg.Destination == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("destination is required"))
+	}
+	army, err := h.requireArmyOwnership(ctx, req.Msg.GetArmyId().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	x := max(0, min(constants.MapSize-1, int(req.Msg.GetDestination().GetX())))
+	y := max(0, min(constants.MapSize-1, int(req.Msg.GetDestination().GetY())))
+	explored, err := h.srv.store.GetExploredTiles(ctx, army.Owner)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	route := h.srv.projectArmyRoute(army, domain.Coordinates{X: x, Y: y}, exploredSet(explored))
+	return connect.NewResponse(&servicev1.PreviewArmyRouteResponse{
+		Steps: route.steps, EstimatedDuration: durationpb.New(route.duration),
+	}), nil
 }
 
 func (h *armyHandler) MergeArmies(ctx context.Context, req *connect.Request[servicev1.MergeArmiesRequest]) (*connect.Response[servicev1.MergeArmiesResponse], error) {
@@ -191,7 +225,7 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
 	}
-	all, err := h.srv.store.GetAllArmies(ctx)
+	all, err := h.srv.liveArmies(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -205,8 +239,19 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 	for _, a := range owned {
 		armyIDs = append(armyIDs, mapping.ToArmyId(a.ArmyID))
 	}
+	bag := mapping.EntitiesToBag(nil, nil, nil, owned)
+	explored, err := h.srv.store.GetExploredTiles(ctx, claims.UserID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	known := exploredSet(explored)
+	for _, army := range owned {
+		if march := h.srv.projectOwnedArmyMarch(army, known); march != nil {
+			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		}
+	}
 	return connect.NewResponse(&servicev1.ListArmiesResponse{
 		ArmyIds:  armyIDs,
-		Entities: mapping.EntitiesToBag(nil, nil, nil, owned),
+		Entities: bag,
 	}), nil
 }

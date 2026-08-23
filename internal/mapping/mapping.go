@@ -4,6 +4,8 @@
 package mapping
 
 import (
+	"sort"
+
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
@@ -83,6 +85,11 @@ func ToBuildingId(id string) *entityv1.BuildingId {
 // ToArmyId wraps a raw string into a typed proto ID.
 func ToArmyId(id string) *entityv1.ArmyId {
 	return &entityv1.ArmyId{Value: id}
+}
+
+// ToArmyMarchId wraps a raw string into a typed proto ID.
+func ToArmyMarchId(id string) *entityv1.ArmyMarchId {
+	return &entityv1.ArmyMarchId{Value: id}
 }
 
 // ToTrainingOrderId wraps a raw string into a typed proto ID.
@@ -244,6 +251,25 @@ func MapTilesAroundPointToProto(grid domain.TerrainGrid, x, y, radius int, citie
 	return tiles
 }
 
+// ExploredTilesToProto returns terrain for every explored coordinate. Dynamic
+// occupancy is included only while the coordinate is currently visible.
+func ExploredTilesToProto(grid domain.TerrainGrid, explored []domain.Coordinates, visible map[domain.Coordinates]struct{}, cities []domain.City, buildings []domain.Building, armies []domain.Army) []*entityv1.Tile {
+	cityAt, buildingAt, armiesAt := mapOccupancy(grid, cities, buildings, armies)
+	tiles := make([]*entityv1.Tile, 0, len(explored))
+	for _, coords := range explored {
+		terrain, ok := grid.At(coords.X, coords.Y)
+		if !ok {
+			continue
+		}
+		if _, ok := visible[coords]; !ok {
+			tiles = append(tiles, TileToProto(nil, nil, nil, terrain, coords.X, coords.Y))
+			continue
+		}
+		tiles = append(tiles, mappedTile(grid, cityAt, buildingAt, armiesAt, terrain, coords.X, coords.Y))
+	}
+	return tiles
+}
+
 func mapOccupancy(grid domain.TerrainGrid, cities []domain.City, buildings []domain.Building, armies []domain.Army) (map[int]string, map[int]string, map[int][]string) {
 	cityAt := make(map[int]string)
 	for _, city := range cities {
@@ -267,6 +293,9 @@ func mapOccupancy(grid domain.TerrainGrid, cities []domain.City, buildings []dom
 			idx := army.Y*grid.Width + army.X
 			armiesAt[idx] = append(armiesAt[idx], army.ArmyID)
 		}
+	}
+	for index := range armiesAt {
+		sort.Strings(armiesAt[index])
 	}
 
 	return cityAt, buildingAt, armiesAt
@@ -306,20 +335,36 @@ func BuildingToProto(b domain.Building) *entityv1.Building {
 // ArmyToProto converts a domain army to its proto representation.
 func ArmyToProto(a domain.Army) *entityv1.Army {
 	out := &entityv1.Army{
-		ArmyId: ToArmyId(a.ArmyID),
-		Owner:  ToUserId(a.Owner),
-		Coords: &entityv1.Coordinates{X: int32(a.X), Y: int32(a.Y)},
+		ArmyId:                ToArmyId(a.ArmyID),
+		Owner:                 ToUserId(a.Owner),
+		Coords:                &entityv1.Coordinates{X: int32(a.X), Y: int32(a.Y)},
+		CompositionVisibility: entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_EXACT,
 	}
-	for troopType, count := range a.Troops {
-		out.Troops = append(out.Troops, &entityv1.TroopStack{
-			Type:  TroopTypeToProto(troopType),
-			Count: int32(count),
-		})
+	for _, troopType := range []domain.TroopType{
+		domain.TroopTypeSoldier,
+		domain.TroopTypeArcher,
+		domain.TroopTypeCavalry,
+		domain.TroopTypeArtillery,
+	} {
+		count := a.Troops[troopType]
+		if count <= 0 {
+			continue
+		}
+		protoCount := int32(count)
+		out.Troops = append(out.Troops, &entityv1.TroopStack{Type: TroopTypeToProto(troopType), Count: &protoCount})
 	}
-	if a.DestX != nil && a.DestY != nil {
-		out.Destination = &entityv1.Coordinates{X: int32(*a.DestX), Y: int32(*a.DestY)}
+	if a.MarchID != nil && a.DestX != nil && a.DestY != nil {
+		out.MarchId = ToArmyMarchId(*a.MarchID)
 	}
 	return out
+}
+
+// HidePrivateArmyFields removes composition and march references the viewer is
+// not authorized to inspect. The physical army remains visible on the map.
+func HidePrivateArmyFields(a *entityv1.Army) {
+	a.CompositionVisibility = entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_HIDDEN
+	a.Troops = nil
+	a.MarchId = nil
 }
 
 // EntitiesToBag builds an EntityBag from slices of domain entities.

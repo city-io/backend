@@ -58,7 +58,8 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
   is concurrency-safe). `Enqueue*` buffers updates per entity (`user`/`city`/`building`/`army`)
   in mutex-guarded maps (latest-write-wins); a background goroutine started by `Start` flushes
   them to Postgres on a ticker via snapshot-and-swap (so enqueues never block on a flush).
-  `Stop` does a final flush.
+  `Stop` does a final flush. Per-user explored coordinates are inserted synchronously and
+  idempotently because they are durable game knowledge, not write-behind actor state.
 - **`internal/services`** — thin orchestration layer called by the rpc/setup layers. Functions
   take `(ctx, cluster, ...)` (and the `store` where needed) and translate requests into actor
   messages. DTOs that callers send in live here (`inputs.go`: `CreateUserRequest`, `CityInput`,
@@ -78,14 +79,15 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/auth`** — JWT issuing/verification and the Connect auth interceptor (covers both
   unary and streaming). `publicProcedures` lists the tokenless endpoints.
 - **`internal/mapping`** — domain↔proto conversion helpers used by `rpc` (e.g. `CityToProto`,
-  `ArmyToProto`, `EntitiesToBag`, typed-ID + enum maps, `HidePrivateCityFields`).
-- **`internal/stream`** — per-user in-process pub/sub registry backing the server-streaming
-  `StreamState` RPC (replaces the old websocket loop). `StateUpdate` carries the changed
-  entity(ies); actors publish to it.
+  `ArmyToProto`, `EntitiesToBag`, typed-ID + enum maps, and viewer-specific field hiding).
+- **`internal/stream`** — in-process pub/sub triggers backing the server-streaming `StreamState`
+  RPC. Private user changes target their owner; world changes wake every subscriber, whose RPC
+  projection applies visibility. The RPC emits complete-entity deltas and an authoritative
+  snapshot every five seconds.
 - **`internal/gen`** — generated Connect/protobuf code (from `buf`). Two sub-packages:
   - `internal/gen/cityio/entity/v1` (`entityv1`) — entity messages (`User`, `City`,
-    `Building`, `Army`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`, `BuildingId`,
-    `ArmyId`, `TileId`), enums (`CityType`, `BuildingType`, `TroopType`, `TerrainType`),
+    `Building`, `Army`, `ArmyMarch`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`,
+    `BuildingId`, `ArmyId`, `ArmyMarchId`, `TileId`), enums (`CityType`, `BuildingType`, `TroopType`, `TerrainType`),
     `Coordinates`, `Rate`, and `EntityBag` (a collection of mixed entities).
   - `internal/gen/cityio/service/v1` (`servicev1`) — RPC request/response messages. The
     `servicev1connect` sub-package has the Connect service interfaces and handler constructors.
@@ -119,14 +121,15 @@ Go output to `internal/gen`. A frontend generates its own client from the same f
 ```
 proto/cityio/
   entity/v1/             # package cityio.entity.v1
-    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId, TileId)
+    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId, ArmyMarchId, TileId)
     common.proto          # enums (CityType, BuildingType, TroopType), Coordinates, Rate
     user.proto            # User entity message
     city.proto            # City entity message
     building.proto        # Building entity message
     army.proto            # Army + TroopStack entity messages
+    army_march.proto      # active movement orders, remaining routes, disclosure
     tile.proto            # TerrainType + Tile
-    bag.proto             # EntityBag (users/cities/buildings/armies/tiles)
+    bag.proto             # EntityBag (users/cities/buildings/armies/marches/tiles)
   service/v1/             # package cityio.service.v1
     user.proto            # UserService RPCs (incl. StreamState) + req/resp
     city.proto            # CityService RPCs
@@ -134,6 +137,7 @@ proto/cityio/
     army.proto            # ArmyService RPCs
     map.proto             # MapService RPCs
     config.proto          # ConfigService RPCs
+    state.proto           # snapshots, deltas, typed tombstones, tile visibility
 ```
 
 Procedure names are `/cityio.service.v1.<Service>/<Method>`; the `publicProcedures` map in
@@ -144,14 +148,15 @@ the "Client / frontend API reference" section below.
 
 - **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)` and has one of
   eight terrain types: grassland, plains, forest, hills, mountains, desert, marsh, or water.
-  Terrain is regenerated coherently from a new seed on every boot and returned as raw tile
-  entities by `GetMap`; it currently affects settlement placement but not production or movement.
+  Terrain is regenerated coherently from a new seed on every boot and revealed as raw tile
+  entities only after exploration; it affects settlement placement and army movement, but not production.
   Buildings and armies live on tiles; armies stack (multiple armies + a building can share a
   tile).
 - **Cities:** a `size`×`size` block (capitals are `CitySize` = 5). `start` is the top-left
   corner; the center is `start + size/2`. Type is `city` (player capital) or `town` (neutral,
-  unowned). A city has `population` (grows logistically toward `population_cap`), and the cap is
-  the sum of its buildings' population contributions.
+  unowned). New player cities temporarily start with a completed level-1 farm and barracks in
+  addition to their city center. A city has `population` (grows logistically toward
+  `population_cap`), and the cap is the sum of its buildings' population contributions.
 - **Buildings:** typed structures inside a city. Types: `city_center`, `town_center`, `barracks`,
   `house`, `farm`, `mine`. Levels 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
   construction time; while under construction `level != target_level`. City/town centers can't be
@@ -165,11 +170,12 @@ the "Client / frontend API reference" section below.
   population declines. All rates are per-hour.
 - **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
-  position and, while marching, a `destination`; it follows a lowest-time route choosing among
+  position and an optional reference to its active `ArmyMarch`; the march owns its destination,
+  remaining route, and ETA. Movement follows a lowest-time route choosing among
   all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
-  250ms timing quantum, but state is streamed only when the army actually enters a tile. An
-  army moves at the speed of its slowest troop: cavalry takes 500ms per normal tile,
-  soldiers/archers take 1s, and artillery takes 1.5s. Marsh multiplies that time by two,
+  250ms timing quantum with carried fractional progress, but state is streamed only when the army actually enters a tile. An
+  army moves at the speed of its slowest troop: cavalry takes 550ms per normal tile,
+  soldiers/archers take 1.1s, and artillery takes 1.65s. Marsh multiplies that time by two,
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
   same-owner armies on the same tile can be merged.
   - **Population carve-out:** training reserves population into `city.military_population`, capped
@@ -185,10 +191,10 @@ the "Client / frontend API reference" section below.
 
     | Type      | Gold | Train/unit (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
     |-----------|------|----------------|----------|---------|-----|-----|-----|-----|
-    | soldier   | 50   | 5              | 1.0      | 60      | 1   | 10  | 10  | 100 |
-    | archer    | 75   | 7              | 1.0      | 60      | 1   | 15  | 5   | 70  |
-    | cavalry   | 150  | 10             | 0.5      | 180     | 1   | 20  | 12  | 120 |
-    | artillery | 300  | 15             | 1.5      | 120     | 3   | 40  | 3   | 60  |
+    | soldier   | 50   | 5              | 1.10     | 60      | 1   | 10  | 10  | 100 |
+    | archer    | 75   | 7              | 1.10     | 60      | 1   | 15  | 5   | 70  |
+    | cavalry   | 150  | 10             | 0.55     | 180     | 1   | 20  | 12  | 120 |
+    | artillery | 300  | 15             | 1.65     | 120     | 3   | 40  | 3   | 60  |
 
   - **Barracks training capacity** (troops per in-progress batch) = `5 × barracksLevel`. Extra
     orders persist and queue FIFO per barracks; more barracks = more concurrent training. A
@@ -198,8 +204,9 @@ the "Client / frontend API reference" section below.
     config message (TODO).
 - **Vision:** a player sees any tile within Chebyshev distance `VisionRadius` (3) of any tile of
   a city they own or the current tile of any army they own. This gates what read RPCs return
-  (see visibility rules below). Army movement updates stream the newly visible tile occupancy
-  and entities when the army enters a tile.
+  (see visibility rules below). Seen coordinates are persisted in `explored_tiles`: terrain stays
+  known after vision leaves, while occupancy and dynamic entities are removed. Army movement
+  persists and streams newly explored terrain whenever an army enters a tile.
 - **Tick cadence** (`constants/constants.go`): city tick 3s, building tick 3s, army movement
   quantum 250ms, DB backup flush 2s, user backup 10s. Rates are normalised to per-hour
   (`SecondsPerHour` 3600).
@@ -245,8 +252,10 @@ for TypeScript) rather than hand-writing request types.
     `_MINE` (+ `_UNSPECIFIED`).
   - `TroopType`: `TROOP_TYPE_SOLDIER`, `_ARCHER`, `_CAVALRY`, `_ARTILLERY` (+ `_UNSPECIFIED`).
 - **EntityBag** — a flat collection of raw entities returned by list/map/stream responses:
-  `{ users[], cities[], buildings[], armies[], tiles[] }`. Stream deletion tombstones live on
-  `StreamStateResponse`, not in the entity collection.
+  `{ users[], cities[], buildings[], armies[], tiles[], army_marches[] }`. Stream typed deletion/hidden IDs live
+  in `StateDelta`, not in the entity collection.
+- **TileVisibilityState** — per-user tile knowledge: `UNEXPLORED`, `EXPLORED`, or `VISIBLE`.
+  `EXPLORED` tiles include remembered terrain but sanitized occupancy.
 
 ### Entity shapes & visibility
 
@@ -259,8 +268,12 @@ for TypeScript) rather than hand-writing request types.
   `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
-- **Army** `{ army_id, owner (UserId), coords, troops[] (TroopStack{type, count}), destination?
-  (Coordinates) }` — `destination` is set while marching and unset when idle/arrived.
+- **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], march_id? }` —
+  composition is exact for the owner and explicitly hidden from unauthorized viewers; a march
+  reference is only present when the viewer may know the movement order exists.
+- **ArmyMarch** `{ army_march_id, army_id, disclosure, destination?, remaining_route[],
+  estimated_remaining_duration? }` — ephemeral, viewer-projected active-order state. A new march
+  ID is issued for each order; completion, cancellation, or replacement produces a tombstone.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -268,9 +281,10 @@ for TypeScript) rather than hand-writing request types.
   - Reads that expose the world (`GetMap`, `ListBuildings`) filter cities/buildings/armies to
     those within `VisionRadius` of an owned city or army; non-owned city economy fields are
     stripped.
-  - `GetCity`, `GetBuilding`, `GetTile` return `NotFound` if the target isn't visible.
-  - `GetArmy`: the **owner** can always fetch their own army (even out of vision); others need
-    vision on its tile.
+  - `GetCity` and `GetBuilding` return `NotFound` if the target isn't visible. `GetTile` returns
+    terrain-only data for explored hidden tiles and `NotFound` only for unexplored tiles.
+  - `GetArmy`: the **owner** can always fetch their own army and active march (even out of
+    vision); others need vision on its tile and receive hidden composition/no march.
   - `ListCities` and `ListArmies` are **owner-scoped** — they return your own entities regardless
     of vision. `StreamState` begins with the same owner-scoped snapshot and includes visible
     world deltas revealed by moving armies.
@@ -284,13 +298,12 @@ for TypeScript) rather than hand-writing request types.
 - `Login(identifier, password) → { token, user }` — *public*. `identifier` is email or username.
 - `GetUser(user_id) → { user }`.
 - `DeleteUser(user_id) → {}`.
-- `StreamState() → stream { entities: EntityBag, deleted_building_ids[], deleted_army_ids[] }` —
-  server-streaming, owner-scoped. The **first** message is a full snapshot (your user + owned
-  cities + their buildings + your armies). Subsequent messages are incremental deltas as state
-  changes: updated `users` (gold/food), `cities` (economy/population), `buildings`
-  (create/upgrade), `armies` (spawn/move/merge), and top-level deletion tombstones. An owned army
-  entering a tile also sends the tiles and entities visible around its new position. Drive the
-  client's live map/HUD off this.
+- `StreamState() → stream { revision, snapshot | delta }` — server-streaming and owner-scoped.
+  The first frame and every five-second repair frame are authoritative snapshots. Between them,
+  deltas carry complete entity upserts, typed `deleted` and `hidden` ID bags, and tile-visibility
+  transitions, including army-march upserts and tombstones. Apply snapshots by replacement and
+  deltas by ID. World updates are projected to every player who can currently see them; moving
+  armies reveal and persist terrain.
 
 **CityService**
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.
@@ -320,20 +333,31 @@ for TypeScript) rather than hand-writing request types.
   when it is at the front, `started_at` and `completes_at`.
 - `ListTrainingOrders(barracks_id) → { orders[] }` — owner-only current FIFO queue for a
   barracks, including the active order and orders waiting behind it.
-- `GetArmy(army_id) → { army }` — owner always; others need vision.
+- `GetArmy(army_id) → { army_id, entities(army, army_march?) }` — owner always; others need
+  vision and receive the sanitized army without private march state.
+- `PreviewArmyRoute(army_id, destination) → { steps[{coords}], estimated_duration }` —
+  owner-only backend route preview. The UI derives whether the requested destination is reached
+  by comparing it with the final step. Unknown tiles are assumed to be
+  ordinary land without revealing terrain. The response exposes only the contiguous explored
+  prefix plus the projected endpoint; a coordinate gap represents hidden route geometry and is
+  rendered by clients as an uncertain straight connector.
 - `MoveArmy(army_id, destination) → {}` — must own; sets the marching destination (clamped to the
-  map). Missing destinations are invalid and water/unreachable destinations fail with
-  `FailedPrecondition`. The army follows its weighted terrain route until it arrives, then idles.
+  map). Missing destinations are invalid. Unknown terrain is planned as ordinary land and the
+  the remaining route stays stable while it remains optimal and traversable, and is replaced when
+  newly revealed terrain invalidates it or exposes a faster route. If the target proves to be water
+  or becomes unreachable, the army stops at the closest reachable explored land instead of leaking
+  that fact up front.
 - `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
   tile. The source's troops fold into the target and the source army disappears.
-- `ListArmies() → { army_ids[], entities(armies) }` — your armies (all, regardless of vision).
+- `ListArmies() → { army_ids[], entities(armies, army_marches) }` — your armies and their active
+  marches (all, regardless of vision).
 
 **MapService**
-- `GetMap() → { tile_ids[], entities(tiles, cities, buildings, armies) }` — the tile IDs are the
-  map roots and each tile's occupancy IDs resolve through the same bag. Every terrain tile is
-  included; occupancy references and their entities remain vision-filtered. Non-owned city
-  economy is stripped. Use to bootstrap the map; keep dynamic entities live with `StreamState`.
-- `GetTile(tile_id) → { tile }` — vision-gated.
+- `GetMap() → { tile_ids[], entities(tiles, cities, buildings, armies), tile_visibility[] }` —
+  all tile IDs remain map roots, but only explored tile entities are included. Visible tiles have
+  occupancy; explored hidden tiles have remembered terrain only. Dynamic entities are
+  vision-filtered and non-owned city economy is stripped.
+- `GetTile(tile_id) → { tile, visibility }` — explored-gated; hidden results contain terrain only.
 
 **ConfigService**
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),
@@ -391,9 +415,10 @@ curl -s http://localhost:8080/cityio.service.v1.UserService/Login \
   one-shot `time.AfterFunc` that fires the same `PeriodicOperationMessage` at that instant — the
   per-tick poll remains the idempotent safety net. See
   `buildingActor.scheduleConstructionComplete` and `barracksImpl.arm`.
-- **Live client push:** actors publish changed entities to `internal/stream`; the `StreamState`
-  RPC fans them out to the owning user's subscribers. Publish on **real** state changes, not on
-  every periodic tick, to avoid fan-out storms.
+- **Live client push:** actors publish state-change triggers to `internal/stream`; private user
+  changes target their owner and world changes wake all subscribers. `StreamState` rebuilds each
+  user's visibility projection, emits a delta when it changed, and sends a full repair snapshot
+  every five seconds.
 
 ## Build / run / database
 
@@ -440,7 +465,7 @@ psql -h localhost -p 5432 -U cityio -d cityio
 
 Migrations can be run manually (the app also runs them itself — see gotcha). Migrations live in
 `db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`,
-`00004_add_training_orders`):
+`00004_add_training_orders`, `00005_add_explored_tiles`):
 
 ```bash
 GOOSE_DRIVER=postgres \

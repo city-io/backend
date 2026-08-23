@@ -41,13 +41,13 @@ func TestArmyWaitsForSlowTerrain(t *testing.T) {
 	}
 
 	state.path = []domain.Coordinates{{X: 1}}
-	if got := state.nextWaitTicks(); got != 7 {
-		t.Fatalf("marsh wait = %d, want 7 extra ticks", got)
+	if got := state.currentStepDuration(); got != 2200*time.Millisecond {
+		t.Fatalf("marsh duration = %s, want 2.2s", got)
 	}
 
 	state.path = []domain.Coordinates{{X: 2}}
-	if got := state.nextWaitTicks(); got != 11 {
-		t.Fatalf("mountain wait = %d, want 11 extra ticks", got)
+	if got := state.currentStepDuration(); got != 3300*time.Millisecond {
+		t.Fatalf("mountain duration = %s, want 3.3s", got)
 	}
 }
 
@@ -55,18 +55,18 @@ func TestArmyUsesSlowestTroopMovement(t *testing.T) {
 	tests := []struct {
 		name   string
 		troops map[domain.TroopType]int64
-		want   int
+		want   time.Duration
 	}{
-		{name: "cavalry", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10}, want: 2},
-		{name: "soldiers", troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 10}, want: 4},
-		{name: "artillery", troops: map[domain.TroopType]int64{domain.TroopTypeArtillery: 10}, want: 6},
-		{name: "mixed", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10, domain.TroopTypeArtillery: 1}, want: 6},
+		{name: "cavalry", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10}, want: 550 * time.Millisecond},
+		{name: "soldiers", troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 10}, want: 1100 * time.Millisecond},
+		{name: "artillery", troops: map[domain.TroopType]int64{domain.TroopTypeArtillery: 10}, want: 1650 * time.Millisecond},
+		{name: "mixed", troops: map[domain.TroopType]int64{domain.TroopTypeCavalry: 10, domain.TroopTypeArtillery: 1}, want: 1650 * time.Millisecond},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			state := &armyActor{Army: domain.Army{Troops: test.troops}}
-			if got := state.baseMovementTicks(); got != test.want {
-				t.Fatalf("movement ticks = %d, want %d", got, test.want)
+			if got := state.baseMovementDuration(); got != test.want {
+				t.Fatalf("movement duration = %s, want %s", got, test.want)
 			}
 		})
 	}
@@ -81,14 +81,54 @@ func TestArmyMergePreservesMovementProgressAtNewSlowestSpeed(t *testing.T) {
 		Army: domain.Army{Troops: map[domain.TroopType]int64{
 			domain.TroopTypeCavalry: 10,
 		}},
-		path:      []domain.Coordinates{{}},
-		waitTicks: 0,
+		path:             []domain.Coordinates{{}},
+		movementProgress: 250 * time.Millisecond,
 	}
-	elapsed := state.elapsedStepTicks()
 	state.Army.Troops[domain.TroopTypeArtillery] = 1
-	state.waitTicks = max(state.currentStepTicks()-elapsed-1, 0)
+	if state.movementProgress != 250*time.Millisecond {
+		t.Fatalf("movement progress = %s, want 250ms", state.movementProgress)
+	}
+	if remaining := state.currentStepDuration() - state.movementProgress; remaining != 1400*time.Millisecond {
+		t.Fatalf("remaining movement = %s, want 1.4s", remaining)
+	}
+}
 
-	if state.waitTicks != 4 {
-		t.Fatalf("remaining wait = %d, want 4 after one elapsed tick", state.waitTicks)
+func TestArmyCarriesFractionalMovementProgressBetweenTiles(t *testing.T) {
+	world := movementTestWorld{grid: domain.TerrainGrid{
+		Width: 1, Height: 1, Tiles: []domain.TerrainType{domain.TerrainTypeGrassland},
+	}}
+	state := &armyActor{
+		baseActor: baseActor{World: world},
+		Army: domain.Army{Troops: map[domain.TroopType]int64{
+			domain.TroopTypeSoldier: 1,
+		}},
+		path: []domain.Coordinates{{}},
+	}
+	moves := 0
+	for range 22 {
+		if state.advanceMovementClock() {
+			moves++
+		}
+	}
+	if moves != 5 || state.movementProgress != 0 {
+		t.Fatalf("after 5.5s: moves=%d progress=%s, want 5 moves and no remainder", moves, state.movementProgress)
+	}
+}
+
+func TestClearMarchClearsEveryMovementField(t *testing.T) {
+	destination := 7
+	marchID := "march"
+	state := &armyActor{
+		Army: domain.Army{DestX: &destination, DestY: &destination, MarchID: &marchID},
+		path: []domain.Coordinates{{X: 1, Y: 1}}, movementProgress: 250 * time.Millisecond,
+	}
+
+	state.clearMarch()
+
+	if state.Army.DestX != nil || state.Army.DestY != nil || state.Army.MarchID != nil {
+		t.Fatalf("army movement fields were not cleared: %+v", state.Army)
+	}
+	if state.path != nil || state.movementProgress != 0 {
+		t.Fatalf("actor movement state was not cleared: path=%v progress=%s", state.path, state.movementProgress)
 	}
 }

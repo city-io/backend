@@ -107,6 +107,27 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT user_id, email, username, password, gold, food, created_at, updated_at FROM users
+WHERE user_id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, userID string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, userID)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.Email,
+		&i.Username,
+		&i.Password,
+		&i.Gold,
+		&i.Food,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByIdentifier = `-- name: GetUserByIdentifier :one
 SELECT user_id, email, username, password, gold, food, created_at, updated_at FROM users
 WHERE email = $1 OR username = $1

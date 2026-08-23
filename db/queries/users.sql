@@ -5,6 +5,10 @@ SELECT * FROM users;
 SELECT * FROM users
 WHERE email = $1 OR username = $1;
 
+-- name: GetUserByID :one
+SELECT * FROM users
+WHERE user_id = $1;
+
 -- name: CreateUser :exec
 INSERT INTO users (
     user_id, email, username, password, gold, food

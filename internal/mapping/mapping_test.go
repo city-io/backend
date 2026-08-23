@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"cityio/internal/domain"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
 )
 
 func TestMapTilesToProtoBuildsCoordinateKeyedEntityGraph(t *testing.T) {
@@ -53,6 +54,25 @@ func TestMapTilesToProtoBuildsCoordinateKeyedEntityGraph(t *testing.T) {
 	}
 	if tiles[2].GetCityId() != nil || tiles[2].GetBuildingId() != nil || len(tiles[2].GetArmyIds()) != 0 {
 		t.Fatal("unoccupied tile contains occupancy references")
+	}
+}
+
+func TestHidePrivateArmyFieldsPreservesPhysicalState(t *testing.T) {
+	destination := 4
+	marchID := "march"
+	army := ArmyToProto(domain.Army{
+		ArmyID: "army", Owner: "owner", X: 2, Y: 3,
+		Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 12},
+		DestX:  &destination, DestY: &destination, MarchID: &marchID,
+	})
+
+	HidePrivateArmyFields(army)
+
+	if army.GetArmyId().GetValue() != "army" || army.GetCoords().GetX() != 2 || army.GetCoords().GetY() != 3 {
+		t.Fatalf("physical army state changed: %+v", army)
+	}
+	if army.GetCompositionVisibility() != entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_HIDDEN || len(army.GetTroops()) != 0 || army.GetMarchId() != nil {
+		t.Fatalf("private army state was exposed: %+v", army)
 	}
 }
 

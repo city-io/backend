@@ -442,15 +442,16 @@ func (*StreamStateRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{8}
 }
 
-// StreamStateResponse carries an initial entity snapshot followed by entity
-// upserts and deletion tombstones as state changes.
 type StreamStateResponse struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Entities           *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
-	DeletedBuildingIds []*v1.BuildingId       `protobuf:"bytes,2,rep,name=deleted_building_ids,json=deletedBuildingIds,proto3" json:"deleted_building_ids,omitempty"`
-	DeletedArmyIds     []*v1.ArmyId           `protobuf:"bytes,3,rep,name=deleted_army_ids,json=deletedArmyIds,proto3" json:"deleted_army_ids,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Revision uint64                 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
+	// Types that are valid to be assigned to Frame:
+	//
+	//	*StreamStateResponse_Snapshot
+	//	*StreamStateResponse_Delta
+	Frame         isStreamStateResponse_Frame `protobuf_oneof:"frame"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StreamStateResponse) Reset() {
@@ -483,32 +484,59 @@ func (*StreamStateResponse) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_user_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *StreamStateResponse) GetEntities() *v1.EntityBag {
+func (x *StreamStateResponse) GetRevision() uint64 {
 	if x != nil {
-		return x.Entities
+		return x.Revision
+	}
+	return 0
+}
+
+func (x *StreamStateResponse) GetFrame() isStreamStateResponse_Frame {
+	if x != nil {
+		return x.Frame
 	}
 	return nil
 }
 
-func (x *StreamStateResponse) GetDeletedBuildingIds() []*v1.BuildingId {
+func (x *StreamStateResponse) GetSnapshot() *StateSnapshot {
 	if x != nil {
-		return x.DeletedBuildingIds
+		if x, ok := x.Frame.(*StreamStateResponse_Snapshot); ok {
+			return x.Snapshot
+		}
 	}
 	return nil
 }
 
-func (x *StreamStateResponse) GetDeletedArmyIds() []*v1.ArmyId {
+func (x *StreamStateResponse) GetDelta() *StateDelta {
 	if x != nil {
-		return x.DeletedArmyIds
+		if x, ok := x.Frame.(*StreamStateResponse_Delta); ok {
+			return x.Delta
+		}
 	}
 	return nil
 }
+
+type isStreamStateResponse_Frame interface {
+	isStreamStateResponse_Frame()
+}
+
+type StreamStateResponse_Snapshot struct {
+	Snapshot *StateSnapshot `protobuf:"bytes,2,opt,name=snapshot,proto3,oneof"`
+}
+
+type StreamStateResponse_Delta struct {
+	Delta *StateDelta `protobuf:"bytes,3,opt,name=delta,proto3,oneof"`
+}
+
+func (*StreamStateResponse_Snapshot) isStreamStateResponse_Frame() {}
+
+func (*StreamStateResponse_Delta) isStreamStateResponse_Frame() {}
 
 var File_cityio_service_v1_user_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccityio/service/v1/user.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/bag.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1bcityio/entity/v1/user.proto\"_\n" +
+	"\x1ccityio/service/v1/user.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/ids.proto\x1a\x1bcityio/entity/v1/user.proto\x1a\x1dcityio/service/v1/state.proto\"_\n" +
 	"\x0fRegisterRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1a\n" +
@@ -531,11 +559,12 @@ const file_cityio_service_v1_user_proto_rawDesc = "" +
 	"\x11DeleteUserRequest\x121\n" +
 	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\"\x14\n" +
 	"\x12DeleteUserResponse\"\x14\n" +
-	"\x12StreamStateRequest\"\xe2\x01\n" +
-	"\x13StreamStateResponse\x127\n" +
-	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\x12N\n" +
-	"\x14deleted_building_ids\x18\x02 \x03(\v2\x1c.cityio.entity.v1.BuildingIdR\x12deletedBuildingIds\x12B\n" +
-	"\x10deleted_army_ids\x18\x03 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\x0edeletedArmyIds2\xbb\x03\n" +
+	"\x12StreamStateRequest\"\xb1\x01\n" +
+	"\x13StreamStateResponse\x12\x1a\n" +
+	"\brevision\x18\x01 \x01(\x04R\brevision\x12>\n" +
+	"\bsnapshot\x18\x02 \x01(\v2 .cityio.service.v1.StateSnapshotH\x00R\bsnapshot\x125\n" +
+	"\x05delta\x18\x03 \x01(\v2\x1d.cityio.service.v1.StateDeltaH\x00R\x05deltaB\a\n" +
+	"\x05frame2\xbb\x03\n" +
 	"\vUserService\x12S\n" +
 	"\bRegister\x12\".cityio.service.v1.RegisterRequest\x1a#.cityio.service.v1.RegisterResponse\x12J\n" +
 	"\x05Login\x12\x1f.cityio.service.v1.LoginRequest\x1a .cityio.service.v1.LoginResponse\x12P\n" +
@@ -571,9 +600,8 @@ var file_cityio_service_v1_user_proto_goTypes = []any{
 	(*StreamStateResponse)(nil), // 9: cityio.service.v1.StreamStateResponse
 	(*v1.UserId)(nil),           // 10: cityio.entity.v1.UserId
 	(*v1.User)(nil),             // 11: cityio.entity.v1.User
-	(*v1.EntityBag)(nil),        // 12: cityio.entity.v1.EntityBag
-	(*v1.BuildingId)(nil),       // 13: cityio.entity.v1.BuildingId
-	(*v1.ArmyId)(nil),           // 14: cityio.entity.v1.ArmyId
+	(*StateSnapshot)(nil),       // 12: cityio.service.v1.StateSnapshot
+	(*StateDelta)(nil),          // 13: cityio.service.v1.StateDelta
 }
 var file_cityio_service_v1_user_proto_depIdxs = []int32{
 	10, // 0: cityio.service.v1.RegisterResponse.user_id:type_name -> cityio.entity.v1.UserId
@@ -581,30 +609,34 @@ var file_cityio_service_v1_user_proto_depIdxs = []int32{
 	10, // 2: cityio.service.v1.GetUserRequest.user_id:type_name -> cityio.entity.v1.UserId
 	11, // 3: cityio.service.v1.GetUserResponse.user:type_name -> cityio.entity.v1.User
 	10, // 4: cityio.service.v1.DeleteUserRequest.user_id:type_name -> cityio.entity.v1.UserId
-	12, // 5: cityio.service.v1.StreamStateResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	13, // 6: cityio.service.v1.StreamStateResponse.deleted_building_ids:type_name -> cityio.entity.v1.BuildingId
-	14, // 7: cityio.service.v1.StreamStateResponse.deleted_army_ids:type_name -> cityio.entity.v1.ArmyId
-	0,  // 8: cityio.service.v1.UserService.Register:input_type -> cityio.service.v1.RegisterRequest
-	2,  // 9: cityio.service.v1.UserService.Login:input_type -> cityio.service.v1.LoginRequest
-	4,  // 10: cityio.service.v1.UserService.GetUser:input_type -> cityio.service.v1.GetUserRequest
-	6,  // 11: cityio.service.v1.UserService.DeleteUser:input_type -> cityio.service.v1.DeleteUserRequest
-	8,  // 12: cityio.service.v1.UserService.StreamState:input_type -> cityio.service.v1.StreamStateRequest
-	1,  // 13: cityio.service.v1.UserService.Register:output_type -> cityio.service.v1.RegisterResponse
-	3,  // 14: cityio.service.v1.UserService.Login:output_type -> cityio.service.v1.LoginResponse
-	5,  // 15: cityio.service.v1.UserService.GetUser:output_type -> cityio.service.v1.GetUserResponse
-	7,  // 16: cityio.service.v1.UserService.DeleteUser:output_type -> cityio.service.v1.DeleteUserResponse
-	9,  // 17: cityio.service.v1.UserService.StreamState:output_type -> cityio.service.v1.StreamStateResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	12, // 5: cityio.service.v1.StreamStateResponse.snapshot:type_name -> cityio.service.v1.StateSnapshot
+	13, // 6: cityio.service.v1.StreamStateResponse.delta:type_name -> cityio.service.v1.StateDelta
+	0,  // 7: cityio.service.v1.UserService.Register:input_type -> cityio.service.v1.RegisterRequest
+	2,  // 8: cityio.service.v1.UserService.Login:input_type -> cityio.service.v1.LoginRequest
+	4,  // 9: cityio.service.v1.UserService.GetUser:input_type -> cityio.service.v1.GetUserRequest
+	6,  // 10: cityio.service.v1.UserService.DeleteUser:input_type -> cityio.service.v1.DeleteUserRequest
+	8,  // 11: cityio.service.v1.UserService.StreamState:input_type -> cityio.service.v1.StreamStateRequest
+	1,  // 12: cityio.service.v1.UserService.Register:output_type -> cityio.service.v1.RegisterResponse
+	3,  // 13: cityio.service.v1.UserService.Login:output_type -> cityio.service.v1.LoginResponse
+	5,  // 14: cityio.service.v1.UserService.GetUser:output_type -> cityio.service.v1.GetUserResponse
+	7,  // 15: cityio.service.v1.UserService.DeleteUser:output_type -> cityio.service.v1.DeleteUserResponse
+	9,  // 16: cityio.service.v1.UserService.StreamState:output_type -> cityio.service.v1.StreamStateResponse
+	12, // [12:17] is the sub-list for method output_type
+	7,  // [7:12] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_user_proto_init() }
 func file_cityio_service_v1_user_proto_init() {
 	if File_cityio_service_v1_user_proto != nil {
 		return
+	}
+	file_cityio_service_v1_state_proto_init()
+	file_cityio_service_v1_user_proto_msgTypes[9].OneofWrappers = []any{
+		(*StreamStateResponse_Snapshot)(nil),
+		(*StreamStateResponse_Delta)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

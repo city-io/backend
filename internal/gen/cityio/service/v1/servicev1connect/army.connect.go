@@ -40,6 +40,9 @@ const (
 	ArmyServiceListTrainingOrdersProcedure = "/cityio.service.v1.ArmyService/ListTrainingOrders"
 	// ArmyServiceGetArmyProcedure is the fully-qualified name of the ArmyService's GetArmy RPC.
 	ArmyServiceGetArmyProcedure = "/cityio.service.v1.ArmyService/GetArmy"
+	// ArmyServicePreviewArmyRouteProcedure is the fully-qualified name of the ArmyService's
+	// PreviewArmyRoute RPC.
+	ArmyServicePreviewArmyRouteProcedure = "/cityio.service.v1.ArmyService/PreviewArmyRoute"
 	// ArmyServiceMoveArmyProcedure is the fully-qualified name of the ArmyService's MoveArmy RPC.
 	ArmyServiceMoveArmyProcedure = "/cityio.service.v1.ArmyService/MoveArmy"
 	// ArmyServiceMergeArmiesProcedure is the fully-qualified name of the ArmyService's MergeArmies RPC.
@@ -53,6 +56,7 @@ type ArmyServiceClient interface {
 	TrainTroops(context.Context, *connect.Request[v1.TrainTroopsRequest]) (*connect.Response[v1.TrainTroopsResponse], error)
 	ListTrainingOrders(context.Context, *connect.Request[v1.ListTrainingOrdersRequest]) (*connect.Response[v1.ListTrainingOrdersResponse], error)
 	GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error)
+	PreviewArmyRoute(context.Context, *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error)
 	MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error)
 	MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error)
 	ListArmies(context.Context, *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error)
@@ -87,6 +91,12 @@ func NewArmyServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(armyServiceMethods.ByName("GetArmy")),
 			connect.WithClientOptions(opts...),
 		),
+		previewArmyRoute: connect.NewClient[v1.PreviewArmyRouteRequest, v1.PreviewArmyRouteResponse](
+			httpClient,
+			baseURL+ArmyServicePreviewArmyRouteProcedure,
+			connect.WithSchema(armyServiceMethods.ByName("PreviewArmyRoute")),
+			connect.WithClientOptions(opts...),
+		),
 		moveArmy: connect.NewClient[v1.MoveArmyRequest, v1.MoveArmyResponse](
 			httpClient,
 			baseURL+ArmyServiceMoveArmyProcedure,
@@ -113,6 +123,7 @@ type armyServiceClient struct {
 	trainTroops        *connect.Client[v1.TrainTroopsRequest, v1.TrainTroopsResponse]
 	listTrainingOrders *connect.Client[v1.ListTrainingOrdersRequest, v1.ListTrainingOrdersResponse]
 	getArmy            *connect.Client[v1.GetArmyRequest, v1.GetArmyResponse]
+	previewArmyRoute   *connect.Client[v1.PreviewArmyRouteRequest, v1.PreviewArmyRouteResponse]
 	moveArmy           *connect.Client[v1.MoveArmyRequest, v1.MoveArmyResponse]
 	mergeArmies        *connect.Client[v1.MergeArmiesRequest, v1.MergeArmiesResponse]
 	listArmies         *connect.Client[v1.ListArmiesRequest, v1.ListArmiesResponse]
@@ -131,6 +142,11 @@ func (c *armyServiceClient) ListTrainingOrders(ctx context.Context, req *connect
 // GetArmy calls cityio.service.v1.ArmyService.GetArmy.
 func (c *armyServiceClient) GetArmy(ctx context.Context, req *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error) {
 	return c.getArmy.CallUnary(ctx, req)
+}
+
+// PreviewArmyRoute calls cityio.service.v1.ArmyService.PreviewArmyRoute.
+func (c *armyServiceClient) PreviewArmyRoute(ctx context.Context, req *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error) {
+	return c.previewArmyRoute.CallUnary(ctx, req)
 }
 
 // MoveArmy calls cityio.service.v1.ArmyService.MoveArmy.
@@ -153,6 +169,7 @@ type ArmyServiceHandler interface {
 	TrainTroops(context.Context, *connect.Request[v1.TrainTroopsRequest]) (*connect.Response[v1.TrainTroopsResponse], error)
 	ListTrainingOrders(context.Context, *connect.Request[v1.ListTrainingOrdersRequest]) (*connect.Response[v1.ListTrainingOrdersResponse], error)
 	GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error)
+	PreviewArmyRoute(context.Context, *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error)
 	MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error)
 	MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error)
 	ListArmies(context.Context, *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error)
@@ -183,6 +200,12 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(armyServiceMethods.ByName("GetArmy")),
 		connect.WithHandlerOptions(opts...),
 	)
+	armyServicePreviewArmyRouteHandler := connect.NewUnaryHandler(
+		ArmyServicePreviewArmyRouteProcedure,
+		svc.PreviewArmyRoute,
+		connect.WithSchema(armyServiceMethods.ByName("PreviewArmyRoute")),
+		connect.WithHandlerOptions(opts...),
+	)
 	armyServiceMoveArmyHandler := connect.NewUnaryHandler(
 		ArmyServiceMoveArmyProcedure,
 		svc.MoveArmy,
@@ -209,6 +232,8 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 			armyServiceListTrainingOrdersHandler.ServeHTTP(w, r)
 		case ArmyServiceGetArmyProcedure:
 			armyServiceGetArmyHandler.ServeHTTP(w, r)
+		case ArmyServicePreviewArmyRouteProcedure:
+			armyServicePreviewArmyRouteHandler.ServeHTTP(w, r)
 		case ArmyServiceMoveArmyProcedure:
 			armyServiceMoveArmyHandler.ServeHTTP(w, r)
 		case ArmyServiceMergeArmiesProcedure:
@@ -234,6 +259,10 @@ func (UnimplementedArmyServiceHandler) ListTrainingOrders(context.Context, *conn
 
 func (UnimplementedArmyServiceHandler) GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.GetArmy is not implemented"))
+}
+
+func (UnimplementedArmyServiceHandler) PreviewArmyRoute(context.Context, *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.PreviewArmyRoute is not implemented"))
 }
 
 func (UnimplementedArmyServiceHandler) MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error) {

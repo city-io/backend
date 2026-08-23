@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/google/uuid"
 
 	"cityio/internal/constants"
 	"cityio/internal/domain"
@@ -24,7 +25,7 @@ type armyActor struct {
 	// is only persisted every TroopMovementBackupFrequency tiles.
 	movesSinceBackup    int
 	path                []domain.Coordinates
-	waitTicks           int
+	movementProgress    time.Duration
 	ticksSinceReconcile int
 }
 
@@ -48,6 +49,10 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		if state.Army.Troops == nil {
 			state.Army.Troops = make(map[domain.TroopType]int64)
 		}
+		if state.Army.DestX != nil && state.Army.DestY != nil && state.Army.MarchID == nil {
+			marchID := uuid.NewString()
+			state.Army.MarchID = &marchID
+		}
 		if !msg.Restore {
 			if err := state.Store.CreateArmy(state.Ctx(), state.Army); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist army create", "army_id", state.Army.ArmyID, "error", err)
@@ -57,6 +62,7 @@ func (state *armyActor) Receive(ctx actor.Context) {
 			}
 		}
 		state.addTile(state.Army.X, state.Army.Y)
+		state.recordExploration(state.Army.Owner, domain.Vision{Armies: []domain.Army{state.Army}})
 		state.updateUpkeepCity()
 		state.restorePath()
 		state.startPeriodicOperation(ctx)
@@ -66,22 +72,40 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.Ack{})
 
 	case messages.GetArmyMessage:
-		ctx.Respond(&messages.GetArmyResponseMessage{Army: state.Army})
+		army := state.Army
+		army.RemainingPath = append([]domain.Coordinates(nil), state.path...)
+		ctx.Respond(&messages.GetArmyResponseMessage{Army: army})
 
 	case messages.MoveArmyMessage:
 		x, y := clampCoord(msg.X), clampCoord(msg.Y)
-		path, ok := domain.FindLandPath(state.World.Terrain(), domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, domain.Coordinates{X: x, Y: y})
-		if !ok {
-			ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
+		if state.Army.X == x && state.Army.Y == y {
+			state.clearMarch()
+			state.Store.EnqueueArmy(state.Army)
+			state.publish()
+			ctx.Respond(messages.Ack{})
 			return
 		}
+		oldDestX, oldDestY := state.Army.DestX, state.Army.DestY
+		oldMarchID := state.Army.MarchID
+		oldPath, oldProgress := state.path, state.movementProgress
+		marchID := uuid.NewString()
+		state.Army.MarchID = &marchID
 		state.Army.DestX = &x
 		state.Army.DestY = &y
-		state.path = path
-		state.waitTicks = state.nextWaitTicks()
-		if len(path) == 0 {
-			state.Army.DestX = nil
-			state.Army.DestY = nil
+		state.movementProgress = 0
+		if err := state.planPath(); err != nil {
+			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
+			state.Army.MarchID = oldMarchID
+			state.path, state.movementProgress = oldPath, oldProgress
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		if len(state.path) == 0 {
+			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
+			state.Army.MarchID = oldMarchID
+			state.path, state.movementProgress = oldPath, oldProgress
+			ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
+			return
 		}
 		state.Store.EnqueueArmy(state.Army)
 		state.publish()
@@ -117,11 +141,9 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 		ctx.Respond(&messages.InvalidResponseTypeError{})
 		return
 	}
-	elapsedTicks := state.elapsedStepTicks()
 	for t, c := range resp.Troops {
 		state.Army.Troops[t] += c
 	}
-	state.waitTicks = max(state.currentStepTicks()-elapsedTicks-1, 0)
 	state.Store.EnqueueArmy(state.Army)
 	state.updateUpkeepCity()
 	state.publish()
@@ -137,18 +159,22 @@ func (state *armyActor) step() {
 	}
 	destX, destY := *state.Army.DestX, *state.Army.DestY
 	if state.Army.X == destX && state.Army.Y == destY {
-		state.Army.DestX = nil
-		state.Army.DestY = nil
+		state.clearMarch()
 		state.Store.EnqueueArmy(state.Army)
 		state.publish()
 		return
 	}
-	if len(state.path) == 0 && !state.restorePath() {
-		state.reconcileTileIfDue()
-		return
+	if len(state.path) == 0 {
+		hadMarch := state.Army.MarchID != nil
+		if !state.restorePath() {
+			if hadMarch && state.Army.MarchID == nil {
+				state.publish()
+			}
+			state.reconcileTileIfDue()
+			return
+		}
 	}
-	if state.waitTicks > 0 {
-		state.waitTicks--
+	if !state.advanceMovementClock() {
 		state.reconcileTileIfDue()
 		return
 	}
@@ -160,17 +186,24 @@ func (state *armyActor) step() {
 	state.Army.Y = next.Y
 	state.removeTile(oldX, oldY)
 	state.addTile(state.Army.X, state.Army.Y)
+	state.recordExploration(state.Army.Owner, domain.Vision{Armies: []domain.Army{state.Army}})
 	state.ticksSinceReconcile = 0
 	state.updateUpkeepCity()
 
 	arrived := state.Army.X == destX && state.Army.Y == destY
+	marchEnded := arrived
 	if arrived {
-		state.Army.DestX = nil
-		state.Army.DestY = nil
+		state.clearMarch()
+	} else if err := state.refreshPath(); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to refresh army route", "army_id", state.Army.ArmyID, "error", err)
+		state.path = nil
+	} else if len(state.path) == 0 {
+		slog.InfoContext(state.Ctx(), "army stopped at the edge of known traversable terrain", "army_id", state.Army.ArmyID, "x", destX, "y", destY)
+		state.clearMarch()
+		marchEnded = true
 	}
-	state.waitTicks = state.nextWaitTicks()
 	state.movesSinceBackup++
-	if arrived || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
+	if marchEnded || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
 		state.Store.EnqueueArmy(state.Army)
 		state.movesSinceBackup = 0
 	}
@@ -181,27 +214,71 @@ func (state *armyActor) restorePath() bool {
 	if state.Army.DestX == nil || state.Army.DestY == nil {
 		return true
 	}
-	destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
-	path, ok := domain.FindLandPath(state.World.Terrain(), domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination)
-	if !ok {
-		slog.WarnContext(state.Ctx(), "clearing unreachable army destination", "army_id", state.Army.ArmyID, "x", destination.X, "y", destination.Y)
-		state.Army.DestX = nil
-		state.Army.DestY = nil
-		state.path = nil
-		state.waitTicks = 0
+	if err := state.planPath(); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to restore army route", "army_id", state.Army.ArmyID, "error", err)
+		return false
+	}
+	if len(state.path) == 0 && (state.Army.X != *state.Army.DestX || state.Army.Y != *state.Army.DestY) {
+		destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
+		slog.InfoContext(state.Ctx(), "army stopped at the edge of known traversable terrain", "army_id", state.Army.ArmyID, "x", destination.X, "y", destination.Y)
+		state.clearMarch()
 		state.Store.EnqueueArmy(state.Army)
 		return false
 	}
-	state.path = path
-	state.waitTicks = state.nextWaitTicks()
 	return true
 }
 
-func (state *armyActor) nextWaitTicks() int {
-	return max(state.currentStepTicks()-1, 0)
+func (state *armyActor) clearMarch() {
+	state.Army.DestX = nil
+	state.Army.DestY = nil
+	state.Army.MarchID = nil
+	state.path = nil
+	state.movementProgress = 0
 }
 
-func (state *armyActor) currentStepTicks() int {
+func (state *armyActor) planPath() error {
+	if state.Army.DestX == nil || state.Army.DestY == nil {
+		state.path = nil
+		return nil
+	}
+	explored, err := state.Store.GetExploredTiles(state.Ctx(), state.Army.Owner)
+	if err != nil {
+		return err
+	}
+	known := make(map[domain.Coordinates]struct{}, len(explored))
+	for _, coords := range explored {
+		known[coords] = struct{}{}
+	}
+	destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
+	state.path, _ = domain.FindKnownLandPath(
+		state.World.Terrain(), known,
+		domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination,
+	)
+	return nil
+}
+
+func (state *armyActor) refreshPath() error {
+	if state.Army.DestX == nil || state.Army.DestY == nil {
+		state.path = nil
+		return nil
+	}
+	explored, err := state.Store.GetExploredTiles(state.Ctx(), state.Army.Owner)
+	if err != nil {
+		return err
+	}
+	known := make(map[domain.Coordinates]struct{}, len(explored))
+	for _, coords := range explored {
+		known[coords] = struct{}{}
+	}
+	destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
+	state.path, _ = domain.UpdateKnownLandPath(
+		state.World.Terrain(), known,
+		domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination, state.path,
+	)
+	return nil
+}
+
+func (state *armyActor) currentStepDuration() time.Duration {
 	if len(state.path) == 0 {
 		return 0
 	}
@@ -209,28 +286,33 @@ func (state *armyActor) currentStepTicks() int {
 	if !ok {
 		return 0
 	}
-	return state.baseMovementTicks() * domain.TerrainMovementCost(terrain)
+	return state.baseMovementDuration() * time.Duration(domain.TerrainMovementCost(terrain))
 }
 
-func (state *armyActor) baseMovementTicks() int {
-	ticks := 0
+func (state *armyActor) advanceMovementClock() bool {
+	required := state.currentStepDuration()
+	if required <= 0 {
+		return false
+	}
+	state.movementProgress += constants.TroopMovementTickInterval
+	if state.movementProgress < required {
+		return false
+	}
+	state.movementProgress -= required
+	return true
+}
+
+func (state *armyActor) baseMovementDuration() time.Duration {
+	duration := time.Duration(0)
 	for troopType, count := range state.Army.Troops {
 		if count > 0 {
-			ticks = max(ticks, constants.GetTroopMovementTicks(troopType))
+			duration = max(duration, constants.GetTroopMovementDuration(troopType))
 		}
 	}
-	if ticks == 0 {
-		return constants.GetTroopMovementTicks(domain.TroopTypeSoldier)
+	if duration == 0 {
+		return constants.GetTroopMovementDuration(domain.TroopTypeSoldier)
 	}
-	return ticks
-}
-
-func (state *armyActor) elapsedStepTicks() int {
-	total := state.currentStepTicks()
-	if total == 0 {
-		return 0
-	}
-	return max(total-state.waitTicks-1, 0)
+	return duration
 }
 
 func (state *armyActor) reconcileTileIfDue() {

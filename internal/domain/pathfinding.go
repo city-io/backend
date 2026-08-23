@@ -85,6 +85,107 @@ func FindLandPath(grid TerrainGrid, start, destination Coordinates) ([]Coordinat
 	return nil, false
 }
 
+// FindKnownLandPath plans with explored terrain while treating undiscovered
+// tiles as ordinary traversable land. If a discovered impassable destination
+// cannot be reached, it returns a route to the closest reachable explored land
+// and reports reachesDestination=false.
+func FindKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, start, destination Coordinates) ([]Coordinates, bool) {
+	masked := knownTerrainGrid(grid, explored, start)
+
+	if path, ok := FindLandPath(masked, start, destination); ok {
+		return path, true
+	}
+
+	var best Coordinates
+	found := false
+	bestDistance := int(^uint(0) >> 1)
+	bestCost := bestDistance
+	frontier := pathQueue{&pathNode{coords: start}}
+	heap.Init(&frontier)
+	costs := map[Coordinates]int{start: 0}
+	previous := make(map[Coordinates]Coordinates)
+	for frontier.Len() > 0 {
+		current := heap.Pop(&frontier).(*pathNode)
+		if current.cost != costs[current.coords] {
+			continue
+		}
+		if _, isExplored := explored[current.coords]; isExplored {
+			distance := chebyshev(current.coords, destination)
+			if distance < bestDistance || (distance == bestDistance && current.cost < bestCost) {
+				best, bestDistance, bestCost, found = current.coords, distance, current.cost, true
+			}
+		}
+		for _, direction := range pathDirections {
+			next := Coordinates{X: current.coords.X + direction.X, Y: current.coords.Y + direction.Y}
+			terrain, ok := masked.At(next.X, next.Y)
+			if !ok || TerrainMovementCost(terrain) == 0 || cutsBlockedCorner(masked, current.coords, direction) {
+				continue
+			}
+			cost := current.cost + TerrainMovementCost(terrain)
+			if known, seen := costs[next]; seen && cost >= known {
+				continue
+			}
+			costs[next] = cost
+			previous[next] = current.coords
+			heap.Push(&frontier, &pathNode{coords: next, cost: cost, score: cost})
+		}
+	}
+	if !found {
+		return []Coordinates{}, false
+	}
+	return buildPath(previous, start, best), false
+}
+
+// UpdateKnownLandPath keeps an existing equal-cost route stable and replaces
+// it only when newly known terrain invalidates it or reveals a cheaper route.
+func UpdateKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, start, destination Coordinates, current []Coordinates) ([]Coordinates, bool) {
+	candidate, reaches := FindKnownLandPath(grid, explored, start, destination)
+	if len(current) == 0 || len(candidate) == 0 || current[len(current)-1] != candidate[len(candidate)-1] {
+		return candidate, reaches
+	}
+	masked := knownTerrainGrid(grid, explored, start)
+	currentCost, currentValid := routeCost(masked, start, current)
+	candidateCost, candidateValid := routeCost(masked, start, candidate)
+	if currentValid && candidateValid && currentCost <= candidateCost {
+		return current, reaches
+	}
+	return candidate, reaches
+}
+
+func knownTerrainGrid(grid TerrainGrid, explored map[Coordinates]struct{}, start Coordinates) TerrainGrid {
+	masked := TerrainGrid{Width: grid.Width, Height: grid.Height, Tiles: make([]TerrainType, len(grid.Tiles))}
+	for y := 0; y < grid.Height; y++ {
+		for x := 0; x < grid.Width; x++ {
+			coords := Coordinates{X: x, Y: y}
+			if _, known := explored[coords]; known || coords == start {
+				masked.Tiles[y*grid.Width+x] = grid.Tiles[y*grid.Width+x]
+			} else {
+				masked.Tiles[y*grid.Width+x] = TerrainTypePlains
+			}
+		}
+	}
+	return masked
+}
+
+func routeCost(grid TerrainGrid, start Coordinates, path []Coordinates) (int, bool) {
+	cost := 0
+	current := start
+	for _, next := range path {
+		direction := Coordinates{X: next.X - current.X, Y: next.Y - current.Y}
+		if direction == (Coordinates{}) || abs(direction.X) > 1 || abs(direction.Y) > 1 {
+			return 0, false
+		}
+		terrain, ok := grid.At(next.X, next.Y)
+		stepCost := TerrainMovementCost(terrain)
+		if !ok || stepCost == 0 || cutsBlockedCorner(grid, current, direction) {
+			return 0, false
+		}
+		cost += stepCost
+		current = next
+	}
+	return cost, true
+}
+
 func traversable(grid TerrainGrid, coords Coordinates) bool {
 	terrain, ok := grid.At(coords.X, coords.Y)
 	return ok && TerrainMovementCost(terrain) > 0

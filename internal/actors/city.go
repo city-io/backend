@@ -83,6 +83,9 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			// produces ~33 food/tick. Towns don't need one (they're unowned).
 			if msg.City.Type == domain.CityTypeCity {
 				state.spawnInitialBuilding(domain.BuildingTypeFarm, msg.City.StartX+1, msg.City.StartY+1)
+				// TODO: Temporary development bootstrap; remove the free barracks once
+				// the early-game city progression is finalized.
+				state.spawnInitialBuilding(domain.BuildingTypeBarracks, msg.City.StartX+1, msg.City.StartY+2)
 			}
 		}
 		state.startPeriodicOperation(ctx)
@@ -102,12 +105,18 @@ func (state *cityActor) Receive(ctx actor.Context) {
 				}
 			}
 		}
+		if state.City.Owner != nil {
+			state.recordExploration(*state.City.Owner, domain.Vision{Cities: []domain.City{state.City}})
+		}
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateCityOwnerMessage:
 		// The city is the sole authority for ownership; buildings and tiles no
 		// longer cache it, so there is nothing to propagate.
 		state.City.Owner = msg.Owner
+		if state.City.Owner != nil {
+			state.recordExploration(*state.City.Owner, domain.Vision{Cities: []domain.City{state.City}})
+		}
 
 	case messages.BuildingStateChangedMessage:
 		// Real state change (created, upgrade started, upgrade complete) — push
@@ -280,8 +289,7 @@ func (state *cityActor) armyUpkeepTotal() int64 {
 }
 
 // spawnInitialBuilding kicks off a fully-built level-1 building inside the
-// city block. Used during city creation for the center and (for capitals) the
-// starter farm.
+// city block. Used during city creation for its fully-built starter buildings.
 func (state *cityActor) spawnInitialBuilding(buildingType domain.BuildingType, x, y int) {
 	id := uuid.New().String()
 	state.Cluster.Request("building", id, &messages.CreateBuildingMessage{

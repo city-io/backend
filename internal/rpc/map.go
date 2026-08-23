@@ -8,6 +8,7 @@ import (
 
 	"cityio/internal/auth"
 	"cityio/internal/constants"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -19,42 +20,22 @@ type mapHandler struct {
 }
 
 func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.GetMapRequest]) (*connect.Response[servicev1.GetMapResponse], error) {
-	cityList, err := h.srv.store.GetAllCities(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	buildingList, err := h.srv.store.GetAllBuildings(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	armyList, err := h.srv.liveArmies(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	vision, err := h.srv.ownedVisionWithArmies(ctx, armyList)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	cityList = vision.FilterCities(cityList, constants.VisionRadius)
-	buildingList = vision.FilterBuildings(buildingList, constants.VisionRadius)
-	armyList = vision.FilterArmies(armyList, constants.VisionRadius)
-
-	bag := mapping.EntitiesToBag(nil, cityList, buildingList, armyList)
-	tileIDs, tiles := mapping.MapTilesToProto(h.srv.world.Terrain(), cityList, buildingList, armyList)
-	bag.Tiles = tiles
-	// Strip owner-only fields (production/upkeep rates) from any city the caller
-	// doesn't own. Population, cap, and starving stay public.
 	claims, _ := auth.ClaimsFromContext(ctx)
-	for _, c := range bag.GetCities() {
-		if c.GetOwner() == nil || c.GetOwner().GetValue() != claims.UserID {
-			mapping.HidePrivateCityFields(c)
+	state, err := h.srv.buildProjectedState(ctx, claims.UserID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	tileIDs := make([]*entityv1.TileId, 0, constants.MapSize*constants.MapSize)
+	for y := 0; y < constants.MapSize; y++ {
+		for x := 0; x < constants.MapSize; x++ {
+			tileIDs = append(tileIDs, mapping.ToTileId(x, y))
 		}
 	}
 
 	return connect.NewResponse(&servicev1.GetMapResponse{
-		TileIds:  tileIDs,
-		Entities: bag,
+		TileIds:        tileIDs,
+		Entities:       state.snapshot.Entities,
+		TileVisibility: state.snapshot.TileVisibility,
 	}), nil
 }
 
@@ -62,11 +43,19 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 	x := int(req.Msg.GetTileId().GetX())
 	y := int(req.Msg.GetTileId().GetY())
 
-	vision, err := h.srv.ownedVision(ctx)
+	claims, _ := auth.ClaimsFromContext(ctx)
+	explored, err := h.srv.store.GetExploredTiles(ctx, claims.UserID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if !vision.PointVisible(x, y, constants.VisionRadius) {
+	known := false
+	for _, coords := range explored {
+		if coords.X == x && coords.Y == y {
+			known = true
+			break
+		}
+	}
+	if !known {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 	terrain, ok := h.srv.world.TerrainAt(x, y)
@@ -74,15 +63,31 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 
-	res, err := h.srv.cluster.Request("tile", utils.GetTileIndex(x, y), messages.GetTileMessage{})
+	vision, err := h.srv.ownedVision(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	resp, ok := res.(messages.GetTileResponseMessage)
-	if !ok {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
+	visible := vision.PointVisible(x, y, constants.VisionRadius)
+	var tile *entityv1.Tile
+	if visible {
+		res, err := h.srv.cluster.Request("tile", utils.GetTileIndex(x, y), messages.GetTileMessage{})
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		resp, ok := res.(messages.GetTileResponseMessage)
+		if !ok {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
+		}
+		tile = mapping.TileToProto(resp.CityID, resp.BuildingID, resp.ArmyIDs, terrain, x, y)
+	} else {
+		tile = mapping.TileToProto(nil, nil, nil, terrain, x, y)
+	}
+	visibility := servicev1.TileVisibilityState_TILE_VISIBILITY_STATE_EXPLORED
+	if visible {
+		visibility = servicev1.TileVisibilityState_TILE_VISIBILITY_STATE_VISIBLE
 	}
 	return connect.NewResponse(&servicev1.GetTileResponse{
-		Tile: mapping.TileToProto(resp.CityID, resp.BuildingID, resp.ArmyIDs, terrain, x, y),
+		Tile:       tile,
+		Visibility: &servicev1.TileVisibility{TileId: mapping.ToTileId(x, y), State: visibility},
 	}), nil
 }

@@ -46,6 +46,13 @@ type City struct {
 	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
 }
 
+type ExploredTile struct {
+	UserID       string           `json:"user_id"`
+	TileX        int32            `json:"tile_x"`
+	TileY        int32            `json:"tile_y"`
+	DiscoveredAt pgtype.Timestamp `json:"discovered_at"`
+}
+
 type TrainingOrder struct {
 	TrainingOrderID string           `json:"training_order_id"`
 	ArmyID          string           `json:"army_id"`

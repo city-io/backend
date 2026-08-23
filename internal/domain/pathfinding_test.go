@@ -66,6 +66,65 @@ func TestTerrainMovementCost(t *testing.T) {
 	}
 }
 
+func TestFindKnownLandPathTreatsUnexploredWaterAsUnknown(t *testing.T) {
+	grid := TerrainGrid{Width: 4, Height: 1, Tiles: []TerrainType{
+		TerrainTypeGrassland, TerrainTypeGrassland, TerrainTypeWater, TerrainTypeWater,
+	}}
+	explored := map[Coordinates]struct{}{{X: 0, Y: 0}: {}, {X: 1, Y: 0}: {}}
+
+	path, reaches := FindKnownLandPath(grid, explored, Coordinates{X: 0, Y: 0}, Coordinates{X: 3, Y: 0})
+	if !reaches || len(path) != 3 {
+		t.Fatalf("expected an assumed route through fog, got path=%v reaches=%v", path, reaches)
+	}
+}
+
+func TestFindKnownLandPathStopsAtNearestLandForKnownWater(t *testing.T) {
+	grid := TerrainGrid{Width: 4, Height: 1, Tiles: []TerrainType{
+		TerrainTypeGrassland, TerrainTypeGrassland, TerrainTypeWater, TerrainTypeWater,
+	}}
+	explored := map[Coordinates]struct{}{
+		{X: 0, Y: 0}: {}, {X: 1, Y: 0}: {}, {X: 2, Y: 0}: {}, {X: 3, Y: 0}: {},
+	}
+
+	path, reaches := FindKnownLandPath(grid, explored, Coordinates{X: 0, Y: 0}, Coordinates{X: 3, Y: 0})
+	if reaches || len(path) != 1 || path[0] != (Coordinates{X: 1, Y: 0}) {
+		t.Fatalf("expected route to last land tile, got path=%v reaches=%v", path, reaches)
+	}
+}
+
+func TestUpdateKnownLandPathPreservesEqualCostRoute(t *testing.T) {
+	grid := terrainGrid(3, 2, TerrainTypeGrassland)
+	explored := map[Coordinates]struct{}{}
+	for y := 0; y < grid.Height; y++ {
+		for x := 0; x < grid.Width; x++ {
+			explored[Coordinates{X: x, Y: y}] = struct{}{}
+		}
+	}
+	current := []Coordinates{{X: 1, Y: 1}, {X: 2, Y: 0}}
+
+	path, reaches := UpdateKnownLandPath(grid, explored, Coordinates{}, Coordinates{X: 2}, current)
+	if !reaches || len(path) != len(current) || path[0] != current[0] || path[1] != current[1] {
+		t.Fatalf("equal-cost route changed: got %v, want %v", path, current)
+	}
+}
+
+func TestUpdateKnownLandPathReplacesRouteMadeExpensive(t *testing.T) {
+	grid := terrainGrid(3, 2, TerrainTypeGrassland)
+	grid.Tiles[1] = TerrainTypeMountains
+	explored := map[Coordinates]struct{}{}
+	for y := 0; y < grid.Height; y++ {
+		for x := 0; x < grid.Width; x++ {
+			explored[Coordinates{X: x, Y: y}] = struct{}{}
+		}
+	}
+	current := []Coordinates{{X: 1, Y: 0}, {X: 2, Y: 0}}
+
+	path, reaches := UpdateKnownLandPath(grid, explored, Coordinates{}, Coordinates{X: 2}, current)
+	if !reaches || len(path) != 2 || path[0] != (Coordinates{X: 1, Y: 1}) {
+		t.Fatalf("expensive route was not replaced: %v", path)
+	}
+}
+
 func terrainGrid(width, height int, terrain TerrainType) TerrainGrid {
 	tiles := make([]TerrainType, width*height)
 	for i := range tiles {
