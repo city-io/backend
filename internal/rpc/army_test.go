@@ -95,3 +95,27 @@ func TestArmyMarchProjectsActorsRemainingPath(t *testing.T) {
 		t.Fatalf("projected path starts at (%d,%d), want actor path (1,1)", first.GetX(), first.GetY())
 	}
 }
+
+func TestArmyMarchHidesUnexploredRouteGeometry(t *testing.T) {
+	destination := 3
+	marchID := "march"
+	army := domain.Army{
+		ArmyID: "army", Owner: "owner", Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 1},
+		DestX: &destination, DestY: new(int), MarchID: &marchID,
+		RemainingPath: []domain.Coordinates{{X: 1}, {X: 1, Y: 1}, {X: 2, Y: 1}, {X: 3}},
+	}
+	server := &Server{world: routeTestWorld{grid: domain.TerrainGrid{
+		Width: 4, Height: 2, Tiles: make([]domain.TerrainType, 8),
+	}}}
+	explored := map[domain.Coordinates]struct{}{{X: 0}: {}, {X: 1}: {}}
+
+	march := server.projectOwnedArmyMarch(army, explored)
+	if march == nil || len(march.GetRemainingRoute()) != 2 {
+		t.Fatalf("disclosed route = %+v, want known prefix and endpoint", march)
+	}
+	first := march.GetRemainingRoute()[0].GetCoords()
+	last := march.GetRemainingRoute()[1].GetCoords()
+	if first.GetX() != 1 || first.GetY() != 0 || last.GetX() != 3 || last.GetY() != 0 {
+		t.Fatalf("disclosed route = (%d,%d) -> (%d,%d)", first.GetX(), first.GetY(), last.GetX(), last.GetY())
+	}
+}

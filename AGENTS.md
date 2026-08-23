@@ -338,8 +338,9 @@ for TypeScript) rather than hand-writing request types.
 - `PreviewArmyRoute(army_id, destination) → { steps[{coords}], estimated_duration }` —
   owner-only backend route preview. The UI derives whether the requested destination is reached
   by comparing it with the final step. Unknown tiles are assumed to be
-  ordinary land without revealing terrain; clients derive known and unknown route segments from
-  their current tile-visibility state.
+  ordinary land without revealing terrain. The response exposes only the contiguous explored
+  prefix plus the projected endpoint; a coordinate gap represents hidden route geometry and is
+  rendered by clients as an uncertain straight connector.
 - `MoveArmy(army_id, destination) → {}` — must own; sets the marching destination (clamped to the
   map). Missing destinations are invalid. Unknown terrain is planned as ordinary land and the
   the remaining route stays stable while it remains optimal and traversable, and is replaced when

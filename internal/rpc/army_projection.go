@@ -25,7 +25,6 @@ func (s *Server) projectArmyRoute(army domain.Army, destination domain.Coordinat
 }
 
 func (s *Server) projectArmyPath(army domain.Army, path []domain.Coordinates, explored map[domain.Coordinates]struct{}) projectedArmyRoute {
-	steps := make([]*entityv1.ArmyRouteStep, 0, len(path))
 	pathCost := 0
 	for _, coords := range path {
 		_, known := explored[coords]
@@ -35,6 +34,11 @@ func (s *Server) projectArmyPath(army domain.Army, path []domain.Coordinates, ex
 			cost = domain.TerrainMovementCost(terrain)
 		}
 		pathCost += cost
+	}
+
+	disclosed := disclosedArmyPath(path, explored)
+	steps := make([]*entityv1.ArmyRouteStep, 0, len(disclosed))
+	for _, coords := range disclosed {
 		steps = append(steps, &entityv1.ArmyRouteStep{
 			Coords: &entityv1.Coordinates{X: int32(coords.X), Y: int32(coords.Y)},
 		})
@@ -45,6 +49,27 @@ func (s *Server) projectArmyPath(army domain.Army, path []domain.Coordinates, ex
 		duration = ((duration + constants.TroopMovementTickInterval - 1) / constants.TroopMovementTickInterval) * constants.TroopMovementTickInterval
 	}
 	return projectedArmyRoute{steps: steps, duration: duration}
+}
+
+// disclosedArmyPath exposes the contiguous known prefix and the projected
+// endpoint. Intermediate unexplored geometry stays server-side; clients draw
+// the resulting coordinate gap as an uncertain straight connector.
+func disclosedArmyPath(path []domain.Coordinates, explored map[domain.Coordinates]struct{}) []domain.Coordinates {
+	disclosed := make([]domain.Coordinates, 0, len(path))
+	for _, coords := range path {
+		if _, known := explored[coords]; !known {
+			break
+		}
+		disclosed = append(disclosed, coords)
+	}
+	if len(path) == 0 {
+		return disclosed
+	}
+	endpoint := path[len(path)-1]
+	if len(disclosed) == 0 || disclosed[len(disclosed)-1] != endpoint {
+		disclosed = append(disclosed, endpoint)
+	}
+	return disclosed
 }
 
 func (s *Server) projectOwnedArmyMarch(army domain.Army, explored map[domain.Coordinates]struct{}) *entityv1.ArmyMarch {
