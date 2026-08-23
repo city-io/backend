@@ -55,3 +55,24 @@ func TestMapTilesToProtoBuildsCoordinateKeyedEntityGraph(t *testing.T) {
 		t.Fatal("unoccupied tile contains occupancy references")
 	}
 }
+
+func TestMapTilesAroundPointToProtoClampsAndIncludesOccupancy(t *testing.T) {
+	grid := domain.TerrainGrid{
+		Width:  4,
+		Height: 4,
+		Tiles:  make([]domain.TerrainType, 16),
+	}
+	armies := []domain.Army{{ArmyID: "scout", X: 1, Y: 1}}
+
+	tiles := MapTilesAroundPointToProto(grid, 0, 0, 1, nil, nil, armies)
+	if len(tiles) != 4 {
+		t.Fatalf("got %d tiles, want 4", len(tiles))
+	}
+	last := tiles[len(tiles)-1]
+	if last.GetTileId().GetX() != 1 || last.GetTileId().GetY() != 1 {
+		t.Fatalf("last tile = (%d,%d), want (1,1)", last.GetTileId().GetX(), last.GetTileId().GetY())
+	}
+	if len(last.GetArmyIds()) != 1 || last.GetArmyIds()[0].GetValue() != "scout" {
+		t.Fatalf("army ids = %+v, want scout", last.GetArmyIds())
+	}
+}

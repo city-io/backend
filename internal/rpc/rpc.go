@@ -15,6 +15,7 @@ import (
 	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/gen/cityio/service/v1/servicev1connect"
+	"cityio/internal/messages"
 	"cityio/internal/metrics"
 )
 
@@ -45,6 +46,49 @@ func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {
 		return nil, errors.New("missing claims")
 	}
 	return s.store.GetCitiesByOwner(ctx, claims.UserID)
+}
+
+func (s *Server) liveArmies(ctx context.Context) ([]domain.Army, error) {
+	armies, err := s.store.GetAllArmies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range armies {
+		res, err := s.cluster.Request("army", armies[i].ArmyID, messages.GetArmyMessage{})
+		if err != nil {
+			continue
+		}
+		if resp, ok := res.(*messages.GetArmyResponseMessage); ok {
+			armies[i] = resp.Army
+		}
+	}
+	return armies, nil
+}
+
+func (s *Server) ownedVision(ctx context.Context) (domain.Vision, error) {
+	armies, err := s.liveArmies(ctx)
+	if err != nil {
+		return domain.Vision{}, err
+	}
+	return s.ownedVisionWithArmies(ctx, armies)
+}
+
+func (s *Server) ownedVisionWithArmies(ctx context.Context, armies []domain.Army) (domain.Vision, error) {
+	claims, ok := auth.ClaimsFromContext(ctx)
+	if !ok {
+		return domain.Vision{}, errors.New("missing claims")
+	}
+	cities, err := s.store.GetCitiesByOwner(ctx, claims.UserID)
+	if err != nil {
+		return domain.Vision{}, err
+	}
+	ownedArmies := make([]domain.Army, 0, len(armies))
+	for _, army := range armies {
+		if army.Owner == claims.UserID {
+			ownedArmies = append(ownedArmies, army)
+		}
+	}
+	return domain.Vision{Cities: cities, Armies: ownedArmies}, nil
 }
 
 func (s *Server) ownsCity(ctx context.Context, cityID string) (bool, error) {

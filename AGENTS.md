@@ -196,7 +196,9 @@ the "Client / frontend API reference" section below.
     does **not** expose troop stats yet — a client needs them hardcoded or we should add a troop
     config message (TODO).
 - **Vision:** a player sees any tile within Chebyshev distance `VisionRadius` (3) of any tile of
-  a city they own. This gates what read RPCs return (see visibility rules below).
+  a city they own or the current tile of any army they own. This gates what read RPCs return
+  (see visibility rules below). Army movement updates stream the newly visible tile occupancy
+  and entities when the army enters a tile.
 - **Tick cadence** (`constants/constants.go`): city tick 3s, building tick 3s, army movement
   quantum 250ms, DB backup flush 2s, user backup 10s. Rates are normalised to per-hour
   (`SecondsPerHour` 3600).
@@ -263,12 +265,14 @@ for TypeScript) rather than hand-writing request types.
   `EntityBag`.
 - **Visibility rules** (enforced server-side):
   - Reads that expose the world (`GetMap`, `ListBuildings`) filter cities/buildings/armies to
-    those within `VisionRadius` of an owned city; non-owned city economy fields are stripped.
+    those within `VisionRadius` of an owned city or army; non-owned city economy fields are
+    stripped.
   - `GetCity`, `GetBuilding`, `GetTile` return `NotFound` if the target isn't visible.
   - `GetArmy`: the **owner** can always fetch their own army (even out of vision); others need
     vision on its tile.
-  - `ListCities`, `ListArmies`, and `StreamState` are **owner-scoped** — they return your own
-    entities regardless of vision.
+  - `ListCities` and `ListArmies` are **owner-scoped** — they return your own entities regardless
+    of vision. `StreamState` begins with the same owner-scoped snapshot and includes visible
+    world deltas revealed by moving armies.
 
 ### Services & RPCs
 
@@ -283,7 +287,8 @@ for TypeScript) rather than hand-writing request types.
   server-streaming, owner-scoped. The **first** message is a full snapshot (your user + owned
   cities + their buildings + your armies). Subsequent messages are incremental deltas as state
   changes: updated `users` (gold/food), `cities` (economy/population), `buildings`
-  (create/upgrade), `armies` (spawn/move/merge), and top-level deletion tombstones. Drive the
+  (create/upgrade), `armies` (spawn/move/merge), and top-level deletion tombstones. An owned army
+  entering a tile also sends the tiles and entities visible around its new position. Drive the
   client's live map/HUD off this.
 
 **CityService**

@@ -218,6 +218,33 @@ func TileToProto(cityID, buildingID *string, armyIDs []string, terrain domain.Te
 
 // MapTilesToProto builds the map's tile entities and their root IDs.
 func MapTilesToProto(grid domain.TerrainGrid, cities []domain.City, buildings []domain.Building, armies []domain.Army) ([]*entityv1.TileId, []*entityv1.Tile) {
+	cityAt, buildingAt, armiesAt := mapOccupancy(grid, cities, buildings, armies)
+
+	tileIDs := make([]*entityv1.TileId, len(grid.Tiles))
+	tiles := make([]*entityv1.Tile, len(grid.Tiles))
+	for idx, terrain := range grid.Tiles {
+		x, y := idx%grid.Width, idx/grid.Width
+		tile := mappedTile(grid, cityAt, buildingAt, armiesAt, terrain, x, y)
+		tileIDs[idx] = tile.TileId
+		tiles[idx] = tile
+	}
+	return tileIDs, tiles
+}
+
+// MapTilesAroundPointToProto builds the tile entities revealed around a point.
+func MapTilesAroundPointToProto(grid domain.TerrainGrid, x, y, radius int, cities []domain.City, buildings []domain.Building, armies []domain.Army) []*entityv1.Tile {
+	cityAt, buildingAt, armiesAt := mapOccupancy(grid, cities, buildings, armies)
+	tiles := make([]*entityv1.Tile, 0, (radius*2+1)*(radius*2+1))
+	for ty := max(0, y-radius); ty < min(grid.Height, y+radius+1); ty++ {
+		for tx := max(0, x-radius); tx < min(grid.Width, x+radius+1); tx++ {
+			terrain, _ := grid.At(tx, ty)
+			tiles = append(tiles, mappedTile(grid, cityAt, buildingAt, armiesAt, terrain, tx, ty))
+		}
+	}
+	return tiles
+}
+
+func mapOccupancy(grid domain.TerrainGrid, cities []domain.City, buildings []domain.Building, armies []domain.Army) (map[int]string, map[int]string, map[int][]string) {
 	cityAt := make(map[int]string)
 	for _, city := range cities {
 		for y := max(0, city.StartY); y < min(grid.Height, city.StartY+city.Size); y++ {
@@ -242,22 +269,19 @@ func MapTilesToProto(grid domain.TerrainGrid, cities []domain.City, buildings []
 		}
 	}
 
-	tileIDs := make([]*entityv1.TileId, len(grid.Tiles))
-	tiles := make([]*entityv1.Tile, len(grid.Tiles))
-	for idx, terrain := range grid.Tiles {
-		x, y := idx%grid.Width, idx/grid.Width
-		var cityID, buildingID *string
-		if id, ok := cityAt[idx]; ok {
-			cityID = &id
-		}
-		if id, ok := buildingAt[idx]; ok {
-			buildingID = &id
-		}
-		tile := TileToProto(cityID, buildingID, armiesAt[idx], terrain, x, y)
-		tileIDs[idx] = tile.TileId
-		tiles[idx] = tile
+	return cityAt, buildingAt, armiesAt
+}
+
+func mappedTile(grid domain.TerrainGrid, cityAt, buildingAt map[int]string, armiesAt map[int][]string, terrain domain.TerrainType, x, y int) *entityv1.Tile {
+	idx := y*grid.Width + x
+	var cityID, buildingID *string
+	if id, ok := cityAt[idx]; ok {
+		cityID = &id
 	}
-	return tileIDs, tiles
+	if id, ok := buildingAt[idx]; ok {
+		buildingID = &id
+	}
+	return TileToProto(cityID, buildingID, armiesAt[idx], terrain, x, y)
 }
 
 // BuildingToProto converts a domain building to its proto representation.
