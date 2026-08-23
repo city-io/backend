@@ -127,7 +127,7 @@ var File_cityio_entity_v1_building_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_building_proto_rawDesc = "" +
 	"\n" +
-	"\x1fcityio/entity/v1/building.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe8\x03\n" +
+	"\x1fcityio/entity/v1/building.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe8\x03\n" +
 	"\bBuilding\x12=\n" +
 	"\vbuilding_id\x18\x01 \x01(\v2\x1c.cityio.entity.v1.BuildingIdR\n" +
 	"buildingId\x121\n" +
@@ -183,6 +183,7 @@ func file_cityio_entity_v1_building_proto_init() {
 		return
 	}
 	file_cityio_entity_v1_common_proto_init()
+	file_cityio_entity_v1_ids_proto_init()
 	file_cityio_entity_v1_building_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

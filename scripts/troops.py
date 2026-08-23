@@ -76,14 +76,14 @@ def cmd_login():
 
 def cmd_cities():
     st, r = call("cityio.service.v1.CityService/ListCities", {}, token())
-    for c in r.get("entities", {}).get("cities", []):
+    for c in r.get("cities", []):
         print(c["cityId"]["value"], "start", c["start"], "pop", c.get("population"),
               "milPop", c.get("militaryPopulation"), "foodUpkeep", c.get("foodUpkeep"))
 
 
 def first_city():
     _, r = call("cityio.service.v1.CityService/ListCities", {}, token())
-    return r["entities"]["cities"][0]
+    return r["cities"][0]
 
 
 def cmd_barracks():
@@ -109,7 +109,7 @@ def cmd_train(bid, ttype, count):
 
 def cmd_armies():
     st, r = call("cityio.service.v1.ArmyService/ListArmies", {}, token())
-    armies = r.get("entities", {}).get("armies", [])
+    armies = r.get("armies", [])
     print(len(armies), "armies:")
     for a in armies:
         print("  ", a["armyId"]["value"], "at", a["coords"], "dest",
@@ -162,7 +162,7 @@ def cmd_smoke():
 
     cmd_armies()
     st, r = call("cityio.service.v1.ArmyService/ListArmies", {}, token())
-    armies = r["entities"]["armies"]
+    armies = r["armies"]
     if armies:
         aid = armies[0]["armyId"]["value"]
         cmd_move(aid, sx + 4, sy + 4)

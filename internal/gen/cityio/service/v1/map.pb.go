@@ -58,12 +58,10 @@ func (*GetMapRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{0}
 }
 
-// GetMapResponse is the full world snapshot used to bootstrap a client.
+// GetMapResponse is the visible world snapshot used to bootstrap a client.
 type GetMapResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	CityIds       []*v1.CityId           `protobuf:"bytes,1,rep,name=city_ids,json=cityIds,proto3" json:"city_ids,omitempty"`
-	BuildingIds   []*v1.BuildingId       `protobuf:"bytes,2,rep,name=building_ids,json=buildingIds,proto3" json:"building_ids,omitempty"`
-	Entities      *v1.EntityBag          `protobuf:"bytes,3,opt,name=entities,proto3" json:"entities,omitempty"`
+	Entities      *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -96,20 +94,6 @@ func (x *GetMapResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetMapResponse.ProtoReflect.Descriptor instead.
 func (*GetMapResponse) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *GetMapResponse) GetCityIds() []*v1.CityId {
-	if x != nil {
-		return x.CityIds
-	}
-	return nil
-}
-
-func (x *GetMapResponse) GetBuildingIds() []*v1.BuildingId {
-	if x != nil {
-		return x.BuildingIds
-	}
-	return nil
 }
 
 func (x *GetMapResponse) GetEntities() *v1.EntityBag {
@@ -287,12 +271,10 @@ var File_cityio_service_v1_map_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_map_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/service/v1/map.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/bag.proto\"\x0f\n" +
-	"\rGetMapRequest\"\xbf\x01\n" +
-	"\x0eGetMapResponse\x123\n" +
-	"\bcity_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x12?\n" +
-	"\fbuilding_ids\x18\x02 \x03(\v2\x1c.cityio.entity.v1.BuildingIdR\vbuildingIds\x127\n" +
-	"\bentities\x18\x03 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"\xef\x01\n" +
+	"\x1bcityio/service/v1/map.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/bag.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x0f\n" +
+	"\rGetMapRequest\"I\n" +
+	"\x0eGetMapResponse\x127\n" +
+	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"\xef\x01\n" +
 	"\x04Tile\x12\f\n" +
 	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
 	"\x01y\x18\x02 \x01(\x05R\x01y\x126\n" +
@@ -332,30 +314,28 @@ var file_cityio_service_v1_map_proto_goTypes = []any{
 	(*Tile)(nil),            // 2: cityio.service.v1.Tile
 	(*GetTileRequest)(nil),  // 3: cityio.service.v1.GetTileRequest
 	(*GetTileResponse)(nil), // 4: cityio.service.v1.GetTileResponse
-	(*v1.CityId)(nil),       // 5: cityio.entity.v1.CityId
-	(*v1.BuildingId)(nil),   // 6: cityio.entity.v1.BuildingId
-	(*v1.EntityBag)(nil),    // 7: cityio.entity.v1.EntityBag
+	(*v1.EntityBag)(nil),    // 5: cityio.entity.v1.EntityBag
+	(*v1.CityId)(nil),       // 6: cityio.entity.v1.CityId
+	(*v1.BuildingId)(nil),   // 7: cityio.entity.v1.BuildingId
 	(*v1.ArmyId)(nil),       // 8: cityio.entity.v1.ArmyId
 	(*v1.Coordinates)(nil),  // 9: cityio.entity.v1.Coordinates
 }
 var file_cityio_service_v1_map_proto_depIdxs = []int32{
-	5,  // 0: cityio.service.v1.GetMapResponse.city_ids:type_name -> cityio.entity.v1.CityId
-	6,  // 1: cityio.service.v1.GetMapResponse.building_ids:type_name -> cityio.entity.v1.BuildingId
-	7,  // 2: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	5,  // 3: cityio.service.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
-	6,  // 4: cityio.service.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
-	8,  // 5: cityio.service.v1.Tile.army_ids:type_name -> cityio.entity.v1.ArmyId
-	9,  // 6: cityio.service.v1.GetTileRequest.coords:type_name -> cityio.entity.v1.Coordinates
-	2,  // 7: cityio.service.v1.GetTileResponse.tile:type_name -> cityio.service.v1.Tile
-	0,  // 8: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
-	3,  // 9: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
-	1,  // 10: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
-	4,  // 11: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
-	10, // [10:12] is the sub-list for method output_type
-	8,  // [8:10] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	5, // 0: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	6, // 1: cityio.service.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
+	7, // 2: cityio.service.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
+	8, // 3: cityio.service.v1.Tile.army_ids:type_name -> cityio.entity.v1.ArmyId
+	9, // 4: cityio.service.v1.GetTileRequest.coords:type_name -> cityio.entity.v1.Coordinates
+	2, // 5: cityio.service.v1.GetTileResponse.tile:type_name -> cityio.service.v1.Tile
+	0, // 6: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
+	3, // 7: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
+	1, // 8: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
+	4, // 9: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
+	8, // [8:10] is the sub-list for method output_type
+	6, // [6:8] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_map_proto_init() }

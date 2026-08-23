@@ -140,6 +140,32 @@ func (h *userHandler) DeleteUser(ctx context.Context, req *connect.Request[servi
 	return connect.NewResponse(&servicev1.DeleteUserResponse{}), nil
 }
 
+func stateUpdateToResponse(update stream.StateUpdate) *servicev1.StreamStateResponse {
+	response := &servicev1.StreamStateResponse{}
+	if update.User != nil || update.City != nil || update.Building != nil || update.Army != nil {
+		response.Entities = &entityv1.EntityBag{}
+	}
+	if update.User != nil {
+		response.Entities.Users = append(response.Entities.Users, mapping.UserToProto(*update.User))
+	}
+	if update.City != nil {
+		response.Entities.Cities = append(response.Entities.Cities, mapping.CityToProto(*update.City))
+	}
+	if update.Building != nil {
+		response.Entities.Buildings = append(response.Entities.Buildings, mapping.BuildingToProto(*update.Building))
+	}
+	if update.DeletedBuildingID != nil {
+		response.DeletedBuildingIds = append(response.DeletedBuildingIds, mapping.ToBuildingId(*update.DeletedBuildingID))
+	}
+	if update.Army != nil {
+		response.Entities.Armies = append(response.Entities.Armies, mapping.ArmyToProto(*update.Army))
+	}
+	if update.DeletedArmyID != nil {
+		response.DeletedArmyIds = append(response.DeletedArmyIds, mapping.ToArmyId(*update.DeletedArmyID))
+	}
+	return response
+}
+
 func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[servicev1.StreamStateRequest], out *connect.ServerStream[servicev1.StreamStateResponse]) error {
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {
@@ -207,26 +233,7 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			if !ok {
 				return nil
 			}
-			bag := &entityv1.EntityBag{}
-			if update.User != nil {
-				bag.Users = append(bag.Users, mapping.UserToProto(*update.User))
-			}
-			if update.City != nil {
-				bag.Cities = append(bag.Cities, mapping.CityToProto(*update.City))
-			}
-			if update.Building != nil {
-				bag.Buildings = append(bag.Buildings, mapping.BuildingToProto(*update.Building))
-			}
-			if update.DeletedBuildingID != nil {
-				bag.DeletedBuildingIds = append(bag.DeletedBuildingIds, mapping.ToBuildingId(*update.DeletedBuildingID))
-			}
-			if update.Army != nil {
-				bag.Armies = append(bag.Armies, mapping.ArmyToProto(*update.Army))
-			}
-			if update.DeletedArmyID != nil {
-				bag.DeletedArmyIds = append(bag.DeletedArmyIds, mapping.ToArmyId(*update.DeletedArmyID))
-			}
-			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
+			if err := out.Send(stateUpdateToResponse(update)); err != nil {
 				return err
 			}
 		}

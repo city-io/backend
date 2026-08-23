@@ -74,13 +74,12 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	cityIds := make([]*entityv1.CityId, 0, len(cityList))
+	cities := make([]*entityv1.City, 0, len(cityList))
 	for _, c := range cityList {
-		cityIds = append(cityIds, mapping.ToCityId(c.CityID))
+		cities = append(cities, mapping.CityToProto(c))
 	}
 
 	return connect.NewResponse(&servicev1.ListCitiesResponse{
-		CityIds:  cityIds,
-		Entities: mapping.EntitiesToBag(nil, cityList, nil, nil),
+		Cities: cities,
 	}), nil
 }

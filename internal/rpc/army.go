@@ -171,12 +171,11 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 			owned = append(owned, a)
 		}
 	}
-	armyIds := make([]*entityv1.ArmyId, 0, len(owned))
+	armies := make([]*entityv1.Army, 0, len(owned))
 	for _, a := range owned {
-		armyIds = append(armyIds, mapping.ToArmyId(a.ArmyID))
+		armies = append(armies, mapping.ArmyToProto(a))
 	}
 	return connect.NewResponse(&servicev1.ListArmiesResponse{
-		ArmyIds:  armyIds,
-		Entities: mapping.EntitiesToBag(nil, nil, nil, owned),
+		Armies: armies,
 	}), nil
 }

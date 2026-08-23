@@ -21,18 +21,15 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// EntityBag is a collection of entities returned by responses that deal with
-// multiple or mixed entity types (ListCities, GetMap, StreamState).
+// EntityBag groups raw entities returned in snapshots and state updates.
 type EntityBag struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Users              []*User                `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
-	Cities             []*City                `protobuf:"bytes,2,rep,name=cities,proto3" json:"cities,omitempty"`
-	Buildings          []*Building            `protobuf:"bytes,3,rep,name=buildings,proto3" json:"buildings,omitempty"`
-	DeletedBuildingIds []*BuildingId          `protobuf:"bytes,4,rep,name=deleted_building_ids,json=deletedBuildingIds,proto3" json:"deleted_building_ids,omitempty"`
-	Armies             []*Army                `protobuf:"bytes,5,rep,name=armies,proto3" json:"armies,omitempty"`
-	DeletedArmyIds     []*ArmyId              `protobuf:"bytes,6,rep,name=deleted_army_ids,json=deletedArmyIds,proto3" json:"deleted_army_ids,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Users         []*User                `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	Cities        []*City                `protobuf:"bytes,2,rep,name=cities,proto3" json:"cities,omitempty"`
+	Buildings     []*Building            `protobuf:"bytes,3,rep,name=buildings,proto3" json:"buildings,omitempty"`
+	Armies        []*Army                `protobuf:"bytes,4,rep,name=armies,proto3" json:"armies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EntityBag) Reset() {
@@ -86,23 +83,9 @@ func (x *EntityBag) GetBuildings() []*Building {
 	return nil
 }
 
-func (x *EntityBag) GetDeletedBuildingIds() []*BuildingId {
-	if x != nil {
-		return x.DeletedBuildingIds
-	}
-	return nil
-}
-
 func (x *EntityBag) GetArmies() []*Army {
 	if x != nil {
 		return x.Armies
-	}
-	return nil
-}
-
-func (x *EntityBag) GetDeletedArmyIds() []*ArmyId {
-	if x != nil {
-		return x.DeletedArmyIds
 	}
 	return nil
 }
@@ -111,14 +94,12 @@ var File_cityio_entity_v1_bag_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_bag_proto_rawDesc = "" +
 	"\n" +
-	"\x1acityio/entity/v1/bag.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1bcityio/entity/v1/user.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1fcityio/entity/v1/building.proto\x1a\x1bcityio/entity/v1/army.proto\"\xe7\x02\n" +
+	"\x1acityio/entity/v1/bag.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1fcityio/entity/v1/building.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1bcityio/entity/v1/user.proto\"\xd3\x01\n" +
 	"\tEntityBag\x12,\n" +
 	"\x05users\x18\x01 \x03(\v2\x16.cityio.entity.v1.UserR\x05users\x12.\n" +
 	"\x06cities\x18\x02 \x03(\v2\x16.cityio.entity.v1.CityR\x06cities\x128\n" +
-	"\tbuildings\x18\x03 \x03(\v2\x1a.cityio.entity.v1.BuildingR\tbuildings\x12N\n" +
-	"\x14deleted_building_ids\x18\x04 \x03(\v2\x1c.cityio.entity.v1.BuildingIdR\x12deletedBuildingIds\x12.\n" +
-	"\x06armies\x18\x05 \x03(\v2\x16.cityio.entity.v1.ArmyR\x06armies\x12B\n" +
-	"\x10deleted_army_ids\x18\x06 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\x0edeletedArmyIdsB\xb1\x01\n" +
+	"\tbuildings\x18\x03 \x03(\v2\x1a.cityio.entity.v1.BuildingR\tbuildings\x12.\n" +
+	"\x06armies\x18\x04 \x03(\v2\x16.cityio.entity.v1.ArmyR\x06armiesB\xb1\x01\n" +
 	"\x14com.cityio.entity.v1B\bBagProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -135,26 +116,22 @@ func file_cityio_entity_v1_bag_proto_rawDescGZIP() []byte {
 
 var file_cityio_entity_v1_bag_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_cityio_entity_v1_bag_proto_goTypes = []any{
-	(*EntityBag)(nil),  // 0: cityio.entity.v1.EntityBag
-	(*User)(nil),       // 1: cityio.entity.v1.User
-	(*City)(nil),       // 2: cityio.entity.v1.City
-	(*Building)(nil),   // 3: cityio.entity.v1.Building
-	(*BuildingId)(nil), // 4: cityio.entity.v1.BuildingId
-	(*Army)(nil),       // 5: cityio.entity.v1.Army
-	(*ArmyId)(nil),     // 6: cityio.entity.v1.ArmyId
+	(*EntityBag)(nil), // 0: cityio.entity.v1.EntityBag
+	(*User)(nil),      // 1: cityio.entity.v1.User
+	(*City)(nil),      // 2: cityio.entity.v1.City
+	(*Building)(nil),  // 3: cityio.entity.v1.Building
+	(*Army)(nil),      // 4: cityio.entity.v1.Army
 }
 var file_cityio_entity_v1_bag_proto_depIdxs = []int32{
 	1, // 0: cityio.entity.v1.EntityBag.users:type_name -> cityio.entity.v1.User
 	2, // 1: cityio.entity.v1.EntityBag.cities:type_name -> cityio.entity.v1.City
 	3, // 2: cityio.entity.v1.EntityBag.buildings:type_name -> cityio.entity.v1.Building
-	4, // 3: cityio.entity.v1.EntityBag.deleted_building_ids:type_name -> cityio.entity.v1.BuildingId
-	5, // 4: cityio.entity.v1.EntityBag.armies:type_name -> cityio.entity.v1.Army
-	6, // 5: cityio.entity.v1.EntityBag.deleted_army_ids:type_name -> cityio.entity.v1.ArmyId
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 3: cityio.entity.v1.EntityBag.armies:type_name -> cityio.entity.v1.Army
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_bag_proto_init() }
@@ -162,11 +139,10 @@ func file_cityio_entity_v1_bag_proto_init() {
 	if File_cityio_entity_v1_bag_proto != nil {
 		return
 	}
-	file_cityio_entity_v1_common_proto_init()
-	file_cityio_entity_v1_user_proto_init()
-	file_cityio_entity_v1_city_proto_init()
-	file_cityio_entity_v1_building_proto_init()
 	file_cityio_entity_v1_army_proto_init()
+	file_cityio_entity_v1_building_proto_init()
+	file_cityio_entity_v1_city_proto_init()
+	file_cityio_entity_v1_user_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
