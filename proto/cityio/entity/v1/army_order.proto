@@ -52,7 +52,6 @@ message ArmyOrder {
     ConquerSettlementObjective conquer_settlement = 5;
     RetreatObjective retreat = 6;
   }
-  reserved 7;
+  ArmyRoute remaining_route = 7;
   optional google.protobuf.Duration estimated_remaining_duration = 8;
-  ArmyRoute remaining_route = 9;
 }

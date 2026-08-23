@@ -802,8 +802,8 @@ func (x *PreviewArmyRouteRequest) GetDestination() *v1.Coordinates {
 
 type PreviewArmyRouteResponse struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	EstimatedDuration *durationpb.Duration   `protobuf:"bytes,3,opt,name=estimated_duration,json=estimatedDuration,proto3" json:"estimated_duration,omitempty"`
-	Route             *v1.ArmyRoute          `protobuf:"bytes,4,opt,name=route,proto3" json:"route,omitempty"`
+	Route             *v1.ArmyRoute          `protobuf:"bytes,1,opt,name=route,proto3" json:"route,omitempty"`
+	EstimatedDuration *durationpb.Duration   `protobuf:"bytes,2,opt,name=estimated_duration,json=estimatedDuration,proto3" json:"estimated_duration,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -838,16 +838,16 @@ func (*PreviewArmyRouteResponse) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *PreviewArmyRouteResponse) GetEstimatedDuration() *durationpb.Duration {
+func (x *PreviewArmyRouteResponse) GetRoute() *v1.ArmyRoute {
 	if x != nil {
-		return x.EstimatedDuration
+		return x.Route
 	}
 	return nil
 }
 
-func (x *PreviewArmyRouteResponse) GetRoute() *v1.ArmyRoute {
+func (x *PreviewArmyRouteResponse) GetEstimatedDuration() *durationpb.Duration {
 	if x != nil {
-		return x.Route
+		return x.EstimatedDuration
 	}
 	return nil
 }
@@ -1183,10 +1183,10 @@ const file_cityio_service_v1_army_proto_rawDesc = "" +
 	"\x13RetreatArmyResponse\"\x8d\x01\n" +
 	"\x17PreviewArmyRouteRequest\x121\n" +
 	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x12?\n" +
-	"\vdestination\x18\x02 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\vdestination\"\xa3\x01\n" +
-	"\x18PreviewArmyRouteResponse\x12H\n" +
-	"\x12estimated_duration\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\x11estimatedDuration\x121\n" +
-	"\x05route\x18\x04 \x01(\v2\x1b.cityio.entity.v1.ArmyRouteR\x05routeJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03\"\x94\x01\n" +
+	"\vdestination\x18\x02 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\vdestination\"\x97\x01\n" +
+	"\x18PreviewArmyRouteResponse\x121\n" +
+	"\x05route\x18\x01 \x01(\v2\x1b.cityio.entity.v1.ArmyRouteR\x05route\x12H\n" +
+	"\x12estimated_duration\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x11estimatedDuration\"\x94\x01\n" +
 	"\x12MergeArmiesRequest\x12>\n" +
 	"\x0etarget_army_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\ftargetArmyId\x12>\n" +
 	"\x0esource_army_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\fsourceArmyId\"\x15\n" +
@@ -1262,8 +1262,8 @@ var file_cityio_service_v1_army_proto_goTypes = []any{
 	(*v1.EntityBag)(nil),               // 28: cityio.entity.v1.EntityBag
 	(*v1.Coordinates)(nil),             // 29: cityio.entity.v1.Coordinates
 	(*v1.CityId)(nil),                  // 30: cityio.entity.v1.CityId
-	(*durationpb.Duration)(nil),        // 31: google.protobuf.Duration
-	(*v1.ArmyRoute)(nil),               // 32: cityio.entity.v1.ArmyRoute
+	(*v1.ArmyRoute)(nil),               // 31: cityio.entity.v1.ArmyRoute
+	(*durationpb.Duration)(nil),        // 32: google.protobuf.Duration
 	(*v1.TroopStack)(nil),              // 33: cityio.entity.v1.TroopStack
 }
 var file_cityio_service_v1_army_proto_depIdxs = []int32{
@@ -1290,8 +1290,8 @@ var file_cityio_service_v1_army_proto_depIdxs = []int32{
 	24, // 20: cityio.service.v1.RetreatArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
 	24, // 21: cityio.service.v1.PreviewArmyRouteRequest.army_id:type_name -> cityio.entity.v1.ArmyId
 	29, // 22: cityio.service.v1.PreviewArmyRouteRequest.destination:type_name -> cityio.entity.v1.Coordinates
-	31, // 23: cityio.service.v1.PreviewArmyRouteResponse.estimated_duration:type_name -> google.protobuf.Duration
-	32, // 24: cityio.service.v1.PreviewArmyRouteResponse.route:type_name -> cityio.entity.v1.ArmyRoute
+	31, // 23: cityio.service.v1.PreviewArmyRouteResponse.route:type_name -> cityio.entity.v1.ArmyRoute
+	32, // 24: cityio.service.v1.PreviewArmyRouteResponse.estimated_duration:type_name -> google.protobuf.Duration
 	24, // 25: cityio.service.v1.MergeArmiesRequest.target_army_id:type_name -> cityio.entity.v1.ArmyId
 	24, // 26: cityio.service.v1.MergeArmiesRequest.source_army_id:type_name -> cityio.entity.v1.ArmyId
 	24, // 27: cityio.service.v1.SplitArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId

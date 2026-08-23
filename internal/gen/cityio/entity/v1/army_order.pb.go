@@ -352,8 +352,8 @@ type ArmyOrder struct {
 	//	*ArmyOrder_ConquerSettlement
 	//	*ArmyOrder_Retreat
 	Objective                  isArmyOrder_Objective `protobuf_oneof:"objective"`
+	RemainingRoute             *ArmyRoute            `protobuf:"bytes,7,opt,name=remaining_route,json=remainingRoute,proto3" json:"remaining_route,omitempty"`
 	EstimatedRemainingDuration *durationpb.Duration  `protobuf:"bytes,8,opt,name=estimated_remaining_duration,json=estimatedRemainingDuration,proto3,oneof" json:"estimated_remaining_duration,omitempty"`
-	RemainingRoute             *ArmyRoute            `protobuf:"bytes,9,opt,name=remaining_route,json=remainingRoute,proto3" json:"remaining_route,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -445,16 +445,16 @@ func (x *ArmyOrder) GetRetreat() *RetreatObjective {
 	return nil
 }
 
-func (x *ArmyOrder) GetEstimatedRemainingDuration() *durationpb.Duration {
+func (x *ArmyOrder) GetRemainingRoute() *ArmyRoute {
 	if x != nil {
-		return x.EstimatedRemainingDuration
+		return x.RemainingRoute
 	}
 	return nil
 }
 
-func (x *ArmyOrder) GetRemainingRoute() *ArmyRoute {
+func (x *ArmyOrder) GetEstimatedRemainingDuration() *durationpb.Duration {
 	if x != nil {
-		return x.RemainingRoute
+		return x.EstimatedRemainingDuration
 	}
 	return nil
 }
@@ -513,7 +513,7 @@ const file_cityio_entity_v1_army_order_proto_rawDesc = "" +
 	"\x11_capture_duration\"\x92\x01\n" +
 	"\x10RetreatObjective\x12=\n" +
 	"\rsettlement_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\fsettlementId\x12?\n" +
-	"\vdestination\x18\x02 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\vdestination\"\xfd\x04\n" +
+	"\vdestination\x18\x02 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\vdestination\"\xf7\x04\n" +
 	"\tArmyOrder\x12A\n" +
 	"\rarmy_order_id\x18\x01 \x01(\v2\x1d.cityio.entity.v1.ArmyOrderIdR\varmyOrderId\x121\n" +
 	"\aarmy_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x125\n" +
@@ -521,11 +521,11 @@ const file_cityio_entity_v1_army_order_proto_rawDesc = "" +
 	"\vattack_army\x18\x04 \x01(\v2%.cityio.entity.v1.AttackArmyObjectiveH\x00R\n" +
 	"attackArmy\x12]\n" +
 	"\x12conquer_settlement\x18\x05 \x01(\v2,.cityio.entity.v1.ConquerSettlementObjectiveH\x00R\x11conquerSettlement\x12>\n" +
-	"\aretreat\x18\x06 \x01(\v2\".cityio.entity.v1.RetreatObjectiveH\x00R\aretreat\x12`\n" +
-	"\x1cestimated_remaining_duration\x18\b \x01(\v2\x19.google.protobuf.DurationH\x01R\x1aestimatedRemainingDuration\x88\x01\x01\x12D\n" +
-	"\x0fremaining_route\x18\t \x01(\v2\x1b.cityio.entity.v1.ArmyRouteR\x0eremainingRouteB\v\n" +
+	"\aretreat\x18\x06 \x01(\v2\".cityio.entity.v1.RetreatObjectiveH\x00R\aretreat\x12D\n" +
+	"\x0fremaining_route\x18\a \x01(\v2\x1b.cityio.entity.v1.ArmyRouteR\x0eremainingRoute\x12`\n" +
+	"\x1cestimated_remaining_duration\x18\b \x01(\v2\x19.google.protobuf.DurationH\x01R\x1aestimatedRemainingDuration\x88\x01\x01B\v\n" +
 	"\tobjectiveB\x1f\n" +
-	"\x1d_estimated_remaining_durationJ\x04\b\a\x10\bB\xb7\x01\n" +
+	"\x1d_estimated_remaining_durationB\xb7\x01\n" +
 	"\x14com.cityio.entity.v1B\x0eArmyOrderProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -575,8 +575,8 @@ var file_cityio_entity_v1_army_order_proto_depIdxs = []int32{
 	3,  // 15: cityio.entity.v1.ArmyOrder.attack_army:type_name -> cityio.entity.v1.AttackArmyObjective
 	4,  // 16: cityio.entity.v1.ArmyOrder.conquer_settlement:type_name -> cityio.entity.v1.ConquerSettlementObjective
 	5,  // 17: cityio.entity.v1.ArmyOrder.retreat:type_name -> cityio.entity.v1.RetreatObjective
-	11, // 18: cityio.entity.v1.ArmyOrder.estimated_remaining_duration:type_name -> google.protobuf.Duration
-	1,  // 19: cityio.entity.v1.ArmyOrder.remaining_route:type_name -> cityio.entity.v1.ArmyRoute
+	1,  // 18: cityio.entity.v1.ArmyOrder.remaining_route:type_name -> cityio.entity.v1.ArmyRoute
+	11, // 19: cityio.entity.v1.ArmyOrder.estimated_remaining_duration:type_name -> google.protobuf.Duration
 	20, // [20:20] is the sub-list for method output_type
 	20, // [20:20] is the sub-list for method input_type
 	20, // [20:20] is the sub-list for extension type_name
