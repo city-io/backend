@@ -45,9 +45,14 @@ func main() {
 	slog.InfoContext(ctx, "starting cityio backend")
 
 	db := database.NewDB(ctx, cfg.DatabaseDSN())
-	seed, err := worldgen.RandomSeed()
+	candidateSeed, err := worldgen.RandomSeed()
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create world seed", "error", err)
+		os.Exit(1)
+	}
+	seed, err := db.GetOrCreateWorldSeed(ctx, candidateSeed)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to load world seed", "error", err)
 		os.Exit(1)
 	}
 	world, err := worldgen.Generate(worldgen.Config{
@@ -62,7 +67,7 @@ func main() {
 		slog.ErrorContext(ctx, "failed to generate world", "seed", seed, "error", err)
 		os.Exit(1)
 	}
-	slog.InfoContext(ctx, "generated world", "seed", seed, "towns", len(world.Towns()))
+	slog.InfoContext(ctx, "initialized world", "seed", seed, "towns", len(world.Towns()))
 
 	store := persistence.New(db)
 	store.Start(ctx)

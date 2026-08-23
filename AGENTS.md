@@ -88,7 +88,7 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
   snapshot every five seconds.
 - **`internal/battles`** — concurrency-safe registry of active battle snapshots. Battle actors
   update it; RPC projections read it for unary/list/stream entity bags. Battles are intentionally
-  ephemeral while the development world is rebuilt on every boot.
+  ephemeral and are not restored after a process restart.
 - **`internal/gen`** — generated Connect/protobuf code (from `buf`). Two sub-packages:
   - `internal/gen/cityio/entity/v1` (`entityv1`) — entity messages (`User`, `City`,
     `Building`, `Army`, `ArmyOrder`, `Battle`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`,
@@ -110,11 +110,12 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/metrics`** — Prometheus metric definitions + the RPC interceptor + a periodic
   world-snapshot gauge filler.
 - **`internal/worldgen`** — deterministic terrain and settlement generation. A cryptographic
-  seed is chosen on every boot; smooth elevation/moisture fields produce coherent terrain
-  regions, and footprint-aware placement reserves capital sites before generating neutral towns.
-  `World` also allocates terrain-valid sites for later registrations.
-- **`internal/setup`** — `Run()` persists the generated neutral-town plan, restores actors, and
-  registers the development test user on every boot (see gotcha below).
+  seed is chosen for an empty database and persisted in `world_state`; smooth elevation/moisture
+  fields reproduce the same coherent terrain regions on later boots. Footprint-aware placement
+  reserves capital sites before generating neutral towns. `World` also restores occupied
+  settlement footprints and allocates terrain-valid sites for later registrations.
+- **`internal/setup`** — `Run()` seeds neutral towns only when all gameplay tables are empty,
+  restores persisted actors, and registers the development test user only when it is missing.
 - **`scripts/troops.py`** — a dev-only helper that drives `ArmyService` over the Connect JSON
   API (no `grpcurl` needed). See "Client / frontend API reference → Local testing".
 
@@ -154,8 +155,9 @@ the "Client / frontend API reference" section below.
 
 - **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)` and has one of
   eight terrain types: grassland, plains, forest, hills, mountains, desert, marsh, or water.
-  Terrain is regenerated coherently from a new seed on every boot and revealed as raw tile
-  entities only after exploration; it affects settlement placement and army movement, but not production.
+  Terrain is reconstructed from the persisted world seed on every boot and revealed as raw tile
+  entities only after exploration; a new seed is created only for an empty database. Terrain
+  affects settlement placement and army movement, but not production.
   Buildings and armies live on tiles; armies stack (multiple armies + a building can share a
   tile).
 - **Cities:** a `size`×`size` block (capitals are `CitySize` = 5). `start` is the top-left
@@ -505,7 +507,7 @@ psql -h localhost -p 5432 -U cityio -d cityio
 
 Migrations can be run manually (the app also runs them itself — see gotcha). Migrations live in
 `db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`,
-`00004_add_training_orders`, `00005_add_explored_tiles`):
+`00004_add_training_orders`, `00005_add_explored_tiles`, `00006_add_world_state`):
 
 ```bash
 GOOSE_DRIVER=postgres \
@@ -515,12 +517,12 @@ goose -dir db/migrations up
 
 ## Critical gotchas
 
-- **The world is destroyed and rebuilt on every boot.** `NewDB` runs goose `down-to 0` (drops
-  all tables) then `up`; startup then generates new terrain, reserves capital sites, seeds neutral
-  towns, and registers a hardcoded test user (`cityio@example.com`). Restarting the app —
-  including a **production deploy** — wipes state. This reset is deliberate for current
-  development. (A corollary: because migrations run `up` on boot, new migrations apply
-  automatically; a manual `goose up` is only useful if a running instance stays on old code.)
+- **World and player state survive restarts.** `NewDB` runs goose `up` without rolling migrations
+  down. The world seed is stored in `world_state`, neutral towns are seeded only when every
+  gameplay table is empty, and the hardcoded test user (`cityio@example.com`) is created only when
+  missing. The commented `down-to 0` block in `NewDB` can be re-enabled for an intentional clean
+  reset after a breaking change. New migrations still apply automatically on boot; a manual
+  `goose up` is only useful if a running instance stays on old code.
 - **The API is Connect RPC, served over h2c.** Handlers live in `internal/rpc`; auth is a JWT
   Connect interceptor. Live state is pushed to clients via the server-streaming `StreamState`
   RPC (backed by `internal/stream`), not websockets.

@@ -34,6 +34,7 @@ type Querier interface {
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]GetBuildingsByCityRow, error)
 	GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error)
 	GetExploredTiles(ctx context.Context, userID string) ([]GetExploredTilesRow, error)
+	GetOrCreateWorldSeed(ctx context.Context, seed int64) (int64, error)
 	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]TrainingOrder, error)
 	GetUserByID(ctx context.Context, userID string) (User, error)
 	GetUserByIdentifier(ctx context.Context, email string) (User, error)

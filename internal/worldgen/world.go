@@ -46,6 +46,7 @@ type World struct {
 	terrain     domain.TerrainGrid
 	towns       []TownPlan
 	capitalSite []domain.Coordinates
+	usedCapital []bool
 
 	mu          sync.Mutex
 	nextCapital int
@@ -88,6 +89,7 @@ func Generate(config Config) (*World, error) {
 		terrain:     terrain,
 		towns:       towns,
 		capitalSite: capitalSites,
+		usedCapital: make([]bool, len(capitalSites)),
 		occupied:    occupied,
 		rng:         mathrand.New(mathrand.NewSource(deriveSeed(config.Seed, 0x52554e54494d45))),
 	}, nil
@@ -127,10 +129,16 @@ func (w *World) ReserveCity(size int) (domain.Coordinates, error) {
 		return domain.Coordinates{}, errors.New("city size must be positive")
 	}
 
-	if size == w.config.CapitalSize && w.nextCapital < len(w.capitalSite) {
-		coords := w.capitalSite[w.nextCapital]
-		w.nextCapital++
-		return coords, nil
+	if size == w.config.CapitalSize {
+		for w.nextCapital < len(w.capitalSite) {
+			index := w.nextCapital
+			w.nextCapital++
+			if w.usedCapital[index] {
+				continue
+			}
+			w.usedCapital[index] = true
+			return w.capitalSite[index], nil
+		}
 	}
 
 	placement, ok := bestAvailablePlacement(w.terrain, w.occupied, size, w.rng)
@@ -139,6 +147,24 @@ func (w *World) ReserveCity(size int) (domain.Coordinates, error) {
 	}
 	markOccupied(w.occupied, w.config.Width, placement.X, placement.Y, size)
 	return placement, nil
+}
+
+// RestoreSettlement reserves a persisted city's footprint and marks any
+// matching generated capital site as already assigned.
+func (w *World) RestoreSettlement(city domain.City) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	markOccupied(w.occupied, w.config.Width, city.StartX, city.StartY, city.Size)
+	if city.Size != w.config.CapitalSize {
+		return
+	}
+	for index, site := range w.capitalSite {
+		if site.X == city.StartX && site.Y == city.StartY {
+			w.usedCapital[index] = true
+			return
+		}
+	}
 }
 
 func deriveSeed(seed int64, stream uint64) int64 {
