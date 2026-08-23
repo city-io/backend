@@ -12,29 +12,19 @@ import (
 	"cityio/internal/messages"
 )
 
-// trainingBatch is one queued training order. completeAt is zero until the
-// batch reaches the front of the queue and starts training.
-type trainingBatch struct {
-	troopType  domain.TroopType
-	count      int64
-	completeAt time.Time
-}
-
-// barracksImpl trains troops. Each barracks trains one batch at a time (up to
-// its level capacity); further orders queue FIFO. A one-shot timer fires a
-// PeriodicOperationMessage when the front batch finishes, mirroring the
-// construction-completion pattern; the per-tick poll is the idempotent safety
-// net.
 type barracksImpl struct {
-	queue []trainingBatch
-	timer *time.Timer
+	queue  []domain.TrainingOrder
+	timer  *time.Timer
+	loaded bool
 }
 
 func newBarracksImpl() buildingActorImpl {
 	return &barracksImpl{}
 }
 
-func (b *barracksImpl) Create(ctx actor.Context, state *buildingActor) {}
+func (b *barracksImpl) Create(ctx actor.Context, state *buildingActor) {
+	b.loadQueue(ctx, state)
+}
 
 func (b *barracksImpl) Destroy(ctx actor.Context, state *buildingActor) {
 	if b.timer != nil {
@@ -47,18 +37,51 @@ func (b *barracksImpl) Handle(ctx actor.Context, state *buildingActor) {
 	switch msg := ctx.Message().(type) {
 	case messages.TrainTroopsMessage:
 		b.handleTrain(ctx, state, msg)
+	case messages.GetTrainingOrdersMessage:
+		if !b.loaded && !b.loadQueue(ctx, state) {
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		ctx.Respond(&messages.GetTrainingOrdersResponseMessage{Orders: append([]domain.TrainingOrder(nil), b.queue...)})
 	case messages.PeriodicOperationMessage:
 		b.checkComplete(ctx, state)
 	}
 }
 
+func (b *barracksImpl) loadQueue(ctx actor.Context, state *buildingActor) bool {
+	orders, err := state.Store.GetTrainingOrdersByBarracks(state.Ctx(), state.Building.BuildingID)
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to restore barracks training queue", "building_id", state.Building.BuildingID, "error", err)
+		return false
+	}
+	b.queue = orders
+	b.loaded = true
+	if len(b.queue) == 0 {
+		return true
+	}
+	if b.queue[0].CompletesAt.Time == nil {
+		b.startFront(ctx, state)
+	} else {
+		b.arm(ctx, *b.queue[0].CompletesAt.Time)
+	}
+	return true
+}
+
 func (b *barracksImpl) handleTrain(ctx actor.Context, state *buildingActor, msg messages.TrainTroopsMessage) {
+	if !b.loaded && !b.loadQueue(ctx, state) {
+		ctx.Respond(&messages.InternalError{})
+		return
+	}
 	if state.constructionActive() {
 		ctx.Respond(&messages.ConstructionInProgressError{BuildingID: state.Building.BuildingID})
 		return
 	}
-	if msg.Count <= 0 || !constants.IsValidTroopType(msg.Type) {
+	if msg.Count <= 0 {
 		ctx.Respond(&messages.InvalidTroopCountError{Count: msg.Count})
+		return
+	}
+	if !constants.IsValidTroopType(msg.Type) {
+		ctx.Respond(&messages.InvalidTroopTypeError{Type: msg.Type})
 		return
 	}
 	capacity := constants.GetBarracksTrainingCapacity(state.Building.Level)
@@ -69,69 +92,114 @@ func (b *barracksImpl) handleTrain(ctx actor.Context, state *buildingActor, msg 
 
 	popCost := msg.Count * constants.GetTroopPopCost(msg.Type)
 	goldCost := msg.Count * constants.GetTroopGoldCost(msg.Type)
+	if !b.reservePopulation(ctx, state, popCost) {
+		return
+	}
+	if !b.deductGold(ctx, state, goldCost) {
+		b.releasePopulation(state, popCost)
+		return
+	}
 
-	// Reserve population first (a cheap cap check), then charge gold; roll the
-	// reservation back if the owner can't afford it.
-	res, err := state.Cluster.Request("city", state.Building.CityID, messages.ReserveMilitaryPopulationMessage{Count: popCost})
-	if err != nil {
-		slog.ErrorContext(state.Ctx(), "failed to reserve military population", "error", err)
+	now := time.Now()
+	order := domain.TrainingOrder{
+		TrainingOrderID: uuid.New().String(),
+		ArmyID:          uuid.New().String(),
+		BarracksID:      state.Building.BuildingID,
+		TroopType:       msg.Type,
+		Count:           msg.Count,
+		PopulationCost:  popCost,
+		GoldCost:        goldCost,
+		CreatedAt:       now,
+	}
+	if err := state.Store.CreateTrainingOrder(state.Ctx(), order); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to persist training order", "building_id", state.Building.BuildingID, "error", err)
+		b.rollbackCost(state, order)
 		ctx.Respond(&messages.InternalError{})
 		return
 	}
-	switch r := res.(type) {
-	case messages.Ack:
-		// reserved
-	case *messages.InsufficientPopulationError:
-		ctx.Respond(r)
-		return
-	default:
-		ctx.Respond(&messages.InvalidResponseTypeError{})
-		return
-	}
 
-	res, err = state.Cluster.Request("city", state.Building.CityID, messages.DeductOwnerGoldMessage{Amount: goldCost})
-	if err != nil {
-		slog.ErrorContext(state.Ctx(), "failed to deduct gold for training", "error", err)
-		b.releasePopulation(state, popCost)
-		ctx.Respond(&messages.InternalError{})
-		return
-	}
-	switch r := res.(type) {
-	case messages.Ack:
-		// paid
-	case messages.InsufficientGoldError:
-		b.releasePopulation(state, popCost)
-		ctx.Respond(&r)
-		return
-	default:
-		b.releasePopulation(state, popCost)
-		ctx.Respond(&messages.InvalidResponseTypeError{})
-		return
-	}
-
-	b.queue = append(b.queue, trainingBatch{troopType: msg.Type, count: msg.Count})
+	b.queue = append(b.queue, order)
 	if len(b.queue) == 1 {
 		b.startFront(ctx, state)
 	}
-	ctx.Respond(messages.Ack{})
+	ctx.Respond(&messages.TrainTroopsResponseMessage{Order: b.queue[len(b.queue)-1]})
+}
+
+func (b *barracksImpl) reservePopulation(ctx actor.Context, state *buildingActor, count int64) bool {
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.ReserveMilitaryPopulationMessage{Count: count})
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to reserve military population", "error", err)
+		ctx.Respond(&messages.InternalError{})
+		return false
+	}
+	switch response := res.(type) {
+	case messages.Ack:
+		return true
+	case *messages.InsufficientPopulationError:
+		ctx.Respond(response)
+	default:
+		ctx.Respond(&messages.InvalidResponseTypeError{})
+	}
+	return false
+}
+
+func (b *barracksImpl) deductGold(ctx actor.Context, state *buildingActor, amount int64) bool {
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.DeductOwnerGoldMessage{Amount: amount})
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to deduct gold for training", "error", err)
+		ctx.Respond(&messages.InternalError{})
+		return false
+	}
+	switch response := res.(type) {
+	case messages.Ack:
+		return true
+	case messages.InsufficientGoldError:
+		ctx.Respond(&response)
+	default:
+		ctx.Respond(&messages.InvalidResponseTypeError{})
+	}
+	return false
+}
+
+func (b *barracksImpl) rollbackCost(state *buildingActor, order domain.TrainingOrder) {
+	b.releasePopulation(state, order.PopulationCost)
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.CreditOwnerGoldMessage{Amount: order.GoldCost})
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to refund training gold", "building_id", state.Building.BuildingID, "error", err)
+		return
+	}
+	if _, ok := res.(messages.Ack); !ok {
+		slog.ErrorContext(state.Ctx(), "training gold refund returned unexpected response", "building_id", state.Building.BuildingID)
+	}
 }
 
 func (b *barracksImpl) releasePopulation(state *buildingActor, count int64) {
-	if err := state.Cluster.Tell("city", state.Building.CityID, messages.ReleaseMilitaryPopulationMessage{Count: count}); err != nil {
+	res, err := state.Cluster.Request("city", state.Building.CityID, messages.ReleaseMilitaryPopulationMessage{Count: count})
+	if err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to release military population on rollback", "error", err)
-	}
-}
-
-func (b *barracksImpl) startFront(ctx actor.Context, state *buildingActor) {
-	if len(b.queue) == 0 {
 		return
 	}
-	trainTime := constants.GetTroopTrainTime(b.queue[0].troopType)
-	b.queue[0].completeAt = time.Now().Add(time.Duration(trainTime) * time.Second)
-	b.arm(ctx, b.queue[0].completeAt)
+	if _, ok := res.(messages.Ack); !ok {
+		slog.ErrorContext(state.Ctx(), "military population release returned unexpected response", "building_id", state.Building.BuildingID)
+	}
 }
 
-// arm schedules a PeriodicOperationMessage at the front batch's completion time.
+func (b *barracksImpl) startFront(ctx actor.Context, state *buildingActor) bool {
+	if len(b.queue) == 0 {
+		return true
+	}
+	now := time.Now()
+	completeAt := now.Add(time.Duration(constants.GetTroopTrainTime(b.queue[0].TroopType)) * time.Second)
+	if err := state.Store.StartTrainingOrder(state.Ctx(), b.queue[0].TrainingOrderID, now, completeAt); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to start training order", "training_order_id", b.queue[0].TrainingOrderID, "error", err)
+		return false
+	}
+	b.queue[0].StartedAt = domain.NullTime{Time: &now}
+	b.queue[0].CompletesAt = domain.NullTime{Time: &completeAt}
+	b.arm(ctx, completeAt)
+	return true
+}
+
 func (b *barracksImpl) arm(ctx actor.Context, at time.Time) {
 	if b.timer != nil {
 		b.timer.Stop()
@@ -146,50 +214,63 @@ func (b *barracksImpl) arm(ctx actor.Context, at time.Time) {
 }
 
 func (b *barracksImpl) checkComplete(ctx actor.Context, state *buildingActor) {
+	if !b.loaded && !b.loadQueue(ctx, state) {
+		return
+	}
 	if len(b.queue) == 0 {
 		return
 	}
 	front := b.queue[0]
-	if front.completeAt.IsZero() {
-		// Front hasn't started (e.g. after a restart); kick it off.
+	if front.CompletesAt.Time == nil {
 		b.startFront(ctx, state)
 		return
 	}
-	if time.Now().Before(front.completeAt) {
+	if time.Now().Before(*front.CompletesAt.Time) {
 		return
 	}
-	b.spawnArmy(ctx, state, front)
+	if !b.spawnArmy(ctx, state, front) {
+		return
+	}
+	if err := state.Store.DeleteTrainingOrder(state.Ctx(), front.TrainingOrderID); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to finish training order", "training_order_id", front.TrainingOrderID, "error", err)
+		return
+	}
 	b.queue = b.queue[1:]
 	if len(b.queue) > 0 {
 		b.startFront(ctx, state)
 	}
 }
 
-func (b *barracksImpl) spawnArmy(ctx actor.Context, state *buildingActor, batch trainingBatch) {
+func (b *barracksImpl) spawnArmy(ctx actor.Context, state *buildingActor, order domain.TrainingOrder) bool {
 	owner := b.cityOwner(state)
 	if owner == nil {
-		slog.WarnContext(state.Ctx(), "barracks completed training with no city owner; discarding batch", "building_id", state.Building.BuildingID)
-		return
+		slog.WarnContext(state.Ctx(), "barracks completed training with no city owner", "building_id", state.Building.BuildingID)
+		return false
 	}
-	armyID := uuid.New().String()
-	if _, err := state.Cluster.Request("army", armyID, &messages.CreateArmyMessage{
+	res, err := state.Cluster.Request("army", order.ArmyID, &messages.CreateArmyMessage{
 		Army: domain.Army{
-			ArmyID: armyID,
+			ArmyID: order.ArmyID,
 			Owner:  *owner,
 			X:      state.Building.X,
 			Y:      state.Building.Y,
-			Troops: map[domain.TroopType]int64{batch.troopType: batch.count},
+			Troops: map[domain.TroopType]int64{order.TroopType: order.Count},
 		},
-	}); err != nil {
+	})
+	if err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to spawn army from training", "building_id", state.Building.BuildingID, "error", err)
-		return
+		return false
+	}
+	if _, ok := res.(messages.Ack); !ok {
+		slog.ErrorContext(state.Ctx(), "army spawn returned unexpected response", "building_id", state.Building.BuildingID)
+		return false
 	}
 	slog.InfoContext(state.Ctx(), "training complete, army spawned",
 		"building_id", state.Building.BuildingID,
-		"army_id", armyID,
-		"troop_type", batch.troopType,
-		"count", batch.count,
+		"army_id", order.ArmyID,
+		"troop_type", order.TroopType,
+		"count", order.Count,
 	)
+	return true
 }
 
 func (b *barracksImpl) cityOwner(state *buildingActor) *string {

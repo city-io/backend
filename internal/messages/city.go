@@ -37,6 +37,10 @@ type DeductOwnerGoldMessage struct {
 	Amount int64
 }
 
+type CreditOwnerGoldMessage struct {
+	Amount int64
+}
+
 type BuildingDestroyedMessage struct {
 	BuildingID string
 }

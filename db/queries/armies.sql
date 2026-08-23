@@ -28,7 +28,8 @@ VALUES (
     sqlc.arg(dest_x),
     sqlc.arg(dest_y),
     sqlc.arg(upkeep_city_id)
-);
+)
+ON CONFLICT (army_id) DO NOTHING;
 
 -- name: DeleteArmy :exec
 DELETE FROM armies

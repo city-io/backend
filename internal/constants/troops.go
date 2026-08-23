@@ -9,8 +9,7 @@ const MilitaryPopulationFraction = 0.35
 // TroopStat holds the tier-1 stat profile for a troop type. Gold is the
 // per-troop training cost; TrainTime is in seconds; FoodUpkeep is per hour;
 // PopCost is the population reserved per troop. Attack/Defense/HP are stored
-// now but unused until combat. Speed is reserved for later per-type movement
-// differentiation (all types move at TroopMovementDuration for now).
+// now but unused until combat.
 type TroopStat struct {
 	Gold       int64
 	TrainTime  int64
@@ -19,14 +18,13 @@ type TroopStat struct {
 	Attack     int64
 	Defense    int64
 	HP         int64
-	Speed      int64
 }
 
 var troopStats = map[domain.TroopType]TroopStat{
-	domain.TroopTypeSoldier:   {Gold: 50, TrainTime: 20, FoodUpkeep: 60, PopCost: 1, Attack: 10, Defense: 10, HP: 100, Speed: 1},
-	domain.TroopTypeArcher:    {Gold: 75, TrainTime: 30, FoodUpkeep: 60, PopCost: 1, Attack: 15, Defense: 5, HP: 70, Speed: 1},
-	domain.TroopTypeCavalry:   {Gold: 150, TrainTime: 45, FoodUpkeep: 180, PopCost: 1, Attack: 20, Defense: 12, HP: 120, Speed: 1},
-	domain.TroopTypeArtillery: {Gold: 300, TrainTime: 60, FoodUpkeep: 120, PopCost: 3, Attack: 40, Defense: 3, HP: 60, Speed: 1},
+	domain.TroopTypeSoldier:   {Gold: 50, TrainTime: 20, FoodUpkeep: 60, PopCost: 1, Attack: 10, Defense: 10, HP: 100},
+	domain.TroopTypeArcher:    {Gold: 75, TrainTime: 30, FoodUpkeep: 60, PopCost: 1, Attack: 15, Defense: 5, HP: 70},
+	domain.TroopTypeCavalry:   {Gold: 150, TrainTime: 45, FoodUpkeep: 180, PopCost: 1, Attack: 20, Defense: 12, HP: 120},
+	domain.TroopTypeArtillery: {Gold: 300, TrainTime: 60, FoodUpkeep: 120, PopCost: 3, Attack: 40, Defense: 3, HP: 60},
 }
 
 // GetTroopStat returns the full stat profile for a troop type.

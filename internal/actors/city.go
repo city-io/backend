@@ -166,6 +166,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			return
 		}
 		state.City.MilitaryPopulation += float64(msg.Count)
+		state.Store.EnqueueCity(state.City)
 		state.publish()
 		ctx.Respond(messages.Ack{})
 
@@ -174,7 +175,11 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		if state.City.MilitaryPopulation < 0 {
 			state.City.MilitaryPopulation = 0
 		}
+		state.Store.EnqueueCity(state.City)
 		state.publish()
+		if ctx.Sender() != nil {
+			ctx.Respond(messages.Ack{})
+		}
 
 	case messages.SetArmyUpkeepMessage:
 		if state.armyUpkeep == nil {
@@ -215,6 +220,19 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		})
 		if err != nil {
 			slog.ErrorContext(state.Ctx(), "failed to deduct gold from owner", "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		ctx.Respond(res)
+
+	case messages.CreditOwnerGoldMessage:
+		if state.City.Owner == nil {
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		res, err := state.Cluster.Request("user", *state.City.Owner, messages.RefundUserGoldMessage{Amount: msg.Amount})
+		if err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to refund gold to owner", "error", err)
 			ctx.Respond(&messages.InternalError{})
 			return
 		}

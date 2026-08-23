@@ -158,3 +158,18 @@ func (a GetAllArmiesRow) ToModel() *domain.Army {
 		UpkeepCityID: a.UpkeepCityID,
 	}
 }
+
+func (o TrainingOrder) ToModel() *domain.TrainingOrder {
+	return &domain.TrainingOrder{
+		TrainingOrderID: o.TrainingOrderID,
+		ArmyID:          o.ArmyID,
+		BarracksID:      o.BarracksID,
+		TroopType:       domain.TroopType(o.TroopType),
+		Count:           o.Count,
+		PopulationCost:  o.PopulationCost,
+		GoldCost:        o.GoldCost,
+		StartedAt:       toNullTime(o.StartedAt),
+		CompletesAt:     toNullTime(o.CompletesAt),
+		CreatedAt:       o.CreatedAt.Time,
+	}
+}

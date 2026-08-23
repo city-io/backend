@@ -17,6 +17,10 @@ type CreditUserMessage struct {
 	Food int64
 }
 
+type RefundUserGoldMessage struct {
+	Amount int64
+}
+
 // DepositFoodMessage adds surplus food from a city to the user's pool. The
 // amount is accumulated toward the user's rolling FoodIncomeRate.
 type DepositFoodMessage struct {

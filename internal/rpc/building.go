@@ -116,10 +116,20 @@ func (h *buildingHandler) DeleteBuilding(ctx context.Context, req *connect.Reque
 	case domain.BuildingTypeCityCenter, domain.BuildingTypeTownCenter:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("city center and town center cannot be demolished"))
 	}
-	if err := h.srv.cluster.Tell("building", bid, messages.DeleteBuildingMessage{BuildingID: bid}); err != nil {
+	res, err := h.srv.cluster.Request("building", bid, messages.DeleteBuildingMessage{BuildingID: bid})
+	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&servicev1.DeleteBuildingResponse{}), nil
+	switch response := res.(type) {
+	case messages.Ack:
+		return connect.NewResponse(&servicev1.DeleteBuildingResponse{}), nil
+	case *messages.TrainingInProgressError:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, response)
+	case error:
+		return nil, connect.NewError(connect.CodeInternal, response)
+	default:
+		return nil, connect.NewError(connect.CodeInternal, errors.New("unexpected delete response"))
+	}
 }
 
 func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Request[servicev1.ListBuildingsRequest]) (*connect.Response[servicev1.ListBuildingsResponse], error) {

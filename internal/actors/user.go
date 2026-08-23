@@ -67,6 +67,12 @@ func (state *userActor) Receive(ctx actor.Context) {
 		state.User.Food += msg.Food
 		ctx.Respond(messages.Ack{})
 
+	case messages.RefundUserGoldMessage:
+		state.User.Gold += msg.Amount
+		state.Store.EnqueueUser(state.User)
+		state.publish()
+		ctx.Respond(messages.Ack{})
+
 	case messages.DepositFoodMessage:
 		// City surplus flowing into the pool. Same batching reasoning as
 		// CreditUserMessage — the periodic publish carries the net change.
@@ -98,6 +104,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 			return
 		}
 		state.User.Gold -= msg.Amount
+		state.Store.EnqueueUser(state.User)
 		state.publish()
 		ctx.Respond(messages.Ack{})
 

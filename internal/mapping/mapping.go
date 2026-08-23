@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
+	servicev1 "cityio/internal/gen/cityio/service/v1"
 
 	"cityio/internal/domain"
 )
@@ -84,6 +85,11 @@ func ToArmyId(id string) *entityv1.ArmyId {
 	return &entityv1.ArmyId{Value: id}
 }
 
+// ToTrainingOrderId wraps a raw string into a typed proto ID.
+func ToTrainingOrderId(id string) *entityv1.TrainingOrderId {
+	return &entityv1.TrainingOrderId{Value: id}
+}
+
 // ToTileId identifies a tile by its immutable map coordinates.
 func ToTileId(x, y int) *entityv1.TileId {
 	return &entityv1.TileId{X: int32(x), Y: int32(y)}
@@ -97,6 +103,24 @@ func TroopTypeToProto(t domain.TroopType) entityv1.TroopType {
 // TroopTypeFromProto maps a proto troop type enum to its domain value.
 func TroopTypeFromProto(t entityv1.TroopType) domain.TroopType {
 	return troopTypeFromProto[t]
+}
+
+// TrainingOrderToProto converts a queued training order to its API shape.
+func TrainingOrderToProto(order domain.TrainingOrder) *servicev1.TrainingOrder {
+	result := &servicev1.TrainingOrder{
+		TrainingOrderId: ToTrainingOrderId(order.TrainingOrderID),
+		ArmyId:          ToArmyId(order.ArmyID),
+		BarracksId:      ToBuildingId(order.BarracksID),
+		Type:            TroopTypeToProto(order.TroopType),
+		Count:           int32(order.Count),
+	}
+	if order.StartedAt.Time != nil {
+		result.StartedAt = timestamppb.New(*order.StartedAt.Time)
+	}
+	if order.CompletesAt.Time != nil {
+		result.CompletesAt = timestamppb.New(*order.CompletesAt.Time)
+	}
+	return result
 }
 
 // CityTypeToProto maps a domain city type to its proto enum.

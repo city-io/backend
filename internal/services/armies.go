@@ -18,24 +18,41 @@ func RestoreArmy(ctx context.Context, cluster ports.ClusterProvider, army *domai
 }
 
 // TrainTroops orders a barracks to train a batch of troops. The barracks
-// validates capacity, reserves population and deducts gold; its Ack or error is
-// relayed to the caller.
-func TrainTroops(ctx context.Context, cluster ports.ClusterProvider, input *ArmyInput) error {
+// validates capacity, reserves population and deducts gold, then returns the
+// durable queue entry.
+func TrainTroops(ctx context.Context, cluster ports.ClusterProvider, input *ArmyInput) (*domain.TrainingOrder, error) {
 	res, err := cluster.Request("building", input.BarracksID, messages.TrainTroopsMessage{
 		Type:  input.TroopType,
 		Count: input.Count,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to request troop training", "barracks_id", input.BarracksID, "error", err)
-		return err
+		return nil, err
 	}
 	switch v := res.(type) {
-	case messages.Ack:
-		return nil
+	case *messages.TrainTroopsResponseMessage:
+		return &v.Order, nil
 	case error:
-		return v
+		return nil, v
 	default:
-		return &messages.InvalidResponseTypeError{}
+		return nil, &messages.InvalidResponseTypeError{}
+	}
+}
+
+// GetTrainingOrders returns the current FIFO queue for a barracks.
+func GetTrainingOrders(ctx context.Context, cluster ports.ClusterProvider, barracksID string) ([]domain.TrainingOrder, error) {
+	res, err := cluster.Request("building", barracksID, messages.GetTrainingOrdersMessage{})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to request training orders", "barracks_id", barracksID, "error", err)
+		return nil, err
+	}
+	switch response := res.(type) {
+	case *messages.GetTrainingOrdersResponseMessage:
+		return response.Orders, nil
+	case error:
+		return nil, response
+	default:
+		return nil, &messages.InvalidResponseTypeError{}
 	}
 }
 

@@ -46,6 +46,19 @@ type City struct {
 	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
 }
 
+type TrainingOrder struct {
+	TrainingOrderID string           `json:"training_order_id"`
+	ArmyID          string           `json:"army_id"`
+	BarracksID      string           `json:"barracks_id"`
+	TroopType       string           `json:"troop_type"`
+	Count           int64            `json:"count"`
+	PopulationCost  int64            `json:"population_cost"`
+	GoldCost        int64            `json:"gold_cost"`
+	StartedAt       pgtype.Timestamp `json:"started_at"`
+	CompletesAt     pgtype.Timestamp `json:"completes_at"`
+	CreatedAt       pgtype.Timestamp `json:"created_at"`
+}
+
 type User struct {
 	UserID    string           `json:"user_id"`
 	Email     string           `json:"email"`
