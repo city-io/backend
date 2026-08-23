@@ -15,6 +15,7 @@ Usage (server must be running on :8080; see `make all`):
     python3 scripts/troops.py move <armyId> <x> <y>
     python3 scripts/troops.py getarmy <armyId>
     python3 scripts/troops.py merge <targetId> <sourceId>
+    python3 scripts/troops.py split <armyId> soldier 2
     python3 scripts/troops.py city <cityId>
     python3 scripts/troops.py smoke                 # full guided flow (train -> spawn -> move)
 
@@ -146,6 +147,12 @@ def cmd_merge(tgt, src):
     print("merge:", st, r if st != 200 else "OK")
 
 
+def cmd_split(aid, troop_type, count):
+    st, r = call("cityio.service.v1.ArmyService/SplitArmy",
+                 {"armyId": {"value": aid}, "troops": [{"type": TROOP_ENUM[troop_type], "count": int(count)}]}, token())
+    print("split:", st, r)
+
+
 def cmd_city(cid):
     st, r = call("cityio.service.v1.CityService/GetCity", {"cityId": {"value": cid}}, token())
     pp(st, r)
@@ -199,7 +206,7 @@ def main():
     handlers = {
         "login": cmd_login, "cities": cmd_cities, "barracks": cmd_barracks,
         "train": cmd_train, "queue": cmd_queue, "armies": cmd_armies, "move": cmd_move,
-        "getarmy": cmd_getarmy, "merge": cmd_merge, "city": cmd_city, "smoke": cmd_smoke,
+        "getarmy": cmd_getarmy, "merge": cmd_merge, "split": cmd_split, "city": cmd_city, "smoke": cmd_smoke,
     }
     if cmd not in handlers:
         print(__doc__); sys.exit(1)

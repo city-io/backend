@@ -1,11 +1,13 @@
 package actors
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"cityio/internal/constants"
 	"cityio/internal/domain"
+	"cityio/internal/messages"
 )
 
 type movementTestWorld struct {
@@ -130,5 +132,43 @@ func TestClearOrderClearsEveryMovementField(t *testing.T) {
 	}
 	if state.path != nil || state.movementProgress != 0 {
 		t.Fatalf("actor movement state was not cleared: path=%v progress=%s", state.path, state.movementProgress)
+	}
+}
+
+func TestSplitCompositionDetachesRequestedTroops(t *testing.T) {
+	remaining, detached, err := splitComposition(
+		map[domain.TroopType]int64{domain.TroopTypeSoldier: 10, domain.TroopTypeCavalry: 3},
+		map[domain.TroopType]int64{domain.TroopTypeSoldier: 4, domain.TroopTypeCavalry: 1},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if remaining[domain.TroopTypeSoldier] != 6 || remaining[domain.TroopTypeCavalry] != 2 {
+		t.Fatalf("remaining = %v", remaining)
+	}
+	if detached[domain.TroopTypeSoldier] != 4 || detached[domain.TroopTypeCavalry] != 1 {
+		t.Fatalf("detached = %v", detached)
+	}
+}
+
+func TestSplitCompositionRejectsEntireArmy(t *testing.T) {
+	_, _, err := splitComposition(
+		map[domain.TroopType]int64{domain.TroopTypeSoldier: 5},
+		map[domain.TroopType]int64{domain.TroopTypeSoldier: 5},
+	)
+	var invalid *messages.InvalidArmySplitError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("error = %T, want InvalidArmySplitError", err)
+	}
+}
+
+func TestSplitCompositionRejectsUnavailableTroops(t *testing.T) {
+	_, _, err := splitComposition(
+		map[domain.TroopType]int64{domain.TroopTypeArcher: 2},
+		map[domain.TroopType]int64{domain.TroopTypeArcher: 3},
+	)
+	var insufficient *messages.InsufficientTroopsError
+	if !errors.As(err, &insufficient) {
+		t.Fatalf("error = %T, want InsufficientTroopsError", err)
 	}
 }

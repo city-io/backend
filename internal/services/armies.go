@@ -118,3 +118,19 @@ func MergeArmies(ctx context.Context, cluster contracts.ClusterProvider, targetA
 		return &messages.InvalidResponseTypeError{}
 	}
 }
+
+func SplitArmy(ctx context.Context, cluster contracts.ClusterProvider, armyID string, troops map[domain.TroopType]int64) (*messages.SplitArmyResponseMessage, error) {
+	res, err := cluster.Request("army", armyID, messages.SplitArmyMessage{Troops: troops})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to request army split", "army_id", armyID, "error", err)
+		return nil, err
+	}
+	switch v := res.(type) {
+	case *messages.SplitArmyResponseMessage:
+		return v, nil
+	case error:
+		return nil, v
+	default:
+		return nil, &messages.InvalidResponseTypeError{}
+	}
+}

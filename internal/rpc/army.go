@@ -309,6 +309,49 @@ func (h *armyHandler) MergeArmies(ctx context.Context, req *connect.Request[serv
 	return connect.NewResponse(&servicev1.MergeArmiesResponse{}), nil
 }
 
+func (h *armyHandler) SplitArmy(ctx context.Context, req *connect.Request[servicev1.SplitArmyRequest]) (*connect.Response[servicev1.SplitArmyResponse], error) {
+	armyID := req.Msg.GetArmyId().GetValue()
+	if _, err := h.requireArmyOwnership(ctx, armyID); err != nil {
+		return nil, err
+	}
+	troops := make(map[domain.TroopType]int64, len(req.Msg.GetTroops()))
+	for _, stack := range req.Msg.GetTroops() {
+		troopType := mapping.TroopTypeFromProto(stack.GetType())
+		if !constants.IsValidTroopType(troopType) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid troop type"))
+		}
+		if stack.Count == nil || stack.GetCount() <= 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("split troop counts must be positive"))
+		}
+		troops[troopType] += int64(stack.GetCount())
+	}
+	result, err := services.SplitArmy(ctx, h.srv.cluster, armyID, troops)
+	if err != nil {
+		var invalid *messages.InvalidArmySplitError
+		var insufficient *messages.InsufficientTroopsError
+		var inBattle *messages.ArmyInBattleError
+		switch {
+		case errors.As(err, &invalid):
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		case errors.As(err, &insufficient), errors.As(err, &inBattle):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		default:
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+	bag := mapping.EntitiesToBag(nil, nil, nil, []domain.Army{result.Source, result.Army})
+	if result.Source.OrderID != nil {
+		explored, err := h.srv.store.GetExploredTiles(ctx, result.Source.Owner)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if order := h.srv.projectOwnedArmyOrder(result.Source, exploredSet(explored)); order != nil {
+			bag.ArmyOrders = append(bag.ArmyOrders, order)
+		}
+	}
+	return connect.NewResponse(&servicev1.SplitArmyResponse{ArmyId: mapping.ToArmyId(result.Army.ArmyID), Entities: bag}), nil
+}
+
 func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servicev1.ListArmiesRequest]) (*connect.Response[servicev1.ListArmiesResponse], error) {
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {

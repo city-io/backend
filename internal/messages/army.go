@@ -56,6 +56,14 @@ type MergeArmiesMessage struct {
 	SourceArmyID string
 }
 
+type SplitArmyMessage struct {
+	Troops map[domain.TroopType]int64
+}
+type SplitArmyResponseMessage struct {
+	Source domain.Army
+	Army   domain.Army
+}
+
 // SurrenderTroopsMessage asks an army to hand over all its troops and shut
 // down. Used by MergeArmies on the source army.
 type SurrenderTroopsMessage struct{}
@@ -161,6 +169,22 @@ type UnreachableDestinationError struct {
 type ArmyInBattleError struct{ ArmyID string }
 
 func (e *ArmyInBattleError) Error() string { return fmt.Sprintf("army is in battle: %s", e.ArmyID) }
+
+type InvalidArmySplitError struct{ Reason string }
+
+func (e *InvalidArmySplitError) Error() string {
+	return fmt.Sprintf("invalid army split: %s", e.Reason)
+}
+
+type InsufficientTroopsError struct {
+	Type      domain.TroopType
+	Available int64
+	Requested int64
+}
+
+func (e *InsufficientTroopsError) Error() string {
+	return fmt.Sprintf("insufficient %s troops: requested %d, available %d", e.Type, e.Requested, e.Available)
+}
 
 func (e *UnreachableDestinationError) Error() string {
 	return fmt.Sprintf("army destination is unreachable: (%d, %d)", e.X, e.Y)

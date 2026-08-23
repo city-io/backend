@@ -54,6 +54,8 @@ const (
 	ArmyServiceRetreatArmyProcedure = "/cityio.service.v1.ArmyService/RetreatArmy"
 	// ArmyServiceMergeArmiesProcedure is the fully-qualified name of the ArmyService's MergeArmies RPC.
 	ArmyServiceMergeArmiesProcedure = "/cityio.service.v1.ArmyService/MergeArmies"
+	// ArmyServiceSplitArmyProcedure is the fully-qualified name of the ArmyService's SplitArmy RPC.
+	ArmyServiceSplitArmyProcedure = "/cityio.service.v1.ArmyService/SplitArmy"
 	// ArmyServiceListArmiesProcedure is the fully-qualified name of the ArmyService's ListArmies RPC.
 	ArmyServiceListArmiesProcedure = "/cityio.service.v1.ArmyService/ListArmies"
 )
@@ -69,6 +71,7 @@ type ArmyServiceClient interface {
 	ConquerSettlement(context.Context, *connect.Request[v1.ConquerSettlementRequest]) (*connect.Response[v1.ConquerSettlementResponse], error)
 	RetreatArmy(context.Context, *connect.Request[v1.RetreatArmyRequest]) (*connect.Response[v1.RetreatArmyResponse], error)
 	MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error)
+	SplitArmy(context.Context, *connect.Request[v1.SplitArmyRequest]) (*connect.Response[v1.SplitArmyResponse], error)
 	ListArmies(context.Context, *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error)
 }
 
@@ -137,6 +140,12 @@ func NewArmyServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(armyServiceMethods.ByName("MergeArmies")),
 			connect.WithClientOptions(opts...),
 		),
+		splitArmy: connect.NewClient[v1.SplitArmyRequest, v1.SplitArmyResponse](
+			httpClient,
+			baseURL+ArmyServiceSplitArmyProcedure,
+			connect.WithSchema(armyServiceMethods.ByName("SplitArmy")),
+			connect.WithClientOptions(opts...),
+		),
 		listArmies: connect.NewClient[v1.ListArmiesRequest, v1.ListArmiesResponse](
 			httpClient,
 			baseURL+ArmyServiceListArmiesProcedure,
@@ -157,6 +166,7 @@ type armyServiceClient struct {
 	conquerSettlement  *connect.Client[v1.ConquerSettlementRequest, v1.ConquerSettlementResponse]
 	retreatArmy        *connect.Client[v1.RetreatArmyRequest, v1.RetreatArmyResponse]
 	mergeArmies        *connect.Client[v1.MergeArmiesRequest, v1.MergeArmiesResponse]
+	splitArmy          *connect.Client[v1.SplitArmyRequest, v1.SplitArmyResponse]
 	listArmies         *connect.Client[v1.ListArmiesRequest, v1.ListArmiesResponse]
 }
 
@@ -205,6 +215,11 @@ func (c *armyServiceClient) MergeArmies(ctx context.Context, req *connect.Reques
 	return c.mergeArmies.CallUnary(ctx, req)
 }
 
+// SplitArmy calls cityio.service.v1.ArmyService.SplitArmy.
+func (c *armyServiceClient) SplitArmy(ctx context.Context, req *connect.Request[v1.SplitArmyRequest]) (*connect.Response[v1.SplitArmyResponse], error) {
+	return c.splitArmy.CallUnary(ctx, req)
+}
+
 // ListArmies calls cityio.service.v1.ArmyService.ListArmies.
 func (c *armyServiceClient) ListArmies(ctx context.Context, req *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error) {
 	return c.listArmies.CallUnary(ctx, req)
@@ -221,6 +236,7 @@ type ArmyServiceHandler interface {
 	ConquerSettlement(context.Context, *connect.Request[v1.ConquerSettlementRequest]) (*connect.Response[v1.ConquerSettlementResponse], error)
 	RetreatArmy(context.Context, *connect.Request[v1.RetreatArmyRequest]) (*connect.Response[v1.RetreatArmyResponse], error)
 	MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error)
+	SplitArmy(context.Context, *connect.Request[v1.SplitArmyRequest]) (*connect.Response[v1.SplitArmyResponse], error)
 	ListArmies(context.Context, *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error)
 }
 
@@ -285,6 +301,12 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(armyServiceMethods.ByName("MergeArmies")),
 		connect.WithHandlerOptions(opts...),
 	)
+	armyServiceSplitArmyHandler := connect.NewUnaryHandler(
+		ArmyServiceSplitArmyProcedure,
+		svc.SplitArmy,
+		connect.WithSchema(armyServiceMethods.ByName("SplitArmy")),
+		connect.WithHandlerOptions(opts...),
+	)
 	armyServiceListArmiesHandler := connect.NewUnaryHandler(
 		ArmyServiceListArmiesProcedure,
 		svc.ListArmies,
@@ -311,6 +333,8 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 			armyServiceRetreatArmyHandler.ServeHTTP(w, r)
 		case ArmyServiceMergeArmiesProcedure:
 			armyServiceMergeArmiesHandler.ServeHTTP(w, r)
+		case ArmyServiceSplitArmyProcedure:
+			armyServiceSplitArmyHandler.ServeHTTP(w, r)
 		case ArmyServiceListArmiesProcedure:
 			armyServiceListArmiesHandler.ServeHTTP(w, r)
 		default:
@@ -356,6 +380,10 @@ func (UnimplementedArmyServiceHandler) RetreatArmy(context.Context, *connect.Req
 
 func (UnimplementedArmyServiceHandler) MergeArmies(context.Context, *connect.Request[v1.MergeArmiesRequest]) (*connect.Response[v1.MergeArmiesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.MergeArmies is not implemented"))
+}
+
+func (UnimplementedArmyServiceHandler) SplitArmy(context.Context, *connect.Request[v1.SplitArmyRequest]) (*connect.Response[v1.SplitArmyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.SplitArmy is not implemented"))
 }
 
 func (UnimplementedArmyServiceHandler) ListArmies(context.Context, *connect.Request[v1.ListArmiesRequest]) (*connect.Response[v1.ListArmiesResponse], error) {

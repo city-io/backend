@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -160,6 +161,9 @@ func (state *armyActor) Receive(ctx actor.Context) {
 	case messages.MergeArmiesMessage:
 		state.merge(ctx, msg.SourceArmyID)
 
+	case messages.SplitArmyMessage:
+		state.split(ctx, msg.Troops)
+
 	case messages.SurrenderTroopsMessage:
 		if state.Army.BattleID != nil {
 			ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
@@ -202,6 +206,84 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 	state.updateUpkeepCity()
 	state.publish()
 	ctx.Respond(messages.Ack{})
+}
+
+func (state *armyActor) split(ctx actor.Context, requested map[domain.TroopType]int64) {
+	if state.Army.BattleID != nil {
+		ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
+		return
+	}
+	remaining, detached, err := splitComposition(state.Army.Troops, requested)
+	if err != nil {
+		ctx.Respond(err)
+		return
+	}
+	newArmy := domain.Army{
+		ArmyID: uuid.NewString(),
+		Owner:  state.Army.Owner,
+		X:      state.Army.X,
+		Y:      state.Army.Y,
+		Troops: detached,
+	}
+	res, err := state.Cluster.Request("army", newArmy.ArmyID, &messages.CreateArmyMessage{Army: newArmy})
+	if err != nil {
+		ctx.Respond(err)
+		return
+	}
+	if responseErr, ok := res.(error); ok {
+		ctx.Respond(responseErr)
+		return
+	}
+	if _, ok := res.(messages.Ack); !ok {
+		ctx.Respond(&messages.InvalidResponseTypeError{})
+		return
+	}
+	state.Army.Troops = remaining
+	state.Store.EnqueueArmy(state.Army)
+	state.updateUpkeepCity()
+	state.publish()
+	source := state.Army
+	source.RemainingPath = append([]domain.Coordinates(nil), state.path...)
+	ctx.Respond(&messages.SplitArmyResponseMessage{Source: source, Army: newArmy})
+}
+
+func splitComposition(current, requested map[domain.TroopType]int64) (map[domain.TroopType]int64, map[domain.TroopType]int64, error) {
+	if len(requested) == 0 {
+		return nil, nil, &messages.InvalidArmySplitError{Reason: "at least one troop is required"}
+	}
+	remaining := make(map[domain.TroopType]int64, len(current))
+	for troopType, count := range current {
+		if count > 0 {
+			remaining[troopType] = count
+		}
+	}
+	detached := make(map[domain.TroopType]int64, len(requested))
+	var detachedCount, remainingCount int64
+	for troopType, count := range requested {
+		if !constants.IsValidTroopType(troopType) {
+			return nil, nil, &messages.InvalidArmySplitError{Reason: fmt.Sprintf("unknown troop type %q", troopType)}
+		}
+		if count <= 0 {
+			return nil, nil, &messages.InvalidArmySplitError{Reason: "troop counts must be positive"}
+		}
+		available := remaining[troopType]
+		if count > available {
+			return nil, nil, &messages.InsufficientTroopsError{Type: troopType, Available: available, Requested: count}
+		}
+		remaining[troopType] -= count
+		detached[troopType] = count
+		detachedCount += count
+	}
+	for _, count := range remaining {
+		remainingCount += count
+	}
+	if detachedCount == 0 {
+		return nil, nil, &messages.InvalidArmySplitError{Reason: "at least one troop is required"}
+	}
+	if remainingCount == 0 {
+		return nil, nil, &messages.InvalidArmySplitError{Reason: "source army must retain at least one troop"}
+	}
+	return remaining, detached, nil
 }
 
 func (state *armyActor) attack(ctx actor.Context, targetID string) {

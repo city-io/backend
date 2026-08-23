@@ -12,8 +12,8 @@ game. The world is a 75×75 grid of tiles. Players own cities; cities contain bu
 buildings produce resources and grow population on a timer; barracks train troops that spawn as
 mobile **armies** which march across the map. Almost all game state lives in memory as
 **actors** (Proto-Actor), with PostgreSQL used as a periodic write-behind backup rather than the
-source of truth during runtime. Armies can be trained, fed, ordered, merged, fought, retreated,
-and used to capture settlements.
+source of truth during runtime. Armies can be trained, fed, ordered, split, merged, fought,
+retreated, and used to capture settlements.
 
 - Module: `cityio` (see `go.mod`), Go 1.25.2
 - Entry point: `cmd/main.go`
@@ -376,6 +376,10 @@ for TypeScript) rather than hand-writing request types.
   nearest owned settlement.
 - `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
   tile. The source's troops fold into the target and the source army disappears.
+- `SplitArmy(army_id, troops[]) → { army_id, entities(source_army, new_army, army_order?) }` —
+  must own the source and it cannot be in battle. Counts are detached into a new idle army on
+  the same tile while the source retains its active order. At least one troop must remain in the
+  source; splitting does not change reserved military population.
 - `ListArmies() → { army_ids[], entities(armies, army_orders, battles) }` — your armies and their
   active command/combat state (all, regardless of vision).
 
@@ -414,6 +418,7 @@ python3 scripts/troops.py queue <barracksId>            # inspect its durable FI
 python3 scripts/troops.py armies                        # list your armies
 python3 scripts/troops.py move <armyId> <x> <y>
 python3 scripts/troops.py merge <targetId> <sourceId>
+python3 scripts/troops.py split <armyId> soldier 2
 ```
 
 Raw curl equivalent for a login:
