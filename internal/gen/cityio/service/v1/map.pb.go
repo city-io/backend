@@ -58,82 +58,18 @@ func (*GetMapRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{0}
 }
 
-// TerrainGrid stores width * height terrain values in row-major order at
-// tiles[y * width + x].
-type TerrainGrid struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Width         int32                  `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
-	Height        int32                  `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
-	Tiles         []v1.TerrainType       `protobuf:"varint,3,rep,packed,name=tiles,proto3,enum=cityio.entity.v1.TerrainType" json:"tiles,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TerrainGrid) Reset() {
-	*x = TerrainGrid{}
-	mi := &file_cityio_service_v1_map_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TerrainGrid) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TerrainGrid) ProtoMessage() {}
-
-func (x *TerrainGrid) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_map_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TerrainGrid.ProtoReflect.Descriptor instead.
-func (*TerrainGrid) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *TerrainGrid) GetWidth() int32 {
-	if x != nil {
-		return x.Width
-	}
-	return 0
-}
-
-func (x *TerrainGrid) GetHeight() int32 {
-	if x != nil {
-		return x.Height
-	}
-	return 0
-}
-
-func (x *TerrainGrid) GetTiles() []v1.TerrainType {
-	if x != nil {
-		return x.Tiles
-	}
-	return nil
-}
-
 // GetMapResponse is the visible world snapshot used to bootstrap a client.
 type GetMapResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	CityIds       []*v1.CityId           `protobuf:"bytes,1,rep,name=city_ids,json=cityIds,proto3" json:"city_ids,omitempty"`
-	BuildingIds   []*v1.BuildingId       `protobuf:"bytes,2,rep,name=building_ids,json=buildingIds,proto3" json:"building_ids,omitempty"`
-	Entities      *v1.EntityBag          `protobuf:"bytes,3,opt,name=entities,proto3" json:"entities,omitempty"`
-	Terrain       *TerrainGrid           `protobuf:"bytes,4,opt,name=terrain,proto3" json:"terrain,omitempty"`
+	TileIds       []*v1.TileId           `protobuf:"bytes,1,rep,name=tile_ids,json=tileIds,proto3" json:"tile_ids,omitempty"`
+	Entities      *v1.EntityBag          `protobuf:"bytes,2,opt,name=entities,proto3" json:"entities,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMapResponse) Reset() {
 	*x = GetMapResponse{}
-	mi := &file_cityio_service_v1_map_proto_msgTypes[2]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -145,7 +81,7 @@ func (x *GetMapResponse) String() string {
 func (*GetMapResponse) ProtoMessage() {}
 
 func (x *GetMapResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_map_proto_msgTypes[2]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -158,19 +94,12 @@ func (x *GetMapResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMapResponse.ProtoReflect.Descriptor instead.
 func (*GetMapResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{2}
+	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetMapResponse) GetCityIds() []*v1.CityId {
+func (x *GetMapResponse) GetTileIds() []*v1.TileId {
 	if x != nil {
-		return x.CityIds
-	}
-	return nil
-}
-
-func (x *GetMapResponse) GetBuildingIds() []*v1.BuildingId {
-	if x != nil {
-		return x.BuildingIds
+		return x.TileIds
 	}
 	return nil
 }
@@ -182,23 +111,16 @@ func (x *GetMapResponse) GetEntities() *v1.EntityBag {
 	return nil
 }
 
-func (x *GetMapResponse) GetTerrain() *TerrainGrid {
-	if x != nil {
-		return x.Terrain
-	}
-	return nil
-}
-
 type GetTileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Coords        *v1.Coordinates        `protobuf:"bytes,1,opt,name=coords,proto3" json:"coords,omitempty"`
+	TileId        *v1.TileId             `protobuf:"bytes,1,opt,name=tile_id,json=tileId,proto3" json:"tile_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetTileRequest) Reset() {
 	*x = GetTileRequest{}
-	mi := &file_cityio_service_v1_map_proto_msgTypes[3]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -210,7 +132,7 @@ func (x *GetTileRequest) String() string {
 func (*GetTileRequest) ProtoMessage() {}
 
 func (x *GetTileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_map_proto_msgTypes[3]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -223,12 +145,12 @@ func (x *GetTileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTileRequest.ProtoReflect.Descriptor instead.
 func (*GetTileRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{3}
+	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GetTileRequest) GetCoords() *v1.Coordinates {
+func (x *GetTileRequest) GetTileId() *v1.TileId {
 	if x != nil {
-		return x.Coords
+		return x.TileId
 	}
 	return nil
 }
@@ -242,7 +164,7 @@ type GetTileResponse struct {
 
 func (x *GetTileResponse) Reset() {
 	*x = GetTileResponse{}
-	mi := &file_cityio_service_v1_map_proto_msgTypes[4]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -254,7 +176,7 @@ func (x *GetTileResponse) String() string {
 func (*GetTileResponse) ProtoMessage() {}
 
 func (x *GetTileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_map_proto_msgTypes[4]
+	mi := &file_cityio_service_v1_map_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -267,7 +189,7 @@ func (x *GetTileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTileResponse.ProtoReflect.Descriptor instead.
 func (*GetTileResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{4}
+	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetTileResponse) GetTile() *v1.Tile {
@@ -281,19 +203,13 @@ var File_cityio_service_v1_map_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_map_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/service/v1/map.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/bag.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1bcityio/entity/v1/tile.proto\"\x0f\n" +
-	"\rGetMapRequest\"p\n" +
-	"\vTerrainGrid\x12\x14\n" +
-	"\x05width\x18\x01 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x02 \x01(\x05R\x06height\x123\n" +
-	"\x05tiles\x18\x03 \x03(\x0e2\x1d.cityio.entity.v1.TerrainTypeR\x05tiles\"\xf9\x01\n" +
+	"\x1bcityio/service/v1/map.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/bag.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1bcityio/entity/v1/tile.proto\"\x0f\n" +
+	"\rGetMapRequest\"~\n" +
 	"\x0eGetMapResponse\x123\n" +
-	"\bcity_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x12?\n" +
-	"\fbuilding_ids\x18\x02 \x03(\v2\x1c.cityio.entity.v1.BuildingIdR\vbuildingIds\x127\n" +
-	"\bentities\x18\x03 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\x128\n" +
-	"\aterrain\x18\x04 \x01(\v2\x1e.cityio.service.v1.TerrainGridR\aterrain\"G\n" +
-	"\x0eGetTileRequest\x125\n" +
-	"\x06coords\x18\x01 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\"=\n" +
+	"\btile_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.TileIdR\atileIds\x127\n" +
+	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"C\n" +
+	"\x0eGetTileRequest\x121\n" +
+	"\atile_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.TileIdR\x06tileId\"=\n" +
 	"\x0fGetTileResponse\x12*\n" +
 	"\x04tile\x18\x01 \x01(\v2\x16.cityio.entity.v1.TileR\x04tile2\xad\x01\n" +
 	"\n" +
@@ -314,37 +230,30 @@ func file_cityio_service_v1_map_proto_rawDescGZIP() []byte {
 	return file_cityio_service_v1_map_proto_rawDescData
 }
 
-var file_cityio_service_v1_map_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_cityio_service_v1_map_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_cityio_service_v1_map_proto_goTypes = []any{
 	(*GetMapRequest)(nil),   // 0: cityio.service.v1.GetMapRequest
-	(*TerrainGrid)(nil),     // 1: cityio.service.v1.TerrainGrid
-	(*GetMapResponse)(nil),  // 2: cityio.service.v1.GetMapResponse
-	(*GetTileRequest)(nil),  // 3: cityio.service.v1.GetTileRequest
-	(*GetTileResponse)(nil), // 4: cityio.service.v1.GetTileResponse
-	(v1.TerrainType)(0),     // 5: cityio.entity.v1.TerrainType
-	(*v1.CityId)(nil),       // 6: cityio.entity.v1.CityId
-	(*v1.BuildingId)(nil),   // 7: cityio.entity.v1.BuildingId
-	(*v1.EntityBag)(nil),    // 8: cityio.entity.v1.EntityBag
-	(*v1.Coordinates)(nil),  // 9: cityio.entity.v1.Coordinates
-	(*v1.Tile)(nil),         // 10: cityio.entity.v1.Tile
+	(*GetMapResponse)(nil),  // 1: cityio.service.v1.GetMapResponse
+	(*GetTileRequest)(nil),  // 2: cityio.service.v1.GetTileRequest
+	(*GetTileResponse)(nil), // 3: cityio.service.v1.GetTileResponse
+	(*v1.TileId)(nil),       // 4: cityio.entity.v1.TileId
+	(*v1.EntityBag)(nil),    // 5: cityio.entity.v1.EntityBag
+	(*v1.Tile)(nil),         // 6: cityio.entity.v1.Tile
 }
 var file_cityio_service_v1_map_proto_depIdxs = []int32{
-	5,  // 0: cityio.service.v1.TerrainGrid.tiles:type_name -> cityio.entity.v1.TerrainType
-	6,  // 1: cityio.service.v1.GetMapResponse.city_ids:type_name -> cityio.entity.v1.CityId
-	7,  // 2: cityio.service.v1.GetMapResponse.building_ids:type_name -> cityio.entity.v1.BuildingId
-	8,  // 3: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	1,  // 4: cityio.service.v1.GetMapResponse.terrain:type_name -> cityio.service.v1.TerrainGrid
-	9,  // 5: cityio.service.v1.GetTileRequest.coords:type_name -> cityio.entity.v1.Coordinates
-	10, // 6: cityio.service.v1.GetTileResponse.tile:type_name -> cityio.entity.v1.Tile
-	0,  // 7: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
-	3,  // 8: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
-	2,  // 9: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
-	4,  // 10: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
-	9,  // [9:11] is the sub-list for method output_type
-	7,  // [7:9] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	4, // 0: cityio.service.v1.GetMapResponse.tile_ids:type_name -> cityio.entity.v1.TileId
+	5, // 1: cityio.service.v1.GetMapResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	4, // 2: cityio.service.v1.GetTileRequest.tile_id:type_name -> cityio.entity.v1.TileId
+	6, // 3: cityio.service.v1.GetTileResponse.tile:type_name -> cityio.entity.v1.Tile
+	0, // 4: cityio.service.v1.MapService.GetMap:input_type -> cityio.service.v1.GetMapRequest
+	2, // 5: cityio.service.v1.MapService.GetTile:input_type -> cityio.service.v1.GetTileRequest
+	1, // 6: cityio.service.v1.MapService.GetMap:output_type -> cityio.service.v1.GetMapResponse
+	3, // 7: cityio.service.v1.MapService.GetTile:output_type -> cityio.service.v1.GetTileResponse
+	6, // [6:8] is the sub-list for method output_type
+	4, // [4:6] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_map_proto_init() }
@@ -358,7 +267,7 @@ func file_cityio_service_v1_map_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_map_proto_rawDesc), len(file_cityio_service_v1_map_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

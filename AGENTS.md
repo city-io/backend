@@ -83,12 +83,11 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
   entity(ies); actors publish to it.
 - **`internal/gen`** — generated Connect/protobuf code (from `buf`). Two sub-packages:
   - `internal/gen/cityio/entity/v1` (`entityv1`) — entity messages (`User`, `City`,
-    `Building`, `Army`, `TroopStack`), typed ID wrappers (`UserId`, `CityId`, `BuildingId`,
-    `ArmyId`), enums (`CityType`, `BuildingType`, `TroopType`), `Coordinates`, `Rate`, and
-    `EntityBag` (a collection of mixed entities).
-  - `internal/gen/cityio/service/v1` (`servicev1`) — RPC request/response messages and `Tile`.
-    The `servicev1connect` sub-package has the Connect service interfaces and handler
-    constructors.
+    `Building`, `Army`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`, `BuildingId`,
+    `ArmyId`, `TileId`), enums (`CityType`, `BuildingType`, `TroopType`, `TerrainType`),
+    `Coordinates`, `Rate`, and `EntityBag` (a collection of mixed entities).
+  - `internal/gen/cityio/service/v1` (`servicev1`) — RPC request/response messages. The
+    `servicev1connect` sub-package has the Connect service interfaces and handler constructors.
   Do not hand-edit.
 - **`internal/database`** — `sqlc`-generated query code (`*.sql.go`, `models.go`, `querier.go`,
   `db.go`) plus hand-written `database.go` (`NewDB`) and `utils.go` (row→domain `ToModel`
@@ -119,20 +118,20 @@ Go output to `internal/gen`. A frontend generates its own client from the same f
 ```
 proto/cityio/
   entity/v1/             # package cityio.entity.v1
-    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId)
+    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId, TileId)
     common.proto          # enums (CityType, BuildingType, TroopType), Coordinates, Rate
     user.proto            # User entity message
     city.proto            # City entity message
     building.proto        # Building entity message
     army.proto            # Army + TroopStack entity messages
     tile.proto            # TerrainType + Tile
-    bag.proto             # EntityBag (users/cities/buildings/armies)
+    bag.proto             # EntityBag (users/cities/buildings/armies/tiles)
   service/v1/             # package cityio.service.v1
     user.proto            # UserService RPCs (incl. StreamState) + req/resp
     city.proto            # CityService RPCs
     building.proto        # BuildingService RPCs
     army.proto            # ArmyService RPCs
-    map.proto             # MapService RPCs + TerrainGrid
+    map.proto             # MapService RPCs
     config.proto          # ConfigService RPCs
 ```
 
@@ -144,9 +143,10 @@ the "Client / frontend API reference" section below.
 
 - **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)` and has one of
   eight terrain types: grassland, plains, forest, hills, mountains, desert, marsh, or water.
-  Terrain is regenerated coherently from a new seed on every boot and returned row-major by
-  `GetMap`; it currently affects settlement placement but not production or movement. Buildings
-  and armies live on tiles; armies stack (multiple armies + a building can share a tile).
+  Terrain is regenerated coherently from a new seed on every boot and returned as raw tile
+  entities by `GetMap`; it currently affects settlement placement but not production or movement.
+  Buildings and armies live on tiles; armies stack (multiple armies + a building can share a
+  tile).
 - **Cities:** a `size`×`size` block (capitals are `CitySize` = 5). `start` is the top-left
   corner; the center is `start + size/2`. Type is `city` (player capital) or `town` (neutral,
   unowned). A city has `population` (grows logistically toward `population_cap`), and the cap is
@@ -224,6 +224,7 @@ for TypeScript) rather than hand-writing request types.
 ### Common types
 
 - **Typed IDs** — `UserId`/`CityId`/`BuildingId`/`ArmyId` are each `{ "value": "<uuid>" }`.
+  `TileId` is the tile's coordinate identity: `{ "x": int32, "y": int32 }`.
 - **Coordinates** — `{ "x": int32, "y": int32 }`.
 - **Rate** — `{ "value": int64, "scale": int32 }`; the real rate is `value / scale` **per
   second**. Resource flows use `scale = 3600` (per hour). The client divides to display.
@@ -233,7 +234,7 @@ for TypeScript) rather than hand-writing request types.
     `_MINE` (+ `_UNSPECIFIED`).
   - `TroopType`: `TROOP_TYPE_SOLDIER`, `_ARCHER`, `_CAVALRY`, `_ARTILLERY` (+ `_UNSPECIFIED`).
 - **EntityBag** — a flat collection of raw entities returned by list/map/stream responses:
-  `{ users[], cities[], buildings[], armies[] }`. Stream deletion tombstones live on
+  `{ users[], cities[], buildings[], armies[], tiles[] }`. Stream deletion tombstones live on
   `StreamStateResponse`, not in the entity collection.
 
 ### Entity shapes & visibility
@@ -249,8 +250,9 @@ for TypeScript) rather than hand-writing request types.
   construction_end? }` — under construction when `level != target_level` (timestamps present).
 - **Army** `{ army_id, owner (UserId), coords, troops[] (TroopStack{type, count}), destination?
   (Coordinates) }` — `destination` is set while marching and unset when idle/arrived.
-- **Tile** `{ x, y, terrain, city_id?, building_id?, army_ids[] }` — terrain is immutable for the
-  current generated world; occupancy comes from tile actors.
+- **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
+  immutable for the current generated world; occupancy references resolve through the same
+  `EntityBag`.
 - **Visibility rules** (enforced server-side):
   - Reads that expose the world (`GetMap`, `ListBuildings`) filter cities/buildings/armies to
     those within `VisionRadius` of an owned city; non-owned city economy fields are stripped.
@@ -308,12 +310,11 @@ for TypeScript) rather than hand-writing request types.
 - `ListArmies() → { army_ids[], entities(armies) }` — your armies (all, regardless of vision).
 
 **MapService**
-- `GetMap() → { city_ids[], building_ids[], entities(cities, buildings, armies), terrain }` —
-  vision-filtered entity snapshot plus the complete terrain grid. `terrain` is
-  `{ width, height, tiles[] }`, with `(x, y)` at `tiles[y × width + x]`. Non-owned city economy
-  is stripped. Use to bootstrap the map; keep entities live with `StreamState`.
-- `GetTile(coords) → { tile: { x, y, terrain, city_id?, building_id?, army_ids[] } }` —
-  vision-gated.
+- `GetMap() → { tile_ids[], entities(tiles, cities, buildings, armies) }` — the tile IDs are the
+  map roots and each tile's occupancy IDs resolve through the same bag. Every terrain tile is
+  included; occupancy references and their entities remain vision-filtered. Non-owned city
+  economy is stripped. Use to bootstrap the map; keep dynamic entities live with `StreamState`.
+- `GetTile(tile_id) → { tile }` — vision-gated.
 
 **ConfigService**
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),

@@ -92,12 +92,11 @@ func (TerrainType) EnumDescriptor() ([]byte, []int) {
 // Tile combines immutable terrain with the tile's current occupancy.
 type Tile struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	X             int32                  `protobuf:"varint,1,opt,name=x,proto3" json:"x,omitempty"`
-	Y             int32                  `protobuf:"varint,2,opt,name=y,proto3" json:"y,omitempty"`
-	CityId        *CityId                `protobuf:"bytes,3,opt,name=city_id,json=cityId,proto3,oneof" json:"city_id,omitempty"`
-	BuildingId    *BuildingId            `protobuf:"bytes,4,opt,name=building_id,json=buildingId,proto3,oneof" json:"building_id,omitempty"`
-	ArmyIds       []*ArmyId              `protobuf:"bytes,5,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
-	Terrain       TerrainType            `protobuf:"varint,6,opt,name=terrain,proto3,enum=cityio.entity.v1.TerrainType" json:"terrain,omitempty"`
+	TileId        *TileId                `protobuf:"bytes,1,opt,name=tile_id,json=tileId,proto3" json:"tile_id,omitempty"`
+	CityId        *CityId                `protobuf:"bytes,2,opt,name=city_id,json=cityId,proto3,oneof" json:"city_id,omitempty"`
+	BuildingId    *BuildingId            `protobuf:"bytes,3,opt,name=building_id,json=buildingId,proto3,oneof" json:"building_id,omitempty"`
+	ArmyIds       []*ArmyId              `protobuf:"bytes,4,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
+	Terrain       TerrainType            `protobuf:"varint,5,opt,name=terrain,proto3,enum=cityio.entity.v1.TerrainType" json:"terrain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -132,18 +131,11 @@ func (*Tile) Descriptor() ([]byte, []int) {
 	return file_cityio_entity_v1_tile_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Tile) GetX() int32 {
+func (x *Tile) GetTileId() *TileId {
 	if x != nil {
-		return x.X
+		return x.TileId
 	}
-	return 0
-}
-
-func (x *Tile) GetY() int32 {
-	if x != nil {
-		return x.Y
-	}
-	return 0
+	return nil
 }
 
 func (x *Tile) GetCityId() *CityId {
@@ -178,15 +170,14 @@ var File_cityio_entity_v1_tile_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_tile_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/tile.proto\x12\x10cityio.entity.v1\x1a\x1acityio/entity/v1/ids.proto\"\xa8\x02\n" +
-	"\x04Tile\x12\f\n" +
-	"\x01x\x18\x01 \x01(\x05R\x01x\x12\f\n" +
-	"\x01y\x18\x02 \x01(\x05R\x01y\x126\n" +
-	"\acity_id\x18\x03 \x01(\v2\x18.cityio.entity.v1.CityIdH\x00R\x06cityId\x88\x01\x01\x12B\n" +
-	"\vbuilding_id\x18\x04 \x01(\v2\x1c.cityio.entity.v1.BuildingIdH\x01R\n" +
+	"\x1bcityio/entity/v1/tile.proto\x12\x10cityio.entity.v1\x1a\x1acityio/entity/v1/ids.proto\"\xbf\x02\n" +
+	"\x04Tile\x121\n" +
+	"\atile_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.TileIdR\x06tileId\x126\n" +
+	"\acity_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.CityIdH\x00R\x06cityId\x88\x01\x01\x12B\n" +
+	"\vbuilding_id\x18\x03 \x01(\v2\x1c.cityio.entity.v1.BuildingIdH\x01R\n" +
 	"buildingId\x88\x01\x01\x123\n" +
-	"\barmy_ids\x18\x05 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x127\n" +
-	"\aterrain\x18\x06 \x01(\x0e2\x1d.cityio.entity.v1.TerrainTypeR\aterrainB\n" +
+	"\barmy_ids\x18\x04 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x127\n" +
+	"\aterrain\x18\x05 \x01(\x0e2\x1d.cityio.entity.v1.TerrainTypeR\aterrainB\n" +
 	"\n" +
 	"\b_city_idB\x0e\n" +
 	"\f_building_id*\xf6\x01\n" +
@@ -219,20 +210,22 @@ var file_cityio_entity_v1_tile_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_cityio_entity_v1_tile_proto_goTypes = []any{
 	(TerrainType)(0),   // 0: cityio.entity.v1.TerrainType
 	(*Tile)(nil),       // 1: cityio.entity.v1.Tile
-	(*CityId)(nil),     // 2: cityio.entity.v1.CityId
-	(*BuildingId)(nil), // 3: cityio.entity.v1.BuildingId
-	(*ArmyId)(nil),     // 4: cityio.entity.v1.ArmyId
+	(*TileId)(nil),     // 2: cityio.entity.v1.TileId
+	(*CityId)(nil),     // 3: cityio.entity.v1.CityId
+	(*BuildingId)(nil), // 4: cityio.entity.v1.BuildingId
+	(*ArmyId)(nil),     // 5: cityio.entity.v1.ArmyId
 }
 var file_cityio_entity_v1_tile_proto_depIdxs = []int32{
-	2, // 0: cityio.entity.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
-	3, // 1: cityio.entity.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
-	4, // 2: cityio.entity.v1.Tile.army_ids:type_name -> cityio.entity.v1.ArmyId
-	0, // 3: cityio.entity.v1.Tile.terrain:type_name -> cityio.entity.v1.TerrainType
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 0: cityio.entity.v1.Tile.tile_id:type_name -> cityio.entity.v1.TileId
+	3, // 1: cityio.entity.v1.Tile.city_id:type_name -> cityio.entity.v1.CityId
+	4, // 2: cityio.entity.v1.Tile.building_id:type_name -> cityio.entity.v1.BuildingId
+	5, // 3: cityio.entity.v1.Tile.army_ids:type_name -> cityio.entity.v1.ArmyId
+	0, // 4: cityio.entity.v1.Tile.terrain:type_name -> cityio.entity.v1.TerrainType
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_tile_proto_init() }
