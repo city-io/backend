@@ -63,3 +63,35 @@ func TestArmyMarchProjectsClosestKnownLandWithoutRedundantBoolean(t *testing.T) 
 		t.Fatalf("estimated duration = %s, want 1.25s", got)
 	}
 }
+
+func TestArmyMarchProjectsActorsRemainingPath(t *testing.T) {
+	destination := 2
+	marchID := "march"
+	army := domain.Army{
+		ArmyID: "army", Owner: "owner", Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 1},
+		DestX: &destination, DestY: new(int), MarchID: &marchID,
+		RemainingPath: []domain.Coordinates{{X: 1, Y: 1}, {X: 2, Y: 0}},
+	}
+	server := &Server{world: routeTestWorld{grid: domain.TerrainGrid{
+		Width: 3, Height: 2,
+		Tiles: []domain.TerrainType{
+			domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland,
+			domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland,
+		},
+	}}}
+	explored := map[domain.Coordinates]struct{}{}
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 3; x++ {
+			explored[domain.Coordinates{X: x, Y: y}] = struct{}{}
+		}
+	}
+
+	march := server.projectOwnedArmyMarch(army, explored)
+	if march == nil || len(march.GetRemainingRoute()) != 2 {
+		t.Fatalf("march projection = %+v", march)
+	}
+	first := march.GetRemainingRoute()[0].GetCoords()
+	if first.GetX() != 1 || first.GetY() != 1 {
+		t.Fatalf("projected path starts at (%d,%d), want actor path (1,1)", first.GetX(), first.GetY())
+	}
+}

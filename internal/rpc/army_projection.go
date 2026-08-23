@@ -21,6 +21,10 @@ func (s *Server) projectArmyRoute(army domain.Army, destination domain.Coordinat
 		s.world.Terrain(), explored,
 		domain.Coordinates{X: army.X, Y: army.Y}, destination,
 	)
+	return s.projectArmyPath(army, path, explored)
+}
+
+func (s *Server) projectArmyPath(army domain.Army, path []domain.Coordinates, explored map[domain.Coordinates]struct{}) projectedArmyRoute {
 	steps := make([]*entityv1.ArmyRouteStep, 0, len(path))
 	pathCost := 0
 	for _, coords := range path {
@@ -48,7 +52,10 @@ func (s *Server) projectOwnedArmyMarch(army domain.Army, explored map[domain.Coo
 		return nil
 	}
 	destination := domain.Coordinates{X: *army.DestX, Y: *army.DestY}
-	route := s.projectArmyRoute(army, destination, explored)
+	route := s.projectArmyPath(army, army.RemainingPath, explored)
+	if army.RemainingPath == nil {
+		route = s.projectArmyRoute(army, destination, explored)
+	}
 	return &entityv1.ArmyMarch{
 		ArmyMarchId:                mapping.ToArmyMarchId(*army.MarchID),
 		ArmyId:                     mapping.ToArmyId(army.ArmyID),

@@ -90,17 +90,7 @@ func FindLandPath(grid TerrainGrid, start, destination Coordinates) ([]Coordinat
 // cannot be reached, it returns a route to the closest reachable explored land
 // and reports reachesDestination=false.
 func FindKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, start, destination Coordinates) ([]Coordinates, bool) {
-	masked := TerrainGrid{Width: grid.Width, Height: grid.Height, Tiles: make([]TerrainType, len(grid.Tiles))}
-	for y := 0; y < grid.Height; y++ {
-		for x := 0; x < grid.Width; x++ {
-			coords := Coordinates{X: x, Y: y}
-			if _, known := explored[coords]; known || coords == start {
-				masked.Tiles[y*grid.Width+x] = grid.Tiles[y*grid.Width+x]
-			} else {
-				masked.Tiles[y*grid.Width+x] = TerrainTypePlains
-			}
-		}
-	}
+	masked := knownTerrainGrid(grid, explored, start)
 
 	if path, ok := FindLandPath(masked, start, destination); ok {
 		return path, true
@@ -144,6 +134,56 @@ func FindKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, star
 		return []Coordinates{}, false
 	}
 	return buildPath(previous, start, best), false
+}
+
+// UpdateKnownLandPath keeps an existing equal-cost route stable and replaces
+// it only when newly known terrain invalidates it or reveals a cheaper route.
+func UpdateKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, start, destination Coordinates, current []Coordinates) ([]Coordinates, bool) {
+	candidate, reaches := FindKnownLandPath(grid, explored, start, destination)
+	if len(current) == 0 || len(candidate) == 0 || current[len(current)-1] != candidate[len(candidate)-1] {
+		return candidate, reaches
+	}
+	masked := knownTerrainGrid(grid, explored, start)
+	currentCost, currentValid := routeCost(masked, start, current)
+	candidateCost, candidateValid := routeCost(masked, start, candidate)
+	if currentValid && candidateValid && currentCost <= candidateCost {
+		return current, reaches
+	}
+	return candidate, reaches
+}
+
+func knownTerrainGrid(grid TerrainGrid, explored map[Coordinates]struct{}, start Coordinates) TerrainGrid {
+	masked := TerrainGrid{Width: grid.Width, Height: grid.Height, Tiles: make([]TerrainType, len(grid.Tiles))}
+	for y := 0; y < grid.Height; y++ {
+		for x := 0; x < grid.Width; x++ {
+			coords := Coordinates{X: x, Y: y}
+			if _, known := explored[coords]; known || coords == start {
+				masked.Tiles[y*grid.Width+x] = grid.Tiles[y*grid.Width+x]
+			} else {
+				masked.Tiles[y*grid.Width+x] = TerrainTypePlains
+			}
+		}
+	}
+	return masked
+}
+
+func routeCost(grid TerrainGrid, start Coordinates, path []Coordinates) (int, bool) {
+	cost := 0
+	current := start
+	for _, next := range path {
+		direction := Coordinates{X: next.X - current.X, Y: next.Y - current.Y}
+		if direction == (Coordinates{}) || abs(direction.X) > 1 || abs(direction.Y) > 1 {
+			return 0, false
+		}
+		terrain, ok := grid.At(next.X, next.Y)
+		stepCost := TerrainMovementCost(terrain)
+		if !ok || stepCost == 0 || cutsBlockedCorner(grid, current, direction) {
+			return 0, false
+		}
+		cost += stepCost
+		current = next
+	}
+	return cost, true
 }
 
 func traversable(grid TerrainGrid, coords Coordinates) bool {

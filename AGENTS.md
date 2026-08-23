@@ -342,8 +342,10 @@ for TypeScript) rather than hand-writing request types.
   their current tile-visibility state.
 - `MoveArmy(army_id, destination) → {}` — must own; sets the marching destination (clamped to the
   map). Missing destinations are invalid. Unknown terrain is planned as ordinary land and the
-  route is recomputed after every reveal; if the target proves to be water or becomes unreachable,
-  the army stops at the closest reachable explored land instead of leaking that fact up front.
+  the remaining route stays stable while it remains optimal and traversable, and is replaced when
+  newly revealed terrain invalidates it or exposes a faster route. If the target proves to be water
+  or becomes unreachable, the army stops at the closest reachable explored land instead of leaking
+  that fact up front.
 - `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
   tile. The source's troops fold into the target and the source army disappears.
 - `ListArmies() → { army_ids[], entities(armies, army_marches) }` — your armies and their active

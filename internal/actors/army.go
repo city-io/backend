@@ -72,7 +72,9 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		ctx.Respond(messages.Ack{})
 
 	case messages.GetArmyMessage:
-		ctx.Respond(&messages.GetArmyResponseMessage{Army: state.Army})
+		army := state.Army
+		army.RemainingPath = append([]domain.Coordinates(nil), state.path...)
+		ctx.Respond(&messages.GetArmyResponseMessage{Army: army})
 
 	case messages.MoveArmyMessage:
 		x, y := clampCoord(msg.X), clampCoord(msg.Y)
@@ -192,7 +194,7 @@ func (state *armyActor) step() {
 	marchEnded := arrived
 	if arrived {
 		state.clearMarch()
-	} else if err := state.planPath(); err != nil {
+	} else if err := state.refreshPath(); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to refresh army route", "army_id", state.Army.ArmyID, "error", err)
 		state.path = nil
 	} else if len(state.path) == 0 {
@@ -251,6 +253,27 @@ func (state *armyActor) planPath() error {
 	state.path, _ = domain.FindKnownLandPath(
 		state.World.Terrain(), known,
 		domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination,
+	)
+	return nil
+}
+
+func (state *armyActor) refreshPath() error {
+	if state.Army.DestX == nil || state.Army.DestY == nil {
+		state.path = nil
+		return nil
+	}
+	explored, err := state.Store.GetExploredTiles(state.Ctx(), state.Army.Owner)
+	if err != nil {
+		return err
+	}
+	known := make(map[domain.Coordinates]struct{}, len(explored))
+	for _, coords := range explored {
+		known[coords] = struct{}{}
+	}
+	destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
+	state.path, _ = domain.UpdateKnownLandPath(
+		state.World.Terrain(), known,
+		domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination, state.path,
 	)
 	return nil
 }
