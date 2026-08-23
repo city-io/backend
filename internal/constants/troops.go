@@ -14,6 +14,7 @@ const (
 	// towns start at the maximum so they cannot be captured undefended.
 	DefaultGarrisonPercent = 10
 	NeutralGarrisonPercent = 30
+	MinGarrisonPercent     = 5
 	MaxGarrisonPercent     = 30
 
 	// Tax is configured as a whole-number percentage. At 100%, each taxable

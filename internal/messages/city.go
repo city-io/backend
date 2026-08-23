@@ -89,7 +89,7 @@ type CityNotFoundError struct {
 type InvalidCityPolicyError struct{}
 
 func (*InvalidCityPolicyError) Error() string {
-	return "garrison must be 0-30% and tax rate must be 0-100%"
+	return "garrison must be 5-30% and tax rate must be 0-100%"
 }
 
 type CityPolicyLockedError struct{}

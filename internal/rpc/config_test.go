@@ -21,6 +21,7 @@ func TestGameConfigExposesPopulationPolicy(t *testing.T) {
 	policy := response.Msg.GetPopulationPolicy()
 	if policy.GetCoreCivilianPercent() != constants.CoreCivilianPercent ||
 		policy.GetDefaultGarrisonPercent() != constants.DefaultGarrisonPercent ||
+		policy.GetMinGarrisonPercent() != constants.MinGarrisonPercent ||
 		policy.GetMaxGarrisonPercent() != constants.MaxGarrisonPercent ||
 		policy.GetMaxMilitaryPercent() != 100-constants.CoreCivilianPercent ||
 		policy.GetMaxTaxRatePercent() != constants.MaxTaxRatePercent {

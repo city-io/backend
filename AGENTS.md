@@ -203,7 +203,7 @@ the "Client / frontend API reference" section below.
     reduce both the garrison and settlement population. Completion transfers the existing
     settlement and its buildings to the attacker.
   - **Population transfer:** 55% of housing capacity is a protected civilian core. A city targets
-    a configurable 0–30% passive garrison (10% by default; neutral towns start at 30%); residents
+    a configurable 5–30% passive garrison (10% by default; neutral towns start at 30%); residents
     above the core plus garrison target are recruitable. Starting a training order immediately
     removes its population cost from the settlement. Armies own that manpower thereafter, deaths
     are permanent, and future settlement growth can create new recruitable surplus.
@@ -344,7 +344,7 @@ for TypeScript) rather than hand-writing request types.
 - `CreateCity(type, owner?, name, size) → { city }` — placed on a random empty block.
 - `ListCities() → { city_ids[], entities(cities) }` — your owned cities.
 - `UpdateCityPolicy(city_id, garrison_percent, tax_rate_percent) → { city }` — owner-only;
-  garrison must be 0–30 and tax must be 0–100. Policy changes stream immediately.
+  garrison must be 5–30 and tax must be 0–100. Policy changes stream immediately.
 
 **BuildingService**
 - `CreateBuilding(city_id, type, coords) → { building }` — must own the city; starts construction

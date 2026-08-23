@@ -28,6 +28,7 @@ func (h *configHandler) GetGameConfig(_ context.Context, _ *connect.Request[serv
 			CoreCivilianPercent:    constants.CoreCivilianPercent,
 			DefaultGarrisonPercent: constants.DefaultGarrisonPercent,
 			NeutralGarrisonPercent: constants.NeutralGarrisonPercent,
+			MinGarrisonPercent:     constants.MinGarrisonPercent,
 			MaxGarrisonPercent:     constants.MaxGarrisonPercent,
 			MaxMilitaryPercent:     100 - constants.CoreCivilianPercent,
 			DefaultTaxRatePercent:  constants.DefaultTaxRatePercent,

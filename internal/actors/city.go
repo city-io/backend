@@ -141,7 +141,7 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			ctx.Respond(&messages.CityPolicyLockedError{})
 			return
 		}
-		if msg.GarrisonPercent < 0 || msg.GarrisonPercent > constants.MaxGarrisonPercent || msg.TaxRatePercent < 0 || msg.TaxRatePercent > constants.MaxTaxRatePercent {
+		if msg.GarrisonPercent < constants.MinGarrisonPercent || msg.GarrisonPercent > constants.MaxGarrisonPercent || msg.TaxRatePercent < 0 || msg.TaxRatePercent > constants.MaxTaxRatePercent {
 			ctx.Respond(&messages.InvalidCityPolicyError{})
 			return
 		}

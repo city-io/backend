@@ -304,6 +304,7 @@ type PopulationPolicyConfig struct {
 	MaxTaxRatePercent      int32                  `protobuf:"varint,7,opt,name=max_tax_rate_percent,json=maxTaxRatePercent,proto3" json:"max_tax_rate_percent,omitempty"`
 	// Gold per taxable resident at a 100% tax rate.
 	TaxGoldPerPopulation *v1.Rate `protobuf:"bytes,8,opt,name=tax_gold_per_population,json=taxGoldPerPopulation,proto3" json:"tax_gold_per_population,omitempty"`
+	MinGarrisonPercent   int32    `protobuf:"varint,9,opt,name=min_garrison_percent,json=minGarrisonPercent,proto3" json:"min_garrison_percent,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -392,6 +393,13 @@ func (x *PopulationPolicyConfig) GetTaxGoldPerPopulation() *v1.Rate {
 		return x.TaxGoldPerPopulation
 	}
 	return nil
+}
+
+func (x *PopulationPolicyConfig) GetMinGarrisonPercent() int32 {
+	if x != nil {
+		return x.MinGarrisonPercent
+	}
+	return 0
 }
 
 type GetGameConfigResponse struct {
@@ -510,7 +518,7 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x0eBuildingConfig\x122\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x12=\n" +
 	"\x06levels\x18\x02 \x03(\v2%.cityio.service.v1.BuildingLevelStatsR\x06levels\"\x16\n" +
-	"\x14GetGameConfigRequest\"\xdd\x03\n" +
+	"\x14GetGameConfigRequest\"\x8f\x04\n" +
 	"\x16PopulationPolicyConfig\x122\n" +
 	"\x15core_civilian_percent\x18\x01 \x01(\x05R\x13coreCivilianPercent\x128\n" +
 	"\x18default_garrison_percent\x18\x02 \x01(\x05R\x16defaultGarrisonPercent\x128\n" +
@@ -519,7 +527,8 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x14max_military_percent\x18\x05 \x01(\x05R\x12maxMilitaryPercent\x127\n" +
 	"\x18default_tax_rate_percent\x18\x06 \x01(\x05R\x15defaultTaxRatePercent\x12/\n" +
 	"\x14max_tax_rate_percent\x18\a \x01(\x05R\x11maxTaxRatePercent\x12M\n" +
-	"\x17tax_gold_per_population\x18\b \x01(\v2\x16.cityio.entity.v1.RateR\x14taxGoldPerPopulation\"\x85\x03\n" +
+	"\x17tax_gold_per_population\x18\b \x01(\v2\x16.cityio.entity.v1.RateR\x14taxGoldPerPopulation\x120\n" +
+	"\x14min_garrison_percent\x18\t \x01(\x05R\x12minGarrisonPercent\"\x85\x03\n" +
 	"\x15GetGameConfigResponse\x12\x19\n" +
 	"\bmap_size\x18\x01 \x01(\x05R\amapSize\x12\x1b\n" +
 	"\tcity_size\x18\x02 \x01(\x05R\bcitySize\x12#\n" +
