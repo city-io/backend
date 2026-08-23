@@ -76,3 +76,24 @@ func TestBarracksRetriesCompletedOrderUntilArmySpawns(t *testing.T) {
 		t.Fatalf("spawn calls = %d, want 2", cluster.spawnCalls)
 	}
 }
+
+func TestBarracksUpgradeRejectedWhileTrainingPending(t *testing.T) {
+	state := &buildingActor{
+		Building: domain.Building{
+			BuildingID:  "barracks",
+			Type:        string(domain.BuildingTypeBarracks),
+			Level:       1,
+			TargetLevel: 1,
+		},
+		Impl: &barracksImpl{
+			queue:  []domain.TrainingOrder{{TrainingOrderID: "order"}},
+			loaded: true,
+		},
+	}
+
+	err := state.upgrade(nil)
+	var training *messages.TrainingInProgressError
+	if !errors.As(err, &training) {
+		t.Fatalf("upgrade error = %T, want TrainingInProgressError", err)
+	}
+}

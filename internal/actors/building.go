@@ -202,6 +202,14 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 	if state.constructionActive() {
 		return &messages.ConstructionInProgressError{BuildingID: state.Building.BuildingID}
 	}
+	if barracks, ok := state.Impl.(*barracksImpl); ok {
+		if !barracks.loaded && !barracks.loadQueue(ctx, state) {
+			return &messages.InternalError{}
+		}
+		if len(barracks.queue) > 0 {
+			return &messages.TrainingInProgressError{BarracksID: state.Building.BuildingID}
+		}
+	}
 	buildingType := state.Building.BuildingType()
 	if state.Building.Level >= constants.MAX_BUILDING_LEVEL {
 		return &messages.MaxLevelReachedError{BuildingID: state.Building.BuildingID}

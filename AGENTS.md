@@ -302,7 +302,7 @@ for TypeScript) rather than hand-writing request types.
 - `GetBuilding(building_id) → { building }` — vision-gated.
 - `UpgradeBuilding(building_id) → {}` — must own; deducts gold and starts construction to the next
   level. Errors: `FailedPrecondition` (`InsufficientGold`, `ConstructionInProgress`,
-  `MaxLevelReached`).
+  `TrainingInProgress` for a barracks with queued orders, `MaxLevelReached`).
 - `DeleteBuilding(building_id) → {}` — must own; city/town centers and barracks with pending
   training orders can't be demolished (`FailedPrecondition`).
 - `ListBuildings(city_id) → { buildings[] }` — vision-filtered.

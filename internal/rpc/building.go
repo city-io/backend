@@ -97,6 +97,8 @@ func (h *buildingHandler) UpgradeBuilding(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
 	case *messages.ConstructionInProgressError:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
+	case *messages.TrainingInProgressError:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
 	case *messages.MaxLevelReachedError:
 		return nil, connect.NewError(connect.CodeFailedPrecondition, v)
 	case error:
