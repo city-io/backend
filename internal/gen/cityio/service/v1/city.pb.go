@@ -260,7 +260,8 @@ func (*ListCitiesRequest) Descriptor() ([]byte, []int) {
 
 type ListCitiesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entities      *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
+	CityIds       []*v1.CityId           `protobuf:"bytes,1,rep,name=city_ids,json=cityIds,proto3" json:"city_ids,omitempty"`
+	Entities      *v1.EntityBag          `protobuf:"bytes,2,opt,name=entities,proto3" json:"entities,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -295,6 +296,13 @@ func (*ListCitiesResponse) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_city_proto_rawDescGZIP(), []int{5}
 }
 
+func (x *ListCitiesResponse) GetCityIds() []*v1.CityId {
+	if x != nil {
+		return x.CityIds
+	}
+	return nil
+}
+
 func (x *ListCitiesResponse) GetEntities() *v1.EntityBag {
 	if x != nil {
 		return x.Entities
@@ -319,9 +327,10 @@ const file_cityio_service_v1_city_proto_rawDesc = "" +
 	"\x06_owner\"@\n" +
 	"\x12CreateCityResponse\x12*\n" +
 	"\x04city\x18\x01 \x01(\v2\x16.cityio.entity.v1.CityR\x04city\"\x13\n" +
-	"\x11ListCitiesRequest\"M\n" +
-	"\x12ListCitiesResponse\x127\n" +
-	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\x95\x02\n" +
+	"\x11ListCitiesRequest\"\x82\x01\n" +
+	"\x12ListCitiesResponse\x123\n" +
+	"\bcity_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x127\n" +
+	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\x95\x02\n" +
 	"\vCityService\x12P\n" +
 	"\aGetCity\x12!.cityio.service.v1.GetCityRequest\x1a\".cityio.service.v1.GetCityResponse\x12Y\n" +
 	"\n" +
@@ -362,18 +371,19 @@ var file_cityio_service_v1_city_proto_depIdxs = []int32{
 	8,  // 2: cityio.service.v1.CreateCityRequest.type:type_name -> cityio.entity.v1.CityType
 	9,  // 3: cityio.service.v1.CreateCityRequest.owner:type_name -> cityio.entity.v1.UserId
 	7,  // 4: cityio.service.v1.CreateCityResponse.city:type_name -> cityio.entity.v1.City
-	10, // 5: cityio.service.v1.ListCitiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	0,  // 6: cityio.service.v1.CityService.GetCity:input_type -> cityio.service.v1.GetCityRequest
-	2,  // 7: cityio.service.v1.CityService.CreateCity:input_type -> cityio.service.v1.CreateCityRequest
-	4,  // 8: cityio.service.v1.CityService.ListCities:input_type -> cityio.service.v1.ListCitiesRequest
-	1,  // 9: cityio.service.v1.CityService.GetCity:output_type -> cityio.service.v1.GetCityResponse
-	3,  // 10: cityio.service.v1.CityService.CreateCity:output_type -> cityio.service.v1.CreateCityResponse
-	5,  // 11: cityio.service.v1.CityService.ListCities:output_type -> cityio.service.v1.ListCitiesResponse
-	9,  // [9:12] is the sub-list for method output_type
-	6,  // [6:9] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	6,  // 5: cityio.service.v1.ListCitiesResponse.city_ids:type_name -> cityio.entity.v1.CityId
+	10, // 6: cityio.service.v1.ListCitiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	0,  // 7: cityio.service.v1.CityService.GetCity:input_type -> cityio.service.v1.GetCityRequest
+	2,  // 8: cityio.service.v1.CityService.CreateCity:input_type -> cityio.service.v1.CreateCityRequest
+	4,  // 9: cityio.service.v1.CityService.ListCities:input_type -> cityio.service.v1.ListCitiesRequest
+	1,  // 10: cityio.service.v1.CityService.GetCity:output_type -> cityio.service.v1.GetCityResponse
+	3,  // 11: cityio.service.v1.CityService.CreateCity:output_type -> cityio.service.v1.CreateCityResponse
+	5,  // 12: cityio.service.v1.CityService.ListCities:output_type -> cityio.service.v1.ListCitiesResponse
+	10, // [10:13] is the sub-list for method output_type
+	7,  // [7:10] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_city_proto_init() }

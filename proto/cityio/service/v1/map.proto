@@ -10,7 +10,9 @@ message GetMapRequest {}
 
 // GetMapResponse is the visible world snapshot used to bootstrap a client.
 message GetMapResponse {
-  cityio.entity.v1.EntityBag entities = 1;
+  repeated cityio.entity.v1.CityId city_ids = 1;
+  repeated cityio.entity.v1.BuildingId building_ids = 2;
+  cityio.entity.v1.EntityBag entities = 3;
 }
 
 message Tile {

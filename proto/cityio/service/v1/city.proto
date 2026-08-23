@@ -26,7 +26,8 @@ message CreateCityResponse {
 
 message ListCitiesRequest {}
 message ListCitiesResponse {
-  cityio.entity.v1.EntityBag entities = 1;
+  repeated cityio.entity.v1.CityId city_ids = 1;
+  cityio.entity.v1.EntityBag entities = 2;
 }
 
 // CityService creates and reads cities.

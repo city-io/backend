@@ -267,7 +267,7 @@ for TypeScript) rather than hand-writing request types.
 **CityService**
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.
 - `CreateCity(type, owner?, name, size) → { city }` — placed on a random empty block.
-- `ListCities() → { entities(cities) }` — your owned cities.
+- `ListCities() → { city_ids[], entities(cities) }` — your owned cities.
 
 **BuildingService**
 - `CreateBuilding(city_id, type, coords) → { building }` — must own the city; starts construction
@@ -293,11 +293,12 @@ for TypeScript) rather than hand-writing request types.
   map). The army then steps one tile per movement tick until it arrives, then idles.
 - `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
   tile. The source's troops fold into the target and the source army disappears.
-- `ListArmies() → { entities(armies) }` — your armies (all, regardless of vision).
+- `ListArmies() → { army_ids[], entities(armies) }` — your armies (all, regardless of vision).
 
 **MapService**
-- `GetMap() → { entities(cities, buildings, armies) }` — vision-filtered world snapshot;
-  non-owned city economy stripped. Use to bootstrap the map; keep it live with `StreamState`.
+- `GetMap() → { city_ids[], building_ids[], entities(cities, buildings, armies) }` —
+  vision-filtered world snapshot; non-owned city economy stripped. Use to bootstrap the map;
+  keep it live with `StreamState`.
 - `GetTile(coords) → { tile: { x, y, city_id?, building_id?, army_ids[] } }` — vision-gated.
 
 **ConfigService**

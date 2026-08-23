@@ -9,6 +9,7 @@ import (
 	"cityio/internal/auth"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -42,6 +43,15 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
 	armyList = domain.FilterArmies(owned, armyList, constants.VisionRadius)
 
+	cityIDs := make([]*entityv1.CityId, 0, len(cityList))
+	for _, c := range cityList {
+		cityIDs = append(cityIDs, mapping.ToCityId(c.CityID))
+	}
+	buildingIDs := make([]*entityv1.BuildingId, 0, len(buildingList))
+	for _, b := range buildingList {
+		buildingIDs = append(buildingIDs, mapping.ToBuildingId(b.BuildingID))
+	}
+
 	bag := mapping.EntitiesToBag(nil, cityList, buildingList, armyList)
 	// Strip owner-only fields (production/upkeep rates) from any city the caller
 	// doesn't own. Population, cap, and starving stay public.
@@ -53,7 +63,9 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	}
 
 	return connect.NewResponse(&servicev1.GetMapResponse{
-		Entities: bag,
+		CityIds:     cityIDs,
+		BuildingIds: buildingIDs,
+		Entities:    bag,
 	}), nil
 }
 

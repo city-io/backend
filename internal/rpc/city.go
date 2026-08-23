@@ -9,6 +9,7 @@ import (
 	"cityio/internal/auth"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -73,7 +74,13 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	cityIDs := make([]*entityv1.CityId, 0, len(cityList))
+	for _, c := range cityList {
+		cityIDs = append(cityIDs, mapping.ToCityId(c.CityID))
+	}
+
 	return connect.NewResponse(&servicev1.ListCitiesResponse{
+		CityIds:  cityIDs,
 		Entities: mapping.EntitiesToBag(nil, cityList, nil, nil),
 	}), nil
 }

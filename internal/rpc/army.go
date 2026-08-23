@@ -9,6 +9,7 @@ import (
 	"cityio/internal/auth"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -170,7 +171,12 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 			owned = append(owned, a)
 		}
 	}
+	armyIDs := make([]*entityv1.ArmyId, 0, len(owned))
+	for _, a := range owned {
+		armyIDs = append(armyIDs, mapping.ToArmyId(a.ArmyID))
+	}
 	return connect.NewResponse(&servicev1.ListArmiesResponse{
+		ArmyIds:  armyIDs,
 		Entities: mapping.EntitiesToBag(nil, nil, nil, owned),
 	}), nil
 }
