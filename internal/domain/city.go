@@ -39,12 +39,13 @@ type City struct {
 	NetFoodFlow        int64 `json:"netFoodFlow"`
 	Starving           bool  `json:"starving"`
 
-	// PopulationGrowthRate is the current per-hour population change. Positive
-	// when the city is growing, negative when starving and population is
-	// declining. Computed from the per-tick delta applied in growPopulation.
-	PopulationGrowthRate int64   `json:"populationGrowthRate"`
-	TaxIncomeRate        int64   `json:"taxIncomeRate"`
-	MilitiaBattleID      *string `json:"-"`
+	// PopulationGrowthBeforeTaxRate is the current per-hour biological growth
+	// baseline. PopulationGrowthRate applies the configured tax modifier to it;
+	// both are derived from each tick and are not persisted.
+	PopulationGrowthBeforeTaxRate int64   `json:"populationGrowthBeforeTaxRate"`
+	PopulationGrowthRate          int64   `json:"populationGrowthRate"`
+	TaxIncomeRate                 int64   `json:"taxIncomeRate"`
+	MilitiaBattleID               *string `json:"-"`
 
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`

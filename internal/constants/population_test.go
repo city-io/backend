@@ -58,3 +58,12 @@ func TestNeutralMilitiaUsesEntireNonCorePopulationShare(t *testing.T) {
 		t.Fatalf("neutral town recruitable population = %d, want 0", got)
 	}
 }
+
+func TestTaxGrowthMultiplierCanReverseGrowth(t *testing.T) {
+	if got := TaxGrowthMultiplier(0); got != 1 {
+		t.Fatalf("zero-tax growth multiplier = %v, want 1", got)
+	}
+	if got := TaxGrowthMultiplier(MaxTaxRatePercent); got != -0.5 {
+		t.Fatalf("maximum-tax growth multiplier = %v, want -0.5", got)
+	}
+}

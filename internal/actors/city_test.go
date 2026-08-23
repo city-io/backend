@@ -60,7 +60,7 @@ func TestCityGrowthRefillsMilitiaBeforeTaxablePopulation(t *testing.T) {
 	}
 }
 
-func TestMaximumTaxStopsPositiveGrowth(t *testing.T) {
+func TestMaximumTaxReversesPositiveGrowth(t *testing.T) {
 	state := cityActor{City: domain.City{
 		Population:     200,
 		PopulationCap:  250,
@@ -68,8 +68,14 @@ func TestMaximumTaxStopsPositiveGrowth(t *testing.T) {
 		MilitiaPercent: 10,
 	}}
 	state.growPopulation(false, 0, 1)
-	if state.City.Population != 200 || state.City.PopulationGrowthRate != 0 {
-		t.Fatalf("population changed under maximum tax: %+v", state.City)
+	if state.City.Population >= 200 || state.City.PopulationGrowthRate >= 0 {
+		t.Fatalf("population did not decline under maximum tax: %+v", state.City)
+	}
+	if state.City.PopulationGrowthBeforeTaxRate <= 0 {
+		t.Fatalf("untaxed growth baseline = %d, want positive", state.City.PopulationGrowthBeforeTaxRate)
+	}
+	if got, want := state.City.PopulationGrowthRate, -state.City.PopulationGrowthBeforeTaxRate/2; math.Abs(float64(got-want)) > 1 {
+		t.Fatalf("taxed growth = %d, want about %d", got, want)
 	}
 }
 

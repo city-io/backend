@@ -176,25 +176,26 @@ func UserToProto(u domain.User) *entityv1.User {
 // CityToProto converts a domain city to its proto representation.
 func CityToProto(c domain.City) *entityv1.City {
 	out := &entityv1.City{
-		CityId:                ToCityId(c.CityID),
-		Type:                  CityTypeToProto(c.Type),
-		Name:                  c.Name,
-		Population:            c.Population,
-		PopulationCap:         c.PopulationCap,
-		Start:                 &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
-		Size:                  int32(c.Size),
-		FoodProduction:        RatePerHour(c.FoodProductionRate),
-		FoodUpkeep:            RatePerHour(c.FoodUpkeep),
-		NetFoodFlow:           RatePerHour(c.NetFoodFlow),
-		Starving:              c.Starving,
-		PopulationGrowth:      RatePerHour(c.PopulationGrowthRate),
-		MilitiaPopulation:     c.MilitiaPopulation,
-		MilitiaPercent:        int32(c.MilitiaPercent),
-		CorePopulation:        constants.CorePopulation(c),
-		RecruitablePopulation: float64(constants.RecruitablePopulation(c)),
-		TaxablePopulation:     constants.TaxablePopulation(c),
-		TaxRatePercent:        int32(c.TaxRatePercent),
-		TaxIncome:             RatePerHour(constants.TaxIncomePerHour(c)),
+		CityId:                    ToCityId(c.CityID),
+		Type:                      CityTypeToProto(c.Type),
+		Name:                      c.Name,
+		Population:                c.Population,
+		PopulationCap:             c.PopulationCap,
+		Start:                     &entityv1.Coordinates{X: int32(c.StartX), Y: int32(c.StartY)},
+		Size:                      int32(c.Size),
+		FoodProduction:            RatePerHour(c.FoodProductionRate),
+		FoodUpkeep:                RatePerHour(c.FoodUpkeep),
+		NetFoodFlow:               RatePerHour(c.NetFoodFlow),
+		Starving:                  c.Starving,
+		PopulationGrowth:          RatePerHour(c.PopulationGrowthRate),
+		MilitiaPopulation:         c.MilitiaPopulation,
+		MilitiaPercent:            int32(c.MilitiaPercent),
+		CorePopulation:            constants.CorePopulation(c),
+		RecruitablePopulation:     float64(constants.RecruitablePopulation(c)),
+		TaxablePopulation:         constants.TaxablePopulation(c),
+		TaxRatePercent:            int32(c.TaxRatePercent),
+		TaxIncome:                 RatePerHour(constants.TaxIncomePerHour(c)),
+		PopulationGrowthBeforeTax: RatePerHour(c.PopulationGrowthBeforeTaxRate),
 	}
 	if c.Owner != nil {
 		out.Owner = ToUserId(*c.Owner)
@@ -213,6 +214,7 @@ func HidePrivateCityFields(c *entityv1.City) {
 	c.NetFoodFlow = nil
 	c.TaxRatePercent = 0
 	c.TaxIncome = nil
+	c.PopulationGrowthBeforeTax = nil
 	c.RecruitablePopulation = 0
 }
 

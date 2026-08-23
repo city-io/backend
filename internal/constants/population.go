@@ -19,12 +19,14 @@ const (
 	MaxMilitiaPercent     = 100 - CoreCivilianPercent
 
 	// Tax is configured as a whole-number percentage. At 100%, each taxable
-	// resident yields TaxGoldPerPopPerHour gold/hour and positive population
-	// growth is fully suppressed.
-	DefaultTaxRatePercent       = 10
-	NeutralTaxRatePercent       = 0
-	MaxTaxRatePercent           = 100
-	TaxGoldPerPopPerHour  int64 = 16
+	// resident yields TaxGoldPerPopPerHour gold/hour. The growth penalty is
+	// deliberately stronger than the tax rate: maximum tax turns normal growth
+	// into population decline instead of merely stopping it.
+	DefaultTaxRatePercent            = 10
+	NeutralTaxRatePercent            = 0
+	MaxTaxRatePercent                = 100
+	MaxTaxGrowthPenaltyPercent       = 150
+	TaxGoldPerPopPerHour       int64 = 16
 )
 
 func CorePopulation(city domain.City) float64 {
@@ -50,6 +52,7 @@ func TaxIncomePerHour(city domain.City) int64 {
 	))
 }
 
-func PositiveGrowthMultiplier(taxRatePercent int) float64 {
-	return max(0, 1-float64(taxRatePercent)/100)
+func TaxGrowthMultiplier(taxRatePercent int) float64 {
+	penalty := float64(taxRatePercent) * float64(MaxTaxGrowthPenaltyPercent) / float64(MaxTaxRatePercent) / 100
+	return 1 - penalty
 }

@@ -207,8 +207,9 @@ the "Client / frontend API reference" section below.
     removes its population cost from the settlement. Armies own that manpower thereafter, deaths
     are permanent, and future settlement growth can create new recruitable surplus.
   - **Tax policy:** each owned city has a 0–100% tax rate (10% by default). Every non-militia
-    resident is taxable. At 100%, each taxable resident yields 16 gold/hour and positive population
-    growth is fully suppressed; income and growth effects scale linearly with the configured rate.
+    resident is taxable. At 100%, each taxable resident yields 16 gold/hour and removes 150% of
+    untaxed growth, turning growth into a 50% baseline decline; income and growth effects scale
+    linearly with the configured rate.
   - **Food upkeep:** each army's food upkeep is added to its **nearest owned settlement's**
     upkeep, recomputed (by Chebyshev distance) as the army marches. Cities and captured towns
     both qualify because they share the `City` domain model.
@@ -291,8 +292,8 @@ for TypeScript) rather than hand-writing request types.
   population_cap (double), start (Coordinates, top-left), size, starving (bool),
   population_growth (Rate), militia_population, militia_percent, core_population,
   taxable_population`. **Owner-only** fields (nil/zero for non-owners): `food_production,
-  food_upkeep, net_food_flow (Rate), recruitable_population, tax_rate_percent, tax_income`. See
-  `mapping.HidePrivateCityFields`.
+  food_upkeep, net_food_flow (Rate), recruitable_population, tax_rate_percent, tax_income,
+  population_growth_before_tax`. See `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
 - **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
@@ -413,7 +414,7 @@ for TypeScript) rather than hand-writing request types.
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),
   city_tick (Duration), buildings[]: { type, levels[]: { level, cost[], construction_time
   (Duration), production[], population } }, population_policy }` — *public*, static tunables for
-  the client, including civilian/militia/tax limits and the tax yield rate. Note:
+  the client, including civilian/militia/tax limits, tax yield, and the maximum tax-growth penalty. Note:
   troop stats are **not** exposed here yet (see Game model → troop stat table).
 
 ### Error codes (Connect)

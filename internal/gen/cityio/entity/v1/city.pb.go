@@ -66,8 +66,12 @@ type City struct {
 	NetFoodFlow    *Rate `protobuf:"bytes,11,opt,name=net_food_flow,json=netFoodFlow,proto3" json:"net_food_flow,omitempty"`
 	TaxRatePercent int32 `protobuf:"varint,19,opt,name=tax_rate_percent,json=taxRatePercent,proto3" json:"tax_rate_percent,omitempty"`
 	TaxIncome      *Rate `protobuf:"bytes,20,opt,name=tax_income,json=taxIncome,proto3" json:"tax_income,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Current population change before tax policy is applied. This owner-only
+	// baseline lets clients preview policy changes without guessing the city
+	// simulation's food and logistic-growth inputs.
+	PopulationGrowthBeforeTax *Rate `protobuf:"bytes,21,opt,name=population_growth_before_tax,json=populationGrowthBeforeTax,proto3" json:"population_growth_before_tax,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *City) Reset() {
@@ -240,11 +244,18 @@ func (x *City) GetTaxIncome() *Rate {
 	return nil
 }
 
+func (x *City) GetPopulationGrowthBeforeTax() *Rate {
+	if x != nil {
+		return x.PopulationGrowthBeforeTax
+	}
+	return nil
+}
+
 var File_cityio_entity_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\xab\a\n" +
+	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x84\b\n" +
 	"\x04City\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12.\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1a.cityio.entity.v1.CityTypeR\x04type\x123\n" +
@@ -270,7 +281,8 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\rnet_food_flow\x18\v \x01(\v2\x16.cityio.entity.v1.RateR\vnetFoodFlow\x12(\n" +
 	"\x10tax_rate_percent\x18\x13 \x01(\x05R\x0etaxRatePercent\x125\n" +
 	"\n" +
-	"tax_income\x18\x14 \x01(\v2\x16.cityio.entity.v1.RateR\ttaxIncomeB\b\n" +
+	"tax_income\x18\x14 \x01(\v2\x16.cityio.entity.v1.RateR\ttaxIncome\x12W\n" +
+	"\x1cpopulation_growth_before_tax\x18\x15 \x01(\v2\x16.cityio.entity.v1.RateR\x19populationGrowthBeforeTaxB\b\n" +
 	"\x06_ownerB\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tCityProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
@@ -296,20 +308,21 @@ var file_cityio_entity_v1_city_proto_goTypes = []any{
 	(*Rate)(nil),        // 5: cityio.entity.v1.Rate
 }
 var file_cityio_entity_v1_city_proto_depIdxs = []int32{
-	1, // 0: cityio.entity.v1.City.city_id:type_name -> cityio.entity.v1.CityId
-	2, // 1: cityio.entity.v1.City.type:type_name -> cityio.entity.v1.CityType
-	3, // 2: cityio.entity.v1.City.owner:type_name -> cityio.entity.v1.UserId
-	4, // 3: cityio.entity.v1.City.start:type_name -> cityio.entity.v1.Coordinates
-	5, // 4: cityio.entity.v1.City.population_growth:type_name -> cityio.entity.v1.Rate
-	5, // 5: cityio.entity.v1.City.food_production:type_name -> cityio.entity.v1.Rate
-	5, // 6: cityio.entity.v1.City.food_upkeep:type_name -> cityio.entity.v1.Rate
-	5, // 7: cityio.entity.v1.City.net_food_flow:type_name -> cityio.entity.v1.Rate
-	5, // 8: cityio.entity.v1.City.tax_income:type_name -> cityio.entity.v1.Rate
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	1,  // 0: cityio.entity.v1.City.city_id:type_name -> cityio.entity.v1.CityId
+	2,  // 1: cityio.entity.v1.City.type:type_name -> cityio.entity.v1.CityType
+	3,  // 2: cityio.entity.v1.City.owner:type_name -> cityio.entity.v1.UserId
+	4,  // 3: cityio.entity.v1.City.start:type_name -> cityio.entity.v1.Coordinates
+	5,  // 4: cityio.entity.v1.City.population_growth:type_name -> cityio.entity.v1.Rate
+	5,  // 5: cityio.entity.v1.City.food_production:type_name -> cityio.entity.v1.Rate
+	5,  // 6: cityio.entity.v1.City.food_upkeep:type_name -> cityio.entity.v1.Rate
+	5,  // 7: cityio.entity.v1.City.net_food_flow:type_name -> cityio.entity.v1.Rate
+	5,  // 8: cityio.entity.v1.City.tax_income:type_name -> cityio.entity.v1.Rate
+	5,  // 9: cityio.entity.v1.City.population_growth_before_tax:type_name -> cityio.entity.v1.Rate
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_city_proto_init() }

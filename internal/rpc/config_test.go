@@ -24,7 +24,8 @@ func TestGameConfigExposesPopulationPolicy(t *testing.T) {
 		policy.GetMinMilitiaPercent() != constants.MinMilitiaPercent ||
 		policy.GetMaxMilitiaPercent() != constants.MaxMilitiaPercent ||
 		policy.GetMaxMilitaryPercent() != 100-constants.CoreCivilianPercent ||
-		policy.GetMaxTaxRatePercent() != constants.MaxTaxRatePercent {
+		policy.GetMaxTaxRatePercent() != constants.MaxTaxRatePercent ||
+		policy.GetMaxTaxGrowthPenaltyPercent() != constants.MaxTaxGrowthPenaltyPercent {
 		t.Fatalf("population policy = %+v", policy)
 	}
 	if policy.GetTaxGoldPerPopulation().GetValue() != constants.TaxGoldPerPopPerHour || policy.GetTaxGoldPerPopulation().GetScale() != constants.SecondsPerHour {

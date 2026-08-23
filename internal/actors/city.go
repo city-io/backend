@@ -520,27 +520,33 @@ func (state *cityActor) growPopulation(starving bool, deficitRatio, surplusRatio
 	currentPopulation := state.City.Population
 	populationCap := state.City.PopulationCap
 	if populationCap <= 0 {
+		state.City.PopulationGrowthBeforeTaxRate = 0
 		state.City.PopulationGrowthRate = 0
 		return
 	}
-	var newPop float64
+	var baseDelta float64
+	var delta float64
 	if starving {
-		newPop = currentPopulation * (1 - constants.StarvationDeclineRate*deficitRatio)
+		baseDelta = -currentPopulation * constants.StarvationDeclineRate * deficitRatio
+		delta = baseDelta
 	} else {
 		// Surplus bonus saturates at 100% extra production (surplusRatio = 1.0).
 		// fedFactor goes from 1.0 (just covered) up to 1 + SurplusGrowthBonus
 		// at saturation; beyond that, more farms give no further speedup.
 		bonus := math.Min(surplusRatio, 1.0) * constants.SurplusGrowthBonus
 		fedFactor := 1.0 + bonus
-		newPop = currentPopulation + constants.PopulationGrowthRate*currentPopulation*(1-currentPopulation/populationCap)*fedFactor*constants.PositiveGrowthMultiplier(state.City.TaxRatePercent)
+		baseDelta = constants.PopulationGrowthRate * currentPopulation * (1 - currentPopulation/populationCap) * fedFactor
+		delta = baseDelta * constants.TaxGrowthMultiplier(state.City.TaxRatePercent)
 	}
-	delta := newPop - currentPopulation
+	newPop := max(currentPopulation+delta, 0)
+	delta = newPop - currentPopulation
 	if delta > 0 && state.City.MilitiaBattleID == nil {
 		shortfall := max(constants.MilitiaTarget(state.City)-state.City.MilitiaPopulation, 0)
 		state.City.MilitiaPopulation += min(delta, shortfall)
 	} else if state.City.MilitiaPopulation > newPop {
 		state.City.MilitiaPopulation = max(newPop, 0)
 	}
+	state.City.PopulationGrowthBeforeTaxRate = int64(math.Round(baseDelta * float64(constants.SecondsPerHour) / float64(constants.CityTickInterval)))
 	state.City.PopulationGrowthRate = int64(math.Round(delta * float64(constants.SecondsPerHour) / float64(constants.CityTickInterval)))
 	state.City.Population = newPop
 }
