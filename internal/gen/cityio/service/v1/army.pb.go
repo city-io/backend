@@ -474,7 +474,7 @@ var File_cityio_service_v1_army_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_army_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccityio/service/v1/army.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1bcityio/entity/v1/army.proto\x1a\x1acityio/entity/v1/bag.proto\"\x9a\x01\n" +
+	"\x1ccityio/service/v1/army.proto\x12\x11cityio.service.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1acityio/entity/v1/bag.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x9a\x01\n" +
 	"\x12TrainTroopsRequest\x12=\n" +
 	"\vbarracks_id\x18\x01 \x01(\v2\x1c.cityio.entity.v1.BuildingIdR\n" +
 	"barracksId\x12/\n" +

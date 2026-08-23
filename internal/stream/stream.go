@@ -11,7 +11,7 @@ import (
 	"cityio/internal/metrics"
 )
 
-// StateUpdate is a per-user snapshot pushed to subscribers.
+// StateUpdate is a per-user change pushed to subscribers.
 // Conversion to proto happens at the RPC boundary. Only non-nil fields are sent.
 type StateUpdate struct {
 	User              *domain.User

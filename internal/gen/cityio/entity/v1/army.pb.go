@@ -156,7 +156,7 @@ var File_cityio_entity_v1_army_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_army_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/army.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"S\n" +
+	"\x1bcityio/entity/v1/army.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"S\n" +
 	"\n" +
 	"TroopStack\x12/\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x14\n" +
@@ -211,6 +211,7 @@ func file_cityio_entity_v1_army_proto_init() {
 		return
 	}
 	file_cityio_entity_v1_common_proto_init()
+	file_cityio_entity_v1_ids_proto_init()
 	file_cityio_entity_v1_army_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

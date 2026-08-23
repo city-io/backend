@@ -113,13 +113,13 @@ Go output to `internal/gen`. A frontend generates its own client from the same f
 ```
 proto/cityio/
   entity/v1/             # package cityio.entity.v1
-    common.proto          # typed IDs (UserId, CityId, BuildingId, ArmyId), enums
-                          #   (CityType, BuildingType, TroopType), Coordinates, Rate
+    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId)
+    common.proto          # enums (CityType, BuildingType, TroopType), Coordinates, Rate
     user.proto            # User entity message
     city.proto            # City entity message
     building.proto        # Building entity message
     army.proto            # Army + TroopStack entity messages
-    bag.proto             # EntityBag (users/cities/buildings/armies + deleted_*_ids)
+    bag.proto             # EntityBag (users/cities/buildings/armies)
   service/v1/             # package cityio.service.v1
     user.proto            # UserService RPCs (incl. StreamState) + req/resp
     city.proto            # CityService RPCs
@@ -222,9 +222,9 @@ for TypeScript) rather than hand-writing request types.
   - `BuildingType`: `BUILDING_TYPE_CITY_CENTER`, `_TOWN_CENTER`, `_BARRACKS`, `_HOUSE`, `_FARM`,
     `_MINE` (+ `_UNSPECIFIED`).
   - `TroopType`: `TROOP_TYPE_SOLDIER`, `_ARCHER`, `_CAVALRY`, `_ARTILLERY` (+ `_UNSPECIFIED`).
-- **EntityBag** — a flat collection returned by list/map/stream responses:
-  `{ users[], cities[], buildings[], deleted_building_ids[], armies[], deleted_army_ids[] }`.
-  The `deleted_*` arrays appear on `StreamState` to tell the client to drop an entity.
+- **EntityBag** — a flat collection of raw entities returned by list/map/stream responses:
+  `{ users[], cities[], buildings[], armies[] }`. Stream deletion tombstones live on
+  `StreamStateResponse`, not in the entity collection.
 
 ### Entity shapes & visibility
 
@@ -257,11 +257,12 @@ for TypeScript) rather than hand-writing request types.
 - `Login(identifier, password) → { token, user }` — *public*. `identifier` is email or username.
 - `GetUser(user_id) → { user }`.
 - `DeleteUser(user_id) → {}`.
-- `StreamState() → stream { entities: EntityBag }` — server-streaming, owner-scoped. The **first**
-  message is a full snapshot (your user + owned cities + their buildings + your armies).
-  Subsequent messages are incremental deltas as state changes: updated `users` (gold/food),
-  `cities` (economy/population), `buildings` (create/upgrade), `deleted_building_ids`, `armies`
-  (spawn/move/merge), `deleted_army_ids`. Drive the client's live map/HUD off this.
+- `StreamState() → stream { entities: EntityBag, deleted_building_ids[], deleted_army_ids[] }` —
+  server-streaming, owner-scoped. The **first** message is a full snapshot (your user + owned
+  cities + their buildings + your armies). Subsequent messages are incremental deltas as state
+  changes: updated `users` (gold/food), `cities` (economy/population), `buildings`
+  (create/upgrade), `armies` (spawn/move/merge), and top-level deletion tombstones. Drive the
+  client's live map/HUD off this.
 
 **CityService**
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.

@@ -58,7 +58,7 @@ func (*GetMapRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_map_proto_rawDescGZIP(), []int{0}
 }
 
-// GetMapResponse is the full world snapshot used to bootstrap a client.
+// GetMapResponse is the visible world snapshot used to bootstrap a client.
 type GetMapResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CityIds       []*v1.CityId           `protobuf:"bytes,1,rep,name=city_ids,json=cityIds,proto3" json:"city_ids,omitempty"`
@@ -287,7 +287,7 @@ var File_cityio_service_v1_map_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_map_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/service/v1/map.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/bag.proto\"\x0f\n" +
+	"\x1bcityio/service/v1/map.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/bag.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x0f\n" +
 	"\rGetMapRequest\"\xbf\x01\n" +
 	"\x0eGetMapResponse\x123\n" +
 	"\bcity_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x12?\n" +

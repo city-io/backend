@@ -43,13 +43,13 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	buildingList = domain.FilterBuildings(owned, buildingList, constants.VisionRadius)
 	armyList = domain.FilterArmies(owned, armyList, constants.VisionRadius)
 
-	cityIds := make([]*entityv1.CityId, 0, len(cityList))
+	cityIDs := make([]*entityv1.CityId, 0, len(cityList))
 	for _, c := range cityList {
-		cityIds = append(cityIds, mapping.ToCityId(c.CityID))
+		cityIDs = append(cityIDs, mapping.ToCityId(c.CityID))
 	}
-	buildingIds := make([]*entityv1.BuildingId, 0, len(buildingList))
+	buildingIDs := make([]*entityv1.BuildingId, 0, len(buildingList))
 	for _, b := range buildingList {
-		buildingIds = append(buildingIds, mapping.ToBuildingId(b.BuildingID))
+		buildingIDs = append(buildingIDs, mapping.ToBuildingId(b.BuildingID))
 	}
 
 	bag := mapping.EntitiesToBag(nil, cityList, buildingList, armyList)
@@ -63,8 +63,8 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 	}
 
 	return connect.NewResponse(&servicev1.GetMapResponse{
-		CityIds:     cityIds,
-		BuildingIds: buildingIds,
+		CityIds:     cityIDs,
+		BuildingIds: buildingIDs,
 		Entities:    bag,
 	}), nil
 }

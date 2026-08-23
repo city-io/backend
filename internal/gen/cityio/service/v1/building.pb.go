@@ -466,7 +466,7 @@ var File_cityio_service_v1_building_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_building_proto_rawDesc = "" +
 	"\n" +
-	" cityio/service/v1/building.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1fcityio/entity/v1/building.proto\"\xb5\x01\n" +
+	" cityio/service/v1/building.proto\x12\x11cityio.service.v1\x1a\x1fcityio/entity/v1/building.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\xb5\x01\n" +
 	"\x15CreateBuildingRequest\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x122\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x125\n" +

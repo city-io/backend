@@ -314,7 +314,7 @@ var File_cityio_service_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_city_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccityio/service/v1/city.proto\x12\x11cityio.service.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1acityio/entity/v1/bag.proto\"C\n" +
+	"\x1ccityio/service/v1/city.proto\x12\x11cityio.service.v1\x1a\x1acityio/entity/v1/bag.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"C\n" +
 	"\x0eGetCityRequest\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\"=\n" +
 	"\x0fGetCityResponse\x12*\n" +

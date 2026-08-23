@@ -118,7 +118,7 @@ var File_cityio_entity_v1_user_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/user.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\"\x85\x02\n" +
+	"\x1bcityio/entity/v1/user.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x85\x02\n" +
 	"\x04User\x121\n" +
 	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
@@ -166,6 +166,7 @@ func file_cityio_entity_v1_user_proto_init() {
 		return
 	}
 	file_cityio_entity_v1_common_proto_init()
+	file_cityio_entity_v1_ids_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
