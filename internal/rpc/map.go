@@ -66,6 +66,7 @@ func (h *mapHandler) GetMap(ctx context.Context, req *connect.Request[servicev1.
 		CityIds:     cityIDs,
 		BuildingIds: buildingIDs,
 		Entities:    bag,
+		Terrain:     mapping.TerrainGridToProto(h.srv.world.Terrain()),
 	}), nil
 }
 
@@ -80,6 +81,10 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 	if !domain.PointVisible(owned, x, y, constants.VisionRadius) {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
+	terrain, ok := h.srv.world.TerrainAt(x, y)
+	if !ok {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
+	}
 
 	res, err := h.srv.cluster.Request("tile", utils.GetTileIndex(x, y), messages.GetTileMessage{})
 	if err != nil {
@@ -90,6 +95,6 @@ func (h *mapHandler) GetTile(ctx context.Context, req *connect.Request[servicev1
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("tile not found"))
 	}
 	return connect.NewResponse(&servicev1.GetTileResponse{
-		Tile: mapping.TileToProto(resp.CityID, resp.BuildingID, resp.ArmyIDs, x, y),
+		Tile: mapping.TileToProto(resp.CityID, resp.BuildingID, resp.ArmyIDs, terrain, x, y),
 	}), nil
 }

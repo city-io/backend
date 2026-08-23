@@ -3,11 +3,7 @@ package setup
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"math"
-	"math/rand"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,15 +14,19 @@ import (
 	"cityio/internal/logger"
 	"cityio/internal/ports"
 	"cityio/internal/services"
+	"cityio/internal/worldgen"
 )
 
 type Deps struct {
 	DB      database.Querier
 	Cluster ports.ClusterProvider
+	World   *worldgen.World
 }
 
 func Run(ctx context.Context, deps *Deps) {
-	reset(ctx, deps)
+	if err := reset(ctx, deps); err != nil {
+		panic(err)
+	}
 	ctx = logger.With(ctx, "phase", "init")
 	db := deps.DB
 	cluster := deps.Cluster
@@ -107,149 +107,39 @@ func reset(ctx context.Context, deps *Deps) error {
 	ctx = logger.With(ctx, "phase", "reset")
 	db := deps.DB
 
-	src := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(src)
-
-	occupied := make([][]bool, constants.MapSize)
-	for i := range occupied {
-		occupied[i] = make([]bool, constants.MapSize)
-	}
-
-	users, err := db.GetAllUsers(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "error fetching existing users", "error", err)
-	}
-
-	for _, user := range users {
-		user.Gold = constants.InitialPlayerGold
-		user.Food = constants.InitialPlayerFood
-		err := db.UpdateUserStats(ctx, database.UpdateUserStatsParams{
-			Gold: user.Gold,
-			Food: user.Food,
-		})
-		if err != nil {
-			slog.ErrorContext(ctx, "error resetting user fields", "error", err)
-		}
-
-		var startX, startY int
-		for {
-			startX = r.Intn(constants.MapSize - constants.CitySize)
-			startY = r.Intn(constants.MapSize - constants.CitySize)
-			if canPlace(occupied, startX, startY, constants.CitySize) {
-				break
-			}
-		}
-
+	townPlans := deps.World.Towns()
+	cities := make([]domain.City, 0, len(townPlans))
+	buildings := make([]domain.Building, 0, len(townPlans)*2)
+	for _, town := range townPlans {
 		cityID := uuid.New().String()
-		err = db.CreateCity(ctx, database.CreateCityParams{
-			CityID:        cityID,
-			Type:          "capital",
-			Owner:         &user.UserID,
-			Name:          fmt.Sprintf("%s's City", user.Username),
-			Population:    constants.InitialPlayerCityPopulation,
-			PopulationCap: constants.InitialPlayerCityPopulation,
-			StartX:        int32(startX),
-			StartY:        int32(startY),
-		})
-		if err != nil {
-			slog.ErrorContext(ctx, "error creating city in db", "error", err)
-			return err
+		var populationCap float64
+		for _, building := range town.Buildings {
+			populationCap += constants.GetBuildingPopulation(building.Type, building.Level)
 		}
-		slog.DebugContext(ctx, "created city in db", "city_id", cityID, "user", user.Username, "x", startX, "y", startY)
-
-		err = db.CreateBuilding(ctx, database.CreateBuildingParams{
-			BuildingID:        uuid.New().String(),
-			CityID:            cityID,
-			Type:              string(domain.BuildingTypeCityCenter),
-			Level:             1,
-			X:                 int32(startX + constants.CitySize/2),
-			Y:                 int32(startY + constants.CitySize/2),
-			ConstructionStart: pgtype.Timestamp{Valid: false},
-			ConstructionEnd:   pgtype.Timestamp{Valid: false},
-		})
-		if err != nil {
-			slog.ErrorContext(ctx, "error creating building in db", "error", err)
-			return err
-		}
-
-		for i := range constants.CitySize {
-			for j := range constants.CitySize {
-				occupied[startX+i][startY+j] = true
-			}
-		}
-	}
-
-	usedNames := make(map[string]bool)
-	cities := make([]domain.City, 0)
-	buildings := make([]domain.Building, 0)
-	for _, c := range poissonDiskPoints(r, constants.MapSize, townMinSpacing, poissonRetries) {
-		size := 0
-		rng := r.Intn(1000)
-		if rng < 30 {
-			size = 5
-		} else if rng < 100 {
-			size = 4
-		} else if rng < 500 {
-			size = 3
-		} else {
-			size = 2
-		}
-
-		// c is the candidate center; derive the top-left so the town wraps it.
-		x := c[0] - size/2
-		y := c[1] - size/2
-		if x < 0 || y < 0 || x+size > constants.MapSize || y+size > constants.MapSize {
-			continue
-		}
-		if !canPlace(occupied, x, y, size) {
-			continue
-		}
-
-		cityID := uuid.New().String()
-		tc := constants.TownSizeConfig[size]
-		populationCap := constants.GetBuildingPopulation(domain.BuildingTypeTownCenter, tc.CenterLevel) +
-			float64(tc.HouseCount)*constants.GetBuildingPopulation(domain.BuildingTypeHouse, 1)
 
 		cities = append(cities, domain.City{
 			CityID:        cityID,
-			Type:          "town",
+			Type:          domain.CityTypeTown,
 			Owner:         nil,
-			Name:          townName(r, usedNames),
+			Name:          town.Name,
 			Population:    populationCap,
 			PopulationCap: populationCap,
-			StartX:        x,
-			StartY:        y,
-			Size:          size,
+			StartX:        town.X,
+			StartY:        town.Y,
+			Size:          town.Size,
 		})
-		centerX, centerY := x+size/2, y+size/2
-		buildings = append(buildings, domain.Building{
-			BuildingID:        uuid.New().String(),
-			CityID:            cityID,
-			Type:              string(domain.BuildingTypeTownCenter),
-			Level:             tc.CenterLevel,
-			TargetLevel:       tc.CenterLevel,
-			X:                 centerX,
-			Y:                 centerY,
-			ConstructionStart: domain.NullTime{Time: nil},
-			ConstructionEnd:   domain.NullTime{Time: nil},
-		})
-		for _, pos := range randomPositions(r, x, y, size, centerX, centerY, tc.HouseCount) {
+		for _, building := range town.Buildings {
 			buildings = append(buildings, domain.Building{
 				BuildingID:        uuid.New().String(),
 				CityID:            cityID,
-				Type:              string(domain.BuildingTypeHouse),
-				Level:             1,
-				TargetLevel:       1,
-				X:                 pos[0],
-				Y:                 pos[1],
+				Type:              string(building.Type),
+				Level:             building.Level,
+				TargetLevel:       building.Level,
+				X:                 building.X,
+				Y:                 building.Y,
 				ConstructionStart: domain.NullTime{Time: nil},
 				ConstructionEnd:   domain.NullTime{Time: nil},
 			})
-		}
-		for i := 0; i < size; i++ {
-			for j := 0; j < size; j++ {
-				occupied[x+i][y+j] = true
-			}
 		}
 	}
 
@@ -332,161 +222,4 @@ func reset(ctx context.Context, deps *Deps) error {
 
 	slog.DebugContext(ctx, "reset complete")
 	return nil
-}
-
-var townPrefixes = []string{
-	"Ash", "Birch", "Briar", "Cedar", "Copper", "Crow", "Dusk", "Elder",
-	"Elm", "Ember", "Fern", "Flint", "Frost", "Gold", "Granite", "Hawk",
-	"Hazel", "Heath", "Heron", "Holly", "Iron", "Ivy", "Lark", "Maple",
-	"Marsh", "Moss", "Oak", "Pine", "Raven", "Reed", "Rose", "Rowan",
-	"Shadow", "Silver", "Slate", "Stone", "Storm", "Thorn", "Willow", "Wolf",
-}
-
-var townSuffixes = []string{
-	"bank", "barrow", "borough", "bridge", "brook", "bury", "cliff", "crest",
-	"dale", "dell", "fall", "feld", "ford", "gate", "glen", "grove",
-	"haven", "hill", "hollow", "keep", "mead", "moor", "mound", "point",
-	"pool", "reach", "ridge", "shire", "stead", "vale", "wall", "watch",
-	"well", "wick", "wood", "worth",
-}
-
-func townName(r *rand.Rand, used map[string]bool) string {
-	for {
-		name := townPrefixes[r.Intn(len(townPrefixes))] + townSuffixes[r.Intn(len(townSuffixes))]
-		if !used[name] {
-			used[name] = true
-			return name
-		}
-	}
-}
-
-// randomPositions returns count grid positions within the rectangle starting at
-// (originX, originY) of the given size, excluding (centerX, centerY).
-func randomPositions(r *rand.Rand, originX, originY, size, centerX, centerY, count int) [][2]int {
-	candidates := make([][2]int, 0, size*size-1)
-	for i := 0; i < size; i++ {
-		for j := 0; j < size; j++ {
-			px, py := originX+i, originY+j
-			if px == centerX && py == centerY {
-				continue
-			}
-			candidates = append(candidates, [2]int{px, py})
-		}
-	}
-	r.Shuffle(len(candidates), func(i, j int) {
-		candidates[i], candidates[j] = candidates[j], candidates[i]
-	})
-	return candidates[:count]
-}
-
-// Town placement uses Bridson's Poisson-disk sampling so candidate centers are
-// uniformly distributed across the map with a guaranteed minimum spacing,
-// rather than scanning row-major and clustering at the top-left edge.
-const (
-	// townMinSpacing is the Euclidean minimum distance between town centers.
-	// Smaller = denser map. Large enough to leave room for size-5 footprints
-	// (5×5 tiles + 1-tile gap) without canPlace rejecting too many candidates.
-	townMinSpacing = 5
-
-	// poissonRetries is k in Bridson's algorithm: how many candidate points
-	// to try around each active sample before retiring it. 30 is the standard
-	// value from the original paper.
-	poissonRetries = 30
-)
-
-// poissonDiskPoints returns coordinates inside an N×N grid where every pair is
-// at least minDist apart (Euclidean), distributed uniformly via Bridson's
-// Poisson-disk sampling. k is the per-sample candidate retry budget.
-func poissonDiskPoints(rng *rand.Rand, n, minDist, k int) [][2]int {
-	cellSize := float64(minDist) / math.Sqrt2
-	gridW := int(math.Ceil(float64(n) / cellSize))
-	grid := make([][]int, gridW)
-	for i := range grid {
-		grid[i] = make([]int, gridW)
-		for j := range grid[i] {
-			grid[i][j] = -1
-		}
-	}
-
-	minDistSq := minDist * minDist
-	var points [][2]int
-	add := func(p [2]int) int {
-		idx := len(points)
-		points = append(points, p)
-		gx := int(float64(p[0]) / cellSize)
-		gy := int(float64(p[1]) / cellSize)
-		grid[gx][gy] = idx
-		return idx
-	}
-
-	first := [2]int{rng.Intn(n), rng.Intn(n)}
-	active := []int{add(first)}
-
-	for len(active) > 0 {
-		ai := rng.Intn(len(active))
-		center := points[active[ai]]
-		placed := false
-		for try := 0; try < k; try++ {
-			angle := rng.Float64() * 2 * math.Pi
-			radius := float64(minDist) + rng.Float64()*float64(minDist)
-			cx := center[0] + int(math.Round(math.Cos(angle)*radius))
-			cy := center[1] + int(math.Round(math.Sin(angle)*radius))
-
-			if cx < 0 || cy < 0 || cx >= n || cy >= n {
-				continue
-			}
-
-			gx := int(float64(cx) / cellSize)
-			gy := int(float64(cy) / cellSize)
-			ok := true
-			for i := max(0, gx-2); i <= min(gridW-1, gx+2) && ok; i++ {
-				for j := max(0, gy-2); j <= min(gridW-1, gy+2) && ok; j++ {
-					if grid[i][j] == -1 {
-						continue
-					}
-					p := points[grid[i][j]]
-					dx := p[0] - cx
-					dy := p[1] - cy
-					if dx*dx+dy*dy < minDistSq {
-						ok = false
-					}
-				}
-			}
-
-			if ok {
-				active = append(active, add([2]int{cx, cy}))
-				placed = true
-				break
-			}
-		}
-		if !placed {
-			active = append(active[:ai], active[ai+1:]...)
-		}
-	}
-
-	return points
-}
-
-// canPlace reports whether a city of the given size can be placed at (x, y)
-// with at least a 1-tile gap from all occupied cells and from the map boundary.
-// Off-map cells are treated as occupied so edge placements have the same gap
-// requirement as interior ones — otherwise canPlace is more permissive near
-// the borders and town density skews toward the edges.
-func canPlace(occupied [][]bool, x, y, size int) bool {
-	mapSize := len(occupied)
-	if x+size > mapSize || y+size > mapSize {
-		return false
-	}
-	for i := -1; i <= size; i++ {
-		for j := -1; j <= size; j++ {
-			nx, ny := x+i, y+j
-			if nx < 0 || ny < 0 || nx >= mapSize || ny >= mapSize {
-				return false
-			}
-			if occupied[nx][ny] {
-				return false
-			}
-		}
-	}
-	return true
 }

@@ -48,7 +48,7 @@ func (state *userActor) Receive(ctx actor.Context) {
 				ctx.Respond(&messages.UserCreationError{UserID: state.User.UserID})
 				return
 			}
-			services.CreateCity(state.Ctx(), state.Cluster, state.Store, &services.CityInput{ //nolint:errcheck // fire-and-forget
+			services.CreateCity(state.Ctx(), state.Cluster, state.Store, state.World, &services.CityInput{ //nolint:errcheck // fire-and-forget
 				Type:  domain.CityTypeCity,
 				Owner: &state.User.UserID,
 				Name:  fmt.Sprintf("%s's City", state.User.Username),

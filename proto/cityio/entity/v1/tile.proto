@@ -4,6 +4,7 @@ package cityio.entity.v1;
 
 import "cityio/entity/v1/ids.proto";
 
+// TerrainType identifies the natural terrain of a map tile.
 enum TerrainType {
   TERRAIN_TYPE_UNSPECIFIED = 0;
   TERRAIN_TYPE_GRASSLAND = 1;
@@ -16,6 +17,7 @@ enum TerrainType {
   TERRAIN_TYPE_WATER = 8;
 }
 
+// Tile combines immutable terrain with the tile's current occupancy.
 message Tile {
   int32 x = 1;
   int32 y = 2;

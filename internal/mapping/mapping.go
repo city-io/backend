@@ -40,6 +40,17 @@ var buildingTypeFromProto = map[entityv1.BuildingType]domain.BuildingType{
 	entityv1.BuildingType_BUILDING_TYPE_MINE:        domain.BuildingTypeMine,
 }
 
+var terrainTypeToProto = map[domain.TerrainType]entityv1.TerrainType{
+	domain.TerrainTypeGrassland: entityv1.TerrainType_TERRAIN_TYPE_GRASSLAND,
+	domain.TerrainTypePlains:    entityv1.TerrainType_TERRAIN_TYPE_PLAINS,
+	domain.TerrainTypeForest:    entityv1.TerrainType_TERRAIN_TYPE_FOREST,
+	domain.TerrainTypeHills:     entityv1.TerrainType_TERRAIN_TYPE_HILLS,
+	domain.TerrainTypeMountains: entityv1.TerrainType_TERRAIN_TYPE_MOUNTAINS,
+	domain.TerrainTypeDesert:    entityv1.TerrainType_TERRAIN_TYPE_DESERT,
+	domain.TerrainTypeMarsh:     entityv1.TerrainType_TERRAIN_TYPE_MARSH,
+	domain.TerrainTypeWater:     entityv1.TerrainType_TERRAIN_TYPE_WATER,
+}
+
 var troopTypeToProto = map[domain.TroopType]entityv1.TroopType{
 	domain.TroopTypeSoldier:   entityv1.TroopType_TROOP_TYPE_SOLDIER,
 	domain.TroopTypeArcher:    entityv1.TroopType_TROOP_TYPE_ARCHER,
@@ -157,9 +168,23 @@ func HidePrivateCityFields(c *entityv1.City) {
 	c.NetFoodFlow = nil
 }
 
-// TileToProto builds a proto Tile from raw occupancy data.
-func TileToProto(cityID, buildingID *string, armyIDs []string, x, y int) *servicev1.Tile {
-	t := &servicev1.Tile{X: int32(x), Y: int32(y)}
+// TerrainToProto converts a domain terrain type to its protobuf enum.
+func TerrainToProto(terrain domain.TerrainType) entityv1.TerrainType {
+	return terrainTypeToProto[terrain]
+}
+
+// TerrainGridToProto converts a row-major domain terrain grid to protobuf.
+func TerrainGridToProto(grid domain.TerrainGrid) *servicev1.TerrainGrid {
+	tiles := make([]entityv1.TerrainType, len(grid.Tiles))
+	for i, terrain := range grid.Tiles {
+		tiles[i] = TerrainToProto(terrain)
+	}
+	return &servicev1.TerrainGrid{Width: int32(grid.Width), Height: int32(grid.Height), Tiles: tiles}
+}
+
+// TileToProto builds a proto Tile from terrain and occupancy data.
+func TileToProto(cityID, buildingID *string, armyIDs []string, terrain domain.TerrainType, x, y int) *entityv1.Tile {
+	t := &entityv1.Tile{X: int32(x), Y: int32(y), Terrain: TerrainToProto(terrain)}
 	if cityID != nil {
 		t.CityId = ToCityId(*cityID)
 	}

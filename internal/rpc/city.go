@@ -52,7 +52,7 @@ func (h *cityHandler) CreateCity(ctx context.Context, req *connect.Request[servi
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
 	}
-	city, err := services.CreateCity(ctx, h.srv.cluster, h.srv.store, &services.CityInput{
+	city, err := services.CreateCity(ctx, h.srv.cluster, h.srv.store, h.srv.world, &services.CityInput{
 		Type:  mapping.CityTypeFromProto(req.Msg.GetType()),
 		Owner: &claims.UserID,
 		Name:  req.Msg.GetName(),

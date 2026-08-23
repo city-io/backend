@@ -5,6 +5,9 @@ const (
 	MapSize  = 75 // generate a map of size MapSize x MapSize
 	CitySize = 5
 
+	CapitalSiteReserve = 12
+	NeutralTownTarget  = 64
+
 	// SecondsPerHour is the canonical period for all rate values: production,
 	// upkeep, etc. are stored, computed, and shipped as int64 amounts per this
 	// many seconds. Per-hour reads more naturally for players than per-day,

@@ -22,6 +22,7 @@ import (
 type Server struct {
 	cluster   ports.ClusterProvider
 	store     ports.Store
+	world     ports.WorldProvider
 	jwtSecret string
 
 	// shutdownCtx is cancelled when the process is shutting down. Long-lived
@@ -34,8 +35,8 @@ type Server struct {
 // NewServer constructs an RPC server backed by the given cluster and store.
 // shutdownCtx is cancelled by main on SIGINT/SIGTERM; streaming handlers
 // observe it and close their streams.
-func NewServer(shutdownCtx context.Context, cluster ports.ClusterProvider, store ports.Store, jwtSecret string) *Server {
-	return &Server{cluster: cluster, store: store, jwtSecret: jwtSecret, shutdownCtx: shutdownCtx}
+func NewServer(shutdownCtx context.Context, cluster ports.ClusterProvider, store ports.Store, world ports.WorldProvider, jwtSecret string) *Server {
+	return &Server{cluster: cluster, store: store, world: world, jwtSecret: jwtSecret, shutdownCtx: shutdownCtx}
 }
 
 func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {

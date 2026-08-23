@@ -23,7 +23,7 @@ type ClusterProvider struct {
 	cluster *cluster.Cluster
 }
 
-func NewRuntime(ctx context.Context, store ports.Store, environment string) *ClusterProvider {
+func NewRuntime(ctx context.Context, store ports.Store, world ports.WorldProvider, environment string) *ClusterProvider {
 	system := actor.NewActorSystem()
 
 	cp := &ClusterProvider{
@@ -37,6 +37,7 @@ func NewRuntime(ctx context.Context, store ports.Store, environment string) *Clu
 			ac.SetContext(logger.With(ctx, "actor", ac.ActorType()))
 			ac.SetCluster(cp)
 			ac.SetStore(store)
+			ac.SetWorld(world)
 			return ac
 		}
 	}

@@ -37,9 +37,10 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
   builds the persistence store and cluster runtime, runs world setup, then serves Connect
   RPC over h2c + CORS (and `/metrics` + `/healthz` on the same port).
 - **`internal/domain`** — pure domain entities and enums (`User`, `City`, `Building`, `Army`,
-  `Tile`, `Coordinates`, `NullTime`, plus `CityType`/`BuildingType`/`TroopType`). **No framework
-  imports.** This package must stay dependency-free; the sqlc-generated `database` package
-  imports it for the `Coordinates` composite type.
+  `Tile`, `Coordinates`, `TerrainGrid`, `NullTime`, plus
+  `CityType`/`BuildingType`/`TroopType`/`TerrainType`). **No framework imports.** This package
+  must stay dependency-free; the sqlc-generated `database` package imports it for the
+  `Coordinates` composite type.
 - **`internal/actors`** — the heart of the system. One actor per live entity, five kinds:
   - `userActor`, `cityActor`, `buildingActor`, `tileActor`, `armyActor` — each embeds `baseActor`.
   - `buildingActor` delegates type-specific behavior to a `buildingActorImpl`
@@ -101,7 +102,12 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (ports.ClusterProvide
   buildings in `buildings.go`, troops in `troops.go`.
 - **`internal/metrics`** — Prometheus metric definitions + the RPC interceptor + a periodic
   world-snapshot gauge filler.
-- **`internal/setup`** — `Run()` seeds/restores the world on boot (see gotcha below).
+- **`internal/worldgen`** — deterministic terrain and settlement generation. A cryptographic
+  seed is chosen on every boot; smooth elevation/moisture fields produce coherent terrain
+  regions, and footprint-aware placement reserves capital sites before generating neutral towns.
+  `World` also allocates terrain-valid sites for later registrations.
+- **`internal/setup`** — `Run()` persists the generated neutral-town plan, restores actors, and
+  registers the development test user on every boot (see gotcha below).
 - **`scripts/troops.py`** — a dev-only helper that drives `ArmyService` over the Connect JSON
   API (no `grpcurl` needed). See "Client / frontend API reference → Local testing".
 
@@ -119,13 +125,14 @@ proto/cityio/
     city.proto            # City entity message
     building.proto        # Building entity message
     army.proto            # Army + TroopStack entity messages
+    tile.proto            # TerrainType + Tile
     bag.proto             # EntityBag (users/cities/buildings/armies)
   service/v1/             # package cityio.service.v1
     user.proto            # UserService RPCs (incl. StreamState) + req/resp
     city.proto            # CityService RPCs
     building.proto        # BuildingService RPCs
     army.proto            # ArmyService RPCs
-    map.proto             # MapService RPCs + Tile
+    map.proto             # MapService RPCs + TerrainGrid
     config.proto          # ConfigService RPCs
 ```
 
@@ -135,8 +142,11 @@ the "Client / frontend API reference" section below.
 
 ## Game model & rules (shared frontend/backend mental model)
 
-- **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)`. Buildings and
-  armies live on tiles; armies stack (multiple armies + a building can share a tile).
+- **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)` and has one of
+  eight terrain types: grassland, plains, forest, hills, mountains, desert, marsh, or water.
+  Terrain is regenerated coherently from a new seed on every boot and returned row-major by
+  `GetMap`; it currently affects settlement placement but not production or movement. Buildings
+  and armies live on tiles; armies stack (multiple armies + a building can share a tile).
 - **Cities:** a `size`×`size` block (capitals are `CitySize` = 5). `start` is the top-left
   corner; the center is `start + size/2`. Type is `city` (player capital) or `town` (neutral,
   unowned). A city has `population` (grows logistically toward `population_cap`), and the cap is
@@ -239,6 +249,8 @@ for TypeScript) rather than hand-writing request types.
   construction_end? }` — under construction when `level != target_level` (timestamps present).
 - **Army** `{ army_id, owner (UserId), coords, troops[] (TroopStack{type, count}), destination?
   (Coordinates) }` — `destination` is set while marching and unset when idle/arrived.
+- **Tile** `{ x, y, terrain, city_id?, building_id?, army_ids[] }` — terrain is immutable for the
+  current generated world; occupancy comes from tile actors.
 - **Visibility rules** (enforced server-side):
   - Reads that expose the world (`GetMap`, `ListBuildings`) filter cities/buildings/armies to
     those within `VisionRadius` of an owned city; non-owned city economy fields are stripped.
@@ -296,10 +308,12 @@ for TypeScript) rather than hand-writing request types.
 - `ListArmies() → { army_ids[], entities(armies) }` — your armies (all, regardless of vision).
 
 **MapService**
-- `GetMap() → { city_ids[], building_ids[], entities(cities, buildings, armies) }` —
-  vision-filtered world snapshot; non-owned city economy stripped. Use to bootstrap the map;
-  keep it live with `StreamState`.
-- `GetTile(coords) → { tile: { x, y, city_id?, building_id?, army_ids[] } }` — vision-gated.
+- `GetMap() → { city_ids[], building_ids[], entities(cities, buildings, armies), terrain }` —
+  vision-filtered entity snapshot plus the complete terrain grid. `terrain` is
+  `{ width, height, tiles[] }`, with `(x, y)` at `tiles[y × width + x]`. Non-owned city economy
+  is stripped. Use to bootstrap the map; keep entities live with `StreamState`.
+- `GetTile(coords) → { tile: { x, y, terrain, city_id?, building_id?, army_ids[] } }` —
+  vision-gated.
 
 **ConfigService**
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),
@@ -415,10 +429,10 @@ goose -dir db/migrations up
 ## Critical gotchas
 
 - **The world is destroyed and rebuilt on every boot.** `NewDB` runs goose `down-to 0` (drops
-  all tables) then `up`, and `setup.Run()` then regenerates the towns + a capital per user and
-  registers a hardcoded test user (`cityio@example.com`). Restarting the app — including a
-  **production deploy** — wipes state. Treat persistence as a backup, not durable storage, until
-  this is gated. (A corollary: because migrations run `up` on boot, new migrations apply
+  all tables) then `up`; startup then generates new terrain, reserves capital sites, seeds neutral
+  towns, and registers a hardcoded test user (`cityio@example.com`). Restarting the app —
+  including a **production deploy** — wipes state. This reset is deliberate for current
+  development. (A corollary: because migrations run `up` on boot, new migrations apply
   automatically; a manual `goose up` is only useful if a running instance stays on old code.)
 - **The API is Connect RPC, served over h2c.** Handlers live in `internal/rpc`; auth is a JWT
   Connect interceptor. Live state is pushed to clients via the server-streaming `StreamState`
@@ -456,6 +470,9 @@ goose -dir db/migrations up
   entry in `constants/troops.go` (`troopStats`) and add it to `AllTroopTypes`, and mapping
   entries in `internal/mapping` (`troopTypeToProto`/`FromProto`). No new actor is needed — armies
   hold a `map[TroopType]int64`.
+- **New terrain types:** add the enum to `domain/terrain.go` + `entity/v1/tile.proto`, update the
+  mapping in `internal/mapping`, then define its generation thresholds and buildability in
+  `internal/worldgen`.
 - **New actor kind:** register it in `internal/cluster/cluster.go`'s `kinds` list (via the
   `spawn` closure so it gets `Store` + logging context injected), add a `New<Kind>Actor`
   constructor implementing `BaseActorInterface`, and wire persistence into `ports.Store` +

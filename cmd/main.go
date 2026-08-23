@@ -18,12 +18,14 @@ import (
 
 	"cityio/internal/cluster"
 	"cityio/internal/config"
+	"cityio/internal/constants"
 	"cityio/internal/database"
 	"cityio/internal/logger"
 	"cityio/internal/metrics"
 	"cityio/internal/persistence"
 	"cityio/internal/rpc"
 	"cityio/internal/setup"
+	"cityio/internal/worldgen"
 )
 
 func main() {
@@ -43,13 +45,33 @@ func main() {
 	slog.InfoContext(ctx, "starting cityio backend")
 
 	db := database.NewDB(ctx, cfg.DatabaseDSN())
+	seed, err := worldgen.RandomSeed()
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to create world seed", "error", err)
+		os.Exit(1)
+	}
+	world, err := worldgen.Generate(worldgen.Config{
+		Seed:         seed,
+		Width:        constants.MapSize,
+		Height:       constants.MapSize,
+		CapitalSize:  constants.CitySize,
+		CapitalSites: constants.CapitalSiteReserve,
+		TownTarget:   constants.NeutralTownTarget,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to generate world", "seed", seed, "error", err)
+		os.Exit(1)
+	}
+	slog.InfoContext(ctx, "generated world", "seed", seed, "towns", len(world.Towns()))
+
 	store := persistence.New(db)
 	store.Start(ctx)
-	cl := cluster.NewRuntime(ctx, store, cfg.Environment)
+	cl := cluster.NewRuntime(ctx, store, world, cfg.Environment)
 
 	setup.Run(ctx, &setup.Deps{
 		DB:      db,
 		Cluster: cl,
+		World:   world,
 	})
 
 	// shutdownCtx is cancelled when we receive SIGINT/SIGTERM. The RPC server
@@ -63,7 +85,7 @@ func main() {
 	// gauges.
 	metrics.StartSnapshot(shutdownCtx, store)
 
-	server := rpc.NewServer(shutdownCtx, cl, store, cfg.JWTSecret)
+	server := rpc.NewServer(shutdownCtx, cl, store, world, cfg.JWTSecret)
 	handler := cors.New(cors.Options{
 		AllowOriginFunc: func(origin string) bool {
 			if origin == "http://localhost:5173" || origin == "http://localhost:4173" {
