@@ -88,7 +88,7 @@ func TestHidePrivateCityFieldsPreservesPublicMilitia(t *testing.T) {
 	if city.GetMilitiaPopulation() != 25 || city.GetMilitiaTarget() != 25 || city.GetMilitiaPercent() != 10 {
 		t.Fatalf("public militia state was hidden: %+v", city)
 	}
-	if city.GetRecruitablePopulation() != 0 || city.GetTaxRatePercent() != 0 || city.GetTaxIncome() != nil || city.GetPopulationGrowthBeforeTax() != nil {
+	if city.GetRecruitablePopulation() != 0 || city.GetCorePopulationFloor() != 0 || city.GetTaxRatePercent() != 0 || city.GetTaxIncome() != nil || city.GetPopulationGrowthBeforeTax() != nil {
 		t.Fatalf("private policy state was exposed: %+v", city)
 	}
 }

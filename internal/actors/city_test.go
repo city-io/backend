@@ -81,6 +81,25 @@ func TestMaximumTaxReversesPositiveGrowth(t *testing.T) {
 	}
 }
 
+func TestStarvationReducesCoreAfterRecruitablePopulationIsGone(t *testing.T) {
+	state := cityActor{City: domain.City{
+		Population: 130, PopulationCap: 250, PopulationBasis: 250,
+		MilitiaPopulation: 25, MilitiaTarget: 25,
+	}}
+	coreBefore := constants.CorePopulation(state.City)
+	state.growPopulation(true, 1, 0)
+
+	if state.City.MilitiaPopulation != 25 {
+		t.Fatalf("militia population = %f, want 25", state.City.MilitiaPopulation)
+	}
+	if coreAfter := constants.CorePopulation(state.City); coreAfter >= coreBefore {
+		t.Fatalf("core population after starvation = %f, want less than %f", coreAfter, coreBefore)
+	}
+	if got := constants.RecruitablePopulation(state.City); got != 0 {
+		t.Fatalf("recruitable population after starvation = %d, want 0", got)
+	}
+}
+
 func TestRecruitmentTransfersResidentsOutOfCity(t *testing.T) {
 	state := cityActor{City: domain.City{
 		Population: 250, PopulationCap: 250, PopulationBasis: 250, MilitiaPopulation: 25,

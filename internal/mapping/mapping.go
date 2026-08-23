@@ -192,7 +192,8 @@ func CityToProto(c domain.City) *entityv1.City {
 		MilitiaTarget:             c.MilitiaTarget,
 		MilitiaPercent:            constants.MilitiaPercent(c),
 		CorePopulation:            constants.CorePopulation(c),
-		RecruitablePopulation:     float64(constants.RecruitablePopulation(c)),
+		CorePopulationFloor:       constants.ProtectedCorePopulation(c),
+		RecruitablePopulation:     constants.RecruitablePopulationExact(c),
 		TaxablePopulation:         constants.TaxablePopulation(c),
 		TaxRatePercent:            int32(c.TaxRatePercent),
 		TaxIncome:                 RatePerHour(constants.TaxIncomePerHour(c)),
@@ -216,6 +217,7 @@ func HidePrivateCityFields(c *entityv1.City) {
 	c.TaxRatePercent = 0
 	c.TaxIncome = nil
 	c.PopulationGrowthBeforeTax = nil
+	c.CorePopulationFloor = 0
 	c.RecruitablePopulation = 0
 }
 

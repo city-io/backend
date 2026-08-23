@@ -370,7 +370,7 @@ func (state *cityActor) updatePolicy(militiaTarget float64, taxRatePercent int) 
 		// Raising the target drafts available non-core residents, but never
 		// destroys an existing militia merely because housing capacity changed.
 		// Lowering below the present force releases only the excess.
-		availableNonCore := max(state.City.Population-constants.CorePopulation(state.City), 0)
+		availableNonCore := max(state.City.Population-constants.ProtectedCorePopulation(state.City), 0)
 		state.City.MilitiaPopulation = min(militiaTarget, max(state.City.MilitiaPopulation, availableNonCore))
 	}
 	if !state.City.Starving {

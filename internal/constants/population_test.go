@@ -29,7 +29,7 @@ func TestPopulationPolicyBuckets(t *testing.T) {
 	}
 }
 
-func TestRecruitablePopulationProtectsTargetMilitiaAfterLosses(t *testing.T) {
+func TestPopulationBucketsRemainCompleteAfterMilitiaLosses(t *testing.T) {
 	city := domain.City{
 		Population:        200,
 		PopulationCap:     250,
@@ -37,8 +37,27 @@ func TestRecruitablePopulationProtectsTargetMilitiaAfterLosses(t *testing.T) {
 		MilitiaPopulation: 5,
 		MilitiaTarget:     25,
 	}
-	if got := RecruitablePopulation(city); got != 37 {
-		t.Fatalf("recruitable population = %d, want 37", got)
+	if got := RecruitablePopulation(city); got != 57 {
+		t.Fatalf("recruitable population = %d, want 57", got)
+	}
+	if got := CorePopulation(city) + RecruitablePopulationExact(city); got != TaxablePopulation(city) {
+		t.Fatalf("civilian population buckets = %v, want %v", got, TaxablePopulation(city))
+	}
+}
+
+func TestCorePopulationFallsWhenStarvationExhaustsRecruitableCivilians(t *testing.T) {
+	city := domain.City{
+		Population:        150,
+		PopulationCap:     250,
+		PopulationBasis:   250,
+		MilitiaPopulation: 25,
+		MilitiaTarget:     25,
+	}
+	if got := CorePopulation(city); got != 125 {
+		t.Fatalf("core population = %v, want all 125 surviving civilians", got)
+	}
+	if got := RecruitablePopulation(city); got != 0 {
+		t.Fatalf("recruitable population = %d, want 0", got)
 	}
 }
 

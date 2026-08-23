@@ -29,12 +29,22 @@ const (
 	TaxGoldPerPopPerHour       int64 = 16
 )
 
-func CorePopulation(city domain.City) float64 {
+// ProtectedCorePopulation is the civilian floor recruitment and militia policy
+// changes may not consume. It follows the city's peak population so temporary
+// losses cannot make additional residents recruitable.
+func ProtectedCorePopulation(city domain.City) float64 {
 	basis := city.PopulationBasis
 	if basis <= 0 {
 		basis = city.Population
 	}
 	return basis * float64(CoreCivilianPercent) / 100
+}
+
+// CorePopulation is the core civilian population still physically present.
+// Starvation can reduce it below the protected target after all recruitable
+// civilians are gone.
+func CorePopulation(city domain.City) float64 {
+	return min(ProtectedCorePopulation(city), TaxablePopulation(city))
 }
 
 func MilitiaTarget(city domain.City) float64 {
@@ -61,8 +71,11 @@ func MilitiaPercent(city domain.City) float64 {
 }
 
 func RecruitablePopulation(city domain.City) int64 {
-	available := city.Population - CorePopulation(city) - MilitiaTarget(city)
-	return max(int64(math.Floor(available)), 0)
+	return int64(math.Floor(RecruitablePopulationExact(city)))
+}
+
+func RecruitablePopulationExact(city domain.City) float64 {
+	return max(TaxablePopulation(city)-CorePopulation(city), 0)
 }
 
 func TaxablePopulation(city domain.City) float64 {

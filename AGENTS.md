@@ -205,7 +205,9 @@ the "Client / frontend API reference" section below.
     core. The persisted peak does not fall after recruitment/casualties and does not jump when
     housing is added, so neither repeated training nor capacity upgrades move the floor. A city
     stores an exact passive-militia target, constrained to 5–45% of housing capacity when changed
-    (10% by default; neutral towns start at 45%); residents above the core plus target are
+    (10% by default; neutral towns start at 45%). Actual core civilians are the lesser of that
+    protected floor and the non-militia residents still alive, so starvation consumes recruitable
+    civilians before it reaches the core. Residents above the actual core plus current militia are
     recruitable. Starting a training order immediately removes its population cost from the
     settlement. Armies own that manpower thereafter, deaths are permanent, and future settlement
     growth can create new recruitable surplus.
@@ -295,7 +297,8 @@ for TypeScript) rather than hand-writing request types.
   population_cap (double), start (Coordinates, top-left), size, starving (bool),
   population_growth (Rate), militia_population, militia_target, derived militia_percent, core_population,
   taxable_population`. **Owner-only** fields (nil/zero for non-owners): `food_production,
-  food_upkeep, net_food_flow (Rate), recruitable_population, tax_rate_percent, tax_income,
+  food_upkeep, net_food_flow (Rate), recruitable_population, core_population_floor,
+  tax_rate_percent, tax_income,
   population_growth_before_tax`. See `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
