@@ -169,8 +169,8 @@ def cmd_smoke():
     cmd_queue(bid)
     _, r = call("cityio.service.v1.CityService/GetCity", {"cityId": {"value": cid}}, token())
     print("city milPop after train:", r["city"].get("militaryPopulation"))
-    print("waiting ~23s for training (soldier=20s)")
-    time.sleep(23)
+    print("waiting ~28s for training (5 soldiers at 5s each)")
+    time.sleep(28)
 
     cmd_armies()
     cmd_move(aid, sx + 4, sy + 4)

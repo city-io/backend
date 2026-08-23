@@ -189,7 +189,7 @@ func (b *barracksImpl) startFront(ctx actor.Context, state *buildingActor) bool 
 		return true
 	}
 	now := time.Now()
-	completeAt := now.Add(time.Duration(constants.GetTroopTrainTime(b.queue[0].TroopType)) * time.Second)
+	completeAt := now.Add(time.Duration(constants.GetTroopTrainingDuration(b.queue[0].TroopType, b.queue[0].Count)) * time.Second)
 	if err := state.Store.StartTrainingOrder(state.Ctx(), b.queue[0].TrainingOrderID, now, completeAt); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to start training order", "training_order_id", b.queue[0].TrainingOrderID, "error", err)
 		return false

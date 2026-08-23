@@ -183,16 +183,17 @@ the "Client / frontend API reference" section below.
   - **Troop stat table** (tier-1; balance knobs in `constants/troops.go`; Atk/Def/HP are stored
     but **unused until combat**):
 
-    | Type      | Gold | Train (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
-    |-----------|------|-----------|----------|---------|-----|-----|-----|-----|
-    | soldier   | 50   | 20        | 1.0      | 60      | 1   | 10  | 10  | 100 |
-    | archer    | 75   | 30        | 1.0      | 60      | 1   | 15  | 5   | 70  |
-    | cavalry   | 150  | 45        | 0.5      | 180     | 1   | 20  | 12  | 120 |
-    | artillery | 300  | 60        | 1.5      | 120     | 3   | 40  | 3   | 60  |
+    | Type      | Gold | Train/unit (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
+    |-----------|------|----------------|----------|---------|-----|-----|-----|-----|
+    | soldier   | 50   | 5              | 1.0      | 60      | 1   | 10  | 10  | 100 |
+    | archer    | 75   | 7              | 1.0      | 60      | 1   | 15  | 5   | 70  |
+    | cavalry   | 150  | 10             | 0.5      | 180     | 1   | 20  | 12  | 120 |
+    | artillery | 300  | 15             | 1.5      | 120     | 3   | 40  | 3   | 60  |
 
   - **Barracks training capacity** (troops per in-progress batch) = `5 × barracksLevel`. Extra
     orders persist and queue FIFO per barracks; more barracks = more concurrent training. A
-    barracks with pending orders cannot be demolished. `GetGameConfig`
+    batch takes `troop count × per-troop train time`; a barracks with pending orders cannot be
+    upgraded or demolished. `GetGameConfig`
     does **not** expose troop stats yet — a client needs them hardcoded or we should add a troop
     config message (TODO).
 - **Vision:** a player sees any tile within Chebyshev distance `VisionRadius` (3) of any tile of
@@ -313,7 +314,8 @@ for TypeScript) rather than hand-writing request types.
   `count × popCost` military population (≤ 35% of city population) and deducts `count × goldCost`.
   Errors: `FailedPrecondition` (`InsufficientGold`, insufficient trainable population, training
   capacity exceeded, construction in progress); `InvalidArgument` (bad count/type). After the
-  troop's train time an `Army` spawns at the barracks tile (observe it via `StreamState`).
+  batch's total train time (`count × per-troop time`) an `Army` spawns at the barracks tile
+  (observe it via `StreamState`).
   Multiple orders queue FIFO per barracks. The returned order includes its future `army_id` and,
   when it is at the front, `started_at` and `completes_at`.
 - `ListTrainingOrders(barracks_id) → { orders[] }` — owner-only current FIFO queue for a
