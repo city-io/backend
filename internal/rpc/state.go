@@ -7,6 +7,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"cityio/internal/battles"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
@@ -20,7 +21,8 @@ type projectedState struct {
 	existingCities    map[string]struct{}
 	existingBuildings map[string]struct{}
 	existingArmies    map[string]struct{}
-	existingMarches   map[string]struct{}
+	existingOrders    map[string]struct{}
+	existingBattles   map[string]struct{}
 }
 
 func (s *Server) buildProjectedState(ctx context.Context, userID string) (*projectedState, error) {
@@ -94,8 +96,14 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 			mapping.HidePrivateArmyFields(bag.Armies[index])
 			continue
 		}
-		if march := s.projectOwnedArmyMarch(army, known); march != nil {
-			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		if order := s.projectOwnedArmyOrder(army, known); order != nil {
+			bag.ArmyOrders = append(bag.ArmyOrders, order)
+		}
+	}
+	activeBattles := battles.All()
+	for _, battle := range activeBattles {
+		if battleVisibleToUser(battle, userID, visible) {
+			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle))
 		}
 	}
 
@@ -115,7 +123,8 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 		existingCities:    make(map[string]struct{}, len(cities)),
 		existingBuildings: make(map[string]struct{}, len(buildings)),
 		existingArmies:    make(map[string]struct{}, len(armies)),
-		existingMarches:   make(map[string]struct{}),
+		existingOrders:    make(map[string]struct{}),
+		existingBattles:   make(map[string]struct{}, len(activeBattles)),
 	}
 	for _, city := range cities {
 		projected.existingCities[city.CityID] = struct{}{}
@@ -125,9 +134,12 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 	}
 	for _, army := range armies {
 		projected.existingArmies[army.ArmyID] = struct{}{}
-		if army.MarchID != nil {
-			projected.existingMarches[*army.MarchID] = struct{}{}
+		if army.OrderID != nil {
+			projected.existingOrders[*army.OrderID] = struct{}{}
 		}
+	}
+	for _, battle := range activeBattles {
+		projected.existingBattles[battle.BattleID] = struct{}{}
 	}
 	return projected, nil
 }
@@ -142,7 +154,8 @@ func diffProjectedState(previous, current *projectedState) *servicev1.StateDelta
 	diffCities(prevBag.GetCities(), currBag.GetCities(), current.existingCities, &delta.Upserts.Cities, &delta.Deleted.CityIds, &delta.Hidden.CityIds)
 	diffBuildings(prevBag.GetBuildings(), currBag.GetBuildings(), current.existingBuildings, &delta.Upserts.Buildings, &delta.Deleted.BuildingIds, &delta.Hidden.BuildingIds)
 	diffArmies(prevBag.GetArmies(), currBag.GetArmies(), current.existingArmies, &delta.Upserts.Armies, &delta.Deleted.ArmyIds, &delta.Hidden.ArmyIds)
-	diffArmyMarches(prevBag.GetArmyMarches(), currBag.GetArmyMarches(), current.existingMarches, &delta.Upserts.ArmyMarches, &delta.Deleted.ArmyMarchIds, &delta.Hidden.ArmyMarchIds)
+	diffArmyOrders(prevBag.GetArmyOrders(), currBag.GetArmyOrders(), current.existingOrders, &delta.Upserts.ArmyOrders, &delta.Deleted.ArmyOrderIds, &delta.Hidden.ArmyOrderIds)
+	diffBattles(prevBag.GetBattles(), currBag.GetBattles(), current.existingBattles, &delta.Upserts.Battles, &delta.Deleted.BattleIds, &delta.Hidden.BattleIds)
 	diffTiles(prevBag.GetTiles(), currBag.GetTiles(), &delta.Upserts.Tiles)
 
 	previousVisibility := make(map[string]servicev1.TileVisibilityState, len(previous.snapshot.TileVisibility))
@@ -157,14 +170,14 @@ func diffProjectedState(previous, current *projectedState) *servicev1.StateDelta
 	return delta
 }
 
-func diffArmyMarches(previous, current []*entityv1.ArmyMarch, existing map[string]struct{}, upserts *[]*entityv1.ArmyMarch, deleted, hidden *[]*entityv1.ArmyMarchId) {
-	prev := make(map[string]*entityv1.ArmyMarch, len(previous))
+func diffArmyOrders(previous, current []*entityv1.ArmyOrder, existing map[string]struct{}, upserts *[]*entityv1.ArmyOrder, deleted, hidden *[]*entityv1.ArmyOrderId) {
+	prev := make(map[string]*entityv1.ArmyOrder, len(previous))
 	curr := make(map[string]struct{}, len(current))
 	for _, entity := range previous {
-		prev[entity.GetArmyMarchId().GetValue()] = entity
+		prev[entity.GetArmyOrderId().GetValue()] = entity
 	}
 	for _, entity := range current {
-		id := entity.GetArmyMarchId().GetValue()
+		id := entity.GetArmyOrderId().GetValue()
 		curr[id] = struct{}{}
 		if old, ok := prev[id]; !ok || !proto.Equal(old, entity) {
 			*upserts = append(*upserts, entity)
@@ -175,11 +188,46 @@ func diffArmyMarches(previous, current []*entityv1.ArmyMarch, existing map[strin
 			continue
 		}
 		if _, exists := existing[id]; exists {
-			*hidden = append(*hidden, mapping.ToArmyMarchId(id))
+			*hidden = append(*hidden, mapping.ToArmyOrderId(id))
 		} else {
-			*deleted = append(*deleted, mapping.ToArmyMarchId(id))
+			*deleted = append(*deleted, mapping.ToArmyOrderId(id))
 		}
 	}
+}
+
+func diffBattles(previous, current []*entityv1.Battle, existing map[string]struct{}, upserts *[]*entityv1.Battle, deleted, hidden *[]*entityv1.BattleId) {
+	prev := make(map[string]*entityv1.Battle, len(previous))
+	curr := make(map[string]struct{}, len(current))
+	for _, entity := range previous {
+		prev[entity.GetBattleId().GetValue()] = entity
+	}
+	for _, entity := range current {
+		id := entity.GetBattleId().GetValue()
+		curr[id] = struct{}{}
+		if old, ok := prev[id]; !ok || !proto.Equal(old, entity) {
+			*upserts = append(*upserts, entity)
+		}
+	}
+	for id := range prev {
+		if _, ok := curr[id]; ok {
+			continue
+		}
+		if _, exists := existing[id]; exists {
+			*hidden = append(*hidden, mapping.ToBattleId(id))
+		} else {
+			*deleted = append(*deleted, mapping.ToBattleId(id))
+		}
+	}
+}
+
+func battleVisibleToUser(battle domain.Battle, userID string, visible map[domain.Coordinates]struct{}) bool {
+	for _, id := range append(append([]string{}, battle.Attackers.UserIDs...), battle.Defenders.UserIDs...) {
+		if id == userID {
+			return true
+		}
+	}
+	_, ok := visible[domain.Coordinates{X: battle.X, Y: battle.Y}]
+	return ok
 }
 
 func diffUsers(previous, current []*entityv1.User, upserts *[]*entityv1.User, deleted *[]*entityv1.UserId) {
@@ -292,7 +340,7 @@ func tileKey(id *entityv1.TileId) string {
 
 func stateDeltaEmpty(delta *servicev1.StateDelta) bool {
 	bag, deleted, hidden := delta.GetUpserts(), delta.GetDeleted(), delta.GetHidden()
-	return len(bag.GetUsers()) == 0 && len(bag.GetCities()) == 0 && len(bag.GetBuildings()) == 0 && len(bag.GetArmies()) == 0 && len(bag.GetTiles()) == 0 && len(bag.GetArmyMarches()) == 0 &&
-		len(deleted.GetUserIds()) == 0 && len(deleted.GetCityIds()) == 0 && len(deleted.GetBuildingIds()) == 0 && len(deleted.GetArmyIds()) == 0 && len(deleted.GetTileIds()) == 0 && len(deleted.GetArmyMarchIds()) == 0 &&
-		len(hidden.GetUserIds()) == 0 && len(hidden.GetCityIds()) == 0 && len(hidden.GetBuildingIds()) == 0 && len(hidden.GetArmyIds()) == 0 && len(hidden.GetTileIds()) == 0 && len(hidden.GetArmyMarchIds()) == 0 && len(delta.GetTileVisibility()) == 0
+	return len(bag.GetUsers()) == 0 && len(bag.GetCities()) == 0 && len(bag.GetBuildings()) == 0 && len(bag.GetArmies()) == 0 && len(bag.GetTiles()) == 0 && len(bag.GetArmyOrders()) == 0 && len(bag.GetBattles()) == 0 &&
+		len(deleted.GetUserIds()) == 0 && len(deleted.GetCityIds()) == 0 && len(deleted.GetBuildingIds()) == 0 && len(deleted.GetArmyIds()) == 0 && len(deleted.GetTileIds()) == 0 && len(deleted.GetArmyOrderIds()) == 0 && len(deleted.GetBattleIds()) == 0 &&
+		len(hidden.GetUserIds()) == 0 && len(hidden.GetCityIds()) == 0 && len(hidden.GetBuildingIds()) == 0 && len(hidden.GetArmyIds()) == 0 && len(hidden.GetTileIds()) == 0 && len(hidden.GetArmyOrderIds()) == 0 && len(hidden.GetBattleIds()) == 0 && len(delta.GetTileVisibility()) == 0
 }

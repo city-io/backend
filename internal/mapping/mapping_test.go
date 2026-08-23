@@ -59,11 +59,11 @@ func TestMapTilesToProtoBuildsCoordinateKeyedEntityGraph(t *testing.T) {
 
 func TestHidePrivateArmyFieldsPreservesPhysicalState(t *testing.T) {
 	destination := 4
-	marchID := "march"
+	orderID := "order"
 	army := ArmyToProto(domain.Army{
 		ArmyID: "army", Owner: "owner", X: 2, Y: 3,
 		Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 12},
-		DestX:  &destination, DestY: &destination, MarchID: &marchID,
+		DestX:  &destination, DestY: &destination, OrderID: &orderID,
 	})
 
 	HidePrivateArmyFields(army)
@@ -71,7 +71,7 @@ func TestHidePrivateArmyFieldsPreservesPhysicalState(t *testing.T) {
 	if army.GetArmyId().GetValue() != "army" || army.GetCoords().GetX() != 2 || army.GetCoords().GetY() != 3 {
 		t.Fatalf("physical army state changed: %+v", army)
 	}
-	if army.GetCompositionVisibility() != entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_HIDDEN || len(army.GetTroops()) != 0 || army.GetMarchId() != nil {
+	if army.GetCompositionVisibility() != entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_HIDDEN || len(army.GetTroops()) != 0 || army.GetOrderId() != nil {
 		t.Fatalf("private army state was exposed: %+v", army)
 	}
 }

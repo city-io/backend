@@ -25,6 +25,31 @@ type MoveArmyMessage struct {
 	Y int
 }
 
+type AttackArmyMessage struct{ TargetArmyID string }
+type ConquerSettlementMessage struct{ CityID string }
+type RetreatArmyMessage struct{}
+
+type EnterBattleMessage struct{ BattleID string }
+type LeaveBattleMessage struct{ BattleID string }
+type ApplyCasualtiesMessage struct{ Casualties map[domain.TroopType]int64 }
+type ApplyCasualtiesResponseMessage struct {
+	ArmyID   string
+	Survived bool
+}
+
+type CreateBattleMessage struct {
+	Battle domain.Battle
+}
+type JoinBattleMessage struct {
+	ArmyID        string
+	Owner         string
+	OpposesArmyID string
+}
+
+type GetBattleMessage struct{}
+type GetBattleResponseMessage struct{ Battle domain.Battle }
+type RetreatFromBattleMessage struct{ ArmyID string }
+
 // MergeArmiesMessage folds the source army's troops into the target (the
 // recipient of this message). Both must share an owner and a tile.
 type MergeArmiesMessage struct {
@@ -132,6 +157,10 @@ type UnreachableDestinationError struct {
 	X int
 	Y int
 }
+
+type ArmyInBattleError struct{ ArmyID string }
+
+func (e *ArmyInBattleError) Error() string { return fmt.Sprintf("army is in battle: %s", e.ArmyID) }
 
 func (e *UnreachableDestinationError) Error() string {
 	return fmt.Sprintf("army destination is unreachable: (%d, %d)", e.X, e.Y)

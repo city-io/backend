@@ -13,11 +13,8 @@ const (
 )
 
 // Army is a mobile group of troops on the map, owned by a player. Troops holds
-// the count of each troop type. MarchID and DestX/DestY describe its active
-// movement order; all three are nil while idle. MarchID and RemainingPath are
-// live actor state, while the destination is persisted so movement can resume
-// after restoration. UpkeepCityID caches the owned city currently bearing this
-// army's food upkeep.
+// the count of each troop type. Order and battle details are live actor state;
+// DestX/DestY remain persisted so movement can resume after restoration.
 type Army struct {
 	ArmyID        string              `json:"army_id"`
 	Owner         string              `json:"owner"`
@@ -26,9 +23,38 @@ type Army struct {
 	Troops        map[TroopType]int64 `json:"troops"`
 	DestX         *int                `json:"dest_x"`
 	DestY         *int                `json:"dest_y"`
-	MarchID       *string             `json:"-"`
+	OrderID       *string             `json:"-"`
+	OrderKind     ArmyOrderKind       `json:"-"`
+	TargetArmyID  *string             `json:"-"`
+	TargetCityID  *string             `json:"-"`
+	BattleID      *string             `json:"-"`
+	CaptureStart  *time.Time          `json:"-"`
 	RemainingPath []Coordinates       `json:"-"`
 	UpkeepCityID  *string             `json:"upkeep_city_id"`
 	CreatedAt     time.Time           `json:"-"`
 	UpdatedAt     time.Time           `json:"-"`
+}
+
+type ArmyOrderKind string
+
+const (
+	ArmyOrderMove    ArmyOrderKind = "move"
+	ArmyOrderAttack  ArmyOrderKind = "attack"
+	ArmyOrderConquer ArmyOrderKind = "conquer"
+	ArmyOrderRetreat ArmyOrderKind = "retreat"
+)
+
+type BattleSide struct {
+	UserIDs []string
+	ArmyIDs []string
+}
+
+type Battle struct {
+	BattleID  string
+	X         int
+	Y         int
+	Attackers BattleSide
+	Defenders BattleSide
+	StartedAt time.Time
+	NextTick  time.Time
 }

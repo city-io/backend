@@ -12,8 +12,8 @@ game. The world is a 75×75 grid of tiles. Players own cities; cities contain bu
 buildings produce resources and grow population on a timer; barracks train troops that spawn as
 mobile **armies** which march across the map. Almost all game state lives in memory as
 **actors** (Proto-Actor), with PostgreSQL used as a periodic write-behind backup rather than the
-source of truth during runtime. **Combat does not exist yet** — armies can be trained, fed,
-moved and merged, but not fought.
+source of truth during runtime. Armies can be trained, fed, ordered, merged, fought, retreated,
+and used to capture settlements.
 
 - Module: `cityio` (see `go.mod`), Go 1.25.2
 - Entry point: `cmd/main.go`
@@ -41,8 +41,8 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
   `CityType`/`BuildingType`/`TroopType`/`TerrainType`). **No framework imports.** This package
   must stay dependency-free; the sqlc-generated `database` package imports it for the
   `Coordinates` composite type.
-- **`internal/actors`** — the heart of the system. One actor per live entity, five kinds:
-  - `userActor`, `cityActor`, `buildingActor`, `tileActor`, `armyActor` — each embeds `baseActor`.
+- **`internal/actors`** — the heart of the system. One actor per live entity, six kinds:
+  - `userActor`, `cityActor`, `buildingActor`, `tileActor`, `armyActor`, `battleActor` — each embeds `baseActor`.
   - `buildingActor` delegates type-specific behavior to a `buildingActorImpl`
     (`cityCenter.go`, `townCenter.go`, `house.go`, `farm.go`, `mine.go`, `barracks.go`) via
     `Create` / `Destroy` / `Handle` hooks. `barracks.go` is the troop **producer**: it holds a
@@ -50,7 +50,9 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
     idempotent `armyActor` spawn until it succeeds.
   - `armyActor` (`army.go`) owns one army: persistence, a 250ms movement ticker, tile presence,
     nearest-owned-settlement food-upkeep attribution, composition-aware weighted
-    8-directional terrain pathfinding, and merging.
+    8-directional terrain pathfinding, merging, combat enrollment, retreat, and capture orders.
+  - `battleActor` owns one active battle: alliance-ready attacker/defender sides, simultaneous
+    one-second combat ticks, deterministic whole-unit casualties, and resolution.
   - Actors persist through the injected `contracts.Store` (`state.Store`): reads/creates/deletes
     hit the DB immediately; `Enqueue*` coalesces updates for the background writer.
 - **`internal/persistence`** — `Store` (implements `contracts.Store`), the single sink for
@@ -67,7 +69,7 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/messages`** — the actor message types (the protocol). Plain structs, grouped by
   domain (`user.go`, `city.go`, `buildings.go`, `tile.go`, `army.go`, `general.go`).
 - **`internal/cluster`** — implements `contracts.ClusterProvider`. Registers the actor "kinds"
-  (`user`, `city`, `tile`, `building`, `army`), injects the `contracts.Store` and logging context
+  (`user`, `city`, `tile`, `building`, `army`, `battle`), injects the `contracts.Store` and logging context
   onto each actor. Uses the in-memory test cluster provider in non-prod and consul in prod.
 - **`internal/contracts`** — shared dependency interfaces (`ClusterProvider`, `Store`,
   `WorldProvider`) that keep `services`/`actors`/`rpc` independent of concrete infrastructure.
@@ -84,10 +86,13 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
   RPC. Private user changes target their owner; world changes wake every subscriber, whose RPC
   projection applies visibility. The RPC emits complete-entity deltas and an authoritative
   snapshot every five seconds.
+- **`internal/battles`** — concurrency-safe registry of active battle snapshots. Battle actors
+  update it; RPC projections read it for unary/list/stream entity bags. Battles are intentionally
+  ephemeral while the development world is rebuilt on every boot.
 - **`internal/gen`** — generated Connect/protobuf code (from `buf`). Two sub-packages:
   - `internal/gen/cityio/entity/v1` (`entityv1`) — entity messages (`User`, `City`,
-    `Building`, `Army`, `ArmyMarch`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`,
-    `BuildingId`, `ArmyId`, `ArmyMarchId`, `TileId`), enums (`CityType`, `BuildingType`, `TroopType`, `TerrainType`),
+    `Building`, `Army`, `ArmyOrder`, `Battle`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`,
+    `BuildingId`, `ArmyId`, `ArmyOrderId`, `BattleId`, `TileId`), enums (`CityType`, `BuildingType`, `TroopType`, `TerrainType`),
     `Coordinates`, `Rate`, and `EntityBag` (a collection of mixed entities).
   - `internal/gen/cityio/service/v1` (`servicev1`) — RPC request/response messages. The
     `servicev1connect` sub-package has the Connect service interfaces and handler constructors.
@@ -121,15 +126,16 @@ Go output to `internal/gen`. A frontend generates its own client from the same f
 ```
 proto/cityio/
   entity/v1/             # package cityio.entity.v1
-    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId, ArmyMarchId, TileId)
+    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId, ArmyOrderId, BattleId, TileId)
     common.proto          # enums (CityType, BuildingType, TroopType), Coordinates, Rate
     user.proto            # User entity message
     city.proto            # City entity message
     building.proto        # Building entity message
     army.proto            # Army + TroopStack entity messages
-    army_march.proto      # active movement orders, remaining routes, disclosure
+    army_order.proto      # active move/attack/conquer/retreat orders and routes
+    battle.proto          # active battles and alliance-ready sides
     tile.proto            # TerrainType + Tile
-    bag.proto             # EntityBag (users/cities/buildings/armies/marches/tiles)
+    bag.proto             # EntityBag (users/cities/buildings/armies/orders/battles/tiles)
   service/v1/             # package cityio.service.v1
     user.proto            # UserService RPCs (incl. StreamState) + req/resp
     city.proto            # CityService RPCs
@@ -170,14 +176,24 @@ the "Client / frontend API reference" section below.
   population declines. All rates are per-hour.
 - **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
-  position and an optional reference to its active `ArmyMarch`; the march owns its destination,
-  remaining route, and ETA. Movement follows a lowest-time route choosing among
+  position and optional references to its active `ArmyOrder` and `Battle`. Orders own their
+  objective, remaining route, and ETA. Movement follows a lowest-time route choosing among
   all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
   250ms timing quantum with carried fractional progress, but state is streamed only when the army actually enters a tile. An
   army moves at the speed of its slowest troop: cavalry takes 550ms per normal tile,
   soldiers/archers take 1.1s, and artillery takes 1.65s. Marsh multiplies that time by two,
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
   same-owner armies on the same tile can be merged.
+  - **Combat:** hostile armies sharing a tile enter a battle. Battles tick once per second and
+    compute both sides' damage from the pre-tick composition, so casualties are simultaneous.
+    Attack, defense, and HP determine fractional expected losses; battle-local carry converts
+    them into deterministic whole-unit deaths over time. There is no persistent army/unit health
+    or wounded state. A zero-unit army is deleted. A side can contain multiple users: additional
+    attackers targeting a participant join the opposing side, leaving formal alliance policy for
+    the future diplomacy layer.
+  - **Conquest:** an army ordered to conquer fights defenders on the settlement center tile and
+    then must hold it uncontested for 30 seconds. Any new defender resets capture progress.
+    Completion transfers the existing settlement and its buildings to the attacker.
   - **Population carve-out:** training reserves population into `city.military_population`, capped
     at `MilitaryPopulationFraction` (0.35) of the city's population. Civilians
     (`population − military_population`) drive city food upkeep, so a standing army is
@@ -187,7 +203,7 @@ the "Client / frontend API reference" section below.
     upkeep, recomputed (by Chebyshev distance) as the army marches. Cities and captured towns
     both qualify because they share the `City` domain model.
   - **Troop stat table** (tier-1; balance knobs in `constants/troops.go`; Atk/Def/HP are stored
-    but **unused until combat**):
+    and used by the one-second combat calculation):
 
     | Type      | Gold | Train/unit (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
     |-----------|------|----------------|----------|---------|-----|-----|-----|-----|
@@ -252,7 +268,7 @@ for TypeScript) rather than hand-writing request types.
     `_MINE` (+ `_UNSPECIFIED`).
   - `TroopType`: `TROOP_TYPE_SOLDIER`, `_ARCHER`, `_CAVALRY`, `_ARTILLERY` (+ `_UNSPECIFIED`).
 - **EntityBag** — a flat collection of raw entities returned by list/map/stream responses:
-  `{ users[], cities[], buildings[], armies[], tiles[], army_marches[] }`. Stream typed deletion/hidden IDs live
+  `{ users[], cities[], buildings[], armies[], tiles[], army_orders[], battles[] }`. Stream typed deletion/hidden IDs live
   in `StateDelta`, not in the entity collection.
 - **TileVisibilityState** — per-user tile knowledge: `UNEXPLORED`, `EXPLORED`, or `VISIBLE`.
   `EXPLORED` tiles include remembered terrain but sanitized occupancy.
@@ -268,12 +284,15 @@ for TypeScript) rather than hand-writing request types.
   `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
-- **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], march_id? }` —
-  composition is exact for the owner and explicitly hidden from unauthorized viewers; a march
-  reference is only present when the viewer may know the movement order exists.
-- **ArmyMarch** `{ army_march_id, army_id, disclosure, destination?, remaining_route[],
-  estimated_remaining_duration? }` — ephemeral, viewer-projected active-order state. A new march
-  ID is issued for each order; completion, cancellation, or replacement produces a tombstone.
+- **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
+  composition is exact for the owner and explicitly hidden from unauthorized viewers; private
+  order/battle references are removed from sanitized foreign armies.
+- **ArmyOrder** `{ army_order_id, army_id, move|attack_army|conquer_settlement|retreat,
+  remaining_route[], estimated_remaining_duration? }` — ephemeral owner-projected active state.
+  Completion, cancellation, failure, or replacement produces a tombstone; there are no terminal
+  status/reason records.
+- **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
+  active combat. Both sides contain repeated user and army IDs so future allies can share a side.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -283,8 +302,8 @@ for TypeScript) rather than hand-writing request types.
     stripped.
   - `GetCity` and `GetBuilding` return `NotFound` if the target isn't visible. `GetTile` returns
     terrain-only data for explored hidden tiles and `NotFound` only for unexplored tiles.
-  - `GetArmy`: the **owner** can always fetch their own army and active march (even out of
-    vision); others need vision on its tile and receive hidden composition/no march.
+  - `GetArmy`: the **owner** can always fetch their own army and active order/battle (even out of
+    vision); others need vision on its tile and receive sanitized private state.
   - `ListCities` and `ListArmies` are **owner-scoped** — they return your own entities regardless
     of vision. `StreamState` begins with the same owner-scoped snapshot and includes visible
     world deltas revealed by moving armies.
@@ -301,7 +320,7 @@ for TypeScript) rather than hand-writing request types.
 - `StreamState() → stream { revision, snapshot | delta }` — server-streaming and owner-scoped.
   The first frame and every five-second repair frame are authoritative snapshots. Between them,
   deltas carry complete entity upserts, typed `deleted` and `hidden` ID bags, and tile-visibility
-  transitions, including army-march upserts and tombstones. Apply snapshots by replacement and
+  transitions, including army-order/battle upserts and tombstones. Apply snapshots by replacement and
   deltas by ID. World updates are projected to every player who can currently see them; moving
   armies reveal and persist terrain.
 
@@ -333,8 +352,8 @@ for TypeScript) rather than hand-writing request types.
   when it is at the front, `started_at` and `completes_at`.
 - `ListTrainingOrders(barracks_id) → { orders[] }` — owner-only current FIFO queue for a
   barracks, including the active order and orders waiting behind it.
-- `GetArmy(army_id) → { army_id, entities(army, army_march?) }` — owner always; others need
-  vision and receive the sanitized army without private march state.
+- `GetArmy(army_id) → { army_id, entities(army, army_order?, battle?) }` — owner always; others
+  need vision and receive sanitized private state.
 - `PreviewArmyRoute(army_id, destination) → { steps[{coords}], estimated_duration }` —
   owner-only backend route preview. The UI derives whether the requested destination is reached
   by comparing it with the final step. Unknown tiles are assumed to be
@@ -347,10 +366,18 @@ for TypeScript) rather than hand-writing request types.
   newly revealed terrain invalidates it or exposes a faster route. If the target proves to be water
   or becomes unreachable, the army stops at the closest reachable explored land instead of leaking
   that fact up front.
+- `AttackArmy(army_id, target_army_id) → {}` — must own the attacker and currently see the
+  hostile target. The order follows updated visible coordinates, stops at the last-known tile if
+  contact is lost, and starts or joins a battle on contact.
+- `ConquerSettlement(army_id, city_id) → {}` — must own the army and see the hostile or neutral
+  settlement. The army fights center-tile defenders, then captures it after a 30-second
+  uncontested hold.
+- `RetreatArmy(army_id) → {}` — removes the army from its active battle and routes it to the
+  nearest owned settlement.
 - `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
   tile. The source's troops fold into the target and the source army disappears.
-- `ListArmies() → { army_ids[], entities(armies, army_marches) }` — your armies and their active
-  marches (all, regardless of vision).
+- `ListArmies() → { army_ids[], entities(armies, army_orders, battles) }` — your armies and their
+  active command/combat state (all, regardless of vision).
 
 **MapService**
 - `GetMap() → { tile_ids[], entities(tiles, cities, buildings, armies), tile_visibility[] }` —

@@ -29,7 +29,8 @@ type EntityBag struct {
 	Buildings     []*Building            `protobuf:"bytes,3,rep,name=buildings,proto3" json:"buildings,omitempty"`
 	Armies        []*Army                `protobuf:"bytes,4,rep,name=armies,proto3" json:"armies,omitempty"`
 	Tiles         []*Tile                `protobuf:"bytes,5,rep,name=tiles,proto3" json:"tiles,omitempty"`
-	ArmyMarches   []*ArmyMarch           `protobuf:"bytes,6,rep,name=army_marches,json=armyMarches,proto3" json:"army_marches,omitempty"`
+	ArmyOrders    []*ArmyOrder           `protobuf:"bytes,6,rep,name=army_orders,json=armyOrders,proto3" json:"army_orders,omitempty"`
+	Battles       []*Battle              `protobuf:"bytes,7,rep,name=battles,proto3" json:"battles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -99,9 +100,16 @@ func (x *EntityBag) GetTiles() []*Tile {
 	return nil
 }
 
-func (x *EntityBag) GetArmyMarches() []*ArmyMarch {
+func (x *EntityBag) GetArmyOrders() []*ArmyOrder {
 	if x != nil {
-		return x.ArmyMarches
+		return x.ArmyOrders
+	}
+	return nil
+}
+
+func (x *EntityBag) GetBattles() []*Battle {
+	if x != nil {
+		return x.Battles
 	}
 	return nil
 }
@@ -110,14 +118,16 @@ var File_cityio_entity_v1_bag_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_bag_proto_rawDesc = "" +
 	"\n" +
-	"\x1acityio/entity/v1/bag.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a!cityio/entity/v1/army_march.proto\x1a\x1fcityio/entity/v1/building.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1bcityio/entity/v1/tile.proto\x1a\x1bcityio/entity/v1/user.proto\"\xc1\x02\n" +
+	"\x1acityio/entity/v1/bag.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a!cityio/entity/v1/army_order.proto\x1a\x1dcityio/entity/v1/battle.proto\x1a\x1fcityio/entity/v1/building.proto\x1a\x1bcityio/entity/v1/city.proto\x1a\x1bcityio/entity/v1/tile.proto\x1a\x1bcityio/entity/v1/user.proto\"\xf3\x02\n" +
 	"\tEntityBag\x12,\n" +
 	"\x05users\x18\x01 \x03(\v2\x16.cityio.entity.v1.UserR\x05users\x12.\n" +
 	"\x06cities\x18\x02 \x03(\v2\x16.cityio.entity.v1.CityR\x06cities\x128\n" +
 	"\tbuildings\x18\x03 \x03(\v2\x1a.cityio.entity.v1.BuildingR\tbuildings\x12.\n" +
 	"\x06armies\x18\x04 \x03(\v2\x16.cityio.entity.v1.ArmyR\x06armies\x12,\n" +
-	"\x05tiles\x18\x05 \x03(\v2\x16.cityio.entity.v1.TileR\x05tiles\x12>\n" +
-	"\farmy_marches\x18\x06 \x03(\v2\x1b.cityio.entity.v1.ArmyMarchR\varmyMarchesB\xb1\x01\n" +
+	"\x05tiles\x18\x05 \x03(\v2\x16.cityio.entity.v1.TileR\x05tiles\x12<\n" +
+	"\varmy_orders\x18\x06 \x03(\v2\x1b.cityio.entity.v1.ArmyOrderR\n" +
+	"armyOrders\x122\n" +
+	"\abattles\x18\a \x03(\v2\x18.cityio.entity.v1.BattleR\abattlesB\xb1\x01\n" +
 	"\x14com.cityio.entity.v1B\bBagProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -140,7 +150,8 @@ var file_cityio_entity_v1_bag_proto_goTypes = []any{
 	(*Building)(nil),  // 3: cityio.entity.v1.Building
 	(*Army)(nil),      // 4: cityio.entity.v1.Army
 	(*Tile)(nil),      // 5: cityio.entity.v1.Tile
-	(*ArmyMarch)(nil), // 6: cityio.entity.v1.ArmyMarch
+	(*ArmyOrder)(nil), // 6: cityio.entity.v1.ArmyOrder
+	(*Battle)(nil),    // 7: cityio.entity.v1.Battle
 }
 var file_cityio_entity_v1_bag_proto_depIdxs = []int32{
 	1, // 0: cityio.entity.v1.EntityBag.users:type_name -> cityio.entity.v1.User
@@ -148,12 +159,13 @@ var file_cityio_entity_v1_bag_proto_depIdxs = []int32{
 	3, // 2: cityio.entity.v1.EntityBag.buildings:type_name -> cityio.entity.v1.Building
 	4, // 3: cityio.entity.v1.EntityBag.armies:type_name -> cityio.entity.v1.Army
 	5, // 4: cityio.entity.v1.EntityBag.tiles:type_name -> cityio.entity.v1.Tile
-	6, // 5: cityio.entity.v1.EntityBag.army_marches:type_name -> cityio.entity.v1.ArmyMarch
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6, // 5: cityio.entity.v1.EntityBag.army_orders:type_name -> cityio.entity.v1.ArmyOrder
+	7, // 6: cityio.entity.v1.EntityBag.battles:type_name -> cityio.entity.v1.Battle
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_bag_proto_init() }
@@ -162,7 +174,8 @@ func file_cityio_entity_v1_bag_proto_init() {
 		return
 	}
 	file_cityio_entity_v1_army_proto_init()
-	file_cityio_entity_v1_army_march_proto_init()
+	file_cityio_entity_v1_army_order_proto_init()
+	file_cityio_entity_v1_battle_proto_init()
 	file_cityio_entity_v1_building_proto_init()
 	file_cityio_entity_v1_city_proto_init()
 	file_cityio_entity_v1_tile_proto_init()

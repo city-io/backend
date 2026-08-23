@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"cityio/internal/constants"
 	"cityio/internal/domain"
@@ -72,23 +73,47 @@ func disclosedArmyPath(path []domain.Coordinates, explored map[domain.Coordinate
 	return disclosed
 }
 
-func (s *Server) projectOwnedArmyMarch(army domain.Army, explored map[domain.Coordinates]struct{}) *entityv1.ArmyMarch {
-	if army.MarchID == nil || army.DestX == nil || army.DestY == nil {
+func (s *Server) projectOwnedArmyOrder(army domain.Army, explored map[domain.Coordinates]struct{}) *entityv1.ArmyOrder {
+	if army.OrderID == nil {
 		return nil
 	}
-	destination := domain.Coordinates{X: *army.DestX, Y: *army.DestY}
+	destination := domain.Coordinates{X: army.X, Y: army.Y}
+	if army.DestX != nil && army.DestY != nil {
+		destination = domain.Coordinates{X: *army.DestX, Y: *army.DestY}
+	}
 	route := s.projectArmyPath(army, army.RemainingPath, explored)
 	if army.RemainingPath == nil {
 		route = s.projectArmyRoute(army, destination, explored)
 	}
-	return &entityv1.ArmyMarch{
-		ArmyMarchId:                mapping.ToArmyMarchId(*army.MarchID),
+	order := &entityv1.ArmyOrder{
+		ArmyOrderId:                mapping.ToArmyOrderId(*army.OrderID),
 		ArmyId:                     mapping.ToArmyId(army.ArmyID),
-		Disclosure:                 entityv1.ArmyMarchDisclosure_ARMY_MARCH_DISCLOSURE_FULL_ROUTE,
-		Destination:                &entityv1.Coordinates{X: int32(destination.X), Y: int32(destination.Y)},
 		RemainingRoute:             route.steps,
 		EstimatedRemainingDuration: durationpb.New(route.duration),
 	}
+	coords := &entityv1.Coordinates{X: int32(destination.X), Y: int32(destination.Y)}
+	switch army.OrderKind {
+	case domain.ArmyOrderAttack:
+		if army.TargetArmyID != nil {
+			order.Objective = &entityv1.ArmyOrder_AttackArmy{AttackArmy: &entityv1.AttackArmyObjective{TargetArmyId: mapping.ToArmyId(*army.TargetArmyID), LastKnownCoords: coords}}
+		}
+	case domain.ArmyOrderConquer:
+		if army.TargetCityID != nil {
+			objective := &entityv1.ConquerSettlementObjective{CityId: mapping.ToCityId(*army.TargetCityID), Destination: coords}
+			if army.CaptureStart != nil {
+				objective.CaptureStartedAt = timestamppb.New(*army.CaptureStart)
+				objective.CaptureDuration = durationpb.New(constants.SettlementCaptureDuration)
+			}
+			order.Objective = &entityv1.ArmyOrder_ConquerSettlement{ConquerSettlement: objective}
+		}
+	case domain.ArmyOrderRetreat:
+		if army.TargetCityID != nil {
+			order.Objective = &entityv1.ArmyOrder_Retreat{Retreat: &entityv1.RetreatObjective{SettlementId: mapping.ToCityId(*army.TargetCityID), Destination: coords}}
+		}
+	default:
+		order.Objective = &entityv1.ArmyOrder_Move{Move: &entityv1.MoveObjective{Destination: coords}}
+	}
+	return order
 }
 
 func armyMovementDuration(army domain.Army) time.Duration {

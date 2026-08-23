@@ -49,9 +49,10 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		if state.Army.Troops == nil {
 			state.Army.Troops = make(map[domain.TroopType]int64)
 		}
-		if state.Army.DestX != nil && state.Army.DestY != nil && state.Army.MarchID == nil {
-			marchID := uuid.NewString()
-			state.Army.MarchID = &marchID
+		if state.Army.DestX != nil && state.Army.DestY != nil && state.Army.OrderID == nil {
+			orderID := uuid.NewString()
+			state.Army.OrderID = &orderID
+			state.Army.OrderKind = domain.ArmyOrderMove
 		}
 		if !msg.Restore {
 			if err := state.Store.CreateArmy(state.Ctx(), state.Army); err != nil {
@@ -77,32 +78,41 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		ctx.Respond(&messages.GetArmyResponseMessage{Army: army})
 
 	case messages.MoveArmyMessage:
+		if state.Army.BattleID != nil {
+			ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
+			return
+		}
 		x, y := clampCoord(msg.X), clampCoord(msg.Y)
 		if state.Army.X == x && state.Army.Y == y {
-			state.clearMarch()
+			state.clearOrder()
 			state.Store.EnqueueArmy(state.Army)
 			state.publish()
 			ctx.Respond(messages.Ack{})
 			return
 		}
 		oldDestX, oldDestY := state.Army.DestX, state.Army.DestY
-		oldMarchID := state.Army.MarchID
+		oldOrderID, oldKind := state.Army.OrderID, state.Army.OrderKind
+		oldTargetArmyID, oldTargetCityID, oldCaptureStart := state.Army.TargetArmyID, state.Army.TargetCityID, state.Army.CaptureStart
 		oldPath, oldProgress := state.path, state.movementProgress
-		marchID := uuid.NewString()
-		state.Army.MarchID = &marchID
+		orderID := uuid.NewString()
+		state.Army.OrderID = &orderID
+		state.Army.OrderKind = domain.ArmyOrderMove
+		state.Army.TargetArmyID, state.Army.TargetCityID, state.Army.CaptureStart = nil, nil, nil
 		state.Army.DestX = &x
 		state.Army.DestY = &y
 		state.movementProgress = 0
 		if err := state.planPath(); err != nil {
 			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
-			state.Army.MarchID = oldMarchID
+			state.Army.OrderID, state.Army.OrderKind = oldOrderID, oldKind
+			state.Army.TargetArmyID, state.Army.TargetCityID, state.Army.CaptureStart = oldTargetArmyID, oldTargetCityID, oldCaptureStart
 			state.path, state.movementProgress = oldPath, oldProgress
 			ctx.Respond(&messages.InternalError{})
 			return
 		}
 		if len(state.path) == 0 {
 			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
-			state.Army.MarchID = oldMarchID
+			state.Army.OrderID, state.Army.OrderKind = oldOrderID, oldKind
+			state.Army.TargetArmyID, state.Army.TargetCityID, state.Army.CaptureStart = oldTargetArmyID, oldTargetCityID, oldCaptureStart
 			state.path, state.movementProgress = oldPath, oldProgress
 			ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
 			return
@@ -111,10 +121,50 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		state.publish()
 		ctx.Respond(messages.Ack{})
 
+	case messages.AttackArmyMessage:
+		state.attack(ctx, msg.TargetArmyID)
+
+	case messages.ConquerSettlementMessage:
+		state.conquer(ctx, msg.CityID)
+
+	case messages.RetreatArmyMessage:
+		state.retreat(ctx)
+
+	case messages.EnterBattleMessage:
+		battleID := msg.BattleID
+		state.Army.BattleID = &battleID
+		state.path = nil
+		state.movementProgress = 0
+		if state.Army.OrderKind == domain.ArmyOrderConquer {
+			state.Army.CaptureStart = nil
+		}
+		state.Store.EnqueueArmy(state.Army)
+		state.publish()
+		if ctx.Sender() != nil {
+			ctx.Respond(messages.Ack{})
+		}
+
+	case messages.LeaveBattleMessage:
+		if state.Army.BattleID != nil && *state.Army.BattleID == msg.BattleID {
+			state.Army.BattleID = nil
+			if state.Army.OrderKind == domain.ArmyOrderAttack {
+				state.clearOrder()
+			}
+			state.Store.EnqueueArmy(state.Army)
+			state.publish()
+		}
+
+	case messages.ApplyCasualtiesMessage:
+		state.applyCasualties(ctx, msg.Casualties)
+
 	case messages.MergeArmiesMessage:
 		state.merge(ctx, msg.SourceArmyID)
 
 	case messages.SurrenderTroopsMessage:
+		if state.Army.BattleID != nil {
+			ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
+			return
+		}
 		ctx.Respond(&messages.SurrenderTroopsResponseMessage{Troops: state.Army.Troops})
 		state.teardown(ctx)
 
@@ -130,6 +180,10 @@ func (state *armyActor) Receive(ctx actor.Context) {
 // over and shuts itself down. Ownership and co-location are validated by the
 // caller (the RPC layer) before this runs.
 func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
+	if state.Army.BattleID != nil {
+		ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
+		return
+	}
 	res, err := state.Cluster.Request("army", sourceArmyID, messages.SurrenderTroopsMessage{})
 	if err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to request troops from source army", "source_army_id", sourceArmyID, "error", err)
@@ -150,24 +204,365 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 	ctx.Respond(messages.Ack{})
 }
 
+func (state *armyActor) attack(ctx actor.Context, targetID string) {
+	if state.Army.BattleID != nil {
+		ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
+		return
+	}
+	if targetID == state.Army.ArmyID {
+		ctx.Respond(&messages.UnreachableDestinationError{X: state.Army.X, Y: state.Army.Y})
+		return
+	}
+	target, err := state.getArmy(targetID)
+	if err != nil {
+		ctx.Respond(err)
+		return
+	}
+	if target.Owner == state.Army.Owner {
+		ctx.Respond(&messages.UnreachableDestinationError{X: target.X, Y: target.Y})
+		return
+	}
+	if target.BattleID != nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err != nil {
+			ctx.Respond(err)
+			return
+		}
+		battleID := *target.BattleID
+		state.Army.BattleID = &battleID
+		state.clearOrder()
+		state.publish()
+		ctx.Respond(messages.Ack{})
+		return
+	}
+	orderID := uuid.NewString()
+	state.Army.OrderID = &orderID
+	state.Army.OrderKind = domain.ArmyOrderAttack
+	state.Army.TargetArmyID = &targetID
+	state.Army.TargetCityID, state.Army.CaptureStart = nil, nil
+	state.setDestination(target.X, target.Y)
+	if state.Army.X == target.X && state.Army.Y == target.Y {
+		state.startBattle(target)
+	} else if err := state.planPath(); err != nil || len(state.path) == 0 {
+		state.clearOrder()
+		ctx.Respond(&messages.UnreachableDestinationError{X: target.X, Y: target.Y})
+		return
+	}
+	state.Store.EnqueueArmy(state.Army)
+	state.publish()
+	ctx.Respond(messages.Ack{})
+}
+
+func (state *armyActor) conquer(ctx actor.Context, cityID string) {
+	if state.Army.BattleID != nil {
+		ctx.Respond(&messages.ArmyInBattleError{ArmyID: state.Army.ArmyID})
+		return
+	}
+	res, err := state.Cluster.Request("city", cityID, messages.GetCityMessage{})
+	if err != nil {
+		ctx.Respond(err)
+		return
+	}
+	response, ok := res.(*messages.GetCityResponseMessage)
+	if !ok {
+		ctx.Respond(&messages.CityNotFoundError{CityId: cityID})
+		return
+	}
+	if response.City.Owner != nil && *response.City.Owner == state.Army.Owner {
+		ctx.Respond(messages.Ack{})
+		return
+	}
+	x, y := response.City.StartX+response.City.Size/2, response.City.StartY+response.City.Size/2
+	orderID := uuid.NewString()
+	state.Army.OrderID = &orderID
+	state.Army.OrderKind = domain.ArmyOrderConquer
+	state.Army.TargetCityID = &cityID
+	state.Army.TargetArmyID, state.Army.CaptureStart = nil, nil
+	state.setDestination(x, y)
+	if state.Army.X == x && state.Army.Y == y {
+		state.finishAtDestination()
+	} else if err := state.planPath(); err != nil || len(state.path) == 0 {
+		state.clearOrder()
+		ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
+		return
+	}
+	state.Store.EnqueueArmy(state.Army)
+	state.publish()
+	ctx.Respond(messages.Ack{})
+}
+
+func (state *armyActor) retreat(ctx actor.Context) {
+	if state.Army.BattleID != nil {
+		battleID := *state.Army.BattleID
+		if _, err := state.Cluster.Request("battle", battleID, messages.RetreatFromBattleMessage{ArmyID: state.Army.ArmyID}); err != nil {
+			ctx.Respond(err)
+			return
+		}
+		state.Army.BattleID = nil
+	}
+	city, ok := state.nearestOwnedSettlement()
+	if !ok {
+		state.clearOrder()
+		state.publish()
+		ctx.Respond(messages.Ack{})
+		return
+	}
+	x, y := city.StartX+city.Size/2, city.StartY+city.Size/2
+	orderID := uuid.NewString()
+	state.Army.OrderID = &orderID
+	state.Army.OrderKind = domain.ArmyOrderRetreat
+	state.Army.TargetCityID = &city.CityID
+	state.Army.TargetArmyID, state.Army.CaptureStart = nil, nil
+	state.setDestination(x, y)
+	if state.Army.X == x && state.Army.Y == y {
+		state.clearOrder()
+	} else if err := state.planPath(); err != nil || len(state.path) == 0 {
+		state.clearOrder()
+		ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
+		return
+	}
+	state.Store.EnqueueArmy(state.Army)
+	state.publish()
+	ctx.Respond(messages.Ack{})
+}
+
+func (state *armyActor) setDestination(x, y int) {
+	x, y = clampCoord(x), clampCoord(y)
+	state.Army.DestX, state.Army.DestY = &x, &y
+	state.path = nil
+	state.movementProgress = 0
+}
+
+func (state *armyActor) getArmy(id string) (domain.Army, error) {
+	res, err := state.Cluster.Request("army", id, messages.GetArmyMessage{})
+	if err != nil {
+		return domain.Army{}, err
+	}
+	response, ok := res.(*messages.GetArmyResponseMessage)
+	if !ok || response.Army.ArmyID != id {
+		return domain.Army{}, &messages.ArmyNotFoundError{ArmyID: id}
+	}
+	return response.Army, nil
+}
+
+func (state *armyActor) refreshAttackTarget() {
+	if state.Army.TargetArmyID == nil {
+		return
+	}
+	target, err := state.getArmy(*state.Army.TargetArmyID)
+	if err != nil {
+		state.clearOrder()
+		state.publish()
+		return
+	}
+	if target.BattleID != nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err == nil {
+			battleID := *target.BattleID
+			state.Army.BattleID = &battleID
+			state.path = nil
+			state.publish()
+		}
+		return
+	}
+	vision := domain.Vision{Armies: []domain.Army{state.Army}}
+	if cities, err := state.Store.GetCitiesByOwner(state.Ctx(), state.Army.Owner); err == nil {
+		vision.Cities = cities
+	}
+	if !vision.PointVisible(target.X, target.Y, constants.VisionRadius) {
+		return
+	}
+	if state.Army.DestX == nil || state.Army.DestY == nil || *state.Army.DestX != target.X || *state.Army.DestY != target.Y {
+		state.setDestination(target.X, target.Y)
+		_ = state.planPath()
+		state.publish()
+	}
+}
+
+func (state *armyActor) finishAtDestination() bool {
+	switch state.Army.OrderKind {
+	case domain.ArmyOrderAttack:
+		if state.Army.TargetArmyID != nil {
+			if target, err := state.getArmy(*state.Army.TargetArmyID); err == nil && target.X == state.Army.X && target.Y == state.Army.Y {
+				state.startBattle(target)
+				return true
+			}
+		}
+		state.clearOrder()
+	case domain.ArmyOrderConquer:
+		if state.engageSettlementDefender() {
+			return true
+		}
+		if state.Army.CaptureStart == nil {
+			now := time.Now()
+			state.Army.CaptureStart = &now
+			state.path = nil
+			state.movementProgress = 0
+			state.publish()
+		}
+		return true
+	default:
+		state.clearOrder()
+	}
+	state.Store.EnqueueArmy(state.Army)
+	state.publish()
+	return true
+}
+
+func (state *armyActor) handleCapture() bool {
+	if state.Army.CaptureStart == nil {
+		return false
+	}
+	if state.engageSettlementDefender() {
+		return true
+	}
+	if time.Since(*state.Army.CaptureStart) < constants.SettlementCaptureDuration {
+		return true
+	}
+	if state.Army.TargetCityID != nil {
+		if _, err := state.Cluster.Request("city", *state.Army.TargetCityID, messages.CaptureCityMessage{Owner: state.Army.Owner}); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to capture settlement", "army_id", state.Army.ArmyID, "city_id", *state.Army.TargetCityID, "error", err)
+			return true
+		}
+	}
+	state.clearOrder()
+	state.Store.EnqueueArmy(state.Army)
+	state.updateUpkeepCity()
+	state.publish()
+	return true
+}
+
+func (state *armyActor) engageSettlementDefender() bool {
+	res, err := state.Cluster.Request("tile", utils.GetTileIndex(state.Army.X, state.Army.Y), messages.GetTileMessage{})
+	if err != nil {
+		return false
+	}
+	tile, ok := res.(messages.GetTileResponseMessage)
+	if !ok {
+		return false
+	}
+	for _, id := range tile.ArmyIDs {
+		if id == state.Army.ArmyID {
+			continue
+		}
+		other, err := state.getArmy(id)
+		if err == nil && other.Owner != state.Army.Owner {
+			state.startBattle(other)
+			return true
+		}
+	}
+	return false
+}
+
+func (state *armyActor) startBattle(target domain.Army) {
+	if target.BattleID != nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err == nil {
+			battleID := *target.BattleID
+			state.Army.BattleID = &battleID
+			state.path = nil
+			state.publish()
+		}
+		return
+	}
+	battleID := uuid.NewString()
+	now := time.Now()
+	battle := domain.Battle{BattleID: battleID, X: state.Army.X, Y: state.Army.Y, StartedAt: now, NextTick: now.Add(constants.BattleTickInterval),
+		Attackers: domain.BattleSide{UserIDs: []string{state.Army.Owner}, ArmyIDs: []string{state.Army.ArmyID}},
+		Defenders: domain.BattleSide{UserIDs: []string{target.Owner}, ArmyIDs: []string{target.ArmyID}}}
+	if res, err := state.Cluster.Request("tile", utils.GetTileIndex(state.Army.X, state.Army.Y), messages.GetTileMessage{}); err == nil {
+		if tile, ok := res.(messages.GetTileResponseMessage); ok {
+			for _, id := range tile.ArmyIDs {
+				if id == state.Army.ArmyID || id == target.ArmyID {
+					continue
+				}
+				army, err := state.getArmy(id)
+				if err != nil || army.BattleID != nil {
+					continue
+				}
+				if army.Owner == state.Army.Owner {
+					battle.Attackers.ArmyIDs = append(battle.Attackers.ArmyIDs, id)
+				}
+				if army.Owner == target.Owner {
+					battle.Defenders.ArmyIDs = append(battle.Defenders.ArmyIDs, id)
+				}
+			}
+		}
+	}
+	if _, err := state.Cluster.Request("battle", battleID, &messages.CreateBattleMessage{Battle: battle}); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to create battle", "army_id", state.Army.ArmyID, "target_army_id", target.ArmyID, "error", err)
+	}
+}
+
+func (state *armyActor) applyCasualties(ctx actor.Context, casualties map[domain.TroopType]int64) {
+	var released int64
+	for troopType, count := range casualties {
+		removed := min(count, state.Army.Troops[troopType])
+		state.Army.Troops[troopType] -= removed
+		released += removed * constants.GetTroopPopCost(troopType)
+	}
+	if released > 0 && state.Army.UpkeepCityID != nil {
+		_ = state.Cluster.Tell("city", *state.Army.UpkeepCityID, messages.ReleaseMilitaryPopulationMessage{Count: released})
+	}
+	survived := false
+	for _, count := range state.Army.Troops {
+		if count > 0 {
+			survived = true
+			break
+		}
+	}
+	ctx.Respond(&messages.ApplyCasualtiesResponseMessage{ArmyID: state.Army.ArmyID, Survived: survived})
+	if !survived {
+		state.teardown(ctx)
+		return
+	}
+	state.Store.EnqueueArmy(state.Army)
+	state.updateUpkeepCity()
+	state.publish()
+}
+
+func (state *armyActor) nearestOwnedSettlement() (domain.City, bool) {
+	cities, err := state.Store.GetCitiesByOwner(state.Ctx(), state.Army.Owner)
+	if err != nil || len(cities) == 0 {
+		return domain.City{}, false
+	}
+	best, distance := cities[0], domain.ChebyshevToCity(cities[0], state.Army.X, state.Army.Y)
+	for _, city := range cities[1:] {
+		if d := domain.ChebyshevToCity(city, state.Army.X, state.Army.Y); d < distance {
+			best, distance = city, d
+		}
+	}
+	return best, true
+}
+
 // step advances an army along its terrain-weighted route.
 func (state *armyActor) step() {
 	state.ticksSinceReconcile++
+	if state.Army.BattleID != nil {
+		state.reconcileTileIfDue()
+		return
+	}
+	if state.Army.OrderKind == domain.ArmyOrderAttack {
+		state.refreshAttackTarget()
+	}
+	if state.Army.OrderKind == domain.ArmyOrderConquer && state.handleCapture() {
+		return
+	}
 	if state.Army.DestX == nil || state.Army.DestY == nil {
 		state.reconcileTileIfDue()
 		return
 	}
 	destX, destY := *state.Army.DestX, *state.Army.DestY
 	if state.Army.X == destX && state.Army.Y == destY {
-		state.clearMarch()
+		if state.finishAtDestination() {
+			return
+		}
+		state.clearOrder()
 		state.Store.EnqueueArmy(state.Army)
 		state.publish()
 		return
 	}
 	if len(state.path) == 0 {
-		hadMarch := state.Army.MarchID != nil
+		hadOrder := state.Army.OrderID != nil
 		if !state.restorePath() {
-			if hadMarch && state.Army.MarchID == nil {
+			if hadOrder && state.Army.OrderID == nil {
 				state.publish()
 			}
 			state.reconcileTileIfDue()
@@ -189,21 +584,30 @@ func (state *armyActor) step() {
 	state.recordExploration(state.Army.Owner, domain.Vision{Armies: []domain.Army{state.Army}})
 	state.ticksSinceReconcile = 0
 	state.updateUpkeepCity()
+	if state.engageSettlementDefender() {
+		state.Store.EnqueueArmy(state.Army)
+		state.publish()
+		return
+	}
 
 	arrived := state.Army.X == destX && state.Army.Y == destY
-	marchEnded := arrived
+	orderEnded := arrived
 	if arrived {
-		state.clearMarch()
+		if state.finishAtDestination() {
+			state.publish()
+			return
+		}
+		state.clearOrder()
 	} else if err := state.refreshPath(); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to refresh army route", "army_id", state.Army.ArmyID, "error", err)
 		state.path = nil
 	} else if len(state.path) == 0 {
 		slog.InfoContext(state.Ctx(), "army stopped at the edge of known traversable terrain", "army_id", state.Army.ArmyID, "x", destX, "y", destY)
-		state.clearMarch()
-		marchEnded = true
+		state.clearOrder()
+		orderEnded = true
 	}
 	state.movesSinceBackup++
-	if marchEnded || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
+	if orderEnded || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
 		state.Store.EnqueueArmy(state.Army)
 		state.movesSinceBackup = 0
 	}
@@ -221,17 +625,21 @@ func (state *armyActor) restorePath() bool {
 	if len(state.path) == 0 && (state.Army.X != *state.Army.DestX || state.Army.Y != *state.Army.DestY) {
 		destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
 		slog.InfoContext(state.Ctx(), "army stopped at the edge of known traversable terrain", "army_id", state.Army.ArmyID, "x", destination.X, "y", destination.Y)
-		state.clearMarch()
+		state.clearOrder()
 		state.Store.EnqueueArmy(state.Army)
 		return false
 	}
 	return true
 }
 
-func (state *armyActor) clearMarch() {
+func (state *armyActor) clearOrder() {
 	state.Army.DestX = nil
 	state.Army.DestY = nil
-	state.Army.MarchID = nil
+	state.Army.OrderID = nil
+	state.Army.OrderKind = ""
+	state.Army.TargetArmyID = nil
+	state.Army.TargetCityID = nil
+	state.Army.CaptureStart = nil
 	state.path = nil
 	state.movementProgress = 0
 }

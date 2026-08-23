@@ -115,17 +115,17 @@ func TestArmyCarriesFractionalMovementProgressBetweenTiles(t *testing.T) {
 	}
 }
 
-func TestClearMarchClearsEveryMovementField(t *testing.T) {
+func TestClearOrderClearsEveryMovementField(t *testing.T) {
 	destination := 7
-	marchID := "march"
+	orderID := "order"
 	state := &armyActor{
-		Army: domain.Army{DestX: &destination, DestY: &destination, MarchID: &marchID},
+		Army: domain.Army{DestX: &destination, DestY: &destination, OrderID: &orderID},
 		path: []domain.Coordinates{{X: 1, Y: 1}}, movementProgress: 250 * time.Millisecond,
 	}
 
-	state.clearMarch()
+	state.clearOrder()
 
-	if state.Army.DestX != nil || state.Army.DestY != nil || state.Army.MarchID != nil {
+	if state.Army.DestX != nil || state.Army.DestY != nil || state.Army.OrderID != nil {
 		t.Fatalf("army movement fields were not cleared: %+v", state.Army)
 	}
 	if state.path != nil || state.movementProgress != 0 {
