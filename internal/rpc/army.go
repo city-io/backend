@@ -200,16 +200,17 @@ func (h *armyHandler) PreviewArmyRoute(ctx context.Context, req *connect.Request
 			Explored: isExplored,
 		})
 	}
-	movementTicks := 0
+	movementDuration := time.Duration(0)
 	for troopType, count := range army.Troops {
 		if count > 0 {
-			movementTicks = max(movementTicks, constants.GetTroopMovementTicks(troopType))
+			movementDuration = max(movementDuration, constants.GetTroopMovementDuration(troopType))
 		}
 	}
-	if movementTicks == 0 {
-		movementTicks = constants.GetTroopMovementTicks(domain.TroopTypeSoldier)
+	if movementDuration == 0 {
+		movementDuration = constants.GetTroopMovementDuration(domain.TroopTypeSoldier)
 	}
-	duration := constants.TroopMovementTickInterval * time.Duration(pathCost*movementTicks)
+	duration := movementDuration * time.Duration(pathCost)
+	duration = ((duration + constants.TroopMovementTickInterval - 1) / constants.TroopMovementTickInterval) * constants.TroopMovementTickInterval
 	return connect.NewResponse(&servicev1.PreviewArmyRouteResponse{
 		Steps: steps, ReachesDestination: reaches, EstimatedDuration: durationpb.New(duration),
 	}), nil

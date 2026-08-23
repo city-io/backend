@@ -24,7 +24,7 @@ type armyActor struct {
 	// is only persisted every TroopMovementBackupFrequency tiles.
 	movesSinceBackup    int
 	path                []domain.Coordinates
-	waitTicks           int
+	movementProgress    time.Duration
 	ticksSinceReconcile int
 }
 
@@ -72,12 +72,13 @@ func (state *armyActor) Receive(ctx actor.Context) {
 	case messages.MoveArmyMessage:
 		x, y := clampCoord(msg.X), clampCoord(msg.Y)
 		oldDestX, oldDestY := state.Army.DestX, state.Army.DestY
-		oldPath, oldWaitTicks := state.path, state.waitTicks
+		oldPath, oldProgress := state.path, state.movementProgress
 		state.Army.DestX = &x
 		state.Army.DestY = &y
+		state.movementProgress = 0
 		if err := state.planPath(); err != nil {
 			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
-			state.path, state.waitTicks = oldPath, oldWaitTicks
+			state.path, state.movementProgress = oldPath, oldProgress
 			ctx.Respond(&messages.InternalError{})
 			return
 		}
@@ -115,11 +116,9 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 		ctx.Respond(&messages.InvalidResponseTypeError{})
 		return
 	}
-	elapsedTicks := state.elapsedStepTicks()
 	for t, c := range resp.Troops {
 		state.Army.Troops[t] += c
 	}
-	state.waitTicks = max(state.currentStepTicks()-elapsedTicks-1, 0)
 	state.Store.EnqueueArmy(state.Army)
 	state.updateUpkeepCity()
 	state.publish()
@@ -145,8 +144,7 @@ func (state *armyActor) step() {
 		state.reconcileTileIfDue()
 		return
 	}
-	if state.waitTicks > 0 {
-		state.waitTicks--
+	if !state.advanceMovementClock() {
 		state.reconcileTileIfDue()
 		return
 	}
@@ -167,12 +165,10 @@ func (state *armyActor) step() {
 		state.Army.DestX = nil
 		state.Army.DestY = nil
 		state.path = nil
+		state.movementProgress = 0
 	} else if err := state.planPath(); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to refresh army route", "army_id", state.Army.ArmyID, "error", err)
 		state.path = nil
-	}
-	if !arrived && len(state.path) > 0 {
-		state.waitTicks = state.nextWaitTicks()
 	}
 	state.movesSinceBackup++
 	if arrived || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
@@ -196,7 +192,7 @@ func (state *armyActor) restorePath() bool {
 		state.Army.DestX = nil
 		state.Army.DestY = nil
 		state.path = nil
-		state.waitTicks = 0
+		state.movementProgress = 0
 		state.Store.EnqueueArmy(state.Army)
 		return false
 	}
@@ -221,15 +217,10 @@ func (state *armyActor) planPath() error {
 		state.World.Terrain(), known,
 		domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination,
 	)
-	state.waitTicks = state.nextWaitTicks()
 	return nil
 }
 
-func (state *armyActor) nextWaitTicks() int {
-	return max(state.currentStepTicks()-1, 0)
-}
-
-func (state *armyActor) currentStepTicks() int {
+func (state *armyActor) currentStepDuration() time.Duration {
 	if len(state.path) == 0 {
 		return 0
 	}
@@ -237,28 +228,33 @@ func (state *armyActor) currentStepTicks() int {
 	if !ok {
 		return 0
 	}
-	return state.baseMovementTicks() * domain.TerrainMovementCost(terrain)
+	return state.baseMovementDuration() * time.Duration(domain.TerrainMovementCost(terrain))
 }
 
-func (state *armyActor) baseMovementTicks() int {
-	ticks := 0
+func (state *armyActor) advanceMovementClock() bool {
+	required := state.currentStepDuration()
+	if required <= 0 {
+		return false
+	}
+	state.movementProgress += constants.TroopMovementTickInterval
+	if state.movementProgress < required {
+		return false
+	}
+	state.movementProgress -= required
+	return true
+}
+
+func (state *armyActor) baseMovementDuration() time.Duration {
+	duration := time.Duration(0)
 	for troopType, count := range state.Army.Troops {
 		if count > 0 {
-			ticks = max(ticks, constants.GetTroopMovementTicks(troopType))
+			duration = max(duration, constants.GetTroopMovementDuration(troopType))
 		}
 	}
-	if ticks == 0 {
-		return constants.GetTroopMovementTicks(domain.TroopTypeSoldier)
+	if duration == 0 {
+		return constants.GetTroopMovementDuration(domain.TroopTypeSoldier)
 	}
-	return ticks
-}
-
-func (state *armyActor) elapsedStepTicks() int {
-	total := state.currentStepTicks()
-	if total == 0 {
-		return 0
-	}
-	return max(total-state.waitTicks-1, 0)
+	return duration
 }
 
 func (state *armyActor) reconcileTileIfDue() {

@@ -48,7 +48,7 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
     `Create` / `Destroy` / `Handle` hooks. `barracks.go` is the troop **producer**: it holds a
     durable FIFO training queue and a one-shot completion timer. Completed orders retry an
     idempotent `armyActor` spawn until it succeeds.
-  - `armyActor` (`army.go`) owns one army: persistence, a 275ms movement ticker, tile presence,
+  - `armyActor` (`army.go`) owns one army: persistence, a 250ms movement ticker, tile presence,
     nearest-owned-settlement food-upkeep attribution, composition-aware weighted
     8-directional terrain pathfinding, and merging.
   - Actors persist through the injected `contracts.Store` (`state.Store`): reads/creates/deletes
@@ -170,7 +170,7 @@ the "Client / frontend API reference" section below.
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
   position and, while marching, a `destination`; it follows a lowest-time route choosing among
   all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
-  275ms timing quantum, but state is streamed only when the army actually enters a tile. An
+  250ms timing quantum with carried fractional progress, but state is streamed only when the army actually enters a tile. An
   army moves at the speed of its slowest troop: cavalry takes 550ms per normal tile,
   soldiers/archers take 1.1s, and artillery takes 1.65s. Marsh multiplies that time by two,
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
@@ -205,7 +205,7 @@ the "Client / frontend API reference" section below.
   known after vision leaves, while occupancy and dynamic entities are removed. Army movement
   persists and streams newly explored terrain whenever an army enters a tile.
 - **Tick cadence** (`constants/constants.go`): city tick 3s, building tick 3s, army movement
-  quantum 275ms, DB backup flush 2s, user backup 10s. Rates are normalised to per-hour
+  quantum 250ms, DB backup flush 2s, user backup 10s. Rates are normalised to per-hour
   (`SecondsPerHour` 3600).
 
 ## Client / frontend API reference
