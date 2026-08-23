@@ -366,6 +366,9 @@ func (state *cityActor) updatePolicy(militiaPercent, taxRatePercent int) {
 		availableNonCore := max(state.City.Population-constants.CorePopulation(state.City), 0)
 		state.City.MilitiaPopulation = min(target, availableNonCore)
 	}
+	if !state.City.Starving {
+		state.City.PopulationGrowthRate = int64(math.Round(float64(state.City.PopulationGrowthBeforeTaxRate) * constants.TaxGrowthMultiplier(taxRatePercent)))
+	}
 	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 }
 

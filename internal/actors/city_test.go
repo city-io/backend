@@ -132,12 +132,15 @@ func TestCityPolicyReassignsNonCoreResidentsToMilitia(t *testing.T) {
 func TestTaxPolicyChangeDoesNotRefillMilitiaLosses(t *testing.T) {
 	state := cityActor{City: domain.City{
 		Population: 220, PopulationCap: 250, MilitiaPopulation: 20,
-		MilitiaPercent: 25, TaxRatePercent: 10,
+		MilitiaPercent: 25, TaxRatePercent: 10, PopulationGrowthRate: 100, PopulationGrowthBeforeTaxRate: 100,
 	}}
 
-	state.updatePolicy(25, 20)
+	state.updatePolicy(25, constants.MaxTaxRatePercent)
 	if state.City.MilitiaPopulation != 20 {
 		t.Fatalf("militia after tax-only policy change = %f, want 20", state.City.MilitiaPopulation)
+	}
+	if state.City.PopulationGrowthRate != -50 {
+		t.Fatalf("population growth after tax policy change = %d, want -50", state.City.PopulationGrowthRate)
 	}
 }
 
