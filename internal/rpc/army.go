@@ -278,7 +278,7 @@ func (h *armyHandler) PreviewArmyRoute(ctx context.Context, req *connect.Request
 	}
 	route := h.srv.projectArmyRoute(army, domain.Coordinates{X: x, Y: y}, exploredSet(explored))
 	return connect.NewResponse(&servicev1.PreviewArmyRouteResponse{
-		Steps: route.steps, EstimatedDuration: durationpb.New(route.duration),
+		Route: route.route, EstimatedDuration: durationpb.New(route.duration),
 	}), nil
 }
 

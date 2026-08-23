@@ -288,9 +288,11 @@ for TypeScript) rather than hand-writing request types.
   composition is exact for the owner and explicitly hidden from unauthorized viewers; private
   order/battle references are removed from sanitized foreign armies.
 - **ArmyOrder** `{ army_order_id, army_id, move|attack_army|conquer_settlement|retreat,
-  remaining_route[], estimated_remaining_duration? }` — ephemeral owner-projected active state.
-  Completion, cancellation, failure, or replacement produces a tombstone; there are no terminal
-  status/reason records.
+  remaining_route{known_steps[], hidden_segment_end?}, estimated_remaining_duration? }` —
+  ephemeral owner-projected active state. Known steps are exact explored geometry; the optional
+  endpoint marks an undisclosed connector rather than another exact step. Completion,
+  cancellation, failure, or replacement produces a tombstone; there are no terminal status/reason
+  records.
 - **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
   active combat. Both sides contain repeated user and army IDs so future allies can share a side.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
@@ -354,12 +356,13 @@ for TypeScript) rather than hand-writing request types.
   barracks, including the active order and orders waiting behind it.
 - `GetArmy(army_id) → { army_id, entities(army, army_order?, battle?) }` — owner always; others
   need vision and receive sanitized private state.
-- `PreviewArmyRoute(army_id, destination) → { steps[{coords}], estimated_duration }` —
+- `PreviewArmyRoute(army_id, destination) → { route, estimated_duration }` —
   owner-only backend route preview. The UI derives whether the requested destination is reached
-  by comparing it with the final step. Unknown tiles are assumed to be
-  ordinary land without revealing terrain. The response exposes only the contiguous explored
-  prefix plus the projected endpoint; a coordinate gap represents hidden route geometry and is
-  rendered by clients as an uncertain straight connector.
+  by comparing it with the end of `route`. Unknown tiles are assumed to be ordinary land without
+  revealing terrain. `route.known_steps` is exact contiguous explored geometry; when
+  `route.hidden_segment_end` is present, the gap to it is undisclosed geometry that clients may
+  render as an uncertain straight connector but must not treat as exact route steps. Streamed
+  `ArmyOrder.remaining_route` uses the same shape.
 - `MoveArmy(army_id, destination) → {}` — must own; sets the marching destination (clamped to the
   map). Missing destinations are invalid. Unknown terrain is planned as ordinary land and the
   the remaining route stays stable while it remains optimal and traversable, and is replaced when
