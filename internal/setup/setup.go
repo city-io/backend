@@ -151,7 +151,7 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 			Population:      populationCap,
 			PopulationCap:   populationCap,
 			GarrisonPercent: constants.NeutralGarrisonPercent,
-			TaxRatePercent:  0,
+			TaxRatePercent:  constants.NeutralTaxRatePercent,
 			StartX:          town.X,
 			StartY:          town.Y,
 			Size:            town.Size,

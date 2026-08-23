@@ -1,18 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE cities
-    ADD COLUMN garrison_population DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (garrison_population >= 0),
-    ADD COLUMN garrison_percent INTEGER NOT NULL DEFAULT 10 CHECK (garrison_percent BETWEEN 5 AND 30),
-    ADD COLUMN tax_rate_percent INTEGER NOT NULL DEFAULT 10 CHECK (tax_rate_percent BETWEEN 0 AND 100);
-
-UPDATE cities
-SET
-    garrison_percent = CASE WHEN type = 'town' THEN 30 ELSE 10 END,
-    tax_rate_percent = CASE WHEN type = 'town' THEN 0 ELSE 10 END,
-    garrison_population = LEAST(
-        population,
-        population_cap * CASE WHEN type = 'town' THEN 0.30 ELSE 0.10 END
-    );
+    ADD COLUMN garrison_population DOUBLE PRECISION NOT NULL,
+    ADD COLUMN garrison_percent INTEGER NOT NULL,
+    ADD COLUMN tax_rate_percent INTEGER NOT NULL;
 -- +goose StatementEnd
 
 -- +goose Down

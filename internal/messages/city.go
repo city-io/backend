@@ -3,6 +3,7 @@ package messages
 import (
 	"fmt"
 
+	"cityio/internal/constants"
 	"cityio/internal/domain"
 )
 
@@ -89,7 +90,12 @@ type CityNotFoundError struct {
 type InvalidCityPolicyError struct{}
 
 func (*InvalidCityPolicyError) Error() string {
-	return "garrison must be 5-30% and tax rate must be 0-100%"
+	return fmt.Sprintf(
+		"garrison must be %d-%d%% and tax rate must be 0-%d%%",
+		constants.MinGarrisonPercent,
+		constants.MaxGarrisonPercent,
+		constants.MaxTaxRatePercent,
+	)
 }
 
 type CityPolicyLockedError struct{}

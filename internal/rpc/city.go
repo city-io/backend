@@ -85,6 +85,12 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 }
 
 func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request[servicev1.UpdateCityPolicyRequest]) (*connect.Response[servicev1.UpdateCityPolicyResponse], error) {
+	garrisonPercent := int(req.Msg.GetGarrisonPercent())
+	taxRatePercent := int(req.Msg.GetTaxRatePercent())
+	if err := validateCityPolicy(garrisonPercent, taxRatePercent); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	cityID := req.Msg.GetCityId().GetValue()
 	owns, err := h.srv.ownsCity(ctx, cityID)
 	if err != nil {
@@ -94,8 +100,8 @@ func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
 	}
 	res, err := h.srv.cluster.Request("city", cityID, messages.UpdateCityPolicyMessage{
-		GarrisonPercent: int(req.Msg.GetGarrisonPercent()),
-		TaxRatePercent:  int(req.Msg.GetTaxRatePercent()),
+		GarrisonPercent: garrisonPercent,
+		TaxRatePercent:  taxRatePercent,
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -112,4 +118,12 @@ func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request
 	default:
 		return nil, connect.NewError(connect.CodeInternal, errors.New("unexpected city policy response"))
 	}
+}
+
+func validateCityPolicy(garrisonPercent, taxRatePercent int) error {
+	if garrisonPercent < constants.MinGarrisonPercent || garrisonPercent > constants.MaxGarrisonPercent ||
+		taxRatePercent < 0 || taxRatePercent > constants.MaxTaxRatePercent {
+		return &messages.InvalidCityPolicyError{}
+	}
+	return nil
 }

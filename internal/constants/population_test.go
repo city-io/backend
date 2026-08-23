@@ -39,3 +39,22 @@ func TestRecruitablePopulationProtectsTargetGarrisonAfterLosses(t *testing.T) {
 		t.Fatalf("recruitable population = %d, want 37", got)
 	}
 }
+
+func TestNeutralGarrisonUsesEntireNonCorePopulationShare(t *testing.T) {
+	if NeutralGarrisonPercent != MaxGarrisonPercent {
+		t.Fatalf("neutral garrison = %d%%, maximum = %d%%", NeutralGarrisonPercent, MaxGarrisonPercent)
+	}
+	if CoreCivilianPercent+NeutralGarrisonPercent != 100 {
+		t.Fatalf("core plus neutral garrison = %d%%, want 100%%", CoreCivilianPercent+NeutralGarrisonPercent)
+	}
+
+	town := domain.City{
+		Population:         250,
+		PopulationCap:      250,
+		GarrisonPopulation: 250 * float64(NeutralGarrisonPercent) / 100,
+		GarrisonPercent:    NeutralGarrisonPercent,
+	}
+	if got := RecruitablePopulation(town); got != 0 {
+		t.Fatalf("neutral town recruitable population = %d, want 0", got)
+	}
+}

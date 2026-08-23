@@ -110,12 +110,11 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/metrics`** — Prometheus metric definitions + the RPC interceptor + a periodic
   world-snapshot gauge filler.
 - **`internal/worldgen`** — deterministic terrain and settlement generation. A cryptographic
-  seed is chosen for an empty database and persisted in `world_state`; smooth elevation/moisture
-  fields reproduce the same coherent terrain regions on later boots. Footprint-aware placement
-  reserves capital sites before generating neutral towns. `World` also restores occupied
-  settlement footprints and allocates terrain-valid sites for later registrations.
-- **`internal/setup`** — `Run()` seeds neutral towns only when all gameplay tables are empty,
-  restores persisted actors, and registers the development test user only when it is missing.
+  seed is chosen on each boot after the development database reset and persisted in `world_state`
+  for that runtime. Smooth elevation/moisture fields produce coherent terrain regions.
+  Footprint-aware placement reserves capital sites before generating neutral towns.
+- **`internal/setup`** — `Run()` seeds the freshly reset world, restores its actors, and registers
+  the development test user.
 - **`scripts/troops.py`** — a dev-only helper that drives `ArmyService` over the Connect JSON
   API (no `grpcurl` needed). See "Client / frontend API reference → Local testing".
 
@@ -155,8 +154,8 @@ the "Client / frontend API reference" section below.
 
 - **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)` and has one of
   eight terrain types: grassland, plains, forest, hills, mountains, desert, marsh, or water.
-  Terrain is reconstructed from the persisted world seed on every boot and revealed as raw tile
-  entities only after exploration; a new seed is created only for an empty database. Terrain
+  Terrain is regenerated from a new seed on every boot and revealed as raw tile entities only
+  after exploration. Terrain
   affects settlement placement and army movement, but not production.
   Buildings and armies live on tiles; armies stack (multiple armies + a building can share a
   tile).
@@ -203,7 +202,7 @@ the "Client / frontend API reference" section below.
     reduce both the garrison and settlement population. Completion transfers the existing
     settlement and its buildings to the attacker.
   - **Population transfer:** 55% of housing capacity is a protected civilian core. A city targets
-    a configurable 5–30% passive garrison (10% by default; neutral towns start at 30%); residents
+    a configurable 5–45% passive garrison (10% by default; neutral towns start at 45%); residents
     above the core plus garrison target are recruitable. Starting a training order immediately
     removes its population cost from the settlement. Armies own that manpower thereafter, deaths
     are permanent, and future settlement growth can create new recruitable surplus.
@@ -344,7 +343,8 @@ for TypeScript) rather than hand-writing request types.
 - `CreateCity(type, owner?, name, size) → { city }` — placed on a random empty block.
 - `ListCities() → { city_ids[], entities(cities) }` — your owned cities.
 - `UpdateCityPolicy(city_id, garrison_percent, tax_rate_percent) → { city }` — owner-only;
-  garrison must be 5–30 and tax must be 0–100. Policy changes stream immediately.
+  garrison must be 5–45 and tax must be 0–100. The RPC rejects values outside those code-owned
+  ranges before dispatching to the city actor. Policy changes stream immediately.
 
 **BuildingService**
 - `CreateBuilding(city_id, type, coords) → { building }` — must own the city; starts construction
@@ -517,7 +517,8 @@ psql -h localhost -p 5432 -U cityio -d cityio
 
 Migrations can be run manually (the app also runs them itself — see gotcha). Migrations live in
 `db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`,
-`00004_add_training_orders`, `00005_add_explored_tiles`, `00006_add_world_state`):
+`00004_add_training_orders`, `00005_add_explored_tiles`, `00006_add_world_state`,
+`00007_add_city_population_policies`):
 
 ```bash
 GOOSE_DRIVER=postgres \
@@ -527,12 +528,11 @@ goose -dir db/migrations up
 
 ## Critical gotchas
 
-- **World and player state survive restarts.** `NewDB` runs goose `up` without rolling migrations
-  down. The world seed is stored in `world_state`, neutral towns are seeded only when every
-  gameplay table is empty, and the hardcoded test user (`cityio@example.com`) is created only when
-  missing. The commented `down-to 0` block in `NewDB` can be re-enabled for an intentional clean
-  reset after a breaking change. New migrations still apply automatically on boot; a manual
-  `goose up` is only useful if a running instance stays on old code.
+- **The development world is destroyed and rebuilt on every boot.** `NewDB` runs goose `down-to 0`
+  and then `up`, startup creates a new terrain seed, seeds neutral towns, and registers the
+  hardcoded test user (`cityio@example.com`). Policy columns deliberately have no database
+  defaults or checks; creation paths provide their values and RPC/actor code enforces gameplay
+  ranges. A restart wipes all world and player progress.
 - **The API is Connect RPC, served over h2c.** Handlers live in `internal/rpc`; auth is a JWT
   Connect interceptor. Live state is pushed to clients via the server-streaming `StreamState`
   RPC (backed by `internal/stream`), not websockets.

@@ -35,6 +35,12 @@ func CreateCity(ctx context.Context, cluster contracts.ClusterProvider, store co
 
 	startX := block.X
 	startY := block.Y
+	garrisonPercent := constants.DefaultGarrisonPercent
+	taxRatePercent := constants.DefaultTaxRatePercent
+	if city.Type == domain.CityTypeTown {
+		garrisonPercent = constants.NeutralGarrisonPercent
+		taxRatePercent = constants.NeutralTaxRatePercent
+	}
 	newCity := domain.City{
 		CityID:          cityID,
 		Type:            city.Type,
@@ -42,8 +48,8 @@ func CreateCity(ctx context.Context, cluster contracts.ClusterProvider, store co
 		Name:            city.Name,
 		Population:      constants.InitialPlayerCityPopulation,
 		PopulationCap:   constants.InitialPlayerCityPopulation,
-		GarrisonPercent: constants.DefaultGarrisonPercent,
-		TaxRatePercent:  constants.DefaultTaxRatePercent,
+		GarrisonPercent: garrisonPercent,
+		TaxRatePercent:  taxRatePercent,
 		StartX:          startX,
 		StartY:          startY,
 		Size:            city.Size,
