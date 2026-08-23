@@ -4,6 +4,8 @@
 package mapping
 
 import (
+	"sort"
+
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
@@ -244,6 +246,25 @@ func MapTilesAroundPointToProto(grid domain.TerrainGrid, x, y, radius int, citie
 	return tiles
 }
 
+// ExploredTilesToProto returns terrain for every explored coordinate. Dynamic
+// occupancy is included only while the coordinate is currently visible.
+func ExploredTilesToProto(grid domain.TerrainGrid, explored []domain.Coordinates, visible map[domain.Coordinates]struct{}, cities []domain.City, buildings []domain.Building, armies []domain.Army) []*entityv1.Tile {
+	cityAt, buildingAt, armiesAt := mapOccupancy(grid, cities, buildings, armies)
+	tiles := make([]*entityv1.Tile, 0, len(explored))
+	for _, coords := range explored {
+		terrain, ok := grid.At(coords.X, coords.Y)
+		if !ok {
+			continue
+		}
+		if _, ok := visible[coords]; !ok {
+			tiles = append(tiles, TileToProto(nil, nil, nil, terrain, coords.X, coords.Y))
+			continue
+		}
+		tiles = append(tiles, mappedTile(grid, cityAt, buildingAt, armiesAt, terrain, coords.X, coords.Y))
+	}
+	return tiles
+}
+
 func mapOccupancy(grid domain.TerrainGrid, cities []domain.City, buildings []domain.Building, armies []domain.Army) (map[int]string, map[int]string, map[int][]string) {
 	cityAt := make(map[int]string)
 	for _, city := range cities {
@@ -267,6 +288,9 @@ func mapOccupancy(grid domain.TerrainGrid, cities []domain.City, buildings []dom
 			idx := army.Y*grid.Width + army.X
 			armiesAt[idx] = append(armiesAt[idx], army.ArmyID)
 		}
+	}
+	for index := range armiesAt {
+		sort.Strings(armiesAt[index])
 	}
 
 	return cityAt, buildingAt, armiesAt
@@ -310,7 +334,16 @@ func ArmyToProto(a domain.Army) *entityv1.Army {
 		Owner:  ToUserId(a.Owner),
 		Coords: &entityv1.Coordinates{X: int32(a.X), Y: int32(a.Y)},
 	}
-	for troopType, count := range a.Troops {
+	for _, troopType := range []domain.TroopType{
+		domain.TroopTypeSoldier,
+		domain.TroopTypeArcher,
+		domain.TroopTypeCavalry,
+		domain.TroopTypeArtillery,
+	} {
+		count := a.Troops[troopType]
+		if count <= 0 {
+			continue
+		}
 		out.Troops = append(out.Troops, &entityv1.TroopStack{
 			Type:  TroopTypeToProto(troopType),
 			Count: int32(count),

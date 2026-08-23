@@ -54,3 +54,24 @@ func TestVisionCombinesCityAndArmySources(t *testing.T) {
 		t.Fatal("army vision source should be active")
 	}
 }
+
+func TestVisibleCoordinatesAreClampedAndDeduplicated(t *testing.T) {
+	vision := Vision{
+		Cities: []City{{StartX: 0, StartY: 0, Size: 2}},
+		Armies: []Army{{X: 2, Y: 2}},
+	}
+	coords := vision.VisibleCoordinates(4, 4, 1)
+	seen := make(map[Coordinates]struct{}, len(coords))
+	for _, coords := range coords {
+		if coords.X < 0 || coords.Y < 0 || coords.X >= 4 || coords.Y >= 4 {
+			t.Fatalf("out-of-bounds coordinate: %+v", coords)
+		}
+		if _, exists := seen[coords]; exists {
+			t.Fatalf("duplicate coordinate: %+v", coords)
+		}
+		seen[coords] = struct{}{}
+	}
+	if len(coords) != 14 {
+		t.Fatalf("visible coordinates = %d, want 14", len(coords))
+	}
+}

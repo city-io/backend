@@ -57,6 +57,7 @@ func (state *armyActor) Receive(ctx actor.Context) {
 			}
 		}
 		state.addTile(state.Army.X, state.Army.Y)
+		state.recordExploration(state.Army.Owner, domain.Vision{Armies: []domain.Army{state.Army}})
 		state.updateUpkeepCity()
 		state.restorePath()
 		state.startPeriodicOperation(ctx)
@@ -70,18 +71,15 @@ func (state *armyActor) Receive(ctx actor.Context) {
 
 	case messages.MoveArmyMessage:
 		x, y := clampCoord(msg.X), clampCoord(msg.Y)
-		path, ok := domain.FindLandPath(state.World.Terrain(), domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, domain.Coordinates{X: x, Y: y})
-		if !ok {
-			ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
-			return
-		}
+		oldDestX, oldDestY := state.Army.DestX, state.Army.DestY
+		oldPath, oldWaitTicks := state.path, state.waitTicks
 		state.Army.DestX = &x
 		state.Army.DestY = &y
-		state.path = path
-		state.waitTicks = state.nextWaitTicks()
-		if len(path) == 0 {
-			state.Army.DestX = nil
-			state.Army.DestY = nil
+		if err := state.planPath(); err != nil {
+			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
+			state.path, state.waitTicks = oldPath, oldWaitTicks
+			ctx.Respond(&messages.InternalError{})
+			return
 		}
 		state.Store.EnqueueArmy(state.Army)
 		state.publish()
@@ -160,6 +158,7 @@ func (state *armyActor) step() {
 	state.Army.Y = next.Y
 	state.removeTile(oldX, oldY)
 	state.addTile(state.Army.X, state.Army.Y)
+	state.recordExploration(state.Army.Owner, domain.Vision{Armies: []domain.Army{state.Army}})
 	state.ticksSinceReconcile = 0
 	state.updateUpkeepCity()
 
@@ -167,8 +166,14 @@ func (state *armyActor) step() {
 	if arrived {
 		state.Army.DestX = nil
 		state.Army.DestY = nil
+		state.path = nil
+	} else if err := state.planPath(); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to refresh army route", "army_id", state.Army.ArmyID, "error", err)
+		state.path = nil
 	}
-	state.waitTicks = state.nextWaitTicks()
+	if !arrived && len(state.path) > 0 {
+		state.waitTicks = state.nextWaitTicks()
+	}
 	state.movesSinceBackup++
 	if arrived || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
 		state.Store.EnqueueArmy(state.Army)
@@ -181,10 +186,13 @@ func (state *armyActor) restorePath() bool {
 	if state.Army.DestX == nil || state.Army.DestY == nil {
 		return true
 	}
-	destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
-	path, ok := domain.FindLandPath(state.World.Terrain(), domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination)
-	if !ok {
-		slog.WarnContext(state.Ctx(), "clearing unreachable army destination", "army_id", state.Army.ArmyID, "x", destination.X, "y", destination.Y)
+	if err := state.planPath(); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to restore army route", "army_id", state.Army.ArmyID, "error", err)
+		return false
+	}
+	if len(state.path) == 0 && (state.Army.X != *state.Army.DestX || state.Army.Y != *state.Army.DestY) {
+		destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
+		slog.InfoContext(state.Ctx(), "army stopped at the edge of known traversable terrain", "army_id", state.Army.ArmyID, "x", destination.X, "y", destination.Y)
 		state.Army.DestX = nil
 		state.Army.DestY = nil
 		state.path = nil
@@ -192,9 +200,29 @@ func (state *armyActor) restorePath() bool {
 		state.Store.EnqueueArmy(state.Army)
 		return false
 	}
-	state.path = path
-	state.waitTicks = state.nextWaitTicks()
 	return true
+}
+
+func (state *armyActor) planPath() error {
+	if state.Army.DestX == nil || state.Army.DestY == nil {
+		state.path = nil
+		return nil
+	}
+	explored, err := state.Store.GetExploredTiles(state.Ctx(), state.Army.Owner)
+	if err != nil {
+		return err
+	}
+	known := make(map[domain.Coordinates]struct{}, len(explored))
+	for _, coords := range explored {
+		known[coords] = struct{}{}
+	}
+	destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
+	state.path, _ = domain.FindKnownLandPath(
+		state.World.Terrain(), known,
+		domain.Coordinates{X: state.Army.X, Y: state.Army.Y}, destination,
+	)
+	state.waitTicks = state.nextWaitTicks()
+	return nil
 }
 
 func (state *armyActor) nextWaitTicks() int {

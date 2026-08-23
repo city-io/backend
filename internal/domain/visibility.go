@@ -6,6 +6,34 @@ type Vision struct {
 	Armies []Army
 }
 
+// VisibleCoordinates returns every in-bounds tile currently revealed by this
+// vision. The result is row-major and contains no duplicates.
+func (v Vision) VisibleCoordinates(width, height, radius int) []Coordinates {
+	visible := make([]bool, width*height)
+	mark := func(minX, minY, maxX, maxY int) {
+		minX, minY = max(minX, 0), max(minY, 0)
+		maxX, maxY = min(maxX, width-1), min(maxY, height-1)
+		for y := minY; y <= maxY; y++ {
+			for x := minX; x <= maxX; x++ {
+				visible[y*width+x] = true
+			}
+		}
+	}
+	for _, city := range v.Cities {
+		mark(city.StartX-radius, city.StartY-radius, city.StartX+city.Size-1+radius, city.StartY+city.Size-1+radius)
+	}
+	for _, army := range v.Armies {
+		mark(army.X-radius, army.Y-radius, army.X+radius, army.Y+radius)
+	}
+	result := make([]Coordinates, 0)
+	for index, isVisible := range visible {
+		if isVisible {
+			result = append(result, Coordinates{X: index % width, Y: index / width})
+		}
+	}
+	return result
+}
+
 // PointVisible reports whether (px, py) is within Chebyshev distance radius
 // of any tile belonging to a city or any army position in the vision.
 func (v Vision) PointVisible(px, py, radius int) bool {

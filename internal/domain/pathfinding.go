@@ -85,6 +85,67 @@ func FindLandPath(grid TerrainGrid, start, destination Coordinates) ([]Coordinat
 	return nil, false
 }
 
+// FindKnownLandPath plans with explored terrain while treating undiscovered
+// tiles as ordinary traversable land. If a discovered impassable destination
+// cannot be reached, it returns a route to the closest reachable explored land
+// and reports reachesDestination=false.
+func FindKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, start, destination Coordinates) ([]Coordinates, bool) {
+	masked := TerrainGrid{Width: grid.Width, Height: grid.Height, Tiles: make([]TerrainType, len(grid.Tiles))}
+	for y := 0; y < grid.Height; y++ {
+		for x := 0; x < grid.Width; x++ {
+			coords := Coordinates{X: x, Y: y}
+			if _, known := explored[coords]; known || coords == start {
+				masked.Tiles[y*grid.Width+x] = grid.Tiles[y*grid.Width+x]
+			} else {
+				masked.Tiles[y*grid.Width+x] = TerrainTypePlains
+			}
+		}
+	}
+
+	if path, ok := FindLandPath(masked, start, destination); ok {
+		return path, true
+	}
+
+	var best Coordinates
+	found := false
+	bestDistance := int(^uint(0) >> 1)
+	bestCost := bestDistance
+	frontier := pathQueue{&pathNode{coords: start}}
+	heap.Init(&frontier)
+	costs := map[Coordinates]int{start: 0}
+	previous := make(map[Coordinates]Coordinates)
+	for frontier.Len() > 0 {
+		current := heap.Pop(&frontier).(*pathNode)
+		if current.cost != costs[current.coords] {
+			continue
+		}
+		if _, isExplored := explored[current.coords]; isExplored {
+			distance := chebyshev(current.coords, destination)
+			if distance < bestDistance || (distance == bestDistance && current.cost < bestCost) {
+				best, bestDistance, bestCost, found = current.coords, distance, current.cost, true
+			}
+		}
+		for _, direction := range pathDirections {
+			next := Coordinates{X: current.coords.X + direction.X, Y: current.coords.Y + direction.Y}
+			terrain, ok := masked.At(next.X, next.Y)
+			if !ok || TerrainMovementCost(terrain) == 0 || cutsBlockedCorner(masked, current.coords, direction) {
+				continue
+			}
+			cost := current.cost + TerrainMovementCost(terrain)
+			if known, seen := costs[next]; seen && cost >= known {
+				continue
+			}
+			costs[next] = cost
+			previous[next] = current.coords
+			heap.Push(&frontier, &pathNode{coords: next, cost: cost, score: cost})
+		}
+	}
+	if !found {
+		return []Coordinates{}, false
+	}
+	return buildPath(previous, start, best), false
+}
+
 func traversable(grid TerrainGrid, coords Coordinates) bool {
 	terrain, ok := grid.At(coords.X, coords.Y)
 	return ok && TerrainMovementCost(terrain) > 0

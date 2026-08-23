@@ -9,7 +9,7 @@ const MilitaryPopulationFraction = 0.35
 // TroopStat holds the tier-1 stat profile for a troop type. Gold is the
 // per-troop training cost; TrainTime is per troop in seconds; FoodUpkeep is per hour;
 // PopCost is the population reserved per troop. MovementTicks is the base
-// number of 250ms updates needed to enter normal terrain. Attack/Defense/HP are
+// number of movement updates needed to enter normal terrain. Attack/Defense/HP are
 // stored now but unused until combat.
 type TroopStat struct {
 	Gold          int64

@@ -3,8 +3,10 @@ package rpc
 import (
 	"context"
 	"errors"
+	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"cityio/internal/auth"
 	"cityio/internal/constants"
@@ -161,6 +163,56 @@ func (h *armyHandler) MoveArmy(ctx context.Context, req *connect.Request[service
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&servicev1.MoveArmyResponse{}), nil
+}
+
+func (h *armyHandler) PreviewArmyRoute(ctx context.Context, req *connect.Request[servicev1.PreviewArmyRouteRequest]) (*connect.Response[servicev1.PreviewArmyRouteResponse], error) {
+	if req.Msg.Destination == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("destination is required"))
+	}
+	army, err := h.requireArmyOwnership(ctx, req.Msg.GetArmyId().GetValue())
+	if err != nil {
+		return nil, err
+	}
+	x := max(0, min(constants.MapSize-1, int(req.Msg.GetDestination().GetX())))
+	y := max(0, min(constants.MapSize-1, int(req.Msg.GetDestination().GetY())))
+	explored, err := h.srv.store.GetExploredTiles(ctx, army.Owner)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	known := make(map[domain.Coordinates]struct{}, len(explored))
+	for _, coords := range explored {
+		known[coords] = struct{}{}
+	}
+	path, reaches := domain.FindKnownLandPath(h.srv.world.Terrain(), known,
+		domain.Coordinates{X: army.X, Y: army.Y}, domain.Coordinates{X: x, Y: y})
+	steps := make([]*servicev1.RouteStep, 0, len(path))
+	pathCost := 0
+	for _, coords := range path {
+		_, isExplored := known[coords]
+		cost := 1
+		if isExplored {
+			terrain, _ := h.srv.world.TerrainAt(coords.X, coords.Y)
+			cost = domain.TerrainMovementCost(terrain)
+		}
+		pathCost += cost
+		steps = append(steps, &servicev1.RouteStep{
+			Coords:   &entityv1.Coordinates{X: int32(coords.X), Y: int32(coords.Y)},
+			Explored: isExplored,
+		})
+	}
+	movementTicks := 0
+	for troopType, count := range army.Troops {
+		if count > 0 {
+			movementTicks = max(movementTicks, constants.GetTroopMovementTicks(troopType))
+		}
+	}
+	if movementTicks == 0 {
+		movementTicks = constants.GetTroopMovementTicks(domain.TroopTypeSoldier)
+	}
+	duration := constants.TroopMovementTickInterval * time.Duration(pathCost*movementTicks)
+	return connect.NewResponse(&servicev1.PreviewArmyRouteResponse{
+		Steps: steps, ReachesDestination: reaches, EstimatedDuration: durationpb.New(duration),
+	}), nil
 }
 
 func (h *armyHandler) MergeArmies(ctx context.Context, req *connect.Request[servicev1.MergeArmiesRequest]) (*connect.Response[servicev1.MergeArmiesResponse], error) {

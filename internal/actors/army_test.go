@@ -25,8 +25,8 @@ func (movementTestWorld) ReserveCity(int) (domain.Coordinates, error) {
 }
 
 func TestArmyWaitsForSlowTerrain(t *testing.T) {
-	if constants.TroopMovementTickInterval != 250*time.Millisecond {
-		t.Fatalf("movement tick = %s, want 250ms", constants.TroopMovementTickInterval)
+	if constants.TroopMovementTickInterval != 275*time.Millisecond {
+		t.Fatalf("movement tick = %s, want 275ms", constants.TroopMovementTickInterval)
 	}
 	world := movementTestWorld{grid: domain.TerrainGrid{
 		Width:  3,

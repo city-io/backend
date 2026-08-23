@@ -3,16 +3,13 @@ package rpc
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"golang.org/x/crypto/bcrypt"
 
 	"cityio/internal/auth"
-	"cityio/internal/constants"
-	"cityio/internal/domain"
-	entityv1 "cityio/internal/gen/cityio/entity/v1"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
@@ -143,74 +140,6 @@ func (h *userHandler) DeleteUser(ctx context.Context, req *connect.Request[servi
 	return connect.NewResponse(&servicev1.DeleteUserResponse{}), nil
 }
 
-func stateUpdateToResponse(update stream.StateUpdate) *servicev1.StreamStateResponse {
-	response := &servicev1.StreamStateResponse{}
-	if update.User != nil || update.City != nil || update.Building != nil || update.Army != nil {
-		response.Entities = &entityv1.EntityBag{}
-	}
-	if update.User != nil {
-		response.Entities.Users = append(response.Entities.Users, mapping.UserToProto(*update.User))
-	}
-	if update.City != nil {
-		response.Entities.Cities = append(response.Entities.Cities, mapping.CityToProto(*update.City))
-	}
-	if update.Building != nil {
-		response.Entities.Buildings = append(response.Entities.Buildings, mapping.BuildingToProto(*update.Building))
-	}
-	if update.DeletedBuildingID != nil {
-		response.DeletedBuildingIds = append(response.DeletedBuildingIds, mapping.ToBuildingId(*update.DeletedBuildingID))
-	}
-	if update.Army != nil {
-		response.Entities.Armies = append(response.Entities.Armies, mapping.ArmyToProto(*update.Army))
-	}
-	if update.DeletedArmyID != nil {
-		response.DeletedArmyIds = append(response.DeletedArmyIds, mapping.ToArmyId(*update.DeletedArmyID))
-	}
-	return response
-}
-
-func (h *userHandler) armyVisionBag(ctx context.Context, userID string, moved domain.Army) (*entityv1.EntityBag, error) {
-	cities, err := h.srv.store.GetAllCities(ctx)
-	if err != nil {
-		return nil, err
-	}
-	buildings, err := h.srv.store.GetAllBuildings(ctx)
-	if err != nil {
-		return nil, err
-	}
-	armies, err := h.srv.liveArmies(ctx)
-	if err != nil {
-		return nil, err
-	}
-	found := false
-	for i := range armies {
-		if armies[i].ArmyID == moved.ArmyID {
-			armies[i] = moved
-			found = true
-			break
-		}
-	}
-	if !found {
-		armies = append(armies, moved)
-	}
-
-	vision := domain.Vision{Armies: []domain.Army{moved}}
-	cities = vision.FilterCities(cities, constants.VisionRadius)
-	buildings = vision.FilterBuildings(buildings, constants.VisionRadius)
-	armies = vision.FilterArmies(armies, constants.VisionRadius)
-	bag := mapping.EntitiesToBag(nil, cities, buildings, armies)
-	bag.Tiles = mapping.MapTilesAroundPointToProto(
-		h.srv.world.Terrain(), moved.X, moved.Y, constants.VisionRadius,
-		cities, buildings, armies,
-	)
-	for _, city := range bag.Cities {
-		if city.GetOwner() == nil || city.GetOwner().GetValue() != userID {
-			mapping.HidePrivateCityFields(city)
-		}
-	}
-	return bag, nil
-}
-
 func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[servicev1.StreamStateRequest], out *connect.ServerStream[servicev1.StreamStateResponse]) error {
 	claims, ok := auth.ClaimsFromContext(ctx)
 	if !ok {
@@ -220,49 +149,44 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 	ch, unsubscribe := stream.Subscribe(claims.UserID)
 	defer unsubscribe()
 
-	// Send initial snapshot: user, owned cities, and their buildings.
-	if res, err := h.srv.cluster.Request("user", claims.UserID, messages.GetUserMessage{}); err == nil {
-		if resp, ok := res.(*messages.GetUserResponseMessage); ok {
-			bag := &entityv1.EntityBag{
-				Users: []*entityv1.User{mapping.UserToProto(resp.User)},
-			}
+	current, err := h.srv.buildProjectedState(ctx, claims.UserID)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	var revision uint64 = 1
+	if err := out.Send(&servicev1.StreamStateResponse{
+		Revision: revision,
+		Frame:    &servicev1.StreamStateResponse_Snapshot{Snapshot: current.snapshot},
+	}); err != nil {
+		return err
+	}
 
-			if dbCities, err := h.srv.store.GetCitiesByOwner(ctx, claims.UserID); err == nil {
-				for _, dc := range dbCities {
-					if res, err := h.srv.cluster.Request("city", dc.CityID, messages.GetCityMessage{}); err == nil {
-						if cr, ok := res.(*messages.GetCityResponseMessage); ok {
-							bag.Cities = append(bag.Cities, mapping.CityToProto(cr.City))
-						}
-					}
-					if dbBuildings, err := h.srv.store.GetBuildingsByCity(ctx, dc.CityID); err == nil {
-						for _, db := range dbBuildings {
-							if res, err := h.srv.cluster.Request("building", db.BuildingID, messages.GetBuildingMessage{}); err == nil {
-								if br, ok := res.(*messages.GetBuildingResponseMessage); ok {
-									bag.Buildings = append(bag.Buildings, mapping.BuildingToProto(br.Building))
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if dbArmies, err := h.srv.store.GetAllArmies(ctx); err == nil {
-				for _, da := range dbArmies {
-					if da.Owner != claims.UserID {
-						continue
-					}
-					if res, err := h.srv.cluster.Request("army", da.ArmyID, messages.GetArmyMessage{}); err == nil {
-						if ar, ok := res.(*messages.GetArmyResponseMessage); ok {
-							bag.Armies = append(bag.Armies, mapping.ArmyToProto(ar.Army))
-						}
-					}
-				}
-			}
-
-			if err := out.Send(&servicev1.StreamStateResponse{Entities: bag}); err != nil {
-				return err
-			}
+	resync := time.NewTicker(5 * time.Second)
+	defer resync.Stop()
+	sendSnapshot := func() error {
+		next, err := h.srv.buildProjectedState(ctx, claims.UserID)
+		if err != nil {
+			return err
 		}
+		revision++
+		if err := out.Send(&servicev1.StreamStateResponse{Revision: revision, Frame: &servicev1.StreamStateResponse_Snapshot{Snapshot: next.snapshot}}); err != nil {
+			return err
+		}
+		current = next
+		return nil
+	}
+	sendDelta := func() error {
+		next, err := h.srv.buildProjectedState(ctx, claims.UserID)
+		if err != nil {
+			return err
+		}
+		delta := diffProjectedState(current, next)
+		current = next
+		if stateDeltaEmpty(delta) {
+			return nil
+		}
+		revision++
+		return out.Send(&servicev1.StreamStateResponse{Revision: revision, Frame: &servicev1.StreamStateResponse_Delta{Delta: delta}})
 	}
 
 	for {
@@ -274,21 +198,16 @@ func (h *userHandler) StreamState(ctx context.Context, req *connect.Request[serv
 			// auth-error path runs (clears JWT, redirects to /login) — same
 			// shape it would see if the JWT had expired mid-session.
 			return connect.NewError(connect.CodeUnauthenticated, errors.New("server shutting down"))
-		case update, ok := <-ch:
+		case _, ok := <-ch:
 			if !ok {
 				return nil
 			}
-			response := stateUpdateToResponse(update)
-			if update.Army != nil {
-				bag, err := h.armyVisionBag(ctx, claims.UserID, *update.Army)
-				if err != nil {
-					slog.ErrorContext(ctx, "failed to build army vision update", "army_id", update.Army.ArmyID, "error", err)
-				} else {
-					response.Entities = bag
-				}
+			if err := sendDelta(); err != nil {
+				return connect.NewError(connect.CodeInternal, err)
 			}
-			if err := out.Send(response); err != nil {
-				return err
+		case <-resync.C:
+			if err := sendSnapshot(); err != nil {
+				return connect.NewError(connect.CodeInternal, err)
 			}
 		}
 	}

@@ -66,7 +66,8 @@ func Subscribe(userID string) (<-chan StateUpdate, func()) {
 	return s.ch, unsubscribe
 }
 
-// Publish delivers a state update to every subscriber of the user. It never
+// Publish delivers private user updates to that user and world updates to all
+// subscribers, whose RPC projections apply visibility filtering. It never
 // blocks: if a subscriber's buffer is full the oldest value is discarded to
 // make room for the newest.
 func Publish(userID string, state StateUpdate) {
@@ -75,7 +76,15 @@ func Publish(userID string, state StateUpdate) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	for _, s := range subs[userID] {
+	targets := []subscriber(nil)
+	if state.City != nil || state.Building != nil || state.DeletedBuildingID != nil || state.Army != nil || state.DeletedArmyID != nil {
+		for _, list := range subs {
+			targets = append(targets, list...)
+		}
+	} else {
+		targets = subs[userID]
+	}
+	for _, s := range targets {
 		select {
 		case s.ch <- state:
 		default:

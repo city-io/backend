@@ -102,12 +102,18 @@ func (state *cityActor) Receive(ctx actor.Context) {
 				}
 			}
 		}
+		if state.City.Owner != nil {
+			state.recordExploration(*state.City.Owner, domain.Vision{Cities: []domain.City{state.City}})
+		}
 		ctx.Respond(messages.Ack{})
 
 	case messages.UpdateCityOwnerMessage:
 		// The city is the sole authority for ownership; buildings and tiles no
 		// longer cache it, so there is nothing to propagate.
 		state.City.Owner = msg.Owner
+		if state.City.Owner != nil {
+			state.recordExploration(*state.City.Owner, domain.Vision{Cities: []domain.City{state.City}})
+		}
 
 	case messages.BuildingStateChangedMessage:
 		// Real state change (created, upgrade started, upgrade complete) — push

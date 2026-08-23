@@ -13,6 +13,7 @@ import (
 // without a write per tick.
 type Store interface {
 	GetUserByIdentifier(ctx context.Context, identifier string) (*domain.User, error)
+	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
 	GetAllUsers(ctx context.Context) ([]domain.User, error)
 	GetAllCities(ctx context.Context) ([]domain.City, error)
 	GetAllBuildings(ctx context.Context) ([]domain.Building, error)
@@ -20,6 +21,8 @@ type Store interface {
 	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]domain.TrainingOrder, error)
 	GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error)
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]domain.Building, error)
+	GetExploredTiles(ctx context.Context, userID string) ([]domain.Coordinates, error)
+	AddExploredTiles(ctx context.Context, userID string, tiles []domain.Coordinates) error
 
 	CreateUser(ctx context.Context, user domain.User) error
 	CreateCity(ctx context.Context, city domain.City) error

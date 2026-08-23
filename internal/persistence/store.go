@@ -93,6 +93,17 @@ func (s *Store) GetUserByIdentifier(ctx context.Context, identifier string) (*do
 	return row.ToModel(), nil
 }
 
+func (s *Store) GetUserByID(ctx context.Context, userID string) (*domain.User, error) {
+	row, err := s.db.GetUserByID(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return row.ToModel(), nil
+}
+
 func (s *Store) GetAllUsers(ctx context.Context) ([]domain.User, error) {
 	rows, err := s.db.GetAllUsers(ctx)
 	if err != nil {
@@ -175,6 +186,35 @@ func (s *Store) GetBuildingsByCity(ctx context.Context, cityID string) ([]domain
 		buildings = append(buildings, *b.ToModel())
 	}
 	return buildings, nil
+}
+
+func (s *Store) GetExploredTiles(ctx context.Context, userID string) ([]domain.Coordinates, error) {
+	rows, err := s.db.GetExploredTiles(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	tiles := make([]domain.Coordinates, 0, len(rows))
+	for _, row := range rows {
+		tiles = append(tiles, domain.Coordinates{X: int(row.TileX), Y: int(row.TileY)})
+	}
+	return tiles, nil
+}
+
+func (s *Store) AddExploredTiles(ctx context.Context, userID string, tiles []domain.Coordinates) error {
+	if len(tiles) == 0 {
+		return nil
+	}
+	xs := make([]int32, len(tiles))
+	ys := make([]int32, len(tiles))
+	for i, tile := range tiles {
+		xs[i] = int32(tile.X)
+		ys[i] = int32(tile.Y)
+	}
+	return s.db.AddExploredTiles(ctx, database.AddExploredTilesParams{
+		UserID: userID,
+		TileXs: xs,
+		TileYs: ys,
+	})
 }
 
 func (s *Store) CreateUser(ctx context.Context, user domain.User) error {

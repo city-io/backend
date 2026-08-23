@@ -45,8 +45,10 @@ const (
 	InitialPlayerFood = 5000
 
 	TroopMovementBackupFrequency = 5 // number of tile movements before state saved to db
-	TroopMovementTickInterval    = 250 * time.Millisecond
-	TroopTileReconcileFrequency  = 4 // movement updates between idle tile-index repairs
+	// A 275ms quantum keeps the existing per-troop tick ratios while applying
+	// a small 10% movement slowdown across every composition.
+	TroopMovementTickInterval   = 275 * time.Millisecond
+	TroopTileReconcileFrequency = 4 // movement updates between idle tile-index repairs
 
 	// in seconds
 	DBBackupFrequency    = 2  // frequency of database flushing buffer queue and writing to database

@@ -3,47 +3,48 @@ package rpc
 import (
 	"testing"
 
-	"cityio/internal/domain"
-	"cityio/internal/stream"
+	entityv1 "cityio/internal/gen/cityio/entity/v1"
+	servicev1 "cityio/internal/gen/cityio/service/v1"
+	"cityio/internal/mapping"
 )
 
-func TestStateUpdateToResponseSeparatesEntitiesAndDeletions(t *testing.T) {
-	deletedBuildingID := "deleted-building"
-	deletedArmyID := "deleted-army"
-	building := domain.Building{BuildingID: "updated-building"}
+func TestDiffProjectedStateSeparatesHiddenAndDeletedEntities(t *testing.T) {
+	previous := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{
+		Cities: []*entityv1.City{{CityId: mapping.ToCityId("hidden-city")}},
+		Armies: []*entityv1.Army{{ArmyId: mapping.ToArmyId("deleted-army")}},
+	}}}
+	current := &projectedState{
+		snapshot:          &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{}},
+		existingCities:    map[string]struct{}{"hidden-city": {}},
+		existingBuildings: map[string]struct{}{},
+		existingArmies:    map[string]struct{}{},
+	}
 
-	response := stateUpdateToResponse(stream.StateUpdate{
-		Building:          &building,
-		DeletedBuildingID: &deletedBuildingID,
-		DeletedArmyID:     &deletedArmyID,
-	})
-
-	if len(response.GetEntities().GetBuildings()) != 1 {
-		t.Fatalf("buildings = %d, want 1", len(response.GetEntities().GetBuildings()))
+	delta := diffProjectedState(previous, current)
+	if got := delta.GetHidden().GetCityIds(); len(got) != 1 || got[0].GetValue() != "hidden-city" {
+		t.Fatalf("hidden cities = %v", got)
 	}
-	if got := response.GetEntities().GetBuildings()[0].GetBuildingId().GetValue(); got != building.BuildingID {
-		t.Fatalf("building ID = %q, want %q", got, building.BuildingID)
-	}
-	if len(response.GetDeletedBuildingIds()) != 1 {
-		t.Fatalf("deleted building IDs = %d, want 1", len(response.GetDeletedBuildingIds()))
-	}
-	if got := response.GetDeletedBuildingIds()[0].GetValue(); got != deletedBuildingID {
-		t.Fatalf("deleted building ID = %q, want %q", got, deletedBuildingID)
-	}
-	if len(response.GetDeletedArmyIds()) != 1 {
-		t.Fatalf("deleted army IDs = %d, want 1", len(response.GetDeletedArmyIds()))
-	}
-	if got := response.GetDeletedArmyIds()[0].GetValue(); got != deletedArmyID {
-		t.Fatalf("deleted army ID = %q, want %q", got, deletedArmyID)
+	if got := delta.GetDeleted().GetArmyIds(); len(got) != 1 || got[0].GetValue() != "deleted-army" {
+		t.Fatalf("deleted armies = %v", got)
 	}
 }
 
-func TestStateUpdateToResponseOmitsEmptyEntityBag(t *testing.T) {
-	deletedArmyID := "deleted-army"
+func TestDiffProjectedStateEmitsTileKnowledgeChanges(t *testing.T) {
+	tileID := mapping.ToTileId(4, 5)
+	previous := &projectedState{snapshot: &servicev1.StateSnapshot{
+		Entities:       &entityv1.EntityBag{Tiles: []*entityv1.Tile{{TileId: tileID}}},
+		TileVisibility: []*servicev1.TileVisibility{{TileId: tileID, State: servicev1.TileVisibilityState_TILE_VISIBILITY_STATE_EXPLORED}},
+	}}
+	current := &projectedState{snapshot: &servicev1.StateSnapshot{
+		Entities:       &entityv1.EntityBag{Tiles: []*entityv1.Tile{{TileId: tileID, ArmyIds: []*entityv1.ArmyId{mapping.ToArmyId("army")}}}},
+		TileVisibility: []*servicev1.TileVisibility{{TileId: tileID, State: servicev1.TileVisibilityState_TILE_VISIBILITY_STATE_VISIBLE}},
+	}}
 
-	response := stateUpdateToResponse(stream.StateUpdate{DeletedArmyID: &deletedArmyID})
-
-	if response.Entities != nil {
-		t.Fatal("entities should be nil for a deletion-only update")
+	delta := diffProjectedState(previous, current)
+	if len(delta.GetUpserts().GetTiles()) != 1 {
+		t.Fatalf("tile upserts = %d, want 1", len(delta.GetUpserts().GetTiles()))
+	}
+	if len(delta.GetTileVisibility()) != 1 || delta.GetTileVisibility()[0].GetState() != servicev1.TileVisibilityState_TILE_VISIBILITY_STATE_VISIBLE {
+		t.Fatalf("visibility changes = %v", delta.GetTileVisibility())
 	}
 }

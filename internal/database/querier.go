@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	AddExploredTiles(ctx context.Context, arg AddExploredTilesParams) error
 	BatchCreateArmies(ctx context.Context, arg BatchCreateArmiesParams) error
 	BatchCreateBuildings(ctx context.Context, arg BatchCreateBuildingsParams) error
 	BatchCreateCities(ctx context.Context, arg BatchCreateCitiesParams) error
@@ -32,7 +33,9 @@ type Querier interface {
 	GetAllUsers(ctx context.Context) ([]User, error)
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]GetBuildingsByCityRow, error)
 	GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error)
+	GetExploredTiles(ctx context.Context, userID string) ([]GetExploredTilesRow, error)
 	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]TrainingOrder, error)
+	GetUserByID(ctx context.Context, userID string) (User, error)
 	GetUserByIdentifier(ctx context.Context, email string) (User, error)
 	StartTrainingOrder(ctx context.Context, arg StartTrainingOrderParams) error
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error

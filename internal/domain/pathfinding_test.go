@@ -66,6 +66,32 @@ func TestTerrainMovementCost(t *testing.T) {
 	}
 }
 
+func TestFindKnownLandPathTreatsUnexploredWaterAsUnknown(t *testing.T) {
+	grid := TerrainGrid{Width: 4, Height: 1, Tiles: []TerrainType{
+		TerrainTypeGrassland, TerrainTypeGrassland, TerrainTypeWater, TerrainTypeWater,
+	}}
+	explored := map[Coordinates]struct{}{{X: 0, Y: 0}: {}, {X: 1, Y: 0}: {}}
+
+	path, reaches := FindKnownLandPath(grid, explored, Coordinates{X: 0, Y: 0}, Coordinates{X: 3, Y: 0})
+	if !reaches || len(path) != 3 {
+		t.Fatalf("expected an assumed route through fog, got path=%v reaches=%v", path, reaches)
+	}
+}
+
+func TestFindKnownLandPathStopsAtNearestLandForKnownWater(t *testing.T) {
+	grid := TerrainGrid{Width: 4, Height: 1, Tiles: []TerrainType{
+		TerrainTypeGrassland, TerrainTypeGrassland, TerrainTypeWater, TerrainTypeWater,
+	}}
+	explored := map[Coordinates]struct{}{
+		{X: 0, Y: 0}: {}, {X: 1, Y: 0}: {}, {X: 2, Y: 0}: {}, {X: 3, Y: 0}: {},
+	}
+
+	path, reaches := FindKnownLandPath(grid, explored, Coordinates{X: 0, Y: 0}, Coordinates{X: 3, Y: 0})
+	if reaches || len(path) != 1 || path[0] != (Coordinates{X: 1, Y: 0}) {
+		t.Fatalf("expected route to last land tile, got path=%v reaches=%v", path, reaches)
+	}
+}
+
 func terrainGrid(width, height int, terrain TerrainType) TerrainGrid {
 	tiles := make([]TerrainType, width*height)
 	for i := range tiles {
