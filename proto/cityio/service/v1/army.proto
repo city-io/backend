@@ -3,6 +3,7 @@ syntax = "proto3";
 package cityio.service.v1;
 
 import "cityio/entity/v1/army.proto";
+import "cityio/entity/v1/bag.proto";
 import "cityio/entity/v1/common.proto";
 import "cityio/entity/v1/ids.proto";
 
@@ -34,7 +35,7 @@ message MergeArmiesResponse {}
 
 message ListArmiesRequest {}
 message ListArmiesResponse {
-  repeated cityio.entity.v1.Army armies = 1;
+  cityio.entity.v1.EntityBag entities = 1;
 }
 
 // ArmyService trains, moves and merges armies.

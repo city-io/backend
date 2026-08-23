@@ -420,7 +420,7 @@ func (*ListArmiesRequest) Descriptor() ([]byte, []int) {
 
 type ListArmiesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Armies        []*v1.Army             `protobuf:"bytes,1,rep,name=armies,proto3" json:"armies,omitempty"`
+	Entities      *v1.EntityBag          `protobuf:"bytes,1,opt,name=entities,proto3" json:"entities,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -455,9 +455,9 @@ func (*ListArmiesResponse) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *ListArmiesResponse) GetArmies() []*v1.Army {
+func (x *ListArmiesResponse) GetEntities() *v1.EntityBag {
 	if x != nil {
-		return x.Armies
+		return x.Entities
 	}
 	return nil
 }
@@ -466,7 +466,7 @@ var File_cityio_service_v1_army_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_army_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccityio/service/v1/army.proto\x12\x11cityio.service.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x9a\x01\n" +
+	"\x1ccityio/service/v1/army.proto\x12\x11cityio.service.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1acityio/entity/v1/bag.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x9a\x01\n" +
 	"\x12TrainTroopsRequest\x12=\n" +
 	"\vbarracks_id\x18\x01 \x01(\v2\x1c.cityio.entity.v1.BuildingIdR\n" +
 	"barracksId\x12/\n" +
@@ -485,9 +485,9 @@ const file_cityio_service_v1_army_proto_rawDesc = "" +
 	"\x0etarget_army_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\ftargetArmyId\x12>\n" +
 	"\x0esource_army_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\fsourceArmyId\"\x15\n" +
 	"\x13MergeArmiesResponse\"\x13\n" +
-	"\x11ListArmiesRequest\"D\n" +
-	"\x12ListArmiesResponse\x12.\n" +
-	"\x06armies\x18\x01 \x03(\v2\x16.cityio.entity.v1.ArmyR\x06armies2\xcb\x03\n" +
+	"\x11ListArmiesRequest\"M\n" +
+	"\x12ListArmiesResponse\x127\n" +
+	"\bentities\x18\x01 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\xcb\x03\n" +
 	"\vArmyService\x12\\\n" +
 	"\vTrainTroops\x12%.cityio.service.v1.TrainTroopsRequest\x1a&.cityio.service.v1.TrainTroopsResponse\x12P\n" +
 	"\aGetArmy\x12!.cityio.service.v1.GetArmyRequest\x1a\".cityio.service.v1.GetArmyResponse\x12S\n" +
@@ -526,6 +526,7 @@ var file_cityio_service_v1_army_proto_goTypes = []any{
 	(*v1.ArmyId)(nil),           // 12: cityio.entity.v1.ArmyId
 	(*v1.Army)(nil),             // 13: cityio.entity.v1.Army
 	(*v1.Coordinates)(nil),      // 14: cityio.entity.v1.Coordinates
+	(*v1.EntityBag)(nil),        // 15: cityio.entity.v1.EntityBag
 }
 var file_cityio_service_v1_army_proto_depIdxs = []int32{
 	10, // 0: cityio.service.v1.TrainTroopsRequest.barracks_id:type_name -> cityio.entity.v1.BuildingId
@@ -536,7 +537,7 @@ var file_cityio_service_v1_army_proto_depIdxs = []int32{
 	14, // 5: cityio.service.v1.MoveArmyRequest.destination:type_name -> cityio.entity.v1.Coordinates
 	12, // 6: cityio.service.v1.MergeArmiesRequest.target_army_id:type_name -> cityio.entity.v1.ArmyId
 	12, // 7: cityio.service.v1.MergeArmiesRequest.source_army_id:type_name -> cityio.entity.v1.ArmyId
-	13, // 8: cityio.service.v1.ListArmiesResponse.armies:type_name -> cityio.entity.v1.Army
+	15, // 8: cityio.service.v1.ListArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
 	0,  // 9: cityio.service.v1.ArmyService.TrainTroops:input_type -> cityio.service.v1.TrainTroopsRequest
 	2,  // 10: cityio.service.v1.ArmyService.GetArmy:input_type -> cityio.service.v1.GetArmyRequest
 	4,  // 11: cityio.service.v1.ArmyService.MoveArmy:input_type -> cityio.service.v1.MoveArmyRequest
