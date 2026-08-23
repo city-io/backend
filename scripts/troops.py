@@ -117,11 +117,15 @@ def cmd_queue(bid):
 
 def cmd_armies():
     st, r = call("cityio.service.v1.ArmyService/ListArmies", {}, token())
-    armies = r.get("entities", {}).get("armies", [])
+    entities = r.get("entities", {})
+    armies = entities.get("armies", [])
+    marches = {m.get("armyMarchId", {}).get("value"): m
+               for m in entities.get("armyMarches", [])}
     print(len(armies), "armies:")
     for a in armies:
+        march = marches.get(a.get("marchId", {}).get("value"), {})
         print("  ", a["armyId"]["value"], "at", a["coords"], "dest",
-              a.get("destination"), "troops", a.get("troops"))
+              march.get("destination"), "troops", a.get("troops"))
 
 
 def cmd_move(aid, x, y):
@@ -176,8 +180,11 @@ def cmd_smoke():
     cmd_move(aid, sx + 4, sy + 4)
     time.sleep(4)
     st, r = call("cityio.service.v1.ArmyService/GetArmy", {"armyId": {"value": aid}}, token())
-    if "army" in r:
-        print("army after ~4 move ticks:", r["army"].get("coords"), "dest", r["army"].get("destination"))
+    entities = r.get("entities", {})
+    if entities.get("armies"):
+        army = entities["armies"][0]
+        march = (entities.get("armyMarches") or [{}])[0]
+        print("army after ~4 move ticks:", army.get("coords"), "dest", march.get("destination"))
     else:
         print("getarmy:", st, r)
 

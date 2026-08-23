@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/google/uuid"
 
 	"cityio/internal/constants"
 	"cityio/internal/domain"
@@ -48,6 +49,10 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		if state.Army.Troops == nil {
 			state.Army.Troops = make(map[domain.TroopType]int64)
 		}
+		if state.Army.DestX != nil && state.Army.DestY != nil && state.Army.MarchID == nil {
+			marchID := uuid.NewString()
+			state.Army.MarchID = &marchID
+		}
 		if !msg.Restore {
 			if err := state.Store.CreateArmy(state.Ctx(), state.Army); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist army create", "army_id", state.Army.ArmyID, "error", err)
@@ -71,15 +76,33 @@ func (state *armyActor) Receive(ctx actor.Context) {
 
 	case messages.MoveArmyMessage:
 		x, y := clampCoord(msg.X), clampCoord(msg.Y)
+		if state.Army.X == x && state.Army.Y == y {
+			state.clearMarch()
+			state.Store.EnqueueArmy(state.Army)
+			state.publish()
+			ctx.Respond(messages.Ack{})
+			return
+		}
 		oldDestX, oldDestY := state.Army.DestX, state.Army.DestY
+		oldMarchID := state.Army.MarchID
 		oldPath, oldProgress := state.path, state.movementProgress
+		marchID := uuid.NewString()
+		state.Army.MarchID = &marchID
 		state.Army.DestX = &x
 		state.Army.DestY = &y
 		state.movementProgress = 0
 		if err := state.planPath(); err != nil {
 			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
+			state.Army.MarchID = oldMarchID
 			state.path, state.movementProgress = oldPath, oldProgress
 			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		if len(state.path) == 0 {
+			state.Army.DestX, state.Army.DestY = oldDestX, oldDestY
+			state.Army.MarchID = oldMarchID
+			state.path, state.movementProgress = oldPath, oldProgress
+			ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
 			return
 		}
 		state.Store.EnqueueArmy(state.Army)
@@ -134,15 +157,20 @@ func (state *armyActor) step() {
 	}
 	destX, destY := *state.Army.DestX, *state.Army.DestY
 	if state.Army.X == destX && state.Army.Y == destY {
-		state.Army.DestX = nil
-		state.Army.DestY = nil
+		state.clearMarch()
 		state.Store.EnqueueArmy(state.Army)
 		state.publish()
 		return
 	}
-	if len(state.path) == 0 && !state.restorePath() {
-		state.reconcileTileIfDue()
-		return
+	if len(state.path) == 0 {
+		hadMarch := state.Army.MarchID != nil
+		if !state.restorePath() {
+			if hadMarch && state.Army.MarchID == nil {
+				state.publish()
+			}
+			state.reconcileTileIfDue()
+			return
+		}
 	}
 	if !state.advanceMovementClock() {
 		state.reconcileTileIfDue()
@@ -161,17 +189,19 @@ func (state *armyActor) step() {
 	state.updateUpkeepCity()
 
 	arrived := state.Army.X == destX && state.Army.Y == destY
+	marchEnded := arrived
 	if arrived {
-		state.Army.DestX = nil
-		state.Army.DestY = nil
-		state.path = nil
-		state.movementProgress = 0
+		state.clearMarch()
 	} else if err := state.planPath(); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to refresh army route", "army_id", state.Army.ArmyID, "error", err)
 		state.path = nil
+	} else if len(state.path) == 0 {
+		slog.InfoContext(state.Ctx(), "army stopped at the edge of known traversable terrain", "army_id", state.Army.ArmyID, "x", destX, "y", destY)
+		state.clearMarch()
+		marchEnded = true
 	}
 	state.movesSinceBackup++
-	if arrived || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
+	if marchEnded || state.movesSinceBackup >= constants.TroopMovementBackupFrequency {
 		state.Store.EnqueueArmy(state.Army)
 		state.movesSinceBackup = 0
 	}
@@ -189,14 +219,19 @@ func (state *armyActor) restorePath() bool {
 	if len(state.path) == 0 && (state.Army.X != *state.Army.DestX || state.Army.Y != *state.Army.DestY) {
 		destination := domain.Coordinates{X: *state.Army.DestX, Y: *state.Army.DestY}
 		slog.InfoContext(state.Ctx(), "army stopped at the edge of known traversable terrain", "army_id", state.Army.ArmyID, "x", destination.X, "y", destination.Y)
-		state.Army.DestX = nil
-		state.Army.DestY = nil
-		state.path = nil
-		state.movementProgress = 0
+		state.clearMarch()
 		state.Store.EnqueueArmy(state.Army)
 		return false
 	}
 	return true
+}
+
+func (state *armyActor) clearMarch() {
+	state.Army.DestX = nil
+	state.Army.DestY = nil
+	state.Army.MarchID = nil
+	state.path = nil
+	state.movementProgress = 0
 }
 
 func (state *armyActor) planPath() error {

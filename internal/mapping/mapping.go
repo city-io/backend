@@ -87,6 +87,11 @@ func ToArmyId(id string) *entityv1.ArmyId {
 	return &entityv1.ArmyId{Value: id}
 }
 
+// ToArmyMarchId wraps a raw string into a typed proto ID.
+func ToArmyMarchId(id string) *entityv1.ArmyMarchId {
+	return &entityv1.ArmyMarchId{Value: id}
+}
+
 // ToTrainingOrderId wraps a raw string into a typed proto ID.
 func ToTrainingOrderId(id string) *entityv1.TrainingOrderId {
 	return &entityv1.TrainingOrderId{Value: id}
@@ -330,9 +335,10 @@ func BuildingToProto(b domain.Building) *entityv1.Building {
 // ArmyToProto converts a domain army to its proto representation.
 func ArmyToProto(a domain.Army) *entityv1.Army {
 	out := &entityv1.Army{
-		ArmyId: ToArmyId(a.ArmyID),
-		Owner:  ToUserId(a.Owner),
-		Coords: &entityv1.Coordinates{X: int32(a.X), Y: int32(a.Y)},
+		ArmyId:                ToArmyId(a.ArmyID),
+		Owner:                 ToUserId(a.Owner),
+		Coords:                &entityv1.Coordinates{X: int32(a.X), Y: int32(a.Y)},
+		CompositionVisibility: entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_EXACT,
 	}
 	for _, troopType := range []domain.TroopType{
 		domain.TroopTypeSoldier,
@@ -344,15 +350,21 @@ func ArmyToProto(a domain.Army) *entityv1.Army {
 		if count <= 0 {
 			continue
 		}
-		out.Troops = append(out.Troops, &entityv1.TroopStack{
-			Type:  TroopTypeToProto(troopType),
-			Count: int32(count),
-		})
+		protoCount := int32(count)
+		out.Troops = append(out.Troops, &entityv1.TroopStack{Type: TroopTypeToProto(troopType), Count: &protoCount})
 	}
-	if a.DestX != nil && a.DestY != nil {
-		out.Destination = &entityv1.Coordinates{X: int32(*a.DestX), Y: int32(*a.DestY)}
+	if a.MarchID != nil && a.DestX != nil && a.DestY != nil {
+		out.MarchId = ToArmyMarchId(*a.MarchID)
 	}
 	return out
+}
+
+// HidePrivateArmyFields removes composition and march references the viewer is
+// not authorized to inspect. The physical army remains visible on the map.
+func HidePrivateArmyFields(a *entityv1.Army) {
+	a.CompositionVisibility = entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_HIDDEN
+	a.Troops = nil
+	a.MarchId = nil
 }
 
 // EntitiesToBag builds an EntityBag from slices of domain entities.

@@ -79,15 +79,15 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/auth`** — JWT issuing/verification and the Connect auth interceptor (covers both
   unary and streaming). `publicProcedures` lists the tokenless endpoints.
 - **`internal/mapping`** — domain↔proto conversion helpers used by `rpc` (e.g. `CityToProto`,
-  `ArmyToProto`, `EntitiesToBag`, typed-ID + enum maps, `HidePrivateCityFields`).
+  `ArmyToProto`, `EntitiesToBag`, typed-ID + enum maps, and viewer-specific field hiding).
 - **`internal/stream`** — in-process pub/sub triggers backing the server-streaming `StreamState`
   RPC. Private user changes target their owner; world changes wake every subscriber, whose RPC
   projection applies visibility. The RPC emits complete-entity deltas and an authoritative
   snapshot every five seconds.
 - **`internal/gen`** — generated Connect/protobuf code (from `buf`). Two sub-packages:
   - `internal/gen/cityio/entity/v1` (`entityv1`) — entity messages (`User`, `City`,
-    `Building`, `Army`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`, `BuildingId`,
-    `ArmyId`, `TileId`), enums (`CityType`, `BuildingType`, `TroopType`, `TerrainType`),
+    `Building`, `Army`, `ArmyMarch`, `TroopStack`, `Tile`), typed IDs (`UserId`, `CityId`,
+    `BuildingId`, `ArmyId`, `ArmyMarchId`, `TileId`), enums (`CityType`, `BuildingType`, `TroopType`, `TerrainType`),
     `Coordinates`, `Rate`, and `EntityBag` (a collection of mixed entities).
   - `internal/gen/cityio/service/v1` (`servicev1`) — RPC request/response messages. The
     `servicev1connect` sub-package has the Connect service interfaces and handler constructors.
@@ -121,14 +121,15 @@ Go output to `internal/gen`. A frontend generates its own client from the same f
 ```
 proto/cityio/
   entity/v1/             # package cityio.entity.v1
-    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId, TileId)
+    ids.proto             # typed IDs (UserId, CityId, BuildingId, ArmyId, ArmyMarchId, TileId)
     common.proto          # enums (CityType, BuildingType, TroopType), Coordinates, Rate
     user.proto            # User entity message
     city.proto            # City entity message
     building.proto        # Building entity message
     army.proto            # Army + TroopStack entity messages
+    army_march.proto      # active movement orders, remaining routes, disclosure
     tile.proto            # TerrainType + Tile
-    bag.proto             # EntityBag (users/cities/buildings/armies/tiles)
+    bag.proto             # EntityBag (users/cities/buildings/armies/marches/tiles)
   service/v1/             # package cityio.service.v1
     user.proto            # UserService RPCs (incl. StreamState) + req/resp
     city.proto            # CityService RPCs
@@ -168,7 +169,8 @@ the "Client / frontend API reference" section below.
   population declines. All rates are per-hour.
 - **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
   `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
-  position and, while marching, a `destination`; it follows a lowest-time route choosing among
+  position and an optional reference to its active `ArmyMarch`; the march owns its destination,
+  remaining route, and ETA. Movement follows a lowest-time route choosing among
   all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
   250ms timing quantum with carried fractional progress, but state is streamed only when the army actually enters a tile. An
   army moves at the speed of its slowest troop: cavalry takes 550ms per normal tile,
@@ -249,7 +251,7 @@ for TypeScript) rather than hand-writing request types.
     `_MINE` (+ `_UNSPECIFIED`).
   - `TroopType`: `TROOP_TYPE_SOLDIER`, `_ARCHER`, `_CAVALRY`, `_ARTILLERY` (+ `_UNSPECIFIED`).
 - **EntityBag** — a flat collection of raw entities returned by list/map/stream responses:
-  `{ users[], cities[], buildings[], armies[], tiles[] }`. Stream typed deletion/hidden IDs live
+  `{ users[], cities[], buildings[], armies[], tiles[], army_marches[] }`. Stream typed deletion/hidden IDs live
   in `StateDelta`, not in the entity collection.
 - **TileVisibilityState** — per-user tile knowledge: `UNEXPLORED`, `EXPLORED`, or `VISIBLE`.
   `EXPLORED` tiles include remembered terrain but sanitized occupancy.
@@ -265,8 +267,12 @@ for TypeScript) rather than hand-writing request types.
   `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
-- **Army** `{ army_id, owner (UserId), coords, troops[] (TroopStack{type, count}), destination?
-  (Coordinates) }` — `destination` is set while marching and unset when idle/arrived.
+- **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], march_id? }` —
+  composition is exact for the owner and explicitly hidden from unauthorized viewers; a march
+  reference is only present when the viewer may know the movement order exists.
+- **ArmyMarch** `{ army_march_id, army_id, disclosure, destination?, remaining_route[],
+  estimated_remaining_duration? }` — ephemeral, viewer-projected active-order state. A new march
+  ID is issued for each order; completion, cancellation, or replacement produces a tombstone.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -276,8 +282,8 @@ for TypeScript) rather than hand-writing request types.
     stripped.
   - `GetCity` and `GetBuilding` return `NotFound` if the target isn't visible. `GetTile` returns
     terrain-only data for explored hidden tiles and `NotFound` only for unexplored tiles.
-  - `GetArmy`: the **owner** can always fetch their own army (even out of vision); others need
-    vision on its tile.
+  - `GetArmy`: the **owner** can always fetch their own army and active march (even out of
+    vision); others need vision on its tile and receive hidden composition/no march.
   - `ListCities` and `ListArmies` are **owner-scoped** — they return your own entities regardless
     of vision. `StreamState` begins with the same owner-scoped snapshot and includes visible
     world deltas revealed by moving armies.
@@ -294,8 +300,9 @@ for TypeScript) rather than hand-writing request types.
 - `StreamState() → stream { revision, snapshot | delta }` — server-streaming and owner-scoped.
   The first frame and every five-second repair frame are authoritative snapshots. Between them,
   deltas carry complete entity upserts, typed `deleted` and `hidden` ID bags, and tile-visibility
-  transitions. Apply snapshots by replacement and deltas by ID. World updates are projected to
-  every player who can currently see them; moving armies reveal and persist terrain.
+  transitions, including army-march upserts and tombstones. Apply snapshots by replacement and
+  deltas by ID. World updates are projected to every player who can currently see them; moving
+  armies reveal and persist terrain.
 
 **CityService**
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.
@@ -325,9 +332,11 @@ for TypeScript) rather than hand-writing request types.
   when it is at the front, `started_at` and `completes_at`.
 - `ListTrainingOrders(barracks_id) → { orders[] }` — owner-only current FIFO queue for a
   barracks, including the active order and orders waiting behind it.
-- `GetArmy(army_id) → { army }` — owner always; others need vision.
-- `PreviewArmyRoute(army_id, destination) → { steps[{coords, explored}], reaches_destination,
-  estimated_duration }` — owner-only backend route preview. Unknown tiles are assumed to be
+- `GetArmy(army_id) → { army_id, entities(army, army_march?) }` — owner always; others need
+  vision and receive the sanitized army without private march state.
+- `PreviewArmyRoute(army_id, destination) → { steps[{coords, explored}], estimated_duration }` —
+  owner-only backend route preview. The UI derives whether the requested destination is reached
+  by comparing it with the final step. Unknown tiles are assumed to be
   ordinary land without revealing terrain; known and unknown route segments are marked.
 - `MoveArmy(army_id, destination) → {}` — must own; sets the marching destination (clamped to the
   map). Missing destinations are invalid. Unknown terrain is planned as ordinary land and the
@@ -335,7 +344,8 @@ for TypeScript) rather than hand-writing request types.
   the army stops at the closest reachable explored land instead of leaking that fact up front.
 - `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
   tile. The source's troops fold into the target and the source army disappears.
-- `ListArmies() → { army_ids[], entities(armies) }` — your armies (all, regardless of vision).
+- `ListArmies() → { army_ids[], entities(armies, army_marches) }` — your armies and their active
+  marches (all, regardless of vision).
 
 **MapService**
 - `GetMap() → { tile_ids[], entities(tiles, cities, buildings, armies), tile_visibility[] }` —

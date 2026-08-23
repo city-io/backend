@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"errors"
-	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -144,7 +143,20 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("army not found"))
 		}
 	}
-	return connect.NewResponse(&servicev1.GetArmyResponse{Army: mapping.ArmyToProto(army)}), nil
+	protoArmy := mapping.ArmyToProto(army)
+	bag := &entityv1.EntityBag{Armies: []*entityv1.Army{protoArmy}}
+	if army.Owner == claims.UserID {
+		explored, err := h.srv.store.GetExploredTiles(ctx, army.Owner)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if march := h.srv.projectOwnedArmyMarch(army, exploredSet(explored)); march != nil {
+			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		}
+	} else {
+		mapping.HidePrivateArmyFields(protoArmy)
+	}
+	return connect.NewResponse(&servicev1.GetArmyResponse{ArmyId: mapping.ToArmyId(army.ArmyID), Entities: bag}), nil
 }
 
 func (h *armyHandler) MoveArmy(ctx context.Context, req *connect.Request[servicev1.MoveArmyRequest]) (*connect.Response[servicev1.MoveArmyResponse], error) {
@@ -179,40 +191,9 @@ func (h *armyHandler) PreviewArmyRoute(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	known := make(map[domain.Coordinates]struct{}, len(explored))
-	for _, coords := range explored {
-		known[coords] = struct{}{}
-	}
-	path, reaches := domain.FindKnownLandPath(h.srv.world.Terrain(), known,
-		domain.Coordinates{X: army.X, Y: army.Y}, domain.Coordinates{X: x, Y: y})
-	steps := make([]*servicev1.RouteStep, 0, len(path))
-	pathCost := 0
-	for _, coords := range path {
-		_, isExplored := known[coords]
-		cost := 1
-		if isExplored {
-			terrain, _ := h.srv.world.TerrainAt(coords.X, coords.Y)
-			cost = domain.TerrainMovementCost(terrain)
-		}
-		pathCost += cost
-		steps = append(steps, &servicev1.RouteStep{
-			Coords:   &entityv1.Coordinates{X: int32(coords.X), Y: int32(coords.Y)},
-			Explored: isExplored,
-		})
-	}
-	movementDuration := time.Duration(0)
-	for troopType, count := range army.Troops {
-		if count > 0 {
-			movementDuration = max(movementDuration, constants.GetTroopMovementDuration(troopType))
-		}
-	}
-	if movementDuration == 0 {
-		movementDuration = constants.GetTroopMovementDuration(domain.TroopTypeSoldier)
-	}
-	duration := movementDuration * time.Duration(pathCost)
-	duration = ((duration + constants.TroopMovementTickInterval - 1) / constants.TroopMovementTickInterval) * constants.TroopMovementTickInterval
+	route := h.srv.projectArmyRoute(army, domain.Coordinates{X: x, Y: y}, exploredSet(explored))
 	return connect.NewResponse(&servicev1.PreviewArmyRouteResponse{
-		Steps: steps, ReachesDestination: reaches, EstimatedDuration: durationpb.New(duration),
+		Steps: route.steps, EstimatedDuration: durationpb.New(route.duration),
 	}), nil
 }
 
@@ -244,7 +225,7 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing claims"))
 	}
-	all, err := h.srv.store.GetAllArmies(ctx)
+	all, err := h.srv.liveArmies(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -258,8 +239,19 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 	for _, a := range owned {
 		armyIDs = append(armyIDs, mapping.ToArmyId(a.ArmyID))
 	}
+	bag := mapping.EntitiesToBag(nil, nil, nil, owned)
+	explored, err := h.srv.store.GetExploredTiles(ctx, claims.UserID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	known := exploredSet(explored)
+	for _, army := range owned {
+		if march := h.srv.projectOwnedArmyMarch(army, known); march != nil {
+			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		}
+	}
 	return connect.NewResponse(&servicev1.ListArmiesResponse{
 		ArmyIds:  armyIDs,
-		Entities: mapping.EntitiesToBag(nil, nil, nil, owned),
+		Entities: bag,
 	}), nil
 }

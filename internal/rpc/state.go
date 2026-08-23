@@ -20,6 +20,7 @@ type projectedState struct {
 	existingCities    map[string]struct{}
 	existingBuildings map[string]struct{}
 	existingArmies    map[string]struct{}
+	existingMarches   map[string]struct{}
 }
 
 func (s *Server) buildProjectedState(ctx context.Context, userID string) (*projectedState, error) {
@@ -87,6 +88,16 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 			mapping.HidePrivateCityFields(city)
 		}
 	}
+	known := exploredSet(exploredCoords)
+	for index, army := range visibleArmies {
+		if army.Owner != userID {
+			mapping.HidePrivateArmyFields(bag.Armies[index])
+			continue
+		}
+		if march := s.projectOwnedArmyMarch(army, known); march != nil {
+			bag.ArmyMarches = append(bag.ArmyMarches, march)
+		}
+	}
 
 	tileVisibility := make([]*servicev1.TileVisibility, 0, len(exploredCoords))
 	for _, coords := range exploredCoords {
@@ -104,6 +115,7 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 		existingCities:    make(map[string]struct{}, len(cities)),
 		existingBuildings: make(map[string]struct{}, len(buildings)),
 		existingArmies:    make(map[string]struct{}, len(armies)),
+		existingMarches:   make(map[string]struct{}),
 	}
 	for _, city := range cities {
 		projected.existingCities[city.CityID] = struct{}{}
@@ -113,6 +125,9 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 	}
 	for _, army := range armies {
 		projected.existingArmies[army.ArmyID] = struct{}{}
+		if army.MarchID != nil {
+			projected.existingMarches[*army.MarchID] = struct{}{}
+		}
 	}
 	return projected, nil
 }
@@ -127,6 +142,7 @@ func diffProjectedState(previous, current *projectedState) *servicev1.StateDelta
 	diffCities(prevBag.GetCities(), currBag.GetCities(), current.existingCities, &delta.Upserts.Cities, &delta.Deleted.CityIds, &delta.Hidden.CityIds)
 	diffBuildings(prevBag.GetBuildings(), currBag.GetBuildings(), current.existingBuildings, &delta.Upserts.Buildings, &delta.Deleted.BuildingIds, &delta.Hidden.BuildingIds)
 	diffArmies(prevBag.GetArmies(), currBag.GetArmies(), current.existingArmies, &delta.Upserts.Armies, &delta.Deleted.ArmyIds, &delta.Hidden.ArmyIds)
+	diffArmyMarches(prevBag.GetArmyMarches(), currBag.GetArmyMarches(), current.existingMarches, &delta.Upserts.ArmyMarches, &delta.Deleted.ArmyMarchIds, &delta.Hidden.ArmyMarchIds)
 	diffTiles(prevBag.GetTiles(), currBag.GetTiles(), &delta.Upserts.Tiles)
 
 	previousVisibility := make(map[string]servicev1.TileVisibilityState, len(previous.snapshot.TileVisibility))
@@ -139,6 +155,31 @@ func diffProjectedState(previous, current *projectedState) *servicev1.StateDelta
 		}
 	}
 	return delta
+}
+
+func diffArmyMarches(previous, current []*entityv1.ArmyMarch, existing map[string]struct{}, upserts *[]*entityv1.ArmyMarch, deleted, hidden *[]*entityv1.ArmyMarchId) {
+	prev := make(map[string]*entityv1.ArmyMarch, len(previous))
+	curr := make(map[string]struct{}, len(current))
+	for _, entity := range previous {
+		prev[entity.GetArmyMarchId().GetValue()] = entity
+	}
+	for _, entity := range current {
+		id := entity.GetArmyMarchId().GetValue()
+		curr[id] = struct{}{}
+		if old, ok := prev[id]; !ok || !proto.Equal(old, entity) {
+			*upserts = append(*upserts, entity)
+		}
+	}
+	for id := range prev {
+		if _, ok := curr[id]; ok {
+			continue
+		}
+		if _, exists := existing[id]; exists {
+			*hidden = append(*hidden, mapping.ToArmyMarchId(id))
+		} else {
+			*deleted = append(*deleted, mapping.ToArmyMarchId(id))
+		}
+	}
 }
 
 func diffUsers(previous, current []*entityv1.User, upserts *[]*entityv1.User, deleted *[]*entityv1.UserId) {
@@ -251,7 +292,7 @@ func tileKey(id *entityv1.TileId) string {
 
 func stateDeltaEmpty(delta *servicev1.StateDelta) bool {
 	bag, deleted, hidden := delta.GetUpserts(), delta.GetDeleted(), delta.GetHidden()
-	return len(bag.GetUsers()) == 0 && len(bag.GetCities()) == 0 && len(bag.GetBuildings()) == 0 && len(bag.GetArmies()) == 0 && len(bag.GetTiles()) == 0 &&
-		len(deleted.GetUserIds()) == 0 && len(deleted.GetCityIds()) == 0 && len(deleted.GetBuildingIds()) == 0 && len(deleted.GetArmyIds()) == 0 && len(deleted.GetTileIds()) == 0 &&
-		len(hidden.GetUserIds()) == 0 && len(hidden.GetCityIds()) == 0 && len(hidden.GetBuildingIds()) == 0 && len(hidden.GetArmyIds()) == 0 && len(hidden.GetTileIds()) == 0 && len(delta.GetTileVisibility()) == 0
+	return len(bag.GetUsers()) == 0 && len(bag.GetCities()) == 0 && len(bag.GetBuildings()) == 0 && len(bag.GetArmies()) == 0 && len(bag.GetTiles()) == 0 && len(bag.GetArmyMarches()) == 0 &&
+		len(deleted.GetUserIds()) == 0 && len(deleted.GetCityIds()) == 0 && len(deleted.GetBuildingIds()) == 0 && len(deleted.GetArmyIds()) == 0 && len(deleted.GetTileIds()) == 0 && len(deleted.GetArmyMarchIds()) == 0 &&
+		len(hidden.GetUserIds()) == 0 && len(hidden.GetCityIds()) == 0 && len(hidden.GetBuildingIds()) == 0 && len(hidden.GetArmyIds()) == 0 && len(hidden.GetTileIds()) == 0 && len(hidden.GetArmyMarchIds()) == 0 && len(delta.GetTileVisibility()) == 0
 }

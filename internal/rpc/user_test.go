@@ -48,3 +48,30 @@ func TestDiffProjectedStateEmitsTileKnowledgeChanges(t *testing.T) {
 		t.Fatalf("visibility changes = %v", delta.GetTileVisibility())
 	}
 }
+
+func TestDiffProjectedStateDeletesCompletedMarch(t *testing.T) {
+	previous := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{
+		ArmyMarches: []*entityv1.ArmyMarch{{ArmyMarchId: mapping.ToArmyMarchId("completed")}},
+	}}}
+	current := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{}}, existingMarches: map[string]struct{}{}}
+
+	delta := diffProjectedState(previous, current)
+	if got := delta.GetDeleted().GetArmyMarchIds(); len(got) != 1 || got[0].GetValue() != "completed" {
+		t.Fatalf("deleted marches = %v", got)
+	}
+}
+
+func TestDiffProjectedStateHidesStillActiveMarch(t *testing.T) {
+	previous := &projectedState{snapshot: &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{
+		ArmyMarches: []*entityv1.ArmyMarch{{ArmyMarchId: mapping.ToArmyMarchId("restricted")}},
+	}}}
+	current := &projectedState{
+		snapshot:        &servicev1.StateSnapshot{Entities: &entityv1.EntityBag{}},
+		existingMarches: map[string]struct{}{"restricted": {}},
+	}
+
+	delta := diffProjectedState(previous, current)
+	if got := delta.GetHidden().GetArmyMarchIds(); len(got) != 1 || got[0].GetValue() != "restricted" {
+		t.Fatalf("hidden marches = %v", got)
+	}
+}
