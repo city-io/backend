@@ -273,6 +273,10 @@ func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string
 	if durability <= 0 || incoming <= 0 {
 		return result, 0
 	}
+	// Incoming power is the sum of every opposing unit's attack. Distributing
+	// that power across the defending force makes absolute losses grow with
+	// force size for otherwise equivalent battles, while fractional carry keeps
+	// small engagements below a forced one-casualty-per-round minimum.
 	for _, target := range targets {
 		for _, troopType := range constants.AllTroopTypes() {
 			count := target.army.Troops[troopType]

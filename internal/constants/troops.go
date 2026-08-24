@@ -8,11 +8,11 @@ import (
 
 const (
 	ArmyNameMaxLength         = 32
-	BattleTickInterval        = 5 * time.Second
+	BattleTickInterval        = 3 * time.Second
 	SettlementCaptureDuration = 30 * time.Second
 	// BattleCasualtyRate scales military losses calculated from incoming power.
 	// One applies the full per-round exchange calculated from force and
-	// durability; the five-second battle cadence is unchanged.
+	// durability.
 	BattleCasualtyRate = 1.00
 	// SiegeCivilianCasualtiesPerMilitaryLoss ties collateral population loss
 	// directly to the army and militia casualties suffered by that side. The

@@ -52,7 +52,7 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
     nearest-owned-settlement food-upkeep attribution, composition-aware weighted
     8-directional terrain pathfinding, merging, combat enrollment, retreat, and capture orders.
   - `battleActor` owns one active battle: alliance-ready attacker/defender sides, simultaneous
-    one-second combat ticks, deterministic whole-unit casualties, and resolution.
+    three-second combat rounds, deterministic whole-unit casualties, and resolution.
   - Actors persist through the injected `contracts.Store` (`state.Store`): reads/creates/deletes
     hit the DB immediately; `Enqueue*` coalesces updates for the background writer.
 - **`internal/persistence`** — `Store` (implements `contracts.Store`), the single sink for
@@ -192,20 +192,23 @@ the "Client / frontend API reference" section below.
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
   same-owner armies on the same tile can be merged.
   - **Combat:** hostile armies sharing a tile enter a battle. Battles schedule one round every
-    five seconds, re-arming only after the previous round finishes so delayed actor work cannot
+    three seconds, re-arming only after the previous round finishes so delayed actor work cannot
     produce catch-up rounds. Both sides' damage uses the pre-round composition, so casualties are
-    simultaneous. Attack, defense, and HP determine fractional expected losses, scaled by
-    `BattleCasualtyRate` (currently 1.0); battle-local carry converts them into deterministic whole-unit deaths
-    over time. There is no persistent army/unit health or wounded state. A zero-unit army is
-    deleted. A side can contain multiple users: additional attackers targeting a participant join
-    the opposing side, leaving formal alliance policy for the future diplomacy layer.
+    simultaneous. Total opposing attack power makes absolute casualties scale proportionally with
+    force size for equivalent compositions. Attack, defense, and HP determine fractional expected
+    losses, scaled by `BattleCasualtyRate` (currently 1.0); battle-local carry converts them into
+    deterministic whole-unit deaths over time. There is no persistent army/unit health or wounded
+    state. A zero-unit army is deleted. A side can contain multiple users: additional attackers
+    targeting a participant join the opposing side, leaving formal alliance policy for the future
+    diplomacy layer.
   - **Conquest:** an army ordered to conquer fights field defenders and the settlement's passive
-    militia from the cheapest traversable tile adjacent (including diagonally) to the center, then
-    must hold that staging tile uncontested for 30 seconds. Settlement militia cannot engage the
-    conqueror before it reaches that destination. Militia casualties reduce both militia and total
-    population. Siege civilian losses equal 15% of that side's actual army and militia casualties,
-    with fractional carry, and cannot reduce survivors below 30% of the normal 55% core allocation.
-    Completion transfers the existing settlement and its buildings to the attacker.
+    militia from the cheapest traversable tile adjacent (including diagonally) to the center. Once
+    those defenders are defeated, it advances onto the center tile and must hold the center
+    uncontested for 30 seconds. Settlement militia cannot engage the conqueror before it reaches
+    the staging destination. Militia casualties reduce both militia and total population. Siege
+    civilian losses equal 15% of that side's actual army and militia casualties, with fractional
+    carry, and cannot reduce survivors below 30% of the normal 55% core allocation. Completion
+    transfers the existing settlement and its buildings to the attacker.
   - **Population transfer:** 55% of the city's peak resident population is a protected civilian
     core. The persisted peak does not fall after recruitment/casualties and does not jump when
     housing is added, so neither repeated training nor capacity upgrades move the floor. A city
@@ -224,7 +227,7 @@ the "Client / frontend API reference" section below.
     upkeep, recomputed (by Chebyshev distance) as the army marches. Cities and captured towns
     both qualify because they share the `City` domain model.
   - **Troop stat table** (tier-1; balance knobs in `constants/troops.go`; Atk/Def/HP are stored
-    and used by the one-second combat calculation):
+    and used by the per-round combat calculation):
 
     | Type      | Gold | Train/unit (s) | Move (s) | Food/hr | Pop | Atk | Def | HP  |
     |-----------|------|----------------|----------|---------|-----|-----|-----|-----|
@@ -415,7 +418,8 @@ for TypeScript) rather than hand-writing request types.
   contact is lost, and starts or joins a battle on contact.
 - `ConquerSettlement(army_id, city_id) → {}` — must own the army and see the hostile or neutral
   settlement. The army routes to the cheapest traversable tile adjacent to its center, fights its
-  defenders there, then captures it after a 30-second uncontested hold.
+  defenders there, advances onto the center, then captures it after holding the center uncontested
+  for 30 seconds.
 - `RetreatArmy(army_id) → {}` — removes the army from its active battle and routes it to the
   nearest owned settlement.
 - `MergeArmies(target_army_id, source_army_id) → { army_id, entities(target_army,

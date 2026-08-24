@@ -3,10 +3,18 @@ package actors
 import (
 	"errors"
 	"testing"
+	"time"
 
+	"cityio/internal/constants"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
 )
+
+func TestBattleRoundsUseThreeSecondCadence(t *testing.T) {
+	if constants.BattleTickInterval != 3*time.Second {
+		t.Fatalf("battle tick interval = %s, want 3s", constants.BattleTickInterval)
+	}
+}
 
 func TestBattleFractionalCarryEventuallyKillsWholeUnit(t *testing.T) {
 	state := &battleActor{casualtyCarry: make(map[string]float64)}
@@ -34,6 +42,23 @@ func TestBattleCasualtyRateSpreadsLossAcrossRounds(t *testing.T) {
 
 	if first["defender"][domain.TroopTypeSoldier] != 1 || second["defender"][domain.TroopTypeSoldier] != 1 {
 		t.Fatalf("casualties by round = %v then %v, want 1 then 1", first, second)
+	}
+}
+
+func TestBattleCasualtiesScaleWithForceSize(t *testing.T) {
+	lossesForEqualBattle := func(count int64) int64 {
+		state := &battleActor{casualtyCarry: make(map[string]float64)}
+		army := battleArmy{id: "army", army: domain.Army{Troops: map[domain.TroopType]int64{
+			domain.TroopTypeSoldier: count,
+		}}}
+		casualties, _ := state.casualties([]battleArmy{army}, nil, 0, attackPower([]battleArmy{army}, 0))
+		return casualties[army.id][domain.TroopTypeSoldier]
+	}
+
+	small := lossesForEqualBattle(15)
+	large := lossesForEqualBattle(150)
+	if small != 1 || large != 10 {
+		t.Fatalf("equal-battle casualties: 15v15 = %d, 150v150 = %d; want 1 and 10", small, large)
 	}
 }
 
