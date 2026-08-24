@@ -102,6 +102,29 @@ func TestArmyOrderProjectsActorsRemainingPath(t *testing.T) {
 	}
 }
 
+func TestArmySiegePreviewStopsAdjacentToSettlementCenter(t *testing.T) {
+	army := domain.Army{
+		ArmyID: "army", Owner: "owner", Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 1},
+	}
+	server := &Server{world: routeTestWorld{grid: domain.TerrainGrid{
+		Width: 5, Height: 1,
+		Tiles: []domain.TerrainType{
+			domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland,
+		},
+	}}}
+	explored := map[domain.Coordinates]struct{}{}
+	for x := 0; x < 5; x++ {
+		explored[domain.Coordinates{X: x}] = struct{}{}
+	}
+
+	preview := server.projectArmySiegeRoute(army, domain.Coordinates{X: 4}, explored)
+
+	steps := preview.route.GetKnownSteps()
+	if len(steps) != 3 || steps[len(steps)-1].GetCoords().GetX() != 3 {
+		t.Fatalf("siege preview = %+v, want endpoint (3,0)", preview.route)
+	}
+}
+
 func TestArmyOrderHidesUnexploredRouteGeometry(t *testing.T) {
 	destination := 3
 	orderID := "order"

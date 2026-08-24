@@ -102,7 +102,7 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 	activeBattles := battles.All()
 	for _, battle := range activeBattles {
 		if battleVisibleToUser(battle, userID, visible) {
-			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle))
+			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle, userID))
 		}
 	}
 	tileVisibility := make([]*servicev1.TileVisibility, 0, len(exploredCoords))

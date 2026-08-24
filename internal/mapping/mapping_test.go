@@ -74,9 +74,9 @@ func TestMailboxMessageToProtoPreservesDetailedBattleReport(t *testing.T) {
 			},
 			Defenders: domain.BattleReportSide{
 				UserIDs: []string{"defender"}, MilitiaCityID: &cityID, StartingMilitia: 12, SurvivingMilitia: 0,
-				Settlement: &domain.BattleReportSettlement{CityID: cityID, Name: "Ashford", Type: domain.CityTypeTown, OwnerID: &ownerID, StartingPopulation: 80, EndingPopulation: 68},
+				Settlement: &domain.BattleReportSettlement{CityID: cityID, Name: "Ashford", Type: domain.CityTypeTown, OwnerID: &ownerID, StartingPopulation: 80, EndingPopulation: 68, CivilianCasualties: 4},
 			},
-			Rounds: []domain.BattleReportRound{{Number: 1, OccurredAt: ended, AttackerPower: 100, DefenderPower: 120, DefenderLosses: []domain.BattleReportLoss{{MilitiaCityID: &cityID, Militia: 12}}}},
+			Rounds: []domain.BattleReportRound{{Number: 1, OccurredAt: ended, AttackerPower: 100, DefenderPower: 120, DefenderLosses: []domain.BattleReportLoss{{MilitiaCityID: &cityID, Militia: 12}}, DefenderCivilianCasualties: 4}},
 		},
 	}
 
@@ -88,8 +88,47 @@ func TestMailboxMessageToProtoPreservesDetailedBattleReport(t *testing.T) {
 	if report.GetAttackers().GetCommanders()[0].GetUsername() != "Alice" || report.GetAttackers().GetArmies()[0].GetStartingTroops()[0].GetCount() != 10 {
 		t.Fatalf("attacker detail was not preserved: %+v", report.GetAttackers())
 	}
-	if report.GetDefenders().GetSettlement().GetName() != "Ashford" || report.GetDefenders().GetStartingMilitia() != 12 || report.GetRounds()[0].GetDefenderLosses()[0].GetMilitia() != 12 {
+	if !report.GetDefenders().GetStrengthVisible() || report.GetDefenders().GetSettlement().GetName() != "Ashford" || report.GetDefenders().GetStartingMilitia() != 12 || report.GetRounds()[0].GetDefenderLosses()[0].GetMilitia() != 12 || report.GetDefenders().GetSettlement().GetCivilianCasualties() != 4 || report.GetRounds()[0].GetDefenderCivilianCasualties() != 4 {
 		t.Fatalf("siege or round detail was not preserved: %+v", report)
+	}
+}
+
+func TestBattleProjectionHidesOpposingMilitiaStrength(t *testing.T) {
+	cityID := "town"
+	battle := domain.Battle{
+		Attackers: domain.BattleSide{UserIDs: []string{"attacker"}},
+		Defenders: domain.BattleSide{UserIDs: []string{"defender"}, MilitiaCityID: &cityID, MilitiaCount: 25},
+	}
+
+	mapped := BattleToProto(battle, "attacker")
+
+	if !mapped.GetAttackers().GetStrengthVisible() {
+		t.Fatal("friendly battle strength was hidden")
+	}
+	if mapped.GetDefenders().GetStrengthVisible() || mapped.GetDefenders().GetMilitiaCount() != 0 {
+		t.Fatalf("opposing militia strength was exposed: %+v", mapped.GetDefenders())
+	}
+}
+
+func TestDefeatReportHidesOpposingCounts(t *testing.T) {
+	cityID := "town"
+	message := domain.MailboxMessage{BattleReport: &domain.BattleReport{
+		Role: domain.BattleReportRoleAttacker, Outcome: domain.BattleReportOutcomeDefeat,
+		Attackers: domain.BattleReportSide{UserIDs: []string{"attacker"}, Armies: []domain.BattleReportArmy{{ArmyID: "ours", OwnerID: "attacker", StartingTroops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 5}}}},
+		Defenders: domain.BattleReportSide{UserIDs: []string{"defender"}, StartingMilitia: 20, SurvivingMilitia: 12, Armies: []domain.BattleReportArmy{{ArmyID: "theirs", OwnerID: "defender", StartingTroops: map[domain.TroopType]int64{domain.TroopTypeArcher: 8}}}, Settlement: &domain.BattleReportSettlement{CityID: cityID, StartingPopulation: 100, EndingPopulation: 95, CivilianCasualties: 5}},
+		Rounds:    []domain.BattleReportRound{{AttackerPower: 50, DefenderPower: 120, DefenderLosses: []domain.BattleReportLoss{{MilitiaCityID: &cityID, Militia: 8}}, DefenderCivilianCasualties: 5}},
+	}}
+
+	report := MailboxMessageToProto(message).GetBattleReport()
+
+	if !report.GetAttackers().GetStrengthVisible() || len(report.GetAttackers().GetArmies()[0].GetStartingTroops()) == 0 {
+		t.Fatal("recipient's own strength was hidden")
+	}
+	if report.GetDefenders().GetStrengthVisible() || report.GetDefenders().GetStartingMilitia() != 0 || len(report.GetDefenders().GetArmies()[0].GetStartingTroops()) != 0 {
+		t.Fatalf("opposing report strength was exposed: %+v", report.GetDefenders())
+	}
+	if report.GetRounds()[0].GetDefenderPower() != 0 || len(report.GetRounds()[0].GetDefenderLosses()) != 0 || report.GetDefenders().GetSettlement().GetCivilianCasualties() != 0 {
+		t.Fatalf("opposing count-derived report detail was exposed: %+v", report)
 	}
 }
 

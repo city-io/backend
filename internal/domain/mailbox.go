@@ -53,6 +53,7 @@ type BattleReportSettlement struct {
 	OwnerID            *string  `json:"owner_id,omitempty"`
 	StartingPopulation float64  `json:"starting_population"`
 	EndingPopulation   float64  `json:"ending_population"`
+	CivilianCasualties int64    `json:"civilian_casualties"`
 }
 
 type BattleReportSide struct {
@@ -73,12 +74,14 @@ type BattleReportLoss struct {
 }
 
 type BattleReportRound struct {
-	Number         int                `json:"number"`
-	OccurredAt     time.Time          `json:"occurred_at"`
-	AttackerPower  float64            `json:"attacker_power"`
-	DefenderPower  float64            `json:"defender_power"`
-	AttackerLosses []BattleReportLoss `json:"attacker_losses"`
-	DefenderLosses []BattleReportLoss `json:"defender_losses"`
+	Number                     int                `json:"number"`
+	OccurredAt                 time.Time          `json:"occurred_at"`
+	AttackerPower              float64            `json:"attacker_power"`
+	DefenderPower              float64            `json:"defender_power"`
+	AttackerLosses             []BattleReportLoss `json:"attacker_losses"`
+	DefenderLosses             []BattleReportLoss `json:"defender_losses"`
+	AttackerCivilianCasualties int64              `json:"attacker_civilian_casualties"`
+	DefenderCivilianCasualties int64              `json:"defender_civilian_casualties"`
 }
 
 type BattleReport struct {

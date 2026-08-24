@@ -59,6 +59,10 @@ type RetreatFromBattleMessage struct{ ArmyID string }
 type MergeArmiesMessage struct {
 	SourceArmyID string
 }
+type MergeArmiesResponseMessage struct {
+	Army          domain.Army
+	DeletedArmyID string
+}
 
 type SplitArmyMessage struct {
 	Troops map[domain.TroopType]int64

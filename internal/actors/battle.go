@@ -20,8 +20,7 @@ import (
 type battleActor struct {
 	baseActor
 	Battle          domain.Battle
-	ticker          *time.Ticker
-	stop            chan struct{}
+	roundTimer      *time.Timer
 	casualtyCarry   map[string]float64
 	reportAttackers domain.BattleReportSide
 	reportDefenders domain.BattleReportSide
@@ -52,8 +51,8 @@ func (state *battleActor) Receive(ctx actor.Context) {
 				slog.WarnContext(state.Ctx(), "failed to enroll army in battle", "battle_id", state.Battle.BattleID, "army_id", id, "error", err)
 			}
 		}
+		state.armNextRound(ctx)
 		state.publish()
-		state.start(ctx)
 		ctx.Respond(messages.Ack{})
 	case messages.GetBattleMessage:
 		ctx.Respond(&messages.GetBattleResponseMessage{Battle: state.Battle})
@@ -279,7 +278,7 @@ func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string
 				continue
 			}
 			key := fmt.Sprintf("%s:%s", target.id, troopType)
-			expected := incoming*float64(count)/durability + state.casualtyCarry[key]
+			expected := incoming*constants.BattleCasualtyRate*float64(count)/durability + state.casualtyCarry[key]
 			kills := min(count, int64(math.Floor(expected)))
 			state.casualtyCarry[key] = expected - float64(kills)
 			if kills > 0 {
@@ -293,7 +292,7 @@ func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string
 	var militiaKills int64
 	if militiaCityID != nil && militiaCount > 0 {
 		key := "militia:" + *militiaCityID
-		expected := incoming*float64(militiaCount)/durability + state.casualtyCarry[key]
+		expected := incoming*constants.BattleCasualtyRate*float64(militiaCount)/durability + state.casualtyCarry[key]
 		militiaKills = min(militiaCount, int64(math.Floor(expected)))
 		state.casualtyCarry[key] = expected - float64(militiaKills)
 	}
@@ -314,14 +313,20 @@ func (state *battleActor) tick(ctx actor.Context) {
 	defenderPower := attackPower(defenders, state.Battle.Defenders.MilitiaCount)
 	toDefenders, defenderMilitiaLosses := state.casualties(defenders, state.Battle.Defenders.MilitiaCityID, state.Battle.Defenders.MilitiaCount, attackerPower)
 	toAttackers, attackerMilitiaLosses := state.casualties(attackers, state.Battle.Attackers.MilitiaCityID, state.Battle.Attackers.MilitiaCount, defenderPower)
+	defenderCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Defenders, attackerPower)
+	attackerCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Attackers, defenderPower)
 	state.reportRounds = append(state.reportRounds, domain.BattleReportRound{
-		Number:         len(state.reportRounds) + 1,
-		OccurredAt:     time.Now(),
-		AttackerPower:  attackerPower,
-		DefenderPower:  defenderPower,
-		AttackerLosses: reportLosses(toAttackers, state.Battle.Attackers.MilitiaCityID, attackerMilitiaLosses),
-		DefenderLosses: reportLosses(toDefenders, state.Battle.Defenders.MilitiaCityID, defenderMilitiaLosses),
+		Number:                     len(state.reportRounds) + 1,
+		OccurredAt:                 time.Now(),
+		AttackerPower:              attackerPower,
+		DefenderPower:              defenderPower,
+		AttackerLosses:             reportLosses(toAttackers, state.Battle.Attackers.MilitiaCityID, attackerMilitiaLosses),
+		DefenderLosses:             reportLosses(toDefenders, state.Battle.Defenders.MilitiaCityID, defenderMilitiaLosses),
+		AttackerCivilianCasualties: attackerCivilianCasualties,
+		DefenderCivilianCasualties: defenderCivilianCasualties,
 	})
+	state.recordCivilianCasualties(&state.reportDefenders, defenderCivilianCasualties)
+	state.recordCivilianCasualties(&state.reportAttackers, attackerCivilianCasualties)
 	for armyID, casualties := range toDefenders {
 		state.recordTroopLosses(&state.reportDefenders, armyID, casualties)
 		if !state.apply(armyID, casualties) {
@@ -343,7 +348,7 @@ func (state *battleActor) tick(ctx actor.Context) {
 	if state.resolveIfFinished(ctx, domain.BattleReportResolutionElimination) {
 		return
 	}
-	state.Battle.NextTick = time.Now().Add(constants.BattleTickInterval)
+	state.armNextRound(ctx)
 	state.publish()
 }
 
@@ -418,6 +423,40 @@ func (state *battleActor) applyMilitiaLosses(side *domain.BattleSide, count int6
 	}
 }
 
+func (state *battleActor) applySiegeCivilianCasualties(side *domain.BattleSide, incomingPower float64) int64 {
+	if side.MilitiaCityID == nil || incomingPower <= 0 {
+		return 0
+	}
+	cityID := *side.MilitiaCityID
+	soldier := constants.GetTroopStat(domain.TroopTypeSoldier)
+	durability := float64(soldier.HP + 5*soldier.Defense)
+	key := "civilians:" + cityID
+	expected := incomingPower/durability*constants.BattleCasualtyRate*constants.SiegeCivilianCasualtyRate + state.casualtyCarry[key]
+	requested := int64(math.Floor(expected))
+	state.casualtyCarry[key] = expected - float64(requested)
+	if requested <= 0 {
+		return 0
+	}
+	res, err := state.Cluster.Request("city", cityID, messages.ApplyCivilianCasualtiesMessage{Count: requested})
+	if err != nil {
+		state.casualtyCarry[key] += float64(requested)
+		slog.WarnContext(state.Ctx(), "failed to apply siege civilian casualties", "battle_id", state.Battle.BattleID, "city_id", cityID, "error", err)
+		return 0
+	}
+	response, ok := res.(*messages.ApplyCivilianCasualtiesResponseMessage)
+	if !ok {
+		state.casualtyCarry[key] += float64(requested)
+		return 0
+	}
+	return response.Applied
+}
+
+func (state *battleActor) recordCivilianCasualties(side *domain.BattleReportSide, count int64) {
+	if side.Settlement != nil {
+		side.Settlement.CivilianCasualties += count
+	}
+}
+
 func (state *battleActor) apply(armyID string, casualties map[domain.TroopType]int64) bool {
 	res, err := state.Cluster.Request("army", armyID, messages.ApplyCasualtiesMessage{Casualties: casualties})
 	if err != nil {
@@ -488,7 +527,7 @@ func (state *battleActor) resolveIfFinished(ctx actor.Context, resolution domain
 	for _, id := range winners {
 		_ = state.Cluster.Tell("army", id, messages.LeaveBattleMessage{BattleID: state.Battle.BattleID})
 	}
-	state.stopTicker()
+	state.stopRoundTimer()
 	battles.Delete(state.Battle.BattleID)
 	id := state.Battle.BattleID
 	stream.Publish("", stream.StateUpdate{DeletedBattleID: &id})
@@ -568,30 +607,18 @@ func (state *battleActor) publish() {
 	stream.Publish("", stream.StateUpdate{Battle: &b})
 }
 
-func (state *battleActor) start(ctx actor.Context) {
-	state.ticker = time.NewTicker(constants.BattleTickInterval)
-	state.stop = make(chan struct{})
+func (state *battleActor) armNextRound(ctx actor.Context) {
+	state.stopRoundTimer()
+	state.Battle.NextTick = time.Now().Add(constants.BattleTickInterval)
 	pid, system := ctx.Self(), ctx.ActorSystem()
-	go func() {
-		for {
-			select {
-			case <-state.ticker.C:
-				system.Root.Send(pid, messages.PeriodicOperationMessage{})
-			case <-state.stop:
-				state.ticker.Stop()
-				return
-			}
-		}
-	}()
+	state.roundTimer = time.AfterFunc(constants.BattleTickInterval, func() {
+		system.Root.Send(pid, messages.PeriodicOperationMessage{})
+	})
 }
 
-func (state *battleActor) stopTicker() {
-	if state.stop == nil {
-		return
-	}
-	select {
-	case <-state.stop:
-	default:
-		close(state.stop)
+func (state *battleActor) stopRoundTimer() {
+	if state.roundTimer != nil {
+		state.roundTimer.Stop()
+		state.roundTimer = nil
 	}
 }

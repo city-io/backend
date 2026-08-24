@@ -368,6 +368,7 @@ type BattleReportSettlement struct {
 	OwnerId            *UserId                `protobuf:"bytes,4,opt,name=owner_id,json=ownerId,proto3,oneof" json:"owner_id,omitempty"`
 	StartingPopulation float64                `protobuf:"fixed64,5,opt,name=starting_population,json=startingPopulation,proto3" json:"starting_population,omitempty"`
 	EndingPopulation   float64                `protobuf:"fixed64,6,opt,name=ending_population,json=endingPopulation,proto3" json:"ending_population,omitempty"`
+	CivilianCasualties int64                  `protobuf:"varint,7,opt,name=civilian_casualties,json=civilianCasualties,proto3" json:"civilian_casualties,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -444,6 +445,13 @@ func (x *BattleReportSettlement) GetEndingPopulation() float64 {
 	return 0
 }
 
+func (x *BattleReportSettlement) GetCivilianCasualties() int64 {
+	if x != nil {
+		return x.CivilianCasualties
+	}
+	return 0
+}
+
 type BattleReportSide struct {
 	state            protoimpl.MessageState   `protogen:"open.v1"`
 	UserIds          []*UserId                `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
@@ -453,8 +461,11 @@ type BattleReportSide struct {
 	SurvivingMilitia int64                    `protobuf:"varint,5,opt,name=surviving_militia,json=survivingMilitia,proto3" json:"surviving_militia,omitempty"`
 	Commanders       []*BattleReportCommander `protobuf:"bytes,6,rep,name=commanders,proto3" json:"commanders,omitempty"`
 	Settlement       *BattleReportSettlement  `protobuf:"bytes,7,opt,name=settlement,proto3,oneof" json:"settlement,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Friendly strength is always exact. Opposing strength becomes exact only
+	// in a victory report.
+	StrengthVisible bool `protobuf:"varint,8,opt,name=strength_visible,json=strengthVisible,proto3" json:"strength_visible,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *BattleReportSide) Reset() {
@@ -536,6 +547,13 @@ func (x *BattleReportSide) GetSettlement() *BattleReportSettlement {
 	return nil
 }
 
+func (x *BattleReportSide) GetStrengthVisible() bool {
+	if x != nil {
+		return x.StrengthVisible
+	}
+	return false
+}
+
 type BattleReportLoss struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ArmyId        *ArmyId                `protobuf:"bytes,1,opt,name=army_id,json=armyId,proto3,oneof" json:"army_id,omitempty"`
@@ -605,15 +623,17 @@ func (x *BattleReportLoss) GetMilitia() int64 {
 }
 
 type BattleReportRound struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Number         int32                  `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
-	OccurredAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
-	AttackerPower  float64                `protobuf:"fixed64,3,opt,name=attacker_power,json=attackerPower,proto3" json:"attacker_power,omitempty"`
-	DefenderPower  float64                `protobuf:"fixed64,4,opt,name=defender_power,json=defenderPower,proto3" json:"defender_power,omitempty"`
-	AttackerLosses []*BattleReportLoss    `protobuf:"bytes,5,rep,name=attacker_losses,json=attackerLosses,proto3" json:"attacker_losses,omitempty"`
-	DefenderLosses []*BattleReportLoss    `protobuf:"bytes,6,rep,name=defender_losses,json=defenderLosses,proto3" json:"defender_losses,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	Number                     int32                  `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
+	OccurredAt                 *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	AttackerPower              float64                `protobuf:"fixed64,3,opt,name=attacker_power,json=attackerPower,proto3" json:"attacker_power,omitempty"`
+	DefenderPower              float64                `protobuf:"fixed64,4,opt,name=defender_power,json=defenderPower,proto3" json:"defender_power,omitempty"`
+	AttackerLosses             []*BattleReportLoss    `protobuf:"bytes,5,rep,name=attacker_losses,json=attackerLosses,proto3" json:"attacker_losses,omitempty"`
+	DefenderLosses             []*BattleReportLoss    `protobuf:"bytes,6,rep,name=defender_losses,json=defenderLosses,proto3" json:"defender_losses,omitempty"`
+	AttackerCivilianCasualties int64                  `protobuf:"varint,7,opt,name=attacker_civilian_casualties,json=attackerCivilianCasualties,proto3" json:"attacker_civilian_casualties,omitempty"`
+	DefenderCivilianCasualties int64                  `protobuf:"varint,8,opt,name=defender_civilian_casualties,json=defenderCivilianCasualties,proto3" json:"defender_civilian_casualties,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *BattleReportRound) Reset() {
@@ -686,6 +706,20 @@ func (x *BattleReportRound) GetDefenderLosses() []*BattleReportLoss {
 		return x.DefenderLosses
 	}
 	return nil
+}
+
+func (x *BattleReportRound) GetAttackerCivilianCasualties() int64 {
+	if x != nil {
+		return x.AttackerCivilianCasualties
+	}
+	return 0
+}
+
+func (x *BattleReportRound) GetDefenderCivilianCasualties() int64 {
+	if x != nil {
+		return x.DefenderCivilianCasualties
+	}
+	return 0
 }
 
 type BattleReport struct {
@@ -926,15 +960,16 @@ const file_cityio_entity_v1_mailbox_proto_rawDesc = "" +
 	"\tdestroyed\x18\x06 \x01(\bR\tdestroyed\"f\n" +
 	"\x15BattleReportCommander\x121\n" +
 	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\"\xb4\x02\n" +
+	"\busername\x18\x02 \x01(\tR\busername\"\xe5\x02\n" +
 	"\x16BattleReportSettlement\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12.\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x1a.cityio.entity.v1.CityTypeR\x04type\x128\n" +
 	"\bowner_id\x18\x04 \x01(\v2\x18.cityio.entity.v1.UserIdH\x00R\aownerId\x88\x01\x01\x12/\n" +
 	"\x13starting_population\x18\x05 \x01(\x01R\x12startingPopulation\x12+\n" +
-	"\x11ending_population\x18\x06 \x01(\x01R\x10endingPopulationB\v\n" +
-	"\t_owner_id\"\xdd\x03\n" +
+	"\x11ending_population\x18\x06 \x01(\x01R\x10endingPopulation\x12/\n" +
+	"\x13civilian_casualties\x18\a \x01(\x03R\x12civilianCasualtiesB\v\n" +
+	"\t_owner_id\"\x88\x04\n" +
 	"\x10BattleReportSide\x123\n" +
 	"\buser_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.UserIdR\auserIds\x12:\n" +
 	"\x06armies\x18\x02 \x03(\v2\".cityio.entity.v1.BattleReportArmyR\x06armies\x12E\n" +
@@ -946,7 +981,8 @@ const file_cityio_entity_v1_mailbox_proto_rawDesc = "" +
 	"commanders\x12M\n" +
 	"\n" +
 	"settlement\x18\a \x01(\v2(.cityio.entity.v1.BattleReportSettlementH\x01R\n" +
-	"settlement\x88\x01\x01B\x12\n" +
+	"settlement\x88\x01\x01\x12)\n" +
+	"\x10strength_visible\x18\b \x01(\bR\x0fstrengthVisibleB\x12\n" +
 	"\x10_militia_city_idB\r\n" +
 	"\v_settlement\"\x81\x02\n" +
 	"\x10BattleReportLoss\x126\n" +
@@ -956,7 +992,7 @@ const file_cityio_entity_v1_mailbox_proto_rawDesc = "" +
 	"\amilitia\x18\x04 \x01(\x03R\amilitiaB\n" +
 	"\n" +
 	"\b_army_idB\x12\n" +
-	"\x10_militia_city_id\"\xd0\x02\n" +
+	"\x10_militia_city_id\"\xd4\x03\n" +
 	"\x11BattleReportRound\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\x05R\x06number\x12;\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
@@ -964,7 +1000,9 @@ const file_cityio_entity_v1_mailbox_proto_rawDesc = "" +
 	"\x0eattacker_power\x18\x03 \x01(\x01R\rattackerPower\x12%\n" +
 	"\x0edefender_power\x18\x04 \x01(\x01R\rdefenderPower\x12K\n" +
 	"\x0fattacker_losses\x18\x05 \x03(\v2\".cityio.entity.v1.BattleReportLossR\x0eattackerLosses\x12K\n" +
-	"\x0fdefender_losses\x18\x06 \x03(\v2\".cityio.entity.v1.BattleReportLossR\x0edefenderLosses\"\xba\x05\n" +
+	"\x0fdefender_losses\x18\x06 \x03(\v2\".cityio.entity.v1.BattleReportLossR\x0edefenderLosses\x12@\n" +
+	"\x1cattacker_civilian_casualties\x18\a \x01(\x03R\x1aattackerCivilianCasualties\x12@\n" +
+	"\x1cdefender_civilian_casualties\x18\b \x01(\x03R\x1adefenderCivilianCasualties\"\xba\x05\n" +
 	"\fBattleReport\x127\n" +
 	"\tbattle_id\x18\x01 \x01(\v2\x1a.cityio.entity.v1.BattleIdR\bbattleId\x121\n" +
 	"\atile_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.TileIdR\x06tileId\x126\n" +

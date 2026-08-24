@@ -103,19 +103,19 @@ func requestArmyOrder(ctx context.Context, cluster contracts.ClusterProvider, ar
 
 // MergeArmies folds the source army into the target. Both must be validated as
 // same-owner and co-located by the caller.
-func MergeArmies(ctx context.Context, cluster contracts.ClusterProvider, targetArmyID, sourceArmyID string) error {
+func MergeArmies(ctx context.Context, cluster contracts.ClusterProvider, targetArmyID, sourceArmyID string) (*messages.MergeArmiesResponseMessage, error) {
 	res, err := cluster.Request("army", targetArmyID, messages.MergeArmiesMessage{SourceArmyID: sourceArmyID})
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to request army merge", "target_army_id", targetArmyID, "error", err)
-		return err
+		return nil, err
 	}
 	switch v := res.(type) {
-	case messages.Ack:
-		return nil
+	case *messages.MergeArmiesResponseMessage:
+		return v, nil
 	case error:
-		return v
+		return nil, v
 	default:
-		return &messages.InvalidResponseTypeError{}
+		return nil, &messages.InvalidResponseTypeError{}
 	}
 }
 

@@ -7,8 +7,15 @@ import (
 )
 
 const (
-	BattleTickInterval        = time.Second
+	BattleTickInterval        = 5 * time.Second
 	SettlementCaptureDuration = 30 * time.Second
+	// BattleCasualtyRate scales military losses calculated from incoming power.
+	// Keeping it below one lets formations exchange several rounds before one
+	// side collapses.
+	BattleCasualtyRate = 0.50
+	// SiegeCivilianCasualtyRate converts incoming military force into a much
+	// smaller amount of collateral population loss, accumulated across rounds.
+	SiegeCivilianCasualtyRate = 0.10
 )
 
 // TroopStat holds the tier-1 stat profile for a troop type. Gold is the

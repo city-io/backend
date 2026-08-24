@@ -190,17 +190,20 @@ the "Client / frontend API reference" section below.
   soldiers/archers take 1.65s, and artillery takes 2.475s. Marsh multiplies that time by two,
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
   same-owner armies on the same tile can be merged.
-  - **Combat:** hostile armies sharing a tile enter a battle. Battles tick once per second and
-    compute both sides' damage from the pre-tick composition, so casualties are simultaneous.
-    Attack, defense, and HP determine fractional expected losses; battle-local carry converts
-    them into deterministic whole-unit deaths over time. There is no persistent army/unit health
-    or wounded state. A zero-unit army is deleted. A side can contain multiple users: additional
-    attackers targeting a participant join the opposing side, leaving formal alliance policy for
-    the future diplomacy layer.
+  - **Combat:** hostile armies sharing a tile enter a battle. Battles schedule one round every
+    five seconds, re-arming only after the previous round finishes so delayed actor work cannot
+    produce catch-up rounds. Both sides' damage uses the pre-round composition, so casualties are
+    simultaneous. Attack, defense, and HP determine fractional expected losses, scaled by
+    `BattleCasualtyRate`; battle-local carry converts them into deterministic whole-unit deaths
+    over time. There is no persistent army/unit health or wounded state. A zero-unit army is
+    deleted. A side can contain multiple users: additional attackers targeting a participant join
+    the opposing side, leaving formal alliance policy for the future diplomacy layer.
   - **Conquest:** an army ordered to conquer fights field defenders and the settlement's passive
-    militia on the center tile, then must hold it uncontested for 30 seconds. Militia casualties
-    reduce both the militia and settlement population. Completion transfers the existing
-    settlement and its buildings to the attacker.
+    militia from the cheapest traversable tile adjacent (including diagonally) to the center, then
+    must hold that staging tile uncontested for 30 seconds. Settlement militia cannot engage the
+    conqueror before it reaches that destination. Militia casualties reduce both militia and total
+    population; siege rounds can also inflict lower-rate civilian casualties. Completion transfers
+    the existing settlement and its buildings to the attacker.
   - **Population transfer:** 55% of the city's peak resident population is a protected civilian
     core. The persisted peak does not fall after recruitment/casualties and does not jump when
     housing is added, so neither repeated training nor capacity upgrades move the floor. A city
@@ -313,7 +316,12 @@ for TypeScript) rather than hand-writing request types.
   records.
 - **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
   active combat. Both sides contain repeated user and army IDs so future allies can share a side;
-  a side may additionally contain a settlement militia and its live defender count.
+  a side may additionally contain settlement militia. `strength_visible` is viewer-specific;
+  opposing militia counts remain zero/hidden during combat.
+- **MailboxMessage/BattleReport** — durable recipient-owned combat history. A report always
+  exposes the recipient's side exactly. Opposing troop, militia, population, power, and casualty
+  counts are concealed unless the recipient won; victory reports disclose both sides. Siege
+  reports include per-round and total civilian casualties when that side is disclosed.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -396,12 +404,13 @@ for TypeScript) rather than hand-writing request types.
   hostile target. The order follows updated visible coordinates, stops at the last-known tile if
   contact is lost, and starts or joins a battle on contact.
 - `ConquerSettlement(army_id, city_id) → {}` — must own the army and see the hostile or neutral
-  settlement. The army fights center-tile defenders, then captures it after a 30-second
-  uncontested hold.
+  settlement. The army routes to the cheapest traversable tile adjacent to its center, fights its
+  defenders there, then captures it after a 30-second uncontested hold.
 - `RetreatArmy(army_id) → {}` — removes the army from its active battle and routes it to the
   nearest owned settlement.
-- `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
-  tile. The source's troops fold into the target and the source army disappears.
+- `MergeArmies(target_army_id, source_army_id) → { army_id, entities(target_army,
+  army_order?), deleted }` — must own both; both must be on the same tile. The authoritative target
+  state and source deletion are returned together so clients need not wait for a stream resync.
 - `SplitArmy(army_id, troops[]) → { army_id, entities(source_army, new_army, army_order?) }` —
   must own the source and it cannot be in battle. Counts are detached into a new idle army on
   the same tile while the source retains its active order. At least one troop must remain in the

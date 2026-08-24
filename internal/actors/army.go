@@ -209,8 +209,10 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 	}
 	state.Store.EnqueueArmy(state.Army)
 	state.updateUpkeepCity()
-	state.publish()
-	ctx.Respond(messages.Ack{})
+	merged := state.Army
+	merged.RemainingPath = append([]domain.Coordinates(nil), state.path...)
+	stream.Publish(state.Army.Owner, stream.StateUpdate{Army: &merged, DeletedArmyID: &sourceArmyID})
+	ctx.Respond(&messages.MergeArmiesResponseMessage{Army: merged, DeletedArmyID: sourceArmyID})
 }
 
 func (state *armyActor) split(ctx actor.Context, requested map[domain.TroopType]int64) {
@@ -362,18 +364,37 @@ func (state *armyActor) conquer(ctx actor.Context, cityID string) {
 		return
 	}
 	x, y := response.City.StartX+response.City.Size/2, response.City.StartY+response.City.Size/2
+	explored, err := state.Store.GetExploredTiles(state.Ctx(), state.Army.Owner)
+	if err != nil {
+		ctx.Respond(&messages.InternalError{})
+		return
+	}
+	known := make(map[domain.Coordinates]struct{}, len(explored))
+	for _, coords := range explored {
+		known[coords] = struct{}{}
+	}
+	path, reaches := domain.FindKnownLandPathAdjacent(
+		state.World.Terrain(), known,
+		domain.Coordinates{X: state.Army.X, Y: state.Army.Y},
+		domain.Coordinates{X: x, Y: y},
+	)
+	if !reaches {
+		ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
+		return
+	}
+	destination := domain.Coordinates{X: state.Army.X, Y: state.Army.Y}
+	if len(path) > 0 {
+		destination = path[len(path)-1]
+	}
 	orderID := uuid.NewString()
 	state.Army.OrderID = &orderID
 	state.Army.OrderKind = domain.ArmyOrderConquer
 	state.Army.TargetCityID = &cityID
 	state.Army.TargetArmyID, state.Army.CaptureStart = nil, nil
-	state.setDestination(x, y)
-	if state.Army.X == x && state.Army.Y == y {
+	state.setDestination(destination.X, destination.Y)
+	state.path = path
+	if state.Army.X == destination.X && state.Army.Y == destination.Y {
 		state.finishAtDestination()
-	} else if err := state.planPath(); err != nil || len(state.path) == 0 {
-		state.clearOrder()
-		ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
-		return
 	}
 	state.Store.EnqueueArmy(state.Army)
 	state.publish()
@@ -530,7 +551,9 @@ func (state *armyActor) engageSettlementDefender() bool {
 		return false
 	}
 	var targetCity *domain.City
-	if state.Army.OrderKind == domain.ArmyOrderConquer && state.Army.TargetCityID != nil {
+	atDestination := state.Army.DestX != nil && state.Army.DestY != nil &&
+		state.Army.X == *state.Army.DestX && state.Army.Y == *state.Army.DestY
+	if state.Army.OrderKind == domain.ArmyOrderConquer && state.Army.TargetCityID != nil && atDestination {
 		if cityResult, cityErr := state.Cluster.Request("city", *state.Army.TargetCityID, messages.GetCityMessage{}); cityErr == nil {
 			if response, cityOK := cityResult.(*messages.GetCityResponseMessage); cityOK {
 				city := response.City

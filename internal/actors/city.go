@@ -162,6 +162,12 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.publishWorld()
 		ctx.Respond(&messages.ApplyMilitiaCasualtiesResponseMessage{Survived: survived})
 
+	case messages.ApplyCivilianCasualtiesMessage:
+		applied := state.applyCivilianCasualties(msg.Count)
+		state.Store.EnqueueCity(state.City)
+		state.publishWorld()
+		ctx.Respond(&messages.ApplyCivilianCasualtiesResponseMessage{Applied: applied})
+
 	case messages.BeginMilitiaBattleMessage:
 		if state.City.MilitiaBattleID != nil {
 			ctx.Respond(&messages.BeginMilitiaBattleResponseMessage{BattleID: *state.City.MilitiaBattleID, Count: int64(math.Floor(state.City.MilitiaPopulation))})
@@ -385,6 +391,14 @@ func (state *cityActor) applyMilitiaCasualties(count int64) bool {
 	state.City.Population = max(state.City.Population-removed, 0)
 	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
 	return state.City.MilitiaPopulation >= 1
+}
+
+func (state *cityActor) applyCivilianCasualties(count int64) int64 {
+	available := int64(math.Floor(constants.TaxablePopulation(state.City)))
+	applied := min(max(count, 0), available)
+	state.City.Population = max(state.City.Population-float64(applied), state.City.MilitiaPopulation)
+	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
+	return applied
 }
 
 // armyUpkeepTotal is the sum of food upkeep (per hour) for all armies currently

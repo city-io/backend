@@ -204,6 +204,38 @@ func TestClearOrderClearsEveryMovementField(t *testing.T) {
 	}
 }
 
+func TestConquestDoesNotEngageSettlementMilitiaBeforeStagingDestination(t *testing.T) {
+	destinationX, destinationY := 4, 4
+	cityID := "target-city"
+	cityRequests := 0
+	cluster := &armyOperationTestCluster{request: func(kind, _ string, message any) (any, error) {
+		switch kind {
+		case "tile":
+			return messages.GetTileResponseMessage{}, nil
+		case "city":
+			cityRequests++
+			return &messages.GetCityResponseMessage{City: domain.City{CityID: cityID, MilitiaPopulation: 10}}, nil
+		default:
+			return nil, errors.New("unexpected request")
+		}
+	}}
+	state := &armyActor{
+		baseActor: baseActor{Cluster: cluster},
+		Army: domain.Army{
+			ArmyID: "attacker", X: 1, Y: 1,
+			OrderKind: domain.ArmyOrderConquer, TargetCityID: &cityID,
+			DestX: &destinationX, DestY: &destinationY,
+		},
+	}
+
+	if state.engageSettlementDefender() {
+		t.Fatal("settlement militia engaged before the army reached its staging destination")
+	}
+	if cityRequests != 0 {
+		t.Fatalf("target city requests = %d, want 0 before destination", cityRequests)
+	}
+}
+
 func TestSplitCompositionDetachesRequestedTroops(t *testing.T) {
 	remaining, detached, err := splitComposition(
 		map[domain.TroopType]int64{domain.TroopTypeSoldier: 10, domain.TroopTypeCavalry: 3},
@@ -332,4 +364,42 @@ func TestSplitPublishesOnlyFinalSourceComposition(t *testing.T) {
 	expectNoArmyStreamUpdate(t, updates)
 
 	system.Root.Send(pid, messages.DeleteArmyMessage{})
+}
+
+func TestMergePublishesUpdatedTargetAndSourceDeletionTogether(t *testing.T) {
+	store := &armyOperationTestStore{}
+	cluster := &armyOperationTestCluster{request: func(kind, identity string, message any) (any, error) {
+		if kind != "army" || identity != "source-army" {
+			return nil, errors.New("unexpected merge request")
+		}
+		if _, ok := message.(messages.SurrenderTroopsMessage); !ok {
+			return nil, errors.New("unexpected merge message")
+		}
+		return &messages.SurrenderTroopsResponseMessage{Troops: map[domain.TroopType]int64{domain.TroopTypeArcher: 3}}, nil
+	}}
+	system, pid := spawnArmyOperationTestActor(store, cluster)
+	owner := "merge-owner"
+	requestArmyOperation(t, system, pid, &messages.CreateArmyMessage{
+		Army: domain.Army{
+			ArmyID: "target-army", Owner: owner,
+			Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 4},
+		},
+		Restore: true,
+	})
+	updates, unsubscribe := stream.Subscribe(owner)
+	defer unsubscribe()
+
+	result := requestArmyOperation(t, system, pid, messages.MergeArmiesMessage{SourceArmyID: "source-army"})
+	response, ok := result.(*messages.MergeArmiesResponseMessage)
+	if !ok || response.DeletedArmyID != "source-army" || response.Army.Troops[domain.TroopTypeArcher] != 3 {
+		t.Fatalf("merge response = %+v", result)
+	}
+	select {
+	case update := <-updates:
+		if update.Army == nil || update.Army.ArmyID != "target-army" || update.Army.Troops[domain.TroopTypeArcher] != 3 || update.DeletedArmyID == nil || *update.DeletedArmyID != "source-army" {
+			t.Fatalf("merge stream update = %+v", update)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for merge stream update")
+	}
 }

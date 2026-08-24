@@ -28,6 +28,9 @@ type ApplyMilitiaCasualtiesResponseMessage struct {
 	Survived bool
 }
 
+type ApplyCivilianCasualtiesMessage struct{ Count int64 }
+type ApplyCivilianCasualtiesResponseMessage struct{ Applied int64 }
+
 type BeginMilitiaBattleMessage struct{ BattleID string }
 type BeginMilitiaBattleResponseMessage struct {
 	BattleID string

@@ -28,8 +28,10 @@ type BattleSide struct {
 	ArmyIds       []*ArmyId              `protobuf:"bytes,2,rep,name=army_ids,json=armyIds,proto3" json:"army_ids,omitempty"`
 	MilitiaCityId *CityId                `protobuf:"bytes,3,opt,name=militia_city_id,json=militiaCityId,proto3,oneof" json:"militia_city_id,omitempty"`
 	MilitiaCount  int64                  `protobuf:"varint,4,opt,name=militia_count,json=militiaCount,proto3" json:"militia_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Exact military strength is only disclosed to users on this side.
+	StrengthVisible bool `protobuf:"varint,5,opt,name=strength_visible,json=strengthVisible,proto3" json:"strength_visible,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *BattleSide) Reset() {
@@ -88,6 +90,13 @@ func (x *BattleSide) GetMilitiaCount() int64 {
 		return x.MilitiaCount
 	}
 	return 0
+}
+
+func (x *BattleSide) GetStrengthVisible() bool {
+	if x != nil {
+		return x.StrengthVisible
+	}
+	return false
 }
 
 // Battle exists only while combat is active. Each side can contain armies
@@ -181,13 +190,14 @@ var File_cityio_entity_v1_battle_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_battle_proto_rawDesc = "" +
 	"\n" +
-	"\x1dcityio/entity/v1/battle.proto\x12\x10cityio.entity.v1\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf6\x01\n" +
+	"\x1dcityio/entity/v1/battle.proto\x12\x10cityio.entity.v1\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa1\x02\n" +
 	"\n" +
 	"BattleSide\x123\n" +
 	"\buser_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.UserIdR\auserIds\x123\n" +
 	"\barmy_ids\x18\x02 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x12E\n" +
 	"\x0fmilitia_city_id\x18\x03 \x01(\v2\x18.cityio.entity.v1.CityIdH\x00R\rmilitiaCityId\x88\x01\x01\x12#\n" +
-	"\rmilitia_count\x18\x04 \x01(\x03R\fmilitiaCountB\x12\n" +
+	"\rmilitia_count\x18\x04 \x01(\x03R\fmilitiaCount\x12)\n" +
+	"\x10strength_visible\x18\x05 \x01(\bR\x0fstrengthVisibleB\x12\n" +
 	"\x10_militia_city_id\"\xe5\x02\n" +
 	"\x06Battle\x127\n" +
 	"\tbattle_id\x18\x01 \x01(\v2\x1a.cityio.entity.v1.BattleIdR\bbattleId\x121\n" +
