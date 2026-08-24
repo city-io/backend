@@ -32,8 +32,8 @@ func TestBattleCasualtyRateSpreadsLossAcrossRounds(t *testing.T) {
 	first, _ := state.casualties(targets, nil, 0, 150)
 	second, _ := state.casualties(targets, nil, 0, 150)
 
-	if first["defender"][domain.TroopTypeSoldier] != 0 || second["defender"][domain.TroopTypeSoldier] != 1 {
-		t.Fatalf("casualties by round = %v then %v, want 0 then 1", first, second)
+	if first["defender"][domain.TroopTypeSoldier] != 1 || second["defender"][domain.TroopTypeSoldier] != 1 {
+		t.Fatalf("casualties by round = %v then %v, want 1 then 1", first, second)
 	}
 }
 
@@ -106,13 +106,69 @@ func TestSiegeAppliesCivilianCasualtiesButFieldBattleDoesNot(t *testing.T) {
 		casualtyCarry: make(map[string]float64),
 	}
 
-	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{}, 1_500); got != 0 {
+	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{}, 10); got != 0 {
 		t.Fatalf("field battle civilian casualties = %d, want 0", got)
 	}
-	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{MilitiaCityID: &cityID}, 3_000); got != 1 {
+	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{MilitiaCityID: &cityID}, 10); got != 1 {
 		t.Fatalf("siege civilian casualties = %d, want 1", got)
 	}
 	if applied != 1 {
 		t.Fatalf("applied civilian casualties = %d, want 1", applied)
+	}
+}
+
+func TestSiegeCivilianCasualtiesScaleWithMilitaryLosses(t *testing.T) {
+	cityID := "town"
+	cluster := &armyOperationTestCluster{request: func(_, _ string, message any) (any, error) {
+		casualties := message.(messages.ApplyCivilianCasualtiesMessage)
+		return &messages.ApplyCivilianCasualtiesResponseMessage{Applied: casualties.Count}, nil
+	}}
+	state := &battleActor{
+		baseActor:     baseActor{Cluster: cluster},
+		Battle:        domain.Battle{BattleID: "battle"},
+		casualtyCarry: make(map[string]float64),
+	}
+	side := &domain.BattleSide{MilitiaCityID: &cityID}
+
+	if got := state.applySiegeCivilianCasualties(side, 1); got != 0 {
+		t.Fatalf("fractional civilian casualties = %d, want 0", got)
+	}
+	if got := state.applySiegeCivilianCasualties(side, 20); got != 3 {
+		t.Fatalf("large-round civilian casualties = %d, want 3", got)
+	}
+}
+
+func TestMilitaryCasualtyCountIncludesArmiesAndMilitia(t *testing.T) {
+	losses := map[string]map[domain.TroopType]int64{
+		"first":  {domain.TroopTypeSoldier: 3, domain.TroopTypeArcher: 2},
+		"second": {domain.TroopTypeCavalry: 4},
+	}
+	if got := militaryCasualtyCount(losses, 6); got != 15 {
+		t.Fatalf("military casualty count = %d, want 15", got)
+	}
+}
+
+func TestLiveBattleSummaryPreservesStrengthAndLosses(t *testing.T) {
+	report := domain.BattleReportSide{
+		StartingMilitia: 10, SurvivingMilitia: 7,
+		Armies: []domain.BattleReportArmy{{
+			StartingTroops:  map[domain.TroopType]int64{domain.TroopTypeSoldier: 12, domain.TroopTypeArcher: 8},
+			SurvivingTroops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 9, domain.TroopTypeArcher: 6},
+		}},
+		Settlement: &domain.BattleReportSettlement{CivilianCasualties: 2},
+	}
+	last := []domain.BattleReportLoss{{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 2}, Militia: 1}}
+	var side domain.BattleSide
+
+	syncLiveBattleSide(&side, report, last, 1)
+
+	if side.StartingTroops[domain.TroopTypeSoldier] != 12 || side.SurvivingTroops[domain.TroopTypeSoldier] != 9 {
+		t.Fatalf("live strength = %+v / %+v", side.StartingTroops, side.SurvivingTroops)
+	}
+	if side.CumulativeLosses.Troops[domain.TroopTypeSoldier] != 3 || side.CumulativeLosses.Troops[domain.TroopTypeArcher] != 2 || side.CumulativeLosses.Militia != 3 || side.CumulativeLosses.Civilians != 2 {
+		t.Fatalf("cumulative losses = %+v", side.CumulativeLosses)
+	}
+	if side.LastRoundLosses.Troops[domain.TroopTypeSoldier] != 2 || side.LastRoundLosses.Militia != 1 || side.LastRoundLosses.Civilians != 1 {
+		t.Fatalf("last round losses = %+v", side.LastRoundLosses)
 	}
 }

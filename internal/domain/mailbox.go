@@ -34,6 +34,7 @@ const (
 
 type BattleReportArmy struct {
 	ArmyID          string              `json:"army_id"`
+	Name            string              `json:"name"`
 	OwnerID         string              `json:"owner_id"`
 	StartingTroops  map[TroopType]int64 `json:"starting_troops"`
 	SurvivingTroops map[TroopType]int64 `json:"surviving_troops"`

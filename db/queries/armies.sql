@@ -1,6 +1,7 @@
 -- name: GetAllArmies :many
 SELECT
     army_id,
+    name,
     owner,
     (coords).x::int4 AS x,
     (coords).y::int4 AS y,
@@ -13,6 +14,7 @@ FROM armies;
 -- name: CreateArmy :exec
 INSERT INTO armies (
     army_id,
+    name,
     owner,
     coords,
     troops,
@@ -22,6 +24,7 @@ INSERT INTO armies (
 )
 VALUES (
     sqlc.arg(army_id),
+    sqlc.arg(name),
     sqlc.arg(owner),
     ROW(sqlc.arg(x)::int4, sqlc.arg(y)::int4)::coordinates,
     sqlc.arg(troops),
@@ -38,6 +41,7 @@ WHERE army_id = $1;
 -- name: BatchUpdateArmies :exec
 UPDATE armies AS a
 SET
+    name           = v.name,
     owner          = v.owner,
     coords         = ROW(v.x, v.y)::coordinates,
     troops         = v.troops::jsonb,
@@ -47,6 +51,7 @@ SET
 FROM (
     SELECT
         UNNEST(sqlc.arg(army_ids)::text[])        AS army_id,
+        UNNEST(sqlc.arg(names)::text[])           AS name,
         UNNEST(sqlc.arg(owners)::text[])          AS owner,
         UNNEST(sqlc.arg(xs)::int[])               AS x,
         UNNEST(sqlc.arg(ys)::int[])               AS y,
@@ -60,6 +65,7 @@ WHERE a.army_id = v.army_id;
 -- name: BatchCreateArmies :exec
 INSERT INTO armies (
     army_id,
+    name,
     owner,
     coords,
     troops,
@@ -69,6 +75,7 @@ INSERT INTO armies (
 )
 SELECT
     v.army_id,
+    v.name,
     v.owner,
     ROW(v.x, v.y)::coordinates,
     v.troops::jsonb,
@@ -78,6 +85,7 @@ SELECT
 FROM (
     SELECT
         UNNEST(sqlc.arg(army_ids)::text[])        AS army_id,
+        UNNEST(sqlc.arg(names)::text[])           AS name,
         UNNEST(sqlc.arg(owners)::text[])          AS owner,
         UNNEST(sqlc.arg(xs)::int[])               AS x,
         UNNEST(sqlc.arg(ys)::int[])               AS y,
@@ -86,3 +94,9 @@ FROM (
         UNNEST(sqlc.arg(dest_ys)::int[])          AS dest_y,
         UNNEST(sqlc.arg(upkeep_city_ids)::text[]) AS upkeep_city_id
 ) AS v;
+
+-- name: RenameArmy :exec
+UPDATE armies
+SET name = sqlc.arg(name), updated_at = NOW()
+WHERE army_id = sqlc.arg(army_id)
+  AND owner = sqlc.arg(owner);

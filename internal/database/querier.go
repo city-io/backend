@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	AddExploredTiles(ctx context.Context, arg AddExploredTilesParams) error
+	AssignTrainingOrder(ctx context.Context, arg AssignTrainingOrderParams) error
 	BatchCreateArmies(ctx context.Context, arg BatchCreateArmiesParams) error
 	BatchCreateBuildings(ctx context.Context, arg BatchCreateBuildingsParams) error
 	BatchCreateCities(ctx context.Context, arg BatchCreateCitiesParams) error
@@ -37,11 +38,11 @@ type Querier interface {
 	GetExploredTiles(ctx context.Context, userID string) ([]GetExploredTilesRow, error)
 	GetMailboxMessagesByRecipient(ctx context.Context, recipientID string) ([]MailboxMessage, error)
 	GetOrCreateWorldSeed(ctx context.Context, seed int64) (int64, error)
-	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]TrainingOrder, error)
+	GetTrainingOrdersByCity(ctx context.Context, cityID string) ([]TrainingOrder, error)
 	GetUserByID(ctx context.Context, userID string) (User, error)
 	GetUserByIdentifier(ctx context.Context, email string) (User, error)
 	MarkMailboxMessageRead(ctx context.Context, arg MarkMailboxMessageReadParams) (MailboxMessage, error)
-	StartTrainingOrder(ctx context.Context, arg StartTrainingOrderParams) error
+	RenameArmy(ctx context.Context, arg RenameArmyParams) error
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserStats(ctx context.Context, arg UpdateUserStatsParams) error

@@ -161,6 +161,7 @@ func (a GetAllArmiesRow) ToModel() *domain.Army {
 	}
 	return &domain.Army{
 		ArmyID:       a.ArmyID,
+		Name:         a.Name,
 		Owner:        a.Owner,
 		X:            int(a.X),
 		Y:            int(a.Y),
@@ -175,6 +176,7 @@ func (o TrainingOrder) ToModel() *domain.TrainingOrder {
 	return &domain.TrainingOrder{
 		TrainingOrderID: o.TrainingOrderID,
 		ArmyID:          o.ArmyID,
+		CityID:          o.CityID,
 		BarracksID:      o.BarracksID,
 		TroopType:       domain.TroopType(o.TroopType),
 		Count:           o.Count,

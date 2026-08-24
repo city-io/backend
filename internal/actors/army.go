@@ -1,14 +1,19 @@
 package actors
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/google/uuid"
 
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
 	"cityio/internal/stream"
@@ -34,6 +39,30 @@ func NewArmyActor() BaseActorInterface {
 	return &armyActor{}
 }
 
+func defaultArmyName(armyID string) string {
+	suffix := armyID
+	if len(suffix) > 8 {
+		suffix = suffix[:8]
+	}
+	return "Army " + suffix
+}
+
+func normalizeArmyName(value string) (string, error) {
+	name := strings.TrimSpace(value)
+	if name == "" {
+		return "", &messages.InvalidArmyNameError{Reason: "name is required"}
+	}
+	if utf8.RuneCountInString(name) > constants.ArmyNameMaxLength {
+		return "", &messages.InvalidArmyNameError{Reason: fmt.Sprintf("name must be %d characters or fewer", constants.ArmyNameMaxLength)}
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) {
+			return "", &messages.InvalidArmyNameError{Reason: "control characters are not allowed"}
+		}
+	}
+	return name, nil
+}
+
 func (state *armyActor) ActorType() string {
 	return "army"
 }
@@ -47,6 +76,9 @@ func (state *armyActor) Receive(ctx actor.Context) {
 			return
 		}
 		state.Army = msg.Army
+		if strings.TrimSpace(state.Army.Name) == "" {
+			state.Army.Name = defaultArmyName(state.Army.ArmyID)
+		}
 		if state.Army.Troops == nil {
 			state.Army.Troops = make(map[domain.TroopType]int64)
 		}
@@ -77,6 +109,30 @@ func (state *armyActor) Receive(ctx actor.Context) {
 		army := state.Army
 		army.RemainingPath = append([]domain.Coordinates(nil), state.path...)
 		ctx.Respond(&messages.GetArmyResponseMessage{Army: army})
+
+	case messages.RenameArmyMessage:
+		name, err := normalizeArmyName(msg.Name)
+		if err != nil {
+			ctx.Respond(err)
+			return
+		}
+		if name == state.Army.Name {
+			ctx.Respond(&messages.RenameArmyResponseMessage{Army: state.Army})
+			return
+		}
+		if err := state.Store.RenameArmy(state.Ctx(), state.Army.ArmyID, state.Army.Owner, name); err != nil {
+			if errors.Is(err, contracts.ErrArmyNameTaken) {
+				ctx.Respond(&messages.ArmyNameTakenError{Name: name})
+				return
+			}
+			slog.ErrorContext(state.Ctx(), "failed to rename army", "army_id", state.Army.ArmyID, "error", err)
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		state.Army.Name = name
+		state.Store.EnqueueArmy(state.Army)
+		state.publish()
+		ctx.Respond(&messages.RenameArmyResponseMessage{Army: state.Army})
 
 	case messages.MoveArmyMessage:
 		if state.Army.BattleID != nil {
@@ -232,6 +288,7 @@ func (state *armyActor) split(ctx actor.Context, requested map[domain.TroopType]
 		Y:      state.Army.Y,
 		Troops: detached,
 	}
+	newArmy.Name = defaultArmyName(newArmy.ArmyID)
 	res, err := state.Cluster.Request("army", newArmy.ArmyID, &messages.CreateArmyMessage{
 		Army:            newArmy,
 		SuppressPublish: true,

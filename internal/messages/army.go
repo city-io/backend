@@ -21,6 +21,9 @@ type GetArmyResponseMessage struct {
 	Army domain.Army
 }
 
+type RenameArmyMessage struct{ Name string }
+type RenameArmyResponseMessage struct{ Army domain.Army }
+
 // MoveArmyMessage sets an army's marching destination. The army steps one tile
 // toward it each movement tick until it arrives.
 type MoveArmyMessage struct {
@@ -81,7 +84,7 @@ type SurrenderTroopsResponseMessage struct {
 
 type DeleteArmyMessage struct{}
 
-// TrainTroopsMessage orders a barracks to train a batch of troops.
+// TrainTroopsMessage adds a paid batch to a city's shared FIFO pipeline.
 type TrainTroopsMessage struct {
 	Type  domain.TroopType
 	Count int64
@@ -95,6 +98,28 @@ type GetTrainingOrdersMessage struct{}
 type GetTrainingOrdersResponseMessage struct {
 	Orders []domain.TrainingOrder
 }
+
+type CancelTrainingOrderMessage struct {
+	TrainingOrderID string
+}
+
+// ClaimTrainingOrderMessage lets an idle, completed barracks claim the oldest
+// queued city order. Repeating the request returns its existing active order.
+type ClaimTrainingOrderMessage struct {
+	BarracksID string
+	Level      int
+}
+
+type ClaimTrainingOrderResponseMessage struct {
+	Order *domain.TrainingOrder
+}
+
+type CompleteTrainingOrderMessage struct {
+	TrainingOrderID string
+	BarracksID      string
+}
+
+type TrainingQueueAvailableMessage struct{}
 
 // RecruitPopulationMessage transfers Count residents out of a city and into a
 // durable training order. It rejects requests that would cross the protected
@@ -132,21 +157,34 @@ func (e *InsufficientPopulationError) Error() string {
 	return fmt.Sprintf("insufficient trainable population: requested %d, available %d", e.Requested, e.Available)
 }
 
-type TrainingCapacityExceededError struct {
-	Requested int64
-	Capacity  int64
-}
-
 type TrainingInProgressError struct {
 	BarracksID string
 }
 
-func (e *TrainingInProgressError) Error() string {
-	return fmt.Sprintf("barracks has pending training orders: %s", e.BarracksID)
+type TrainingAlreadyStartedError struct {
+	TrainingOrderID string
 }
 
-func (e *TrainingCapacityExceededError) Error() string {
-	return fmt.Sprintf("training batch exceeds barracks capacity: requested %d, capacity %d", e.Requested, e.Capacity)
+func (e *TrainingAlreadyStartedError) Error() string {
+	return fmt.Sprintf("training order has already started: %s", e.TrainingOrderID)
+}
+
+type TrainingOrderNotFoundError struct {
+	TrainingOrderID string
+}
+
+type NoBarracksError struct{ CityID string }
+
+func (e *NoBarracksError) Error() string {
+	return fmt.Sprintf("city has no barracks: %s", e.CityID)
+}
+
+func (e *TrainingOrderNotFoundError) Error() string {
+	return fmt.Sprintf("training order not found: %s", e.TrainingOrderID)
+}
+
+func (e *TrainingInProgressError) Error() string {
+	return fmt.Sprintf("barracks has an active training order: %s", e.BarracksID)
 }
 
 type InvalidTroopCountError struct {
@@ -167,6 +205,16 @@ func (e *InvalidTroopCountError) Error() string {
 
 type ArmyNotFoundError struct {
 	ArmyID string
+}
+
+type InvalidArmyNameError struct{ Reason string }
+
+func (e *InvalidArmyNameError) Error() string { return fmt.Sprintf("invalid army name: %s", e.Reason) }
+
+type ArmyNameTakenError struct{ Name string }
+
+func (e *ArmyNameTakenError) Error() string {
+	return fmt.Sprintf("army name already exists: %s", e.Name)
 }
 
 type UnreachableDestinationError struct {

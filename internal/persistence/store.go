@@ -15,9 +15,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/database"
 	"cityio/internal/domain"
 	"cityio/internal/metrics"
@@ -152,8 +154,8 @@ func (s *Store) GetAllArmies(ctx context.Context) ([]domain.Army, error) {
 	return armies, nil
 }
 
-func (s *Store) GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]domain.TrainingOrder, error) {
-	rows, err := s.db.GetTrainingOrdersByBarracks(ctx, barracksID)
+func (s *Store) GetTrainingOrdersByCity(ctx context.Context, cityID string) ([]domain.TrainingOrder, error) {
+	rows, err := s.db.GetTrainingOrdersByCity(ctx, cityID)
 	if err != nil {
 		return nil, err
 	}
@@ -276,6 +278,7 @@ func (s *Store) CreateArmy(ctx context.Context, army domain.Army) error {
 	}
 	return s.db.CreateArmy(ctx, database.CreateArmyParams{
 		ArmyID:       army.ArmyID,
+		Name:         army.Name,
 		Owner:        army.Owner,
 		X:            int32(army.X),
 		Y:            int32(army.Y),
@@ -286,10 +289,20 @@ func (s *Store) CreateArmy(ctx context.Context, army domain.Army) error {
 	})
 }
 
+func (s *Store) RenameArmy(ctx context.Context, armyID, owner, name string) error {
+	err := s.db.RenameArmy(ctx, database.RenameArmyParams{ArmyID: armyID, Owner: owner, Name: name})
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "armies_owner_name_unique_idx" {
+		return contracts.ErrArmyNameTaken
+	}
+	return err
+}
+
 func (s *Store) CreateTrainingOrder(ctx context.Context, order domain.TrainingOrder) error {
 	return s.db.CreateTrainingOrder(ctx, database.CreateTrainingOrderParams{
 		TrainingOrderID: order.TrainingOrderID,
 		ArmyID:          order.ArmyID,
+		CityID:          order.CityID,
 		BarracksID:      order.BarracksID,
 		TroopType:       string(order.TroopType),
 		Count:           order.Count,
@@ -325,9 +338,10 @@ func (s *Store) CreateMailboxMessage(ctx context.Context, message domain.Mailbox
 	})
 }
 
-func (s *Store) StartTrainingOrder(ctx context.Context, orderID string, startedAt, completesAt time.Time) error {
-	return s.db.StartTrainingOrder(ctx, database.StartTrainingOrderParams{
+func (s *Store) AssignTrainingOrder(ctx context.Context, orderID, barracksID string, startedAt, completesAt time.Time) error {
+	return s.db.AssignTrainingOrder(ctx, database.AssignTrainingOrderParams{
 		TrainingOrderID: orderID,
+		BarracksID:      &barracksID,
 		StartedAt:       database.ToPGTimestamp(&startedAt),
 		CompletesAt:     database.ToPGTimestamp(&completesAt),
 	})
@@ -596,6 +610,7 @@ func (s *Store) flushArmies(ctx context.Context, buffer map[string]domain.Army) 
 
 		params := database.BatchUpdateArmiesParams{
 			ArmyIds:       make([]string, 0, len(chunk)),
+			Names:         make([]string, 0, len(chunk)),
 			Owners:        make([]string, 0, len(chunk)),
 			Xs:            make([]int32, 0, len(chunk)),
 			Ys:            make([]int32, 0, len(chunk)),
@@ -612,6 +627,7 @@ func (s *Store) flushArmies(ctx context.Context, buffer map[string]domain.Army) 
 				continue
 			}
 			params.ArmyIds = append(params.ArmyIds, a.ArmyID)
+			params.Names = append(params.Names, a.Name)
 			params.Owners = append(params.Owners, a.Owner)
 			params.Xs = append(params.Xs, int32(a.X))
 			params.Ys = append(params.Ys, int32(a.Y))

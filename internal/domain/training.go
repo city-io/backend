@@ -2,11 +2,13 @@ package domain
 
 import "time"
 
-// TrainingOrder is a paid troop batch queued at a barracks.
+// TrainingOrder is a paid troop batch in a city's shared training pipeline.
+// BarracksID and the timing fields are empty until a barracks claims it.
 type TrainingOrder struct {
 	TrainingOrderID string
 	ArmyID          string
-	BarracksID      string
+	CityID          string
+	BarracksID      *string
 	TroopType       TroopType
 	Count           int64
 	PopulationCost  int64

@@ -11,10 +11,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignTrainingOrder = `-- name: AssignTrainingOrder :exec
+UPDATE training_orders
+SET
+    barracks_id = $2,
+    started_at = $3,
+    completes_at = $4
+WHERE training_order_id = $1
+  AND started_at IS NULL
+`
+
+type AssignTrainingOrderParams struct {
+	TrainingOrderID string           `json:"training_order_id"`
+	BarracksID      *string          `json:"barracks_id"`
+	StartedAt       pgtype.Timestamp `json:"started_at"`
+	CompletesAt     pgtype.Timestamp `json:"completes_at"`
+}
+
+func (q *Queries) AssignTrainingOrder(ctx context.Context, arg AssignTrainingOrderParams) error {
+	_, err := q.db.Exec(ctx, assignTrainingOrder,
+		arg.TrainingOrderID,
+		arg.BarracksID,
+		arg.StartedAt,
+		arg.CompletesAt,
+	)
+	return err
+}
+
 const createTrainingOrder = `-- name: CreateTrainingOrder :exec
 INSERT INTO training_orders (
     training_order_id,
     army_id,
+    city_id,
     barracks_id,
     troop_type,
     count,
@@ -24,13 +52,14 @@ INSERT INTO training_orders (
     completes_at,
     created_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type CreateTrainingOrderParams struct {
 	TrainingOrderID string           `json:"training_order_id"`
 	ArmyID          string           `json:"army_id"`
-	BarracksID      string           `json:"barracks_id"`
+	CityID          string           `json:"city_id"`
+	BarracksID      *string          `json:"barracks_id"`
 	TroopType       string           `json:"troop_type"`
 	Count           int64            `json:"count"`
 	PopulationCost  int64            `json:"population_cost"`
@@ -44,6 +73,7 @@ func (q *Queries) CreateTrainingOrder(ctx context.Context, arg CreateTrainingOrd
 	_, err := q.db.Exec(ctx, createTrainingOrder,
 		arg.TrainingOrderID,
 		arg.ArmyID,
+		arg.CityID,
 		arg.BarracksID,
 		arg.TroopType,
 		arg.Count,
@@ -66,15 +96,15 @@ func (q *Queries) DeleteTrainingOrder(ctx context.Context, trainingOrderID strin
 	return err
 }
 
-const getTrainingOrdersByBarracks = `-- name: GetTrainingOrdersByBarracks :many
-SELECT training_order_id, army_id, barracks_id, troop_type, count, population_cost, gold_cost, started_at, completes_at, created_at
+const getTrainingOrdersByCity = `-- name: GetTrainingOrdersByCity :many
+SELECT training_order_id, army_id, barracks_id, troop_type, count, population_cost, gold_cost, started_at, completes_at, created_at, city_id
 FROM training_orders
-WHERE barracks_id = $1
+WHERE city_id = $1
 ORDER BY created_at, training_order_id
 `
 
-func (q *Queries) GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]TrainingOrder, error) {
-	rows, err := q.db.Query(ctx, getTrainingOrdersByBarracks, barracksID)
+func (q *Queries) GetTrainingOrdersByCity(ctx context.Context, cityID string) ([]TrainingOrder, error) {
+	rows, err := q.db.Query(ctx, getTrainingOrdersByCity, cityID)
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +123,7 @@ func (q *Queries) GetTrainingOrdersByBarracks(ctx context.Context, barracksID st
 			&i.StartedAt,
 			&i.CompletesAt,
 			&i.CreatedAt,
+			&i.CityID,
 		); err != nil {
 			return nil, err
 		}
@@ -102,23 +133,4 @@ func (q *Queries) GetTrainingOrdersByBarracks(ctx context.Context, barracksID st
 		return nil, err
 	}
 	return items, nil
-}
-
-const startTrainingOrder = `-- name: StartTrainingOrder :exec
-UPDATE training_orders
-SET
-    started_at = $2,
-    completes_at = $3
-WHERE training_order_id = $1
-`
-
-type StartTrainingOrderParams struct {
-	TrainingOrderID string           `json:"training_order_id"`
-	StartedAt       pgtype.Timestamp `json:"started_at"`
-	CompletesAt     pgtype.Timestamp `json:"completes_at"`
-}
-
-func (q *Queries) StartTrainingOrder(ctx context.Context, arg StartTrainingOrderParams) error {
-	_, err := q.db.Exec(ctx, startTrainingOrder, arg.TrainingOrderID, arg.StartedAt, arg.CompletesAt)
-	return err
 }

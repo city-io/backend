@@ -45,9 +45,9 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
   - `userActor`, `cityActor`, `buildingActor`, `tileActor`, `armyActor`, `battleActor` — each embeds `baseActor`.
   - `buildingActor` delegates type-specific behavior to a `buildingActorImpl`
     (`cityCenter.go`, `townCenter.go`, `house.go`, `farm.go`, `mine.go`, `barracks.go`) via
-    `Create` / `Destroy` / `Handle` hooks. `barracks.go` is the troop **producer**: it holds a
-    durable FIFO training queue and a one-shot completion timer. Completed orders retry an
-    idempotent `armyActor` spawn until it succeeds.
+    `Create` / `Destroy` / `Handle` hooks. The city actor owns its durable FIFO training
+    pipeline; each `barracks.go` implementation is one worker lane that claims an order, owns
+    its one-shot completion timer, and retries an idempotent `armyActor` spawn until it succeeds.
   - `armyActor` (`army.go`) owns one army: persistence, a 250ms movement ticker, tile presence,
     nearest-owned-settlement food-upkeep attribution, composition-aware weighted
     8-directional terrain pathfinding, merging, combat enrollment, retreat, and capture orders.
@@ -180,8 +180,9 @@ the "Client / frontend API reference" section below.
   production/upkeep rates rather than rounded per-tick food units, while the pool still transfers
   whole units using carried remainders. A locally-under-producing city is consistently `starving`
   and its population declines. All rates are per-hour.
-- **Troops & armies:** a barracks trains batches of troops (`soldier`, `archer`, `cavalry`,
-  `artillery`). A completed batch spawns an `Army` at the barracks tile. An army has a tile
+- **Troops & armies:** a city queues batches of troops (`soldier`, `archer`, `cavalry`,
+  `artillery`) into one shared FIFO pipeline. Each completed barracks is a parallel training lane;
+  it claims the oldest unassigned batch, and completion spawns an `Army` at that barracks tile. An army has a tile
   position and optional references to its active `ArmyOrder` and `Battle`. Orders own their
   objective, remaining route, and ETA. Movement follows a lowest-time route choosing among
   all 8 neighbours. A diagonal has the same base cost as an orthogonal step. Movement uses a
@@ -194,7 +195,7 @@ the "Client / frontend API reference" section below.
     five seconds, re-arming only after the previous round finishes so delayed actor work cannot
     produce catch-up rounds. Both sides' damage uses the pre-round composition, so casualties are
     simultaneous. Attack, defense, and HP determine fractional expected losses, scaled by
-    `BattleCasualtyRate`; battle-local carry converts them into deterministic whole-unit deaths
+    `BattleCasualtyRate` (currently 1.0); battle-local carry converts them into deterministic whole-unit deaths
     over time. There is no persistent army/unit health or wounded state. A zero-unit army is
     deleted. A side can contain multiple users: additional attackers targeting a participant join
     the opposing side, leaving formal alliance policy for the future diplomacy layer.
@@ -202,8 +203,9 @@ the "Client / frontend API reference" section below.
     militia from the cheapest traversable tile adjacent (including diagonally) to the center, then
     must hold that staging tile uncontested for 30 seconds. Settlement militia cannot engage the
     conqueror before it reaches that destination. Militia casualties reduce both militia and total
-    population; siege rounds can also inflict lower-rate civilian casualties. Completion transfers
-    the existing settlement and its buildings to the attacker.
+    population. Siege civilian losses equal 15% of that side's actual army and militia casualties,
+    with fractional carry, and cannot reduce survivors below 30% of the normal 55% core allocation.
+    Completion transfers the existing settlement and its buildings to the attacker.
   - **Population transfer:** 55% of the city's peak resident population is a protected civilian
     core. The persisted peak does not fall after recruitment/casualties and does not jump when
     housing is added, so neither repeated training nor capacity upgrades move the floor. A city
@@ -231,12 +233,13 @@ the "Client / frontend API reference" section below.
     | cavalry   | 150  | 10             | 0.825    | 180     | 1   | 20  | 12  | 120 |
     | artillery | 300  | 15             | 2.475    | 120     | 3   | 40  | 3   | 60  |
 
-  - **Barracks training capacity** (troops per in-progress batch) = `5 × barracksLevel`. Extra
-    orders persist and queue FIFO per barracks; more barracks = more concurrent training. A
-    batch takes `troop count × per-troop train time`; a barracks with pending orders cannot be
-    upgraded or demolished. `GetGameConfig`
-    does **not** expose troop stats yet — a client needs them hardcoded or we should add a troop
-    config message (TODO).
+  - **City training pipeline:** placing an order reserves its full gold and resident cost before
+    appending it to the city's durable FIFO. Unstarted orders are unassigned and can be cancelled
+    for a full refund; once a barracks claims one, it cannot be cancelled. Every completed barracks
+    processes one order at a time, so more barracks add parallel lanes. Level 1 trains at 1.0× and
+    each additional level adds 0.2× throughput (up to 2.8× at level 10). Only the barracks with an
+    active batch is blocked from upgrade or demolition. `GetGameConfig` exposes each barracks
+    level's `training_speed_multiplier`; troop costs and base times remain client-known constants.
 - **Vision:** a player sees any tile within Chebyshev distance `VisionRadius` (3) of any tile of
   a city they own or the current tile of any army they own. This gates what read RPCs return
   (see visibility rules below). Seen coordinates are persisted in `explored_tiles`: terrain stays
@@ -305,23 +308,25 @@ for TypeScript) rather than hand-writing request types.
   population_growth_before_tax`. See `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
-- **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
+- **Army** `{ army_id, name, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
   composition is exact for the owner and explicitly hidden from unauthorized viewers; private
-  order/battle references are removed from sanitized foreign armies.
+  order/battle references are removed from sanitized foreign armies. Names are public and unique
+  case-insensitively per owner; new armies default to `Army <8-character UUID prefix>`.
 - **ArmyOrder** `{ army_order_id, army_id, move|attack_army|conquer_settlement|retreat,
   remaining_route{known_steps[], hidden_segment_end?}, estimated_remaining_duration? }` —
   ephemeral owner-projected active state. Known steps are exact explored geometry; the optional
   endpoint marks an undisclosed connector rather than another exact step. Completion,
   cancellation, failure, or replacement produces a tombstone; there are no terminal status/reason
   records.
-- **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
+- **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at, completed_rounds }` — ephemeral
   active combat. Both sides contain repeated user and army IDs so future allies can share a side;
-  a side may additionally contain settlement militia. `strength_visible` is viewer-specific;
-  opposing militia counts remain zero/hidden during combat.
+  a side may additionally contain settlement militia. `strength_visible` is viewer-specific and
+  gates starting/surviving troop and militia totals. Cumulative and last-round troop, militia, and
+  civilian casualties are disclosed for both sides during combat.
 - **MailboxMessage/BattleReport** — durable recipient-owned combat history. A report always
-  exposes the recipient's side exactly. Opposing troop, militia, population, power, and casualty
-  counts are concealed unless the recipient won; victory reports disclose both sides. Siege
-  reports include per-round and total civilian casualties when that side is disclosed.
+  exposes the recipient's side exactly. Opposing starting/surviving troop, militia, population,
+  and combat-power totals are concealed unless the recipient won; victory reports disclose both
+  sides. Per-round troop, militia, and civilian casualties are disclosed regardless of outcome.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -367,26 +372,31 @@ for TypeScript) rather than hand-writing request types.
 - `GetBuilding(building_id) → { building }` — vision-gated.
 - `UpgradeBuilding(building_id) → {}` — must own; deducts gold and starts construction to the next
   level. Errors: `FailedPrecondition` (`InsufficientGold`, `ConstructionInProgress`,
-  `TrainingInProgress` for a barracks with queued orders, `MaxLevelReached`).
-- `DeleteBuilding(building_id) → {}` — must own; city/town centers and barracks with pending
-  training orders can't be demolished (`FailedPrecondition`).
+  `TrainingInProgress` for a barracks with an active assigned order, `MaxLevelReached`).
+- `DeleteBuilding(building_id) → {}` — must own; city/town centers and a barracks with an active
+  assigned training order cannot be demolished (`FailedPrecondition`).
 - `ListBuildings(city_id) → { buildings[] }` — vision-filtered.
 
 **ArmyService**
-- `TrainTroops(barracks_id, type, count) → { order }` — must own the barracks' city; the
-  barracks must be finished (not under construction); `count` ∈ `[1, 5 × barracksLevel]`.
+- `TrainTroops(city_id, type, count) → { order }` — must own the city and have at least one
+  barracks. `count` must be positive.
   Immediately transfers `count × popCost` recruitable residents out of the city and deducts
   `count × goldCost`.
-  Errors: `FailedPrecondition` (`InsufficientGold`, insufficient trainable population, training
-  capacity exceeded, construction in progress); `InvalidArgument` (bad count/type). After the
-  batch's total train time (`count × per-troop time`) an `Army` spawns at the barracks tile
+  Errors: `FailedPrecondition` (`InsufficientGold`, insufficient trainable population, no
+  barracks); `InvalidArgument` (bad count/type). After its assigned barracks processes the
+  level-adjusted batch time, an `Army` spawns at that barracks tile
   (observe it via `StreamState`).
-  Multiple orders queue FIFO per barracks. The returned order includes its future `army_id` and,
-  when it is at the front, `started_at` and `completes_at`.
-- `ListTrainingOrders(barracks_id) → { orders[] }` — owner-only current FIFO queue for a
-  barracks, including the active order and orders waiting behind it.
+  The returned order includes its future `army_id` and `city_id`; `barracks_id`, `started_at`, and
+  `completes_at` appear after a lane claims it.
+- `ListTrainingOrders(city_id) → { orders[] }` — owner-only city pipeline, including all active
+  barracks lanes and the shared unassigned FIFO.
+- `CancelTrainingOrder(city_id, training_order_id) → {}` — cancels only an unstarted order and
+  fully refunds its reserved gold and residents. Active orders return `FailedPrecondition`.
 - `GetArmy(army_id) → { army_id, entities(army, army_order?, battle?) }` — owner always; others
   need vision and receive sanitized private state.
+- `RenameArmy(army_id, name) → { army_id, entities(army) }` — owner-only. Names are trimmed,
+  required, limited to 32 characters, reject control characters, and must be case-insensitively
+  unique among that owner's armies. Successful renames stream immediately.
 - `PreviewArmyRoute(army_id, destination) → { route, estimated_duration }` —
   owner-only backend route preview. The UI derives whether the requested destination is reached
   by comparing it with the end of `route`. Unknown tiles are assumed to be ordinary land without
@@ -449,8 +459,9 @@ python3 scripts/troops.py smoke                       # full flow: build barrack
 python3 scripts/troops.py login                       # cache a token
 python3 scripts/troops.py cities                       # list owned cities (+ coords)
 python3 scripts/troops.py barracks                     # build a barracks in your first city
-python3 scripts/troops.py train <barracksId> soldier 5
-python3 scripts/troops.py queue <barracksId>            # inspect its durable FIFO queue
+python3 scripts/troops.py train <cityId> soldier 5
+python3 scripts/troops.py queue <cityId>                 # inspect its durable FIFO queue
+python3 scripts/troops.py cancel <cityId> <orderId>      # fully refund an unstarted order
 python3 scripts/troops.py armies                        # list your armies
 python3 scripts/troops.py move <armyId> <x> <y>
 python3 scripts/troops.py merge <targetId> <sourceId>
@@ -534,7 +545,8 @@ psql -h localhost -p 5432 -U cityio -d cityio
 Migrations can be run manually (the app also runs them itself — see gotcha). Migrations live in
 `db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`,
 `00004_add_training_orders`, `00005_add_explored_tiles`, `00006_add_world_state`,
-`00007_add_city_population_policies`):
+`00007_add_city_population_policies`, `00008_add_mailbox_messages`,
+`00009_city_training_pipeline`):
 
 ```bash
 GOOSE_DRIVER=postgres \

@@ -52,6 +52,10 @@ type cityActor struct {
 	demandRemainder int64
 	taxRemainder    int64
 
+	trainingOrders []domain.TrainingOrder
+	trainingLoaded bool
+	barracksIDs    map[string]struct{}
+
 	ticker       *time.Ticker
 	stopTickerCh chan struct{}
 }
@@ -76,6 +80,8 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		state.populationContributions = make(map[string]float64)
 		state.foodProduction = make(map[string]int64)
 		state.armyUpkeep = make(map[string]int64)
+		state.barracksIDs = make(map[string]struct{})
+		state.loadTrainingOrders()
 
 		if !msg.Restore {
 			if err := state.Store.CreateCity(state.Ctx(), state.City); err != nil {
@@ -196,8 +202,23 @@ func (state *cityActor) Receive(ctx actor.Context) {
 			stream.Publish(*state.City.Owner, stream.StateUpdate{Building: &b})
 			state.publish()
 		}
+		if msg.Building.BuildingType() == domain.BuildingTypeBarracks {
+			state.barracksIDs[msg.Building.BuildingID] = struct{}{}
+			state.notifyBarracks(msg.Building.BuildingID)
+		}
+
+	case messages.RegisterBarracksMessage:
+		if state.barracksIDs == nil {
+			state.barracksIDs = make(map[string]struct{})
+		}
+		state.barracksIDs[msg.BarracksID] = struct{}{}
+		state.notifyBarracks(msg.BarracksID)
+
+	case messages.UnregisterBarracksMessage:
+		delete(state.barracksIDs, msg.BarracksID)
 
 	case messages.BuildingDestroyedMessage:
+		delete(state.barracksIDs, msg.BuildingID)
 		delete(state.populationContributions, msg.BuildingID)
 		delete(state.foodProduction, msg.BuildingID)
 		var cap float64
@@ -258,6 +279,43 @@ func (state *cityActor) Receive(ctx actor.Context) {
 		}
 		state.Store.EnqueueCity(state.City)
 		state.publish()
+		ctx.Respond(messages.Ack{})
+
+	case messages.TrainTroopsMessage:
+		order, err := state.trainTroops(msg)
+		if err != nil {
+			ctx.Respond(err)
+			return
+		}
+		ctx.Respond(&messages.TrainTroopsResponseMessage{Order: *order})
+
+	case messages.GetTrainingOrdersMessage:
+		if !state.trainingLoaded && !state.loadTrainingOrders() {
+			ctx.Respond(&messages.InternalError{})
+			return
+		}
+		ctx.Respond(&messages.GetTrainingOrdersResponseMessage{Orders: append([]domain.TrainingOrder(nil), state.trainingOrders...)})
+
+	case messages.CancelTrainingOrderMessage:
+		if err := state.cancelTrainingOrder(msg.TrainingOrderID); err != nil {
+			ctx.Respond(err)
+			return
+		}
+		ctx.Respond(messages.Ack{})
+
+	case messages.ClaimTrainingOrderMessage:
+		order, err := state.claimTrainingOrder(msg)
+		if err != nil {
+			ctx.Respond(err)
+			return
+		}
+		ctx.Respond(&messages.ClaimTrainingOrderResponseMessage{Order: order})
+
+	case messages.CompleteTrainingOrderMessage:
+		if err := state.completeTrainingOrder(msg); err != nil {
+			ctx.Respond(err)
+			return
+		}
 		ctx.Respond(messages.Ack{})
 
 	case messages.ReturnRecruitsMessage:
@@ -358,6 +416,196 @@ func (state *cityActor) Receive(ctx actor.Context) {
 	}
 }
 
+func (state *cityActor) loadTrainingOrders() bool {
+	orders, err := state.Store.GetTrainingOrdersByCity(state.Ctx(), state.City.CityID)
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to restore city training pipeline", "city_id", state.City.CityID, "error", err)
+		return false
+	}
+	state.trainingOrders = orders
+	state.trainingLoaded = true
+	return true
+}
+
+func (state *cityActor) trainTroops(msg messages.TrainTroopsMessage) (*domain.TrainingOrder, error) {
+	if !state.trainingLoaded && !state.loadTrainingOrders() {
+		return nil, &messages.InternalError{}
+	}
+	if msg.Count <= 0 {
+		return nil, &messages.InvalidTroopCountError{Count: msg.Count}
+	}
+	if !constants.IsValidTroopType(msg.Type) {
+		return nil, &messages.InvalidTroopTypeError{Type: msg.Type}
+	}
+	if state.City.Owner == nil {
+		return nil, &messages.InternalError{}
+	}
+	if len(state.barracksIDs) == 0 {
+		return nil, &messages.NoBarracksError{CityID: state.City.CityID}
+	}
+
+	populationCost := msg.Count * constants.GetTroopPopCost(msg.Type)
+	if err := state.recruitPopulation(populationCost); err != nil {
+		return nil, err
+	}
+	goldCost := msg.Count * constants.GetTroopGoldCost(msg.Type)
+	if err := state.deductTrainingGold(goldCost); err != nil {
+		state.returnTrainingPopulation(populationCost)
+		return nil, err
+	}
+
+	order := domain.TrainingOrder{
+		TrainingOrderID: uuid.New().String(),
+		ArmyID:          uuid.New().String(),
+		CityID:          state.City.CityID,
+		TroopType:       msg.Type,
+		Count:           msg.Count,
+		PopulationCost:  populationCost,
+		GoldCost:        goldCost,
+		CreatedAt:       time.Now(),
+	}
+	if err := state.Store.CreateTrainingOrder(state.Ctx(), order); err != nil {
+		state.returnTrainingPopulation(populationCost)
+		state.refundTrainingGold(goldCost)
+		slog.ErrorContext(state.Ctx(), "failed to persist city training order", "city_id", state.City.CityID, "error", err)
+		return nil, &messages.InternalError{}
+	}
+
+	state.trainingOrders = append(state.trainingOrders, order)
+	state.Store.EnqueueCity(state.City)
+	state.publish()
+	state.notifyAllBarracks()
+	return &order, nil
+}
+
+func (state *cityActor) claimTrainingOrder(msg messages.ClaimTrainingOrderMessage) (*domain.TrainingOrder, error) {
+	if !state.trainingLoaded && !state.loadTrainingOrders() {
+		return nil, &messages.InternalError{}
+	}
+	for i := range state.trainingOrders {
+		order := &state.trainingOrders[i]
+		if order.BarracksID != nil && *order.BarracksID == msg.BarracksID && order.StartedAt.Time != nil {
+			copy := *order
+			return &copy, nil
+		}
+	}
+	for i := range state.trainingOrders {
+		order := &state.trainingOrders[i]
+		if order.StartedAt.Time != nil {
+			continue
+		}
+		now := time.Now()
+		completesAt := now.Add(constants.GetBarracksTrainingDuration(order.TroopType, order.Count, msg.Level))
+		if err := state.Store.AssignTrainingOrder(state.Ctx(), order.TrainingOrderID, msg.BarracksID, now, completesAt); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to assign city training order", "city_id", state.City.CityID, "barracks_id", msg.BarracksID, "training_order_id", order.TrainingOrderID, "error", err)
+			return nil, &messages.InternalError{}
+		}
+		barracksID := msg.BarracksID
+		order.BarracksID = &barracksID
+		order.StartedAt = domain.NullTime{Time: &now}
+		order.CompletesAt = domain.NullTime{Time: &completesAt}
+		copy := *order
+		return &copy, nil
+	}
+	return nil, nil
+}
+
+func (state *cityActor) completeTrainingOrder(msg messages.CompleteTrainingOrderMessage) error {
+	for i, order := range state.trainingOrders {
+		if order.TrainingOrderID != msg.TrainingOrderID || order.BarracksID == nil || *order.BarracksID != msg.BarracksID {
+			continue
+		}
+		if err := state.Store.DeleteTrainingOrder(state.Ctx(), order.TrainingOrderID); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to finish city training order", "city_id", state.City.CityID, "training_order_id", order.TrainingOrderID, "error", err)
+			return &messages.InternalError{}
+		}
+		state.trainingOrders = append(state.trainingOrders[:i], state.trainingOrders[i+1:]...)
+		return nil
+	}
+	// Completion is idempotent: the barracks may retry after the city removed
+	// the order but before the acknowledgement reached it.
+	return nil
+}
+
+func (state *cityActor) cancelTrainingOrder(orderID string) error {
+	if !state.trainingLoaded && !state.loadTrainingOrders() {
+		return &messages.InternalError{}
+	}
+	for i, order := range state.trainingOrders {
+		if order.TrainingOrderID != orderID {
+			continue
+		}
+		if order.StartedAt.Time != nil {
+			return &messages.TrainingAlreadyStartedError{TrainingOrderID: orderID}
+		}
+		if err := state.Store.DeleteTrainingOrder(state.Ctx(), orderID); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to cancel city training order", "city_id", state.City.CityID, "training_order_id", orderID, "error", err)
+			return &messages.InternalError{}
+		}
+		if err := state.refundTrainingGold(order.GoldCost); err != nil {
+			if restoreErr := state.Store.CreateTrainingOrder(state.Ctx(), order); restoreErr != nil {
+				slog.ErrorContext(state.Ctx(), "failed to restore training order after refund failure", "city_id", state.City.CityID, "training_order_id", orderID, "error", restoreErr)
+			}
+			return err
+		}
+		state.returnTrainingPopulation(order.PopulationCost)
+		state.trainingOrders = append(state.trainingOrders[:i], state.trainingOrders[i+1:]...)
+		state.Store.EnqueueCity(state.City)
+		state.publish()
+		return nil
+	}
+	return &messages.TrainingOrderNotFoundError{TrainingOrderID: orderID}
+}
+
+func (state *cityActor) deductTrainingGold(amount int64) error {
+	res, err := state.Cluster.Request("user", *state.City.Owner, messages.CheckAndDeductGoldMessage{Amount: amount})
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to deduct training gold", "city_id", state.City.CityID, "error", err)
+		return &messages.InternalError{}
+	}
+	switch response := res.(type) {
+	case messages.Ack:
+		return nil
+	case messages.InsufficientGoldError:
+		return &response
+	default:
+		return &messages.InvalidResponseTypeError{}
+	}
+}
+
+func (state *cityActor) refundTrainingGold(amount int64) error {
+	if amount <= 0 {
+		return nil
+	}
+	res, err := state.Cluster.Request("user", *state.City.Owner, messages.RefundUserGoldMessage{Amount: amount})
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to refund training gold", "city_id", state.City.CityID, "error", err)
+		return &messages.InternalError{}
+	}
+	if _, ok := res.(messages.Ack); !ok {
+		return &messages.InvalidResponseTypeError{}
+	}
+	return nil
+}
+
+func (state *cityActor) returnTrainingPopulation(count int64) {
+	state.City.Population += float64(count)
+	state.City.PopulationBasis = max(state.City.PopulationBasis, state.City.Population)
+	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)
+}
+
+func (state *cityActor) notifyBarracks(barracksID string) {
+	if err := state.Cluster.Tell("building", barracksID, messages.TrainingQueueAvailableMessage{}); err != nil {
+		slog.WarnContext(state.Ctx(), "failed to notify barracks of city training queue", "city_id", state.City.CityID, "barracks_id", barracksID, "error", err)
+	}
+}
+
+func (state *cityActor) notifyAllBarracks() {
+	for barracksID := range state.barracksIDs {
+		state.notifyBarracks(barracksID)
+	}
+}
+
 func (state *cityActor) recruitPopulation(count int64) *messages.InsufficientPopulationError {
 	available := constants.RecruitablePopulation(state.City)
 	if count > available {
@@ -394,7 +642,8 @@ func (state *cityActor) applyMilitiaCasualties(count int64) bool {
 }
 
 func (state *cityActor) applyCivilianCasualties(count int64) int64 {
-	available := int64(math.Floor(constants.TaxablePopulation(state.City)))
+	minimumCoreSurvivors := constants.ProtectedCorePopulation(state.City) * constants.SiegeCoreSurvivalPercent / 100
+	available := int64(math.Floor(max(constants.TaxablePopulation(state.City)-minimumCoreSurvivors, 0)))
 	applied := min(max(count, 0), available)
 	state.City.Population = max(state.City.Population-float64(applied), state.City.MilitiaPopulation)
 	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)

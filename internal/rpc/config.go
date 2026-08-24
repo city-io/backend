@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"cityio/internal/constants"
+	"cityio/internal/domain"
 	servicev1 "cityio/internal/gen/cityio/service/v1"
 	"cityio/internal/mapping"
 )
@@ -59,6 +60,9 @@ func buildBuildingConfigs() []*servicev1.BuildingConfig {
 			}
 			if pops != nil {
 				level.Population = pops[i]
+			}
+			if bt == domain.BuildingTypeBarracks {
+				level.TrainingSpeedMultiplier = constants.GetBarracksTrainingSpeed(i + 1)
 			}
 			for _, entry := range prodEntries {
 				level.Production = append(level.Production, &servicev1.ResourceRate{

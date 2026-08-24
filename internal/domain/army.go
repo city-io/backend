@@ -17,6 +17,7 @@ const (
 // DestX/DestY remain persisted so movement can resume after restoration.
 type Army struct {
 	ArmyID        string              `json:"army_id"`
+	Name          string              `json:"name"`
 	Owner         string              `json:"owner"`
 	X             int                 `json:"x"`
 	Y             int                 `json:"y"`
@@ -45,18 +46,30 @@ const (
 )
 
 type BattleSide struct {
-	UserIDs       []string
-	ArmyIDs       []string
-	MilitiaCityID *string
-	MilitiaCount  int64
+	UserIDs          []string
+	ArmyIDs          []string
+	MilitiaCityID    *string
+	MilitiaCount     int64
+	StartingTroops   map[TroopType]int64
+	SurvivingTroops  map[TroopType]int64
+	StartingMilitia  int64
+	CumulativeLosses BattleLossSummary
+	LastRoundLosses  BattleLossSummary
+}
+
+type BattleLossSummary struct {
+	Troops    map[TroopType]int64
+	Militia   int64
+	Civilians int64
 }
 
 type Battle struct {
-	BattleID  string
-	X         int
-	Y         int
-	Attackers BattleSide
-	Defenders BattleSide
-	StartedAt time.Time
-	NextTick  time.Time
+	BattleID        string
+	X               int
+	Y               int
+	Attackers       BattleSide
+	Defenders       BattleSide
+	StartedAt       time.Time
+	NextTick        time.Time
+	CompletedRounds int
 }

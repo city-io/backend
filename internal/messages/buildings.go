@@ -40,6 +40,14 @@ type BuildingStateChangedMessage struct {
 	Building domain.Building
 }
 
+type RegisterBarracksMessage struct {
+	BarracksID string
+}
+
+type UnregisterBarracksMessage struct {
+	BarracksID string
+}
+
 // // Errors
 // type BuildingTypeNotFoundError struct {
 // 	BuildingType string

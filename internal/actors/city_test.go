@@ -206,3 +206,20 @@ func TestCivilianCasualtiesLeaveMilitiaUntouched(t *testing.T) {
 		t.Fatalf("city after civilian casualties = %+v", state.City)
 	}
 }
+
+func TestCivilianCasualtiesPreserveThirtyPercentOfCore(t *testing.T) {
+	state := cityActor{City: domain.City{
+		Population: 250, PopulationCap: 250, PopulationBasis: 250,
+		MilitiaPopulation: 25, TaxRatePercent: 10,
+	}}
+
+	if applied := state.applyCivilianCasualties(1_000); applied != 183 {
+		t.Fatalf("applied civilian casualties = %d, want 183", applied)
+	}
+	if got := constants.TaxablePopulation(state.City); got != 42 {
+		t.Fatalf("surviving core civilians = %f, want 42", got)
+	}
+	if state.City.MilitiaPopulation != 25 {
+		t.Fatalf("surviving militia = %f, want 25", state.City.MilitiaPopulation)
+	}
+}

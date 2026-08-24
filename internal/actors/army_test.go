@@ -18,9 +18,13 @@ import (
 
 type armyOperationTestStore struct {
 	contracts.Store
-	mu      sync.Mutex
-	deleted []string
+	mu        sync.Mutex
+	deleted   []string
+	renamed   []string
+	renameErr error
 }
+
+func (*armyOperationTestStore) CreateArmy(context.Context, domain.Army) error { return nil }
 
 func (s *armyOperationTestStore) AddExploredTiles(context.Context, string, []domain.Coordinates) error {
 	return nil
@@ -38,6 +42,16 @@ func (s *armyOperationTestStore) DeleteArmy(_ context.Context, armyID string) er
 }
 
 func (*armyOperationTestStore) EnqueueArmy(domain.Army) {}
+
+func (s *armyOperationTestStore) RenameArmy(_ context.Context, _, _, name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.renameErr != nil {
+		return s.renameErr
+	}
+	s.renamed = append(s.renamed, name)
+	return nil
+}
 
 type armyOperationTestCluster struct {
 	contracts.ClusterProvider
@@ -76,6 +90,62 @@ func expectNoArmyStreamUpdate(t *testing.T, updates <-chan stream.StateUpdate) {
 	case update := <-updates:
 		t.Fatalf("unexpected army stream update: %+v", update)
 	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+func TestArmyDefaultNameUsesStableIDPrefix(t *testing.T) {
+	if got := defaultArmyName("12345678-abcd-efgh"); got != "Army 12345678" {
+		t.Fatalf("default army name = %q", got)
+	}
+}
+
+func TestArmyNameNormalization(t *testing.T) {
+	if got, err := normalizeArmyName("  Northern Guard  "); err != nil || got != "Northern Guard" {
+		t.Fatalf("normalized name = %q, %v", got, err)
+	}
+	if _, err := normalizeArmyName("   "); err == nil {
+		t.Fatal("blank army name was accepted")
+	}
+	if _, err := normalizeArmyName("bad\nname"); err == nil {
+		t.Fatal("control character was accepted")
+	}
+	if _, err := normalizeArmyName("123456789012345678901234567890123"); err == nil {
+		t.Fatal("overlong army name was accepted")
+	}
+}
+
+func TestArmyRenamePersistsAndReturnsUpdatedState(t *testing.T) {
+	store := &armyOperationTestStore{}
+	system, pid := spawnArmyOperationTestActor(store, &armyOperationTestCluster{})
+	defer system.Root.Stop(pid)
+
+	created := requestArmyOperation(t, system, pid, &messages.CreateArmyMessage{Army: domain.Army{
+		ArmyID: "12345678-abcd", Owner: "owner", Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 1},
+	}})
+	if _, ok := created.(messages.Ack); !ok {
+		t.Fatalf("create response = %#v", created)
+	}
+	response := requestArmyOperation(t, system, pid, messages.RenameArmyMessage{Name: "  Northern Guard  "})
+	renamed, ok := response.(*messages.RenameArmyResponseMessage)
+	if !ok || renamed.Army.Name != "Northern Guard" {
+		t.Fatalf("rename response = %#v", response)
+	}
+	if len(store.renamed) != 1 || store.renamed[0] != "Northern Guard" {
+		t.Fatalf("persisted names = %v", store.renamed)
+	}
+}
+
+func TestArmyRenameRejectsDuplicateName(t *testing.T) {
+	store := &armyOperationTestStore{renameErr: contracts.ErrArmyNameTaken}
+	system, pid := spawnArmyOperationTestActor(store, &armyOperationTestCluster{})
+	defer system.Root.Stop(pid)
+
+	requestArmyOperation(t, system, pid, &messages.CreateArmyMessage{Army: domain.Army{
+		ArmyID: "12345678-abcd", Owner: "owner", Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 1},
+	}})
+	response := requestArmyOperation(t, system, pid, messages.RenameArmyMessage{Name: "Taken"})
+	if _, ok := response.(*messages.ArmyNameTakenError); !ok {
+		t.Fatalf("duplicate rename response = %#v", response)
 	}
 }
 

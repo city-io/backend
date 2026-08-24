@@ -122,11 +122,11 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 
 	case messages.DeleteBuildingMessage:
 		if barracks, ok := state.Impl.(*barracksImpl); ok {
-			if !barracks.loaded && !barracks.loadQueue(ctx, state) {
+			if !barracks.ensureInitialized(ctx, state) {
 				ctx.Respond(&messages.InternalError{})
 				return
 			}
-			if len(barracks.queue) > 0 {
+			if barracks.active != nil {
 				ctx.Respond(&messages.TrainingInProgressError{BarracksID: state.Building.BuildingID})
 				return
 			}
@@ -213,10 +213,10 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 		return &messages.ConstructionInProgressError{BuildingID: state.Building.BuildingID}
 	}
 	if barracks, ok := state.Impl.(*barracksImpl); ok {
-		if !barracks.loaded && !barracks.loadQueue(ctx, state) {
+		if !barracks.ensureInitialized(ctx, state) {
 			return &messages.InternalError{}
 		}
-		if len(barracks.queue) > 0 {
+		if barracks.active != nil {
 			return &messages.TrainingInProgressError{BarracksID: state.Building.BuildingID}
 		}
 	}

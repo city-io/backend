@@ -7,15 +7,17 @@ import (
 )
 
 const (
+	ArmyNameMaxLength         = 32
 	BattleTickInterval        = 5 * time.Second
 	SettlementCaptureDuration = 30 * time.Second
 	// BattleCasualtyRate scales military losses calculated from incoming power.
-	// Keeping it below one lets formations exchange several rounds before one
-	// side collapses.
-	BattleCasualtyRate = 0.50
-	// SiegeCivilianCasualtyRate converts incoming military force into a much
-	// smaller amount of collateral population loss, accumulated across rounds.
-	SiegeCivilianCasualtyRate = 0.10
+	// One applies the full per-round exchange calculated from force and
+	// durability; the five-second battle cadence is unchanged.
+	BattleCasualtyRate = 1.00
+	// SiegeCivilianCasualtiesPerMilitaryLoss ties collateral population loss
+	// directly to the army and militia casualties suffered by that side. The
+	// fractional remainder carries across rounds.
+	SiegeCivilianCasualtiesPerMilitaryLoss = 0.15
 )
 
 // TroopStat holds the tier-1 stat profile for a troop type. Gold is the
@@ -75,10 +77,17 @@ func GetTroopMovementDuration(t domain.TroopType) time.Duration {
 	return troopStats[t].MovementDuration
 }
 
-// GetBarracksTrainingCapacity returns how many troops a barracks of the given
-// level can hold in a single in-progress training batch (5 × level).
-func GetBarracksTrainingCapacity(level int) int64 {
-	return int64(5 * level)
+// GetBarracksTrainingSpeed returns the rate at which one barracks lane trains.
+// Each level after the first adds 20% throughput without changing queue rules.
+func GetBarracksTrainingSpeed(level int) float64 {
+	return 1 + 0.20*float64(max(level-1, 0))
+}
+
+// GetBarracksTrainingDuration applies the assigned barracks' speed to a paid
+// batch. Durations retain sub-second precision so level upgrades always help.
+func GetBarracksTrainingDuration(t domain.TroopType, count int64, level int) time.Duration {
+	base := time.Duration(GetTroopTrainingDuration(t, count)) * time.Second
+	return time.Duration(float64(base) / GetBarracksTrainingSpeed(level))
 }
 
 // AllTroopTypes returns every defined troop type.

@@ -9,6 +9,9 @@ import (
 const (
 	// CoreCivilianPercent is the housing share protected from recruitment.
 	CoreCivilianPercent = 55
+	// Siege civilian losses cannot reduce the surviving core below this share
+	// of the city's normal core-civilian allocation.
+	SiegeCoreSurvivalPercent = 30
 
 	// Militia is a non-mobile settlement reserve. Players start at 10%; neutral
 	// towns commit the full non-core population share so they have no recruitable
