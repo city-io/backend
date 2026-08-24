@@ -200,12 +200,13 @@ the "Client / frontend API reference" section below.
     deleted. A side can contain multiple users: additional attackers targeting a participant join
     the opposing side, leaving formal alliance policy for the future diplomacy layer.
   - **Conquest:** an army ordered to conquer fights field defenders and the settlement's passive
-    militia from the cheapest traversable tile adjacent (including diagonally) to the center, then
-    must hold that staging tile uncontested for 30 seconds. Settlement militia cannot engage the
-    conqueror before it reaches that destination. Militia casualties reduce both militia and total
-    population. Siege civilian losses equal 15% of that side's actual army and militia casualties,
-    with fractional carry, and cannot reduce survivors below 30% of the normal 55% core allocation.
-    Completion transfers the existing settlement and its buildings to the attacker.
+    militia from the cheapest traversable tile adjacent (including diagonally) to the center. Once
+    those defenders are defeated, it advances onto the center tile and must hold the center
+    uncontested for 30 seconds. Settlement militia cannot engage the conqueror before it reaches
+    the staging destination. Militia casualties reduce both militia and total population. Siege
+    civilian losses equal 15% of that side's actual army and militia casualties, with fractional
+    carry, and cannot reduce survivors below 30% of the normal 55% core allocation. Completion
+    transfers the existing settlement and its buildings to the attacker.
   - **Population transfer:** 55% of the city's peak resident population is a protected civilian
     core. The persisted peak does not fall after recruitment/casualties and does not jump when
     housing is added, so neither repeated training nor capacity upgrades move the floor. A city
@@ -415,7 +416,8 @@ for TypeScript) rather than hand-writing request types.
   contact is lost, and starts or joins a battle on contact.
 - `ConquerSettlement(army_id, city_id) → {}` — must own the army and see the hostile or neutral
   settlement. The army routes to the cheapest traversable tile adjacent to its center, fights its
-  defenders there, then captures it after a 30-second uncontested hold.
+  defenders there, advances onto the center, then captures it after holding the center uncontested
+  for 30 seconds.
 - `RetreatArmy(army_id) → {}` — removes the army from its active battle and routes it to the
   nearest owned settlement.
 - `MergeArmies(target_army_id, source_army_id) → { army_id, entities(target_army,

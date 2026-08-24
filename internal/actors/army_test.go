@@ -306,6 +306,100 @@ func TestConquestDoesNotEngageSettlementMilitiaBeforeStagingDestination(t *testi
 	}
 }
 
+func TestConquestAdvancesFromStagingTileToCenterBeforeOccupation(t *testing.T) {
+	destinationX, destinationY := 0, 1
+	cityID := "target-city"
+	cluster := &armyOperationTestCluster{request: func(kind, _ string, message any) (any, error) {
+		switch kind {
+		case "tile":
+			return messages.GetTileResponseMessage{}, nil
+		case "city":
+			return &messages.GetCityResponseMessage{City: domain.City{CityID: cityID, StartX: 0, StartY: 0, Size: 3}}, nil
+		default:
+			return nil, errors.New("unexpected request")
+		}
+	}}
+	state := &armyActor{
+		baseActor: baseActor{
+			Cluster: cluster,
+			Store:   &armyOperationTestStore{},
+			World: movementTestWorld{grid: domain.TerrainGrid{
+				Width: 3, Height: 3,
+				Tiles: []domain.TerrainType{
+					domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland,
+					domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland,
+					domain.TerrainTypeGrassland, domain.TerrainTypeGrassland, domain.TerrainTypeGrassland,
+				},
+			}},
+		},
+		Army: domain.Army{
+			ArmyID: "attacker", Owner: "owner", X: destinationX, Y: destinationY,
+			OrderKind: domain.ArmyOrderConquer, TargetCityID: &cityID,
+			DestX: &destinationX, DestY: &destinationY,
+		},
+	}
+
+	state.finishAtDestination()
+
+	if state.Army.CaptureStart != nil {
+		t.Fatal("occupation started on the adjacent siege tile")
+	}
+	if state.Army.DestX == nil || state.Army.DestY == nil || *state.Army.DestX != 1 || *state.Army.DestY != 1 {
+		t.Fatalf("occupation destination = (%v, %v), want center (1, 1)", state.Army.DestX, state.Army.DestY)
+	}
+	if len(state.path) != 1 || state.path[0] != (domain.Coordinates{X: 1, Y: 1}) {
+		t.Fatalf("path into settlement = %v, want center tile", state.path)
+	}
+}
+
+func TestConquestStartsOccupationAtSettlementCenter(t *testing.T) {
+	centerX, centerY := 1, 1
+	cityID := "target-city"
+	cluster := &armyOperationTestCluster{request: func(kind, _ string, message any) (any, error) {
+		switch kind {
+		case "tile":
+			return messages.GetTileResponseMessage{}, nil
+		case "city":
+			return &messages.GetCityResponseMessage{City: domain.City{CityID: cityID, StartX: 0, StartY: 0, Size: 3}}, nil
+		default:
+			return nil, errors.New("unexpected request")
+		}
+	}}
+	state := &armyActor{
+		baseActor: baseActor{Cluster: cluster, Store: &armyOperationTestStore{}},
+		Army: domain.Army{
+			ArmyID: "attacker", Owner: "owner", X: centerX, Y: centerY,
+			OrderKind: domain.ArmyOrderConquer, TargetCityID: &cityID,
+			DestX: &centerX, DestY: &centerY,
+		},
+	}
+
+	state.finishAtDestination()
+
+	if state.Army.CaptureStart == nil {
+		t.Fatal("occupation did not start at the settlement center")
+	}
+}
+
+func TestOccupationStopsAwayFromSettlementCenter(t *testing.T) {
+	centerX, centerY := 1, 1
+	started := time.Now().Add(-constants.SettlementCaptureDuration)
+	state := &armyActor{
+		baseActor: baseActor{Store: &armyOperationTestStore{}},
+		Army: domain.Army{
+			ArmyID: "attacker", X: 0, Y: 1,
+			DestX: &centerX, DestY: &centerY, CaptureStart: &started,
+		},
+	}
+
+	if state.handleCapture() {
+		t.Fatal("occupation remained active away from the settlement center")
+	}
+	if state.Army.CaptureStart != nil {
+		t.Fatal("occupation timestamp was not cleared after leaving the center")
+	}
+}
+
 func TestSplitCompositionDetachesRequestedTroops(t *testing.T) {
 	remaining, detached, err := splitComposition(
 		map[domain.TroopType]int64{domain.TroopTypeSoldier: 10, domain.TroopTypeCavalry: 3},

@@ -559,6 +559,9 @@ func (state *armyActor) finishAtDestination() bool {
 		if state.engageSettlementDefender() {
 			return true
 		}
+		if state.moveToSettlementCenter() {
+			return true
+		}
 		if state.Army.CaptureStart == nil {
 			now := time.Now()
 			state.Army.CaptureStart = &now
@@ -579,6 +582,12 @@ func (state *armyActor) handleCapture() bool {
 	if state.Army.CaptureStart == nil {
 		return false
 	}
+	if state.Army.DestX == nil || state.Army.DestY == nil || state.Army.X != *state.Army.DestX || state.Army.Y != *state.Army.DestY {
+		state.Army.CaptureStart = nil
+		state.Store.EnqueueArmy(state.Army)
+		state.publish()
+		return false
+	}
 	if state.engageSettlementDefender() {
 		return true
 	}
@@ -594,6 +603,50 @@ func (state *armyActor) handleCapture() bool {
 	state.clearOrder()
 	state.Store.EnqueueArmy(state.Army)
 	state.updateUpkeepCity()
+	state.publish()
+	return true
+}
+
+// moveToSettlementCenter transitions a completed siege from its adjacent
+// staging tile into the settlement center. Occupation may begin only after the
+// army reaches that center tile.
+func (state *armyActor) moveToSettlementCenter() bool {
+	if state.Army.TargetCityID == nil {
+		return true
+	}
+	res, err := state.Cluster.Request("city", *state.Army.TargetCityID, messages.GetCityMessage{})
+	if err != nil {
+		slog.WarnContext(state.Ctx(), "failed to locate settlement center for occupation", "army_id", state.Army.ArmyID, "city_id", *state.Army.TargetCityID, "error", err)
+		return true
+	}
+	response, ok := res.(*messages.GetCityResponseMessage)
+	if !ok {
+		slog.WarnContext(state.Ctx(), "received invalid settlement response for occupation", "army_id", state.Army.ArmyID, "city_id", *state.Army.TargetCityID)
+		return true
+	}
+	center := domain.Coordinates{
+		X: response.City.StartX + response.City.Size/2,
+		Y: response.City.StartY + response.City.Size/2,
+	}
+	if state.Army.X == center.X && state.Army.Y == center.Y {
+		return false
+	}
+	path, reaches := domain.FindLandPath(
+		state.World.Terrain(),
+		domain.Coordinates{X: state.Army.X, Y: state.Army.Y},
+		center,
+	)
+	if !reaches || len(path) == 0 {
+		slog.WarnContext(state.Ctx(), "settlement center is unreachable after siege", "army_id", state.Army.ArmyID, "city_id", *state.Army.TargetCityID)
+		state.clearOrder()
+		state.Store.EnqueueArmy(state.Army)
+		state.publish()
+		return true
+	}
+	state.Army.CaptureStart = nil
+	state.setDestination(center.X, center.Y)
+	state.path = path
+	state.Store.EnqueueArmy(state.Army)
 	state.publish()
 	return true
 }
