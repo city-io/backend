@@ -19,6 +19,7 @@ type Army struct {
 	UpkeepCityID *string            `json:"upkeep_city_id"`
 	CreatedAt    pgtype.Timestamp   `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp   `json:"updated_at"`
+	Name         string             `json:"name"`
 }
 
 type Building struct {

@@ -42,6 +42,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, userID string) (User, error)
 	GetUserByIdentifier(ctx context.Context, email string) (User, error)
 	MarkMailboxMessageRead(ctx context.Context, arg MarkMailboxMessageReadParams) (MailboxMessage, error)
+	RenameArmy(ctx context.Context, arg RenameArmyParams) error
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserStats(ctx context.Context, arg UpdateUserStatsParams) error

@@ -55,6 +55,7 @@ func (state *battleActor) Receive(ctx actor.Context) {
 		state.publish()
 		ctx.Respond(messages.Ack{})
 	case messages.GetBattleMessage:
+		state.syncLiveSummary()
 		ctx.Respond(&messages.GetBattleResponseMessage{Battle: state.Battle})
 	case messages.RetreatFromBattleMessage:
 		state.markRetreated(msg.ArmyID)
@@ -120,6 +121,7 @@ func (state *battleActor) snapshotReportSide(side domain.BattleSide, armies map[
 func (state *battleActor) addArmyToReport(report *domain.BattleReportSide, army domain.Army) {
 	report.Armies = append(report.Armies, domain.BattleReportArmy{
 		ArmyID:          army.ArmyID,
+		Name:            army.Name,
 		OwnerID:         army.Owner,
 		StartingTroops:  cloneTroops(army.Troops),
 		SurvivingTroops: cloneTroops(army.Troops),
@@ -610,9 +612,73 @@ func (state *battleActor) endMilitiaBattle(cityID *string) {
 }
 
 func (state *battleActor) publish() {
+	state.syncLiveSummary()
 	battles.Upsert(state.Battle)
 	b := state.Battle
 	stream.Publish("", stream.StateUpdate{Battle: &b})
+}
+
+func (state *battleActor) syncLiveSummary() {
+	var attackerLast, defenderLast []domain.BattleReportLoss
+	var attackerCivilians, defenderCivilians int64
+	if len(state.reportRounds) > 0 {
+		last := state.reportRounds[len(state.reportRounds)-1]
+		attackerLast = last.AttackerLosses
+		defenderLast = last.DefenderLosses
+		attackerCivilians = last.AttackerCivilianCasualties
+		defenderCivilians = last.DefenderCivilianCasualties
+	}
+	syncLiveBattleSide(&state.Battle.Attackers, state.reportAttackers, attackerLast, attackerCivilians)
+	syncLiveBattleSide(&state.Battle.Defenders, state.reportDefenders, defenderLast, defenderCivilians)
+	state.Battle.CompletedRounds = len(state.reportRounds)
+}
+
+func syncLiveBattleSide(side *domain.BattleSide, report domain.BattleReportSide, last []domain.BattleReportLoss, lastCivilians int64) {
+	side.StartingTroops = make(map[domain.TroopType]int64)
+	side.SurvivingTroops = make(map[domain.TroopType]int64)
+	for _, army := range report.Armies {
+		for troopType, count := range army.StartingTroops {
+			side.StartingTroops[troopType] += count
+		}
+		for troopType, count := range army.SurvivingTroops {
+			side.SurvivingTroops[troopType] += count
+		}
+	}
+	side.StartingMilitia = report.StartingMilitia
+	side.CumulativeLosses = domain.BattleLossSummary{
+		Troops:    troopDifference(side.StartingTroops, side.SurvivingTroops),
+		Militia:   max(report.StartingMilitia-report.SurvivingMilitia, 0),
+		Civilians: reportCivilianCasualties(report),
+	}
+	side.LastRoundLosses = summarizeBattleLosses(last, lastCivilians)
+}
+
+func troopDifference(starting, surviving map[domain.TroopType]int64) map[domain.TroopType]int64 {
+	losses := make(map[domain.TroopType]int64)
+	for troopType, count := range starting {
+		if lost := max(count-surviving[troopType], 0); lost > 0 {
+			losses[troopType] = lost
+		}
+	}
+	return losses
+}
+
+func summarizeBattleLosses(losses []domain.BattleReportLoss, civilians int64) domain.BattleLossSummary {
+	summary := domain.BattleLossSummary{Troops: make(map[domain.TroopType]int64), Civilians: civilians}
+	for _, loss := range losses {
+		for troopType, count := range loss.Troops {
+			summary.Troops[troopType] += count
+		}
+		summary.Militia += loss.Militia
+	}
+	return summary
+}
+
+func reportCivilianCasualties(report domain.BattleReportSide) int64 {
+	if report.Settlement == nil {
+		return 0
+	}
+	return report.Settlement.CivilianCasualties
 }
 
 func (state *battleActor) armNextRound(ctx actor.Context) {

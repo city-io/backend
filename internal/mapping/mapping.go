@@ -372,6 +372,7 @@ func BuildingToProto(b domain.Building) *entityv1.Building {
 func ArmyToProto(a domain.Army) *entityv1.Army {
 	out := &entityv1.Army{
 		ArmyId:                ToArmyId(a.ArmyID),
+		Name:                  a.Name,
 		Owner:                 ToUserId(a.Owner),
 		Coords:                &entityv1.Coordinates{X: int32(a.X), Y: int32(a.Y)},
 		CompositionVisibility: entityv1.ArmyCompositionVisibility_ARMY_COMPOSITION_VISIBILITY_EXACT,
@@ -409,12 +410,13 @@ func HidePrivateArmyFields(a *entityv1.Army) {
 
 func BattleToProto(b domain.Battle, viewerID string) *entityv1.Battle {
 	out := &entityv1.Battle{
-		BattleId:   ToBattleId(b.BattleID),
-		TileId:     ToTileId(b.X, b.Y),
-		Attackers:  battleSideToProto(b.Attackers, containsString(b.Attackers.UserIDs, viewerID)),
-		Defenders:  battleSideToProto(b.Defenders, containsString(b.Defenders.UserIDs, viewerID)),
-		StartedAt:  timestamppb.New(b.StartedAt),
-		NextTickAt: timestamppb.New(b.NextTick),
+		BattleId:        ToBattleId(b.BattleID),
+		TileId:          ToTileId(b.X, b.Y),
+		Attackers:       battleSideToProto(b.Attackers, containsString(b.Attackers.UserIDs, viewerID)),
+		Defenders:       battleSideToProto(b.Defenders, containsString(b.Defenders.UserIDs, viewerID)),
+		StartedAt:       timestamppb.New(b.StartedAt),
+		NextTickAt:      timestamppb.New(b.NextTick),
+		CompletedRounds: int32(b.CompletedRounds),
 	}
 	return out
 }
@@ -423,7 +425,14 @@ func battleSideToProto(side domain.BattleSide, strengthVisible bool) *entityv1.B
 	out := &entityv1.BattleSide{StrengthVisible: strengthVisible}
 	if strengthVisible {
 		out.MilitiaCount = side.MilitiaCount
+		out.StartingTroops = troopCountsToProto(side.StartingTroops)
+		out.SurvivingTroops = troopCountsToProto(side.SurvivingTroops)
+		out.StartingMilitiaCount = side.StartingMilitia
 	}
+	// Casualties describe observable battle events, not undisclosed remaining
+	// strength, so both sides receive them.
+	out.CumulativeLosses = battleLossSummaryToProto(side.CumulativeLosses)
+	out.LastRoundLosses = battleLossSummaryToProto(side.LastRoundLosses)
 	for _, id := range side.UserIDs {
 		out.UserIds = append(out.UserIds, ToUserId(id))
 	}
@@ -434,6 +443,14 @@ func battleSideToProto(side domain.BattleSide, strengthVisible bool) *entityv1.B
 		out.MilitiaCityId = ToCityId(*side.MilitiaCityID)
 	}
 	return out
+}
+
+func battleLossSummaryToProto(summary domain.BattleLossSummary) *entityv1.BattleLossSummary {
+	return &entityv1.BattleLossSummary{
+		Troops:    troopCountsToProto(summary.Troops),
+		Militia:   summary.Militia,
+		Civilians: summary.Civilians,
+	}
 }
 
 func MailboxMessageToProto(message domain.MailboxMessage) *entityv1.MailboxMessage {
@@ -469,18 +486,18 @@ func battleReportToProto(report domain.BattleReport) *entityv1.BattleReport {
 	}
 	for _, round := range report.Rounds {
 		mapped := &entityv1.BattleReportRound{
-			Number:     int32(round.Number),
-			OccurredAt: timestamppb.New(round.OccurredAt),
+			Number:                     int32(round.Number),
+			OccurredAt:                 timestamppb.New(round.OccurredAt),
+			AttackerLosses:             battleReportLossesToProto(round.AttackerLosses),
+			DefenderLosses:             battleReportLossesToProto(round.DefenderLosses),
+			AttackerCivilianCasualties: round.AttackerCivilianCasualties,
+			DefenderCivilianCasualties: round.DefenderCivilianCasualties,
 		}
 		if attackersVisible {
 			mapped.AttackerPower = round.AttackerPower
-			mapped.AttackerLosses = battleReportLossesToProto(round.AttackerLosses)
-			mapped.AttackerCivilianCasualties = round.AttackerCivilianCasualties
 		}
 		if defendersVisible {
 			mapped.DefenderPower = round.DefenderPower
-			mapped.DefenderLosses = battleReportLossesToProto(round.DefenderLosses)
-			mapped.DefenderCivilianCasualties = round.DefenderCivilianCasualties
 		}
 		out.Rounds = append(out.Rounds, mapped)
 	}
@@ -504,6 +521,7 @@ func battleReportSideToProto(side domain.BattleReportSide, strengthVisible bool)
 	for _, army := range side.Armies {
 		mapped := &entityv1.BattleReportArmy{
 			ArmyId:    ToArmyId(army.ArmyID),
+			Name:      army.Name,
 			OwnerId:   ToUserId(army.OwnerID),
 			Retreated: army.Retreated,
 			Destroyed: army.Destroyed,
@@ -526,8 +544,8 @@ func battleReportSideToProto(side domain.BattleReportSide, strengthVisible bool)
 		if strengthVisible {
 			out.Settlement.StartingPopulation = side.Settlement.StartingPopulation
 			out.Settlement.EndingPopulation = side.Settlement.EndingPopulation
-			out.Settlement.CivilianCasualties = side.Settlement.CivilianCasualties
 		}
+		out.Settlement.CivilianCasualties = side.Settlement.CivilianCasualties
 		if side.Settlement.OwnerID != nil {
 			out.Settlement.OwnerId = ToUserId(*side.Settlement.OwnerID)
 		}

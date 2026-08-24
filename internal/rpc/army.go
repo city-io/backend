@@ -176,6 +176,28 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 	return connect.NewResponse(&servicev1.GetArmyResponse{ArmyId: mapping.ToArmyId(army.ArmyID), Entities: bag}), nil
 }
 
+func (h *armyHandler) RenameArmy(ctx context.Context, req *connect.Request[servicev1.RenameArmyRequest]) (*connect.Response[servicev1.RenameArmyResponse], error) {
+	armyID := req.Msg.GetArmyId().GetValue()
+	if _, err := h.requireArmyOwnership(ctx, armyID); err != nil {
+		return nil, err
+	}
+	army, err := services.RenameArmy(ctx, h.srv.cluster, armyID, req.Msg.GetName())
+	if err != nil {
+		var invalid *messages.InvalidArmyNameError
+		var taken *messages.ArmyNameTakenError
+		switch {
+		case errors.As(err, &invalid):
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		case errors.As(err, &taken):
+			return nil, connect.NewError(connect.CodeAlreadyExists, err)
+		default:
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+	bag := mapping.EntitiesToBag(nil, nil, nil, []domain.Army{*army})
+	return connect.NewResponse(&servicev1.RenameArmyResponse{ArmyId: mapping.ToArmyId(army.ArmyID), Entities: bag}), nil
+}
+
 func (h *armyHandler) AttackArmy(ctx context.Context, req *connect.Request[servicev1.AttackArmyRequest]) (*connect.Response[servicev1.AttackArmyResponse], error) {
 	armyID, targetID := req.Msg.GetArmyId().GetValue(), req.Msg.GetTargetArmyId().GetValue()
 	if armyID == targetID {

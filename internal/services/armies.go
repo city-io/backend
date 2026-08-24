@@ -70,6 +70,22 @@ func CancelTrainingOrder(ctx context.Context, cluster contracts.ClusterProvider,
 	}
 }
 
+func RenameArmy(ctx context.Context, cluster contracts.ClusterProvider, armyID, name string) (*domain.Army, error) {
+	res, err := cluster.Request("army", armyID, messages.RenameArmyMessage{Name: name})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to rename army", "army_id", armyID, "error", err)
+		return nil, err
+	}
+	switch response := res.(type) {
+	case *messages.RenameArmyResponseMessage:
+		return &response.Army, nil
+	case error:
+		return nil, response
+	default:
+		return nil, &messages.InvalidResponseTypeError{}
+	}
+}
+
 // MoveArmy sets an army's marching destination.
 func MoveArmy(ctx context.Context, cluster contracts.ClusterProvider, armyID string, x, y int) error {
 	res, err := cluster.Request("army", armyID, messages.MoveArmyMessage{X: x, Y: y})

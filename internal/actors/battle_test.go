@@ -32,8 +32,8 @@ func TestBattleCasualtyRateSpreadsLossAcrossRounds(t *testing.T) {
 	first, _ := state.casualties(targets, nil, 0, 150)
 	second, _ := state.casualties(targets, nil, 0, 150)
 
-	if first["defender"][domain.TroopTypeSoldier] != 0 || second["defender"][domain.TroopTypeSoldier] != 1 {
-		t.Fatalf("casualties by round = %v then %v, want 0 then 1", first, second)
+	if first["defender"][domain.TroopTypeSoldier] != 1 || second["defender"][domain.TroopTypeSoldier] != 1 {
+		t.Fatalf("casualties by round = %v then %v, want 1 then 1", first, second)
 	}
 }
 
@@ -145,5 +145,30 @@ func TestMilitaryCasualtyCountIncludesArmiesAndMilitia(t *testing.T) {
 	}
 	if got := militaryCasualtyCount(losses, 6); got != 15 {
 		t.Fatalf("military casualty count = %d, want 15", got)
+	}
+}
+
+func TestLiveBattleSummaryPreservesStrengthAndLosses(t *testing.T) {
+	report := domain.BattleReportSide{
+		StartingMilitia: 10, SurvivingMilitia: 7,
+		Armies: []domain.BattleReportArmy{{
+			StartingTroops:  map[domain.TroopType]int64{domain.TroopTypeSoldier: 12, domain.TroopTypeArcher: 8},
+			SurvivingTroops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 9, domain.TroopTypeArcher: 6},
+		}},
+		Settlement: &domain.BattleReportSettlement{CivilianCasualties: 2},
+	}
+	last := []domain.BattleReportLoss{{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 2}, Militia: 1}}
+	var side domain.BattleSide
+
+	syncLiveBattleSide(&side, report, last, 1)
+
+	if side.StartingTroops[domain.TroopTypeSoldier] != 12 || side.SurvivingTroops[domain.TroopTypeSoldier] != 9 {
+		t.Fatalf("live strength = %+v / %+v", side.StartingTroops, side.SurvivingTroops)
+	}
+	if side.CumulativeLosses.Troops[domain.TroopTypeSoldier] != 3 || side.CumulativeLosses.Troops[domain.TroopTypeArcher] != 2 || side.CumulativeLosses.Militia != 3 || side.CumulativeLosses.Civilians != 2 {
+		t.Fatalf("cumulative losses = %+v", side.CumulativeLosses)
+	}
+	if side.LastRoundLosses.Troops[domain.TroopTypeSoldier] != 2 || side.LastRoundLosses.Militia != 1 || side.LastRoundLosses.Civilians != 1 {
+		t.Fatalf("last round losses = %+v", side.LastRoundLosses)
 	}
 }

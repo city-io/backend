@@ -232,6 +232,7 @@ type BattleReportArmy struct {
 	SurvivingTroops []*TroopStack          `protobuf:"bytes,4,rep,name=surviving_troops,json=survivingTroops,proto3" json:"surviving_troops,omitempty"`
 	Retreated       bool                   `protobuf:"varint,5,opt,name=retreated,proto3" json:"retreated,omitempty"`
 	Destroyed       bool                   `protobuf:"varint,6,opt,name=destroyed,proto3" json:"destroyed,omitempty"`
+	Name            string                 `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -306,6 +307,13 @@ func (x *BattleReportArmy) GetDestroyed() bool {
 		return x.Destroyed
 	}
 	return false
+}
+
+func (x *BattleReportArmy) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
 }
 
 type BattleReportCommander struct {
@@ -461,8 +469,9 @@ type BattleReportSide struct {
 	SurvivingMilitia int64                    `protobuf:"varint,5,opt,name=surviving_militia,json=survivingMilitia,proto3" json:"surviving_militia,omitempty"`
 	Commanders       []*BattleReportCommander `protobuf:"bytes,6,rep,name=commanders,proto3" json:"commanders,omitempty"`
 	Settlement       *BattleReportSettlement  `protobuf:"bytes,7,opt,name=settlement,proto3,oneof" json:"settlement,omitempty"`
-	// Friendly strength is always exact. Opposing strength becomes exact only
-	// in a victory report.
+	// Friendly strength is always exact. Opposing starting and surviving
+	// strength becomes exact only in a victory report; casualties are visible
+	// regardless of outcome.
 	StrengthVisible bool `protobuf:"varint,8,opt,name=strength_visible,json=strengthVisible,proto3" json:"strength_visible,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -950,14 +959,15 @@ var File_cityio_entity_v1_mailbox_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_mailbox_proto_rawDesc = "" +
 	"\n" +
-	"\x1ecityio/entity/v1/mailbox.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc6\x02\n" +
+	"\x1ecityio/entity/v1/mailbox.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xda\x02\n" +
 	"\x10BattleReportArmy\x121\n" +
 	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x123\n" +
 	"\bowner_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.UserIdR\aownerId\x12E\n" +
 	"\x0fstarting_troops\x18\x03 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x0estartingTroops\x12G\n" +
 	"\x10surviving_troops\x18\x04 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x0fsurvivingTroops\x12\x1c\n" +
 	"\tretreated\x18\x05 \x01(\bR\tretreated\x12\x1c\n" +
-	"\tdestroyed\x18\x06 \x01(\bR\tdestroyed\"f\n" +
+	"\tdestroyed\x18\x06 \x01(\bR\tdestroyed\x12\x12\n" +
+	"\x04name\x18\a \x01(\tR\x04name\"f\n" +
 	"\x15BattleReportCommander\x121\n" +
 	"\auser_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.UserIdR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\"\xe5\x02\n" +

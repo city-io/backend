@@ -2,10 +2,13 @@ package contracts
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"cityio/internal/domain"
 )
+
+var ErrArmyNameTaken = errors.New("army name already exists")
 
 // Store is the persistence contract. Reads, creates and deletes hit the database
 // immediately; updates are coalesced per entity (latest-write-wins) and flushed
@@ -33,6 +36,7 @@ type Store interface {
 	CreateMailboxMessage(ctx context.Context, message domain.MailboxMessage) error
 	AssignTrainingOrder(ctx context.Context, orderID, barracksID string, startedAt, completesAt time.Time) error
 	MarkMailboxMessageRead(ctx context.Context, messageID, userID string) (*domain.MailboxMessage, error)
+	RenameArmy(ctx context.Context, armyID, owner, name string) error
 
 	DeleteUser(ctx context.Context, userID string) error
 	DeleteCity(ctx context.Context, cityID string) error

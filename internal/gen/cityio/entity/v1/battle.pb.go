@@ -22,6 +22,66 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type BattleLossSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Troops        []*TroopStack          `protobuf:"bytes,1,rep,name=troops,proto3" json:"troops,omitempty"`
+	Militia       int64                  `protobuf:"varint,2,opt,name=militia,proto3" json:"militia,omitempty"`
+	Civilians     int64                  `protobuf:"varint,3,opt,name=civilians,proto3" json:"civilians,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BattleLossSummary) Reset() {
+	*x = BattleLossSummary{}
+	mi := &file_cityio_entity_v1_battle_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BattleLossSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BattleLossSummary) ProtoMessage() {}
+
+func (x *BattleLossSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_entity_v1_battle_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BattleLossSummary.ProtoReflect.Descriptor instead.
+func (*BattleLossSummary) Descriptor() ([]byte, []int) {
+	return file_cityio_entity_v1_battle_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *BattleLossSummary) GetTroops() []*TroopStack {
+	if x != nil {
+		return x.Troops
+	}
+	return nil
+}
+
+func (x *BattleLossSummary) GetMilitia() int64 {
+	if x != nil {
+		return x.Militia
+	}
+	return 0
+}
+
+func (x *BattleLossSummary) GetCivilians() int64 {
+	if x != nil {
+		return x.Civilians
+	}
+	return 0
+}
+
 type BattleSide struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserIds       []*UserId              `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
@@ -29,14 +89,19 @@ type BattleSide struct {
 	MilitiaCityId *CityId                `protobuf:"bytes,3,opt,name=militia_city_id,json=militiaCityId,proto3,oneof" json:"militia_city_id,omitempty"`
 	MilitiaCount  int64                  `protobuf:"varint,4,opt,name=militia_count,json=militiaCount,proto3" json:"militia_count,omitempty"`
 	// Exact military strength is only disclosed to users on this side.
-	StrengthVisible bool `protobuf:"varint,5,opt,name=strength_visible,json=strengthVisible,proto3" json:"strength_visible,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	StrengthVisible      bool               `protobuf:"varint,5,opt,name=strength_visible,json=strengthVisible,proto3" json:"strength_visible,omitempty"`
+	StartingTroops       []*TroopStack      `protobuf:"bytes,6,rep,name=starting_troops,json=startingTroops,proto3" json:"starting_troops,omitempty"`
+	SurvivingTroops      []*TroopStack      `protobuf:"bytes,7,rep,name=surviving_troops,json=survivingTroops,proto3" json:"surviving_troops,omitempty"`
+	StartingMilitiaCount int64              `protobuf:"varint,8,opt,name=starting_militia_count,json=startingMilitiaCount,proto3" json:"starting_militia_count,omitempty"`
+	CumulativeLosses     *BattleLossSummary `protobuf:"bytes,9,opt,name=cumulative_losses,json=cumulativeLosses,proto3" json:"cumulative_losses,omitempty"`
+	LastRoundLosses      *BattleLossSummary `protobuf:"bytes,10,opt,name=last_round_losses,json=lastRoundLosses,proto3" json:"last_round_losses,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *BattleSide) Reset() {
 	*x = BattleSide{}
-	mi := &file_cityio_entity_v1_battle_proto_msgTypes[0]
+	mi := &file_cityio_entity_v1_battle_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -48,7 +113,7 @@ func (x *BattleSide) String() string {
 func (*BattleSide) ProtoMessage() {}
 
 func (x *BattleSide) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_battle_proto_msgTypes[0]
+	mi := &file_cityio_entity_v1_battle_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +126,7 @@ func (x *BattleSide) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BattleSide.ProtoReflect.Descriptor instead.
 func (*BattleSide) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_battle_proto_rawDescGZIP(), []int{0}
+	return file_cityio_entity_v1_battle_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *BattleSide) GetUserIds() []*UserId {
@@ -99,24 +164,60 @@ func (x *BattleSide) GetStrengthVisible() bool {
 	return false
 }
 
+func (x *BattleSide) GetStartingTroops() []*TroopStack {
+	if x != nil {
+		return x.StartingTroops
+	}
+	return nil
+}
+
+func (x *BattleSide) GetSurvivingTroops() []*TroopStack {
+	if x != nil {
+		return x.SurvivingTroops
+	}
+	return nil
+}
+
+func (x *BattleSide) GetStartingMilitiaCount() int64 {
+	if x != nil {
+		return x.StartingMilitiaCount
+	}
+	return 0
+}
+
+func (x *BattleSide) GetCumulativeLosses() *BattleLossSummary {
+	if x != nil {
+		return x.CumulativeLosses
+	}
+	return nil
+}
+
+func (x *BattleSide) GetLastRoundLosses() *BattleLossSummary {
+	if x != nil {
+		return x.LastRoundLosses
+	}
+	return nil
+}
+
 // Battle exists only while combat is active. Each side can contain armies
 // owned by multiple users so alliances can join a side later without a schema
 // change.
 type Battle struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BattleId      *BattleId              `protobuf:"bytes,1,opt,name=battle_id,json=battleId,proto3" json:"battle_id,omitempty"`
-	TileId        *TileId                `protobuf:"bytes,2,opt,name=tile_id,json=tileId,proto3" json:"tile_id,omitempty"`
-	Attackers     *BattleSide            `protobuf:"bytes,3,opt,name=attackers,proto3" json:"attackers,omitempty"`
-	Defenders     *BattleSide            `protobuf:"bytes,4,opt,name=defenders,proto3" json:"defenders,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	NextTickAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=next_tick_at,json=nextTickAt,proto3" json:"next_tick_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	BattleId        *BattleId              `protobuf:"bytes,1,opt,name=battle_id,json=battleId,proto3" json:"battle_id,omitempty"`
+	TileId          *TileId                `protobuf:"bytes,2,opt,name=tile_id,json=tileId,proto3" json:"tile_id,omitempty"`
+	Attackers       *BattleSide            `protobuf:"bytes,3,opt,name=attackers,proto3" json:"attackers,omitempty"`
+	Defenders       *BattleSide            `protobuf:"bytes,4,opt,name=defenders,proto3" json:"defenders,omitempty"`
+	StartedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	NextTickAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=next_tick_at,json=nextTickAt,proto3" json:"next_tick_at,omitempty"`
+	CompletedRounds int32                  `protobuf:"varint,7,opt,name=completed_rounds,json=completedRounds,proto3" json:"completed_rounds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Battle) Reset() {
 	*x = Battle{}
-	mi := &file_cityio_entity_v1_battle_proto_msgTypes[1]
+	mi := &file_cityio_entity_v1_battle_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -128,7 +229,7 @@ func (x *Battle) String() string {
 func (*Battle) ProtoMessage() {}
 
 func (x *Battle) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_entity_v1_battle_proto_msgTypes[1]
+	mi := &file_cityio_entity_v1_battle_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -141,7 +242,7 @@ func (x *Battle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Battle.ProtoReflect.Descriptor instead.
 func (*Battle) Descriptor() ([]byte, []int) {
-	return file_cityio_entity_v1_battle_proto_rawDescGZIP(), []int{1}
+	return file_cityio_entity_v1_battle_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Battle) GetBattleId() *BattleId {
@@ -186,19 +287,36 @@ func (x *Battle) GetNextTickAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Battle) GetCompletedRounds() int32 {
+	if x != nil {
+		return x.CompletedRounds
+	}
+	return 0
+}
+
 var File_cityio_entity_v1_battle_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_battle_proto_rawDesc = "" +
 	"\n" +
-	"\x1dcityio/entity/v1/battle.proto\x12\x10cityio.entity.v1\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa1\x02\n" +
+	"\x1dcityio/entity/v1/battle.proto\x12\x10cityio.entity.v1\x1a\x1bcityio/entity/v1/army.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x01\n" +
+	"\x11BattleLossSummary\x124\n" +
+	"\x06troops\x18\x01 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x06troops\x12\x18\n" +
+	"\amilitia\x18\x02 \x01(\x03R\amilitia\x12\x1c\n" +
+	"\tcivilians\x18\x03 \x01(\x03R\tcivilians\"\x8a\x05\n" +
 	"\n" +
 	"BattleSide\x123\n" +
 	"\buser_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.UserIdR\auserIds\x123\n" +
 	"\barmy_ids\x18\x02 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x12E\n" +
 	"\x0fmilitia_city_id\x18\x03 \x01(\v2\x18.cityio.entity.v1.CityIdH\x00R\rmilitiaCityId\x88\x01\x01\x12#\n" +
 	"\rmilitia_count\x18\x04 \x01(\x03R\fmilitiaCount\x12)\n" +
-	"\x10strength_visible\x18\x05 \x01(\bR\x0fstrengthVisibleB\x12\n" +
-	"\x10_militia_city_id\"\xe5\x02\n" +
+	"\x10strength_visible\x18\x05 \x01(\bR\x0fstrengthVisible\x12E\n" +
+	"\x0fstarting_troops\x18\x06 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x0estartingTroops\x12G\n" +
+	"\x10surviving_troops\x18\a \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x0fsurvivingTroops\x124\n" +
+	"\x16starting_militia_count\x18\b \x01(\x03R\x14startingMilitiaCount\x12P\n" +
+	"\x11cumulative_losses\x18\t \x01(\v2#.cityio.entity.v1.BattleLossSummaryR\x10cumulativeLosses\x12O\n" +
+	"\x11last_round_losses\x18\n" +
+	" \x01(\v2#.cityio.entity.v1.BattleLossSummaryR\x0flastRoundLossesB\x12\n" +
+	"\x10_militia_city_id\"\x90\x03\n" +
 	"\x06Battle\x127\n" +
 	"\tbattle_id\x18\x01 \x01(\v2\x1a.cityio.entity.v1.BattleIdR\bbattleId\x121\n" +
 	"\atile_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.TileIdR\x06tileId\x12:\n" +
@@ -207,7 +325,8 @@ const file_cityio_entity_v1_battle_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12<\n" +
 	"\fnext_tick_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"nextTickAtB\xb4\x01\n" +
+	"nextTickAt\x12)\n" +
+	"\x10completed_rounds\x18\a \x01(\x05R\x0fcompletedRoundsB\xb4\x01\n" +
 	"\x14com.cityio.entity.v1B\vBattleProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -222,32 +341,39 @@ func file_cityio_entity_v1_battle_proto_rawDescGZIP() []byte {
 	return file_cityio_entity_v1_battle_proto_rawDescData
 }
 
-var file_cityio_entity_v1_battle_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_cityio_entity_v1_battle_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_cityio_entity_v1_battle_proto_goTypes = []any{
-	(*BattleSide)(nil),            // 0: cityio.entity.v1.BattleSide
-	(*Battle)(nil),                // 1: cityio.entity.v1.Battle
-	(*UserId)(nil),                // 2: cityio.entity.v1.UserId
-	(*ArmyId)(nil),                // 3: cityio.entity.v1.ArmyId
-	(*CityId)(nil),                // 4: cityio.entity.v1.CityId
-	(*BattleId)(nil),              // 5: cityio.entity.v1.BattleId
-	(*TileId)(nil),                // 6: cityio.entity.v1.TileId
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*BattleLossSummary)(nil),     // 0: cityio.entity.v1.BattleLossSummary
+	(*BattleSide)(nil),            // 1: cityio.entity.v1.BattleSide
+	(*Battle)(nil),                // 2: cityio.entity.v1.Battle
+	(*TroopStack)(nil),            // 3: cityio.entity.v1.TroopStack
+	(*UserId)(nil),                // 4: cityio.entity.v1.UserId
+	(*ArmyId)(nil),                // 5: cityio.entity.v1.ArmyId
+	(*CityId)(nil),                // 6: cityio.entity.v1.CityId
+	(*BattleId)(nil),              // 7: cityio.entity.v1.BattleId
+	(*TileId)(nil),                // 8: cityio.entity.v1.TileId
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
 }
 var file_cityio_entity_v1_battle_proto_depIdxs = []int32{
-	2, // 0: cityio.entity.v1.BattleSide.user_ids:type_name -> cityio.entity.v1.UserId
-	3, // 1: cityio.entity.v1.BattleSide.army_ids:type_name -> cityio.entity.v1.ArmyId
-	4, // 2: cityio.entity.v1.BattleSide.militia_city_id:type_name -> cityio.entity.v1.CityId
-	5, // 3: cityio.entity.v1.Battle.battle_id:type_name -> cityio.entity.v1.BattleId
-	6, // 4: cityio.entity.v1.Battle.tile_id:type_name -> cityio.entity.v1.TileId
-	0, // 5: cityio.entity.v1.Battle.attackers:type_name -> cityio.entity.v1.BattleSide
-	0, // 6: cityio.entity.v1.Battle.defenders:type_name -> cityio.entity.v1.BattleSide
-	7, // 7: cityio.entity.v1.Battle.started_at:type_name -> google.protobuf.Timestamp
-	7, // 8: cityio.entity.v1.Battle.next_tick_at:type_name -> google.protobuf.Timestamp
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	3,  // 0: cityio.entity.v1.BattleLossSummary.troops:type_name -> cityio.entity.v1.TroopStack
+	4,  // 1: cityio.entity.v1.BattleSide.user_ids:type_name -> cityio.entity.v1.UserId
+	5,  // 2: cityio.entity.v1.BattleSide.army_ids:type_name -> cityio.entity.v1.ArmyId
+	6,  // 3: cityio.entity.v1.BattleSide.militia_city_id:type_name -> cityio.entity.v1.CityId
+	3,  // 4: cityio.entity.v1.BattleSide.starting_troops:type_name -> cityio.entity.v1.TroopStack
+	3,  // 5: cityio.entity.v1.BattleSide.surviving_troops:type_name -> cityio.entity.v1.TroopStack
+	0,  // 6: cityio.entity.v1.BattleSide.cumulative_losses:type_name -> cityio.entity.v1.BattleLossSummary
+	0,  // 7: cityio.entity.v1.BattleSide.last_round_losses:type_name -> cityio.entity.v1.BattleLossSummary
+	7,  // 8: cityio.entity.v1.Battle.battle_id:type_name -> cityio.entity.v1.BattleId
+	8,  // 9: cityio.entity.v1.Battle.tile_id:type_name -> cityio.entity.v1.TileId
+	1,  // 10: cityio.entity.v1.Battle.attackers:type_name -> cityio.entity.v1.BattleSide
+	1,  // 11: cityio.entity.v1.Battle.defenders:type_name -> cityio.entity.v1.BattleSide
+	9,  // 12: cityio.entity.v1.Battle.started_at:type_name -> google.protobuf.Timestamp
+	9,  // 13: cityio.entity.v1.Battle.next_tick_at:type_name -> google.protobuf.Timestamp
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_battle_proto_init() }
@@ -255,15 +381,16 @@ func file_cityio_entity_v1_battle_proto_init() {
 	if File_cityio_entity_v1_battle_proto != nil {
 		return
 	}
+	file_cityio_entity_v1_army_proto_init()
 	file_cityio_entity_v1_ids_proto_init()
-	file_cityio_entity_v1_battle_proto_msgTypes[0].OneofWrappers = []any{}
+	file_cityio_entity_v1_battle_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_entity_v1_battle_proto_rawDesc), len(file_cityio_entity_v1_battle_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

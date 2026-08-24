@@ -21,6 +21,9 @@ type GetArmyResponseMessage struct {
 	Army domain.Army
 }
 
+type RenameArmyMessage struct{ Name string }
+type RenameArmyResponseMessage struct{ Army domain.Army }
+
 // MoveArmyMessage sets an army's marching destination. The army steps one tile
 // toward it each movement tick until it arrives.
 type MoveArmyMessage struct {
@@ -202,6 +205,16 @@ func (e *InvalidTroopCountError) Error() string {
 
 type ArmyNotFoundError struct {
 	ArmyID string
+}
+
+type InvalidArmyNameError struct{ Reason string }
+
+func (e *InvalidArmyNameError) Error() string { return fmt.Sprintf("invalid army name: %s", e.Reason) }
+
+type ArmyNameTakenError struct{ Name string }
+
+func (e *ArmyNameTakenError) Error() string {
+	return fmt.Sprintf("army name already exists: %s", e.Name)
 }
 
 type UnreachableDestinationError struct {

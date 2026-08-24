@@ -97,7 +97,11 @@ func TestBattleProjectionHidesOpposingMilitiaStrength(t *testing.T) {
 	cityID := "town"
 	battle := domain.Battle{
 		Attackers: domain.BattleSide{UserIDs: []string{"attacker"}},
-		Defenders: domain.BattleSide{UserIDs: []string{"defender"}, MilitiaCityID: &cityID, MilitiaCount: 25},
+		Defenders: domain.BattleSide{
+			UserIDs: []string{"defender"}, MilitiaCityID: &cityID, MilitiaCount: 25,
+			StartingTroops:   map[domain.TroopType]int64{domain.TroopTypeSoldier: 40},
+			CumulativeLosses: domain.BattleLossSummary{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 6}, Militia: 3, Civilians: 1},
+		},
 	}
 
 	mapped := BattleToProto(battle, "attacker")
@@ -107,6 +111,9 @@ func TestBattleProjectionHidesOpposingMilitiaStrength(t *testing.T) {
 	}
 	if mapped.GetDefenders().GetStrengthVisible() || mapped.GetDefenders().GetMilitiaCount() != 0 {
 		t.Fatalf("opposing militia strength was exposed: %+v", mapped.GetDefenders())
+	}
+	if len(mapped.GetDefenders().GetStartingTroops()) != 0 || mapped.GetDefenders().GetCumulativeLosses().GetTroops()[0].GetCount() != 6 || mapped.GetDefenders().GetCumulativeLosses().GetMilitia() != 3 || mapped.GetDefenders().GetCumulativeLosses().GetCivilians() != 1 {
+		t.Fatalf("opposing casualties were hidden or strength was exposed: %+v", mapped.GetDefenders())
 	}
 }
 
@@ -127,8 +134,8 @@ func TestDefeatReportHidesOpposingCounts(t *testing.T) {
 	if report.GetDefenders().GetStrengthVisible() || report.GetDefenders().GetStartingMilitia() != 0 || len(report.GetDefenders().GetArmies()[0].GetStartingTroops()) != 0 {
 		t.Fatalf("opposing report strength was exposed: %+v", report.GetDefenders())
 	}
-	if report.GetRounds()[0].GetDefenderPower() != 0 || len(report.GetRounds()[0].GetDefenderLosses()) != 0 || report.GetDefenders().GetSettlement().GetCivilianCasualties() != 0 {
-		t.Fatalf("opposing count-derived report detail was exposed: %+v", report)
+	if report.GetRounds()[0].GetDefenderPower() != 0 || report.GetRounds()[0].GetDefenderLosses()[0].GetMilitia() != 8 || report.GetRounds()[0].GetDefenderCivilianCasualties() != 5 || report.GetDefenders().GetSettlement().GetCivilianCasualties() != 5 {
+		t.Fatalf("opposing casualties were hidden or power was exposed: %+v", report)
 	}
 }
 

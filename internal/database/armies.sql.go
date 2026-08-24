@@ -12,6 +12,7 @@ import (
 const batchCreateArmies = `-- name: BatchCreateArmies :exec
 INSERT INTO armies (
     army_id,
+    name,
     owner,
     coords,
     troops,
@@ -21,6 +22,7 @@ INSERT INTO armies (
 )
 SELECT
     v.army_id,
+    v.name,
     v.owner,
     ROW(v.x, v.y)::coordinates,
     v.troops::jsonb,
@@ -30,18 +32,20 @@ SELECT
 FROM (
     SELECT
         UNNEST($1::text[])        AS army_id,
-        UNNEST($2::text[])          AS owner,
-        UNNEST($3::int[])               AS x,
-        UNNEST($4::int[])               AS y,
-        UNNEST($5::text[])     AS troops,
-        UNNEST($6::int[])          AS dest_x,
-        UNNEST($7::int[])          AS dest_y,
-        UNNEST($8::text[]) AS upkeep_city_id
+        UNNEST($2::text[])           AS name,
+        UNNEST($3::text[])          AS owner,
+        UNNEST($4::int[])               AS x,
+        UNNEST($5::int[])               AS y,
+        UNNEST($6::text[])     AS troops,
+        UNNEST($7::int[])          AS dest_x,
+        UNNEST($8::int[])          AS dest_y,
+        UNNEST($9::text[]) AS upkeep_city_id
 ) AS v
 `
 
 type BatchCreateArmiesParams struct {
 	ArmyIds       []string `json:"army_ids"`
+	Names         []string `json:"names"`
 	Owners        []string `json:"owners"`
 	Xs            []int32  `json:"xs"`
 	Ys            []int32  `json:"ys"`
@@ -54,6 +58,7 @@ type BatchCreateArmiesParams struct {
 func (q *Queries) BatchCreateArmies(ctx context.Context, arg BatchCreateArmiesParams) error {
 	_, err := q.db.Exec(ctx, batchCreateArmies,
 		arg.ArmyIds,
+		arg.Names,
 		arg.Owners,
 		arg.Xs,
 		arg.Ys,
@@ -68,6 +73,7 @@ func (q *Queries) BatchCreateArmies(ctx context.Context, arg BatchCreateArmiesPa
 const batchUpdateArmies = `-- name: BatchUpdateArmies :exec
 UPDATE armies AS a
 SET
+    name           = v.name,
     owner          = v.owner,
     coords         = ROW(v.x, v.y)::coordinates,
     troops         = v.troops::jsonb,
@@ -77,19 +83,21 @@ SET
 FROM (
     SELECT
         UNNEST($1::text[])        AS army_id,
-        UNNEST($2::text[])          AS owner,
-        UNNEST($3::int[])               AS x,
-        UNNEST($4::int[])               AS y,
-        UNNEST($5::text[])     AS troops,
-        UNNEST($6::int[])          AS dest_x,
-        UNNEST($7::int[])          AS dest_y,
-        UNNEST($8::text[]) AS upkeep_city_id
+        UNNEST($2::text[])           AS name,
+        UNNEST($3::text[])          AS owner,
+        UNNEST($4::int[])               AS x,
+        UNNEST($5::int[])               AS y,
+        UNNEST($6::text[])     AS troops,
+        UNNEST($7::int[])          AS dest_x,
+        UNNEST($8::int[])          AS dest_y,
+        UNNEST($9::text[]) AS upkeep_city_id
 ) AS v
 WHERE a.army_id = v.army_id
 `
 
 type BatchUpdateArmiesParams struct {
 	ArmyIds       []string `json:"army_ids"`
+	Names         []string `json:"names"`
 	Owners        []string `json:"owners"`
 	Xs            []int32  `json:"xs"`
 	Ys            []int32  `json:"ys"`
@@ -102,6 +110,7 @@ type BatchUpdateArmiesParams struct {
 func (q *Queries) BatchUpdateArmies(ctx context.Context, arg BatchUpdateArmiesParams) error {
 	_, err := q.db.Exec(ctx, batchUpdateArmies,
 		arg.ArmyIds,
+		arg.Names,
 		arg.Owners,
 		arg.Xs,
 		arg.Ys,
@@ -116,6 +125,7 @@ func (q *Queries) BatchUpdateArmies(ctx context.Context, arg BatchUpdateArmiesPa
 const createArmy = `-- name: CreateArmy :exec
 INSERT INTO armies (
     army_id,
+    name,
     owner,
     coords,
     troops,
@@ -126,17 +136,19 @@ INSERT INTO armies (
 VALUES (
     $1,
     $2,
-    ROW($3::int4, $4::int4)::coordinates,
-    $5,
+    $3,
+    ROW($4::int4, $5::int4)::coordinates,
     $6,
     $7,
-    $8
+    $8,
+    $9
 )
 ON CONFLICT (army_id) DO NOTHING
 `
 
 type CreateArmyParams struct {
 	ArmyID       string  `json:"army_id"`
+	Name         string  `json:"name"`
 	Owner        string  `json:"owner"`
 	X            int32   `json:"x"`
 	Y            int32   `json:"y"`
@@ -149,6 +161,7 @@ type CreateArmyParams struct {
 func (q *Queries) CreateArmy(ctx context.Context, arg CreateArmyParams) error {
 	_, err := q.db.Exec(ctx, createArmy,
 		arg.ArmyID,
+		arg.Name,
 		arg.Owner,
 		arg.X,
 		arg.Y,
@@ -173,6 +186,7 @@ func (q *Queries) DeleteArmy(ctx context.Context, armyID string) error {
 const getAllArmies = `-- name: GetAllArmies :many
 SELECT
     army_id,
+    name,
     owner,
     (coords).x::int4 AS x,
     (coords).y::int4 AS y,
@@ -185,6 +199,7 @@ FROM armies
 
 type GetAllArmiesRow struct {
 	ArmyID       string  `json:"army_id"`
+	Name         string  `json:"name"`
 	Owner        string  `json:"owner"`
 	X            int32   `json:"x"`
 	Y            int32   `json:"y"`
@@ -205,6 +220,7 @@ func (q *Queries) GetAllArmies(ctx context.Context) ([]GetAllArmiesRow, error) {
 		var i GetAllArmiesRow
 		if err := rows.Scan(
 			&i.ArmyID,
+			&i.Name,
 			&i.Owner,
 			&i.X,
 			&i.Y,
@@ -221,4 +237,22 @@ func (q *Queries) GetAllArmies(ctx context.Context) ([]GetAllArmiesRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const renameArmy = `-- name: RenameArmy :exec
+UPDATE armies
+SET name = $1, updated_at = NOW()
+WHERE army_id = $2
+  AND owner = $3
+`
+
+type RenameArmyParams struct {
+	Name   string `json:"name"`
+	ArmyID string `json:"army_id"`
+	Owner  string `json:"owner"`
+}
+
+func (q *Queries) RenameArmy(ctx context.Context, arg RenameArmyParams) error {
+	_, err := q.db.Exec(ctx, renameArmy, arg.Name, arg.ArmyID, arg.Owner)
+	return err
 }

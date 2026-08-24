@@ -195,7 +195,7 @@ the "Client / frontend API reference" section below.
     five seconds, re-arming only after the previous round finishes so delayed actor work cannot
     produce catch-up rounds. Both sides' damage uses the pre-round composition, so casualties are
     simultaneous. Attack, defense, and HP determine fractional expected losses, scaled by
-    `BattleCasualtyRate`; battle-local carry converts them into deterministic whole-unit deaths
+    `BattleCasualtyRate` (currently 1.0); battle-local carry converts them into deterministic whole-unit deaths
     over time. There is no persistent army/unit health or wounded state. A zero-unit army is
     deleted. A side can contain multiple users: additional attackers targeting a participant join
     the opposing side, leaving formal alliance policy for the future diplomacy layer.
@@ -203,8 +203,9 @@ the "Client / frontend API reference" section below.
     militia from the cheapest traversable tile adjacent (including diagonally) to the center, then
     must hold that staging tile uncontested for 30 seconds. Settlement militia cannot engage the
     conqueror before it reaches that destination. Militia casualties reduce both militia and total
-    population; siege rounds can also inflict lower-rate civilian casualties. Completion transfers
-    the existing settlement and its buildings to the attacker.
+    population. Siege civilian losses equal 15% of that side's actual army and militia casualties,
+    with fractional carry, and cannot reduce survivors below 30% of the normal 55% core allocation.
+    Completion transfers the existing settlement and its buildings to the attacker.
   - **Population transfer:** 55% of the city's peak resident population is a protected civilian
     core. The persisted peak does not fall after recruitment/casualties and does not jump when
     housing is added, so neither repeated training nor capacity upgrades move the floor. A city
@@ -307,23 +308,25 @@ for TypeScript) rather than hand-writing request types.
   population_growth_before_tax`. See `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
-- **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
+- **Army** `{ army_id, name, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
   composition is exact for the owner and explicitly hidden from unauthorized viewers; private
-  order/battle references are removed from sanitized foreign armies.
+  order/battle references are removed from sanitized foreign armies. Names are public and unique
+  case-insensitively per owner; new armies default to `Army <8-character UUID prefix>`.
 - **ArmyOrder** `{ army_order_id, army_id, move|attack_army|conquer_settlement|retreat,
   remaining_route{known_steps[], hidden_segment_end?}, estimated_remaining_duration? }` —
   ephemeral owner-projected active state. Known steps are exact explored geometry; the optional
   endpoint marks an undisclosed connector rather than another exact step. Completion,
   cancellation, failure, or replacement produces a tombstone; there are no terminal status/reason
   records.
-- **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
+- **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at, completed_rounds }` — ephemeral
   active combat. Both sides contain repeated user and army IDs so future allies can share a side;
-  a side may additionally contain settlement militia. `strength_visible` is viewer-specific;
-  opposing militia counts remain zero/hidden during combat.
+  a side may additionally contain settlement militia. `strength_visible` is viewer-specific and
+  gates starting/surviving troop and militia totals. Cumulative and last-round troop, militia, and
+  civilian casualties are disclosed for both sides during combat.
 - **MailboxMessage/BattleReport** — durable recipient-owned combat history. A report always
-  exposes the recipient's side exactly. Opposing troop, militia, population, power, and casualty
-  counts are concealed unless the recipient won; victory reports disclose both sides. Siege
-  reports include per-round and total civilian casualties when that side is disclosed.
+  exposes the recipient's side exactly. Opposing starting/surviving troop, militia, population,
+  and combat-power totals are concealed unless the recipient won; victory reports disclose both
+  sides. Per-round troop, militia, and civilian casualties are disclosed regardless of outcome.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -391,6 +394,9 @@ for TypeScript) rather than hand-writing request types.
   fully refunds its reserved gold and residents. Active orders return `FailedPrecondition`.
 - `GetArmy(army_id) → { army_id, entities(army, army_order?, battle?) }` — owner always; others
   need vision and receive sanitized private state.
+- `RenameArmy(army_id, name) → { army_id, entities(army) }` — owner-only. Names are trimmed,
+  required, limited to 32 characters, reject control characters, and must be case-insensitively
+  unique among that owner's armies. Successful renames stream immediately.
 - `PreviewArmyRoute(army_id, destination) → { route, estimated_duration }` —
   owner-only backend route preview. The UI derives whether the requested destination is reached
   by comparing it with the end of `route`. Unknown tiles are assumed to be ordinary land without
