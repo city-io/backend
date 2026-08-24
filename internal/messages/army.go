@@ -42,11 +42,12 @@ type ApplyCasualtiesResponseMessage struct {
 
 type CreateBattleMessage struct {
 	Battle domain.Battle
+	Armies []domain.Army
 }
 type JoinBattleMessage struct {
-	ArmyID        string
-	Owner         string
-	OpposesArmyID string
+	Army                 domain.Army
+	OpposesArmyID        string
+	OpposesMilitiaCityID string
 }
 
 type GetBattleMessage struct{}
@@ -57,6 +58,10 @@ type RetreatFromBattleMessage struct{ ArmyID string }
 // recipient of this message). Both must share an owner and a tile.
 type MergeArmiesMessage struct {
 	SourceArmyID string
+}
+type MergeArmiesResponseMessage struct {
+	Army          domain.Army
+	DeletedArmyID string
 }
 
 type SplitArmyMessage struct {
@@ -91,16 +96,16 @@ type GetTrainingOrdersResponseMessage struct {
 	Orders []domain.TrainingOrder
 }
 
-// ReserveMilitaryPopulationMessage asks a city to reserve Count of its
-// population as military. The city acks if it stays within the military cap,
-// otherwise replies InsufficientPopulationError.
-type ReserveMilitaryPopulationMessage struct {
+// RecruitPopulationMessage transfers Count residents out of a city and into a
+// durable training order. It rejects requests that would cross the protected
+// civilian floor plus the city's configured militia target.
+type RecruitPopulationMessage struct {
 	Count int64
 }
 
-// ReleaseMilitaryPopulationMessage returns a previously reserved military
-// population to the civilian pool (used to roll back a failed training order).
-type ReleaseMilitaryPopulationMessage struct {
+// ReturnRecruitsMessage restores residents when creation of their paid training
+// order fails. It is a rollback path, not a casualty/disband mechanism.
+type ReturnRecruitsMessage struct {
 	Count int64
 }
 

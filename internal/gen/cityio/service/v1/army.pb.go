@@ -906,6 +906,9 @@ func (x *MergeArmiesRequest) GetSourceArmyId() *v1.ArmyId {
 
 type MergeArmiesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	ArmyId        *v1.ArmyId             `protobuf:"bytes,1,opt,name=army_id,json=armyId,proto3" json:"army_id,omitempty"`
+	Entities      *v1.EntityBag          `protobuf:"bytes,2,opt,name=entities,proto3" json:"entities,omitempty"`
+	Deleted       *v1.EntityIdBag        `protobuf:"bytes,3,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -938,6 +941,27 @@ func (x *MergeArmiesResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MergeArmiesResponse.ProtoReflect.Descriptor instead.
 func (*MergeArmiesResponse) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *MergeArmiesResponse) GetArmyId() *v1.ArmyId {
+	if x != nil {
+		return x.ArmyId
+	}
+	return nil
+}
+
+func (x *MergeArmiesResponse) GetEntities() *v1.EntityBag {
+	if x != nil {
+		return x.Entities
+	}
+	return nil
+}
+
+func (x *MergeArmiesResponse) GetDeleted() *v1.EntityIdBag {
+	if x != nil {
+		return x.Deleted
+	}
+	return nil
 }
 
 type SplitArmyRequest struct {
@@ -1189,8 +1213,11 @@ const file_cityio_service_v1_army_proto_rawDesc = "" +
 	"\x12estimated_duration\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x11estimatedDuration\"\x94\x01\n" +
 	"\x12MergeArmiesRequest\x12>\n" +
 	"\x0etarget_army_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\ftargetArmyId\x12>\n" +
-	"\x0esource_army_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\fsourceArmyId\"\x15\n" +
-	"\x13MergeArmiesResponse\"{\n" +
+	"\x0esource_army_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\fsourceArmyId\"\xba\x01\n" +
+	"\x13MergeArmiesResponse\x121\n" +
+	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x127\n" +
+	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\x127\n" +
+	"\adeleted\x18\x03 \x01(\v2\x1d.cityio.entity.v1.EntityIdBagR\adeleted\"{\n" +
 	"\x10SplitArmyRequest\x121\n" +
 	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x124\n" +
 	"\x06troops\x18\x02 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x06troops\"\x7f\n" +
@@ -1264,7 +1291,8 @@ var file_cityio_service_v1_army_proto_goTypes = []any{
 	(*v1.CityId)(nil),                  // 30: cityio.entity.v1.CityId
 	(*v1.ArmyRoute)(nil),               // 31: cityio.entity.v1.ArmyRoute
 	(*durationpb.Duration)(nil),        // 32: google.protobuf.Duration
-	(*v1.TroopStack)(nil),              // 33: cityio.entity.v1.TroopStack
+	(*v1.EntityIdBag)(nil),             // 33: cityio.entity.v1.EntityIdBag
+	(*v1.TroopStack)(nil),              // 34: cityio.entity.v1.TroopStack
 }
 var file_cityio_service_v1_army_proto_depIdxs = []int32{
 	23, // 0: cityio.service.v1.TrainingOrder.training_order_id:type_name -> cityio.entity.v1.TrainingOrderId
@@ -1294,39 +1322,42 @@ var file_cityio_service_v1_army_proto_depIdxs = []int32{
 	32, // 24: cityio.service.v1.PreviewArmyRouteResponse.estimated_duration:type_name -> google.protobuf.Duration
 	24, // 25: cityio.service.v1.MergeArmiesRequest.target_army_id:type_name -> cityio.entity.v1.ArmyId
 	24, // 26: cityio.service.v1.MergeArmiesRequest.source_army_id:type_name -> cityio.entity.v1.ArmyId
-	24, // 27: cityio.service.v1.SplitArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	33, // 28: cityio.service.v1.SplitArmyRequest.troops:type_name -> cityio.entity.v1.TroopStack
-	24, // 29: cityio.service.v1.SplitArmyResponse.army_id:type_name -> cityio.entity.v1.ArmyId
-	28, // 30: cityio.service.v1.SplitArmyResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	24, // 31: cityio.service.v1.ListArmiesResponse.army_ids:type_name -> cityio.entity.v1.ArmyId
-	28, // 32: cityio.service.v1.ListArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	1,  // 33: cityio.service.v1.ArmyService.TrainTroops:input_type -> cityio.service.v1.TrainTroopsRequest
-	3,  // 34: cityio.service.v1.ArmyService.ListTrainingOrders:input_type -> cityio.service.v1.ListTrainingOrdersRequest
-	5,  // 35: cityio.service.v1.ArmyService.GetArmy:input_type -> cityio.service.v1.GetArmyRequest
-	15, // 36: cityio.service.v1.ArmyService.PreviewArmyRoute:input_type -> cityio.service.v1.PreviewArmyRouteRequest
-	7,  // 37: cityio.service.v1.ArmyService.MoveArmy:input_type -> cityio.service.v1.MoveArmyRequest
-	9,  // 38: cityio.service.v1.ArmyService.AttackArmy:input_type -> cityio.service.v1.AttackArmyRequest
-	11, // 39: cityio.service.v1.ArmyService.ConquerSettlement:input_type -> cityio.service.v1.ConquerSettlementRequest
-	13, // 40: cityio.service.v1.ArmyService.RetreatArmy:input_type -> cityio.service.v1.RetreatArmyRequest
-	17, // 41: cityio.service.v1.ArmyService.MergeArmies:input_type -> cityio.service.v1.MergeArmiesRequest
-	19, // 42: cityio.service.v1.ArmyService.SplitArmy:input_type -> cityio.service.v1.SplitArmyRequest
-	21, // 43: cityio.service.v1.ArmyService.ListArmies:input_type -> cityio.service.v1.ListArmiesRequest
-	2,  // 44: cityio.service.v1.ArmyService.TrainTroops:output_type -> cityio.service.v1.TrainTroopsResponse
-	4,  // 45: cityio.service.v1.ArmyService.ListTrainingOrders:output_type -> cityio.service.v1.ListTrainingOrdersResponse
-	6,  // 46: cityio.service.v1.ArmyService.GetArmy:output_type -> cityio.service.v1.GetArmyResponse
-	16, // 47: cityio.service.v1.ArmyService.PreviewArmyRoute:output_type -> cityio.service.v1.PreviewArmyRouteResponse
-	8,  // 48: cityio.service.v1.ArmyService.MoveArmy:output_type -> cityio.service.v1.MoveArmyResponse
-	10, // 49: cityio.service.v1.ArmyService.AttackArmy:output_type -> cityio.service.v1.AttackArmyResponse
-	12, // 50: cityio.service.v1.ArmyService.ConquerSettlement:output_type -> cityio.service.v1.ConquerSettlementResponse
-	14, // 51: cityio.service.v1.ArmyService.RetreatArmy:output_type -> cityio.service.v1.RetreatArmyResponse
-	18, // 52: cityio.service.v1.ArmyService.MergeArmies:output_type -> cityio.service.v1.MergeArmiesResponse
-	20, // 53: cityio.service.v1.ArmyService.SplitArmy:output_type -> cityio.service.v1.SplitArmyResponse
-	22, // 54: cityio.service.v1.ArmyService.ListArmies:output_type -> cityio.service.v1.ListArmiesResponse
-	44, // [44:55] is the sub-list for method output_type
-	33, // [33:44] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	24, // 27: cityio.service.v1.MergeArmiesResponse.army_id:type_name -> cityio.entity.v1.ArmyId
+	28, // 28: cityio.service.v1.MergeArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	33, // 29: cityio.service.v1.MergeArmiesResponse.deleted:type_name -> cityio.entity.v1.EntityIdBag
+	24, // 30: cityio.service.v1.SplitArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	34, // 31: cityio.service.v1.SplitArmyRequest.troops:type_name -> cityio.entity.v1.TroopStack
+	24, // 32: cityio.service.v1.SplitArmyResponse.army_id:type_name -> cityio.entity.v1.ArmyId
+	28, // 33: cityio.service.v1.SplitArmyResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	24, // 34: cityio.service.v1.ListArmiesResponse.army_ids:type_name -> cityio.entity.v1.ArmyId
+	28, // 35: cityio.service.v1.ListArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	1,  // 36: cityio.service.v1.ArmyService.TrainTroops:input_type -> cityio.service.v1.TrainTroopsRequest
+	3,  // 37: cityio.service.v1.ArmyService.ListTrainingOrders:input_type -> cityio.service.v1.ListTrainingOrdersRequest
+	5,  // 38: cityio.service.v1.ArmyService.GetArmy:input_type -> cityio.service.v1.GetArmyRequest
+	15, // 39: cityio.service.v1.ArmyService.PreviewArmyRoute:input_type -> cityio.service.v1.PreviewArmyRouteRequest
+	7,  // 40: cityio.service.v1.ArmyService.MoveArmy:input_type -> cityio.service.v1.MoveArmyRequest
+	9,  // 41: cityio.service.v1.ArmyService.AttackArmy:input_type -> cityio.service.v1.AttackArmyRequest
+	11, // 42: cityio.service.v1.ArmyService.ConquerSettlement:input_type -> cityio.service.v1.ConquerSettlementRequest
+	13, // 43: cityio.service.v1.ArmyService.RetreatArmy:input_type -> cityio.service.v1.RetreatArmyRequest
+	17, // 44: cityio.service.v1.ArmyService.MergeArmies:input_type -> cityio.service.v1.MergeArmiesRequest
+	19, // 45: cityio.service.v1.ArmyService.SplitArmy:input_type -> cityio.service.v1.SplitArmyRequest
+	21, // 46: cityio.service.v1.ArmyService.ListArmies:input_type -> cityio.service.v1.ListArmiesRequest
+	2,  // 47: cityio.service.v1.ArmyService.TrainTroops:output_type -> cityio.service.v1.TrainTroopsResponse
+	4,  // 48: cityio.service.v1.ArmyService.ListTrainingOrders:output_type -> cityio.service.v1.ListTrainingOrdersResponse
+	6,  // 49: cityio.service.v1.ArmyService.GetArmy:output_type -> cityio.service.v1.GetArmyResponse
+	16, // 50: cityio.service.v1.ArmyService.PreviewArmyRoute:output_type -> cityio.service.v1.PreviewArmyRouteResponse
+	8,  // 51: cityio.service.v1.ArmyService.MoveArmy:output_type -> cityio.service.v1.MoveArmyResponse
+	10, // 52: cityio.service.v1.ArmyService.AttackArmy:output_type -> cityio.service.v1.AttackArmyResponse
+	12, // 53: cityio.service.v1.ArmyService.ConquerSettlement:output_type -> cityio.service.v1.ConquerSettlementResponse
+	14, // 54: cityio.service.v1.ArmyService.RetreatArmy:output_type -> cityio.service.v1.RetreatArmyResponse
+	18, // 55: cityio.service.v1.ArmyService.MergeArmies:output_type -> cityio.service.v1.MergeArmiesResponse
+	20, // 56: cityio.service.v1.ArmyService.SplitArmy:output_type -> cityio.service.v1.SplitArmyResponse
+	22, // 57: cityio.service.v1.ArmyService.ListArmies:output_type -> cityio.service.v1.ListArmiesResponse
+	47, // [47:58] is the sub-list for method output_type
+	36, // [36:47] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_army_proto_init() }

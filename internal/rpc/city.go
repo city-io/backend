@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"math"
 
 	"connectrpc.com/connect"
 
@@ -82,4 +83,47 @@ func (h *cityHandler) ListCities(ctx context.Context, req *connect.Request[servi
 		CityIds:  cityIDs,
 		Entities: mapping.EntitiesToBag(nil, cityList, nil, nil),
 	}), nil
+}
+
+func (h *cityHandler) UpdateCityPolicy(ctx context.Context, req *connect.Request[servicev1.UpdateCityPolicyRequest]) (*connect.Response[servicev1.UpdateCityPolicyResponse], error) {
+	militiaTarget := req.Msg.GetMilitiaTarget()
+	taxRatePercent := int(req.Msg.GetTaxRatePercent())
+	if err := validateCityPolicy(militiaTarget, taxRatePercent); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	cityID := req.Msg.GetCityId().GetValue()
+	owns, err := h.srv.ownsCity(ctx, cityID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !owns {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
+	}
+	res, err := h.srv.cluster.Request("city", cityID, messages.UpdateCityPolicyMessage{
+		MilitiaTarget:  militiaTarget,
+		TaxRatePercent: taxRatePercent,
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	switch response := res.(type) {
+	case *messages.GetCityResponseMessage:
+		return connect.NewResponse(&servicev1.UpdateCityPolicyResponse{City: mapping.CityToProto(response.City)}), nil
+	case *messages.InvalidCityPolicyError:
+		return nil, connect.NewError(connect.CodeInvalidArgument, response)
+	case *messages.CityPolicyLockedError:
+		return nil, connect.NewError(connect.CodeFailedPrecondition, response)
+	case error:
+		return nil, connect.NewError(connect.CodeInternal, response)
+	default:
+		return nil, connect.NewError(connect.CodeInternal, errors.New("unexpected city policy response"))
+	}
+}
+
+func validateCityPolicy(militiaTarget float64, taxRatePercent int) error {
+	if militiaTarget < 0 || math.Trunc(militiaTarget) != militiaTarget || taxRatePercent < 0 || taxRatePercent > constants.MaxTaxRatePercent {
+		return &messages.InvalidCityPolicyError{}
+	}
+	return nil
 }

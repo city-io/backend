@@ -125,6 +125,33 @@ func TestUpdateKnownLandPathReplacesRouteMadeExpensive(t *testing.T) {
 	}
 }
 
+func TestFindKnownLandPathAdjacentStopsBesideTarget(t *testing.T) {
+	grid := TerrainGrid{Width: 5, Height: 1, Tiles: []TerrainType{
+		TerrainTypeGrassland, TerrainTypeGrassland, TerrainTypeGrassland, TerrainTypeGrassland, TerrainTypeGrassland,
+	}}
+	explored := map[Coordinates]struct{}{}
+	for x := 0; x < grid.Width; x++ {
+		explored[Coordinates{X: x}] = struct{}{}
+	}
+
+	path, reaches := FindKnownLandPathAdjacent(grid, explored, Coordinates{}, Coordinates{X: 4})
+
+	if !reaches || len(path) != 3 || path[len(path)-1] != (Coordinates{X: 3}) {
+		t.Fatalf("adjacent route = %v, reaches=%v; want endpoint (3,0)", path, reaches)
+	}
+}
+
+func TestFindKnownLandPathAdjacentKeepsArmyAlreadyBesideTargetInPlace(t *testing.T) {
+	grid := TerrainGrid{Width: 3, Height: 3, Tiles: make([]TerrainType, 9)}
+	start := Coordinates{X: 1, Y: 2}
+
+	path, reaches := FindKnownLandPathAdjacent(grid, map[Coordinates]struct{}{}, start, Coordinates{X: 1, Y: 1})
+
+	if !reaches || len(path) != 0 {
+		t.Fatalf("adjacent route = %v, reaches=%v; want no movement", path, reaches)
+	}
+}
+
 func terrainGrid(width, height int, terrain TerrainType) TerrainGrid {
 	tiles := make([]TerrainType, width*height)
 	for i := range tiles {

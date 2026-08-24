@@ -310,6 +310,110 @@ func (x *ListCitiesResponse) GetEntities() *v1.EntityBag {
 	return nil
 }
 
+type UpdateCityPolicyRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CityId         *v1.CityId             `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
+	MilitiaTarget  float64                `protobuf:"fixed64,2,opt,name=militia_target,json=militiaTarget,proto3" json:"militia_target,omitempty"`
+	TaxRatePercent int32                  `protobuf:"varint,3,opt,name=tax_rate_percent,json=taxRatePercent,proto3" json:"tax_rate_percent,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UpdateCityPolicyRequest) Reset() {
+	*x = UpdateCityPolicyRequest{}
+	mi := &file_cityio_service_v1_city_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateCityPolicyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateCityPolicyRequest) ProtoMessage() {}
+
+func (x *UpdateCityPolicyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_city_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateCityPolicyRequest.ProtoReflect.Descriptor instead.
+func (*UpdateCityPolicyRequest) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_city_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UpdateCityPolicyRequest) GetCityId() *v1.CityId {
+	if x != nil {
+		return x.CityId
+	}
+	return nil
+}
+
+func (x *UpdateCityPolicyRequest) GetMilitiaTarget() float64 {
+	if x != nil {
+		return x.MilitiaTarget
+	}
+	return 0
+}
+
+func (x *UpdateCityPolicyRequest) GetTaxRatePercent() int32 {
+	if x != nil {
+		return x.TaxRatePercent
+	}
+	return 0
+}
+
+type UpdateCityPolicyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	City          *v1.City               `protobuf:"bytes,1,opt,name=city,proto3" json:"city,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateCityPolicyResponse) Reset() {
+	*x = UpdateCityPolicyResponse{}
+	mi := &file_cityio_service_v1_city_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateCityPolicyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateCityPolicyResponse) ProtoMessage() {}
+
+func (x *UpdateCityPolicyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_city_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateCityPolicyResponse.ProtoReflect.Descriptor instead.
+func (*UpdateCityPolicyResponse) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_city_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateCityPolicyResponse) GetCity() *v1.City {
+	if x != nil {
+		return x.City
+	}
+	return nil
+}
+
 var File_cityio_service_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_city_proto_rawDesc = "" +
@@ -330,13 +434,20 @@ const file_cityio_service_v1_city_proto_rawDesc = "" +
 	"\x11ListCitiesRequest\"\x82\x01\n" +
 	"\x12ListCitiesResponse\x123\n" +
 	"\bcity_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.CityIdR\acityIds\x127\n" +
-	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\x95\x02\n" +
+	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities\"\x9d\x01\n" +
+	"\x17UpdateCityPolicyRequest\x121\n" +
+	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12%\n" +
+	"\x0emilitia_target\x18\x02 \x01(\x01R\rmilitiaTarget\x12(\n" +
+	"\x10tax_rate_percent\x18\x03 \x01(\x05R\x0etaxRatePercent\"F\n" +
+	"\x18UpdateCityPolicyResponse\x12*\n" +
+	"\x04city\x18\x01 \x01(\v2\x16.cityio.entity.v1.CityR\x04city2\x82\x03\n" +
 	"\vCityService\x12P\n" +
 	"\aGetCity\x12!.cityio.service.v1.GetCityRequest\x1a\".cityio.service.v1.GetCityResponse\x12Y\n" +
 	"\n" +
 	"CreateCity\x12$.cityio.service.v1.CreateCityRequest\x1a%.cityio.service.v1.CreateCityResponse\x12Y\n" +
 	"\n" +
-	"ListCities\x12$.cityio.service.v1.ListCitiesRequest\x1a%.cityio.service.v1.ListCitiesResponseB\xb9\x01\n" +
+	"ListCities\x12$.cityio.service.v1.ListCitiesRequest\x1a%.cityio.service.v1.ListCitiesResponse\x12k\n" +
+	"\x10UpdateCityPolicy\x12*.cityio.service.v1.UpdateCityPolicyRequest\x1a+.cityio.service.v1.UpdateCityPolicyResponseB\xb9\x01\n" +
 	"\x15com.cityio.service.v1B\tCityProtoP\x01Z/cityio/internal/gen/cityio/service/v1;servicev1\xa2\x02\x03CSX\xaa\x02\x11Cityio.Service.V1\xca\x02\x11Cityio\\Service\\V1\xe2\x02\x1dCityio\\Service\\V1\\GPBMetadata\xea\x02\x13Cityio::Service::V1b\x06proto3"
 
 var (
@@ -351,39 +462,45 @@ func file_cityio_service_v1_city_proto_rawDescGZIP() []byte {
 	return file_cityio_service_v1_city_proto_rawDescData
 }
 
-var file_cityio_service_v1_city_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_cityio_service_v1_city_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_cityio_service_v1_city_proto_goTypes = []any{
-	(*GetCityRequest)(nil),     // 0: cityio.service.v1.GetCityRequest
-	(*GetCityResponse)(nil),    // 1: cityio.service.v1.GetCityResponse
-	(*CreateCityRequest)(nil),  // 2: cityio.service.v1.CreateCityRequest
-	(*CreateCityResponse)(nil), // 3: cityio.service.v1.CreateCityResponse
-	(*ListCitiesRequest)(nil),  // 4: cityio.service.v1.ListCitiesRequest
-	(*ListCitiesResponse)(nil), // 5: cityio.service.v1.ListCitiesResponse
-	(*v1.CityId)(nil),          // 6: cityio.entity.v1.CityId
-	(*v1.City)(nil),            // 7: cityio.entity.v1.City
-	(v1.CityType)(0),           // 8: cityio.entity.v1.CityType
-	(*v1.UserId)(nil),          // 9: cityio.entity.v1.UserId
-	(*v1.EntityBag)(nil),       // 10: cityio.entity.v1.EntityBag
+	(*GetCityRequest)(nil),           // 0: cityio.service.v1.GetCityRequest
+	(*GetCityResponse)(nil),          // 1: cityio.service.v1.GetCityResponse
+	(*CreateCityRequest)(nil),        // 2: cityio.service.v1.CreateCityRequest
+	(*CreateCityResponse)(nil),       // 3: cityio.service.v1.CreateCityResponse
+	(*ListCitiesRequest)(nil),        // 4: cityio.service.v1.ListCitiesRequest
+	(*ListCitiesResponse)(nil),       // 5: cityio.service.v1.ListCitiesResponse
+	(*UpdateCityPolicyRequest)(nil),  // 6: cityio.service.v1.UpdateCityPolicyRequest
+	(*UpdateCityPolicyResponse)(nil), // 7: cityio.service.v1.UpdateCityPolicyResponse
+	(*v1.CityId)(nil),                // 8: cityio.entity.v1.CityId
+	(*v1.City)(nil),                  // 9: cityio.entity.v1.City
+	(v1.CityType)(0),                 // 10: cityio.entity.v1.CityType
+	(*v1.UserId)(nil),                // 11: cityio.entity.v1.UserId
+	(*v1.EntityBag)(nil),             // 12: cityio.entity.v1.EntityBag
 }
 var file_cityio_service_v1_city_proto_depIdxs = []int32{
-	6,  // 0: cityio.service.v1.GetCityRequest.city_id:type_name -> cityio.entity.v1.CityId
-	7,  // 1: cityio.service.v1.GetCityResponse.city:type_name -> cityio.entity.v1.City
-	8,  // 2: cityio.service.v1.CreateCityRequest.type:type_name -> cityio.entity.v1.CityType
-	9,  // 3: cityio.service.v1.CreateCityRequest.owner:type_name -> cityio.entity.v1.UserId
-	7,  // 4: cityio.service.v1.CreateCityResponse.city:type_name -> cityio.entity.v1.City
-	6,  // 5: cityio.service.v1.ListCitiesResponse.city_ids:type_name -> cityio.entity.v1.CityId
-	10, // 6: cityio.service.v1.ListCitiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	0,  // 7: cityio.service.v1.CityService.GetCity:input_type -> cityio.service.v1.GetCityRequest
-	2,  // 8: cityio.service.v1.CityService.CreateCity:input_type -> cityio.service.v1.CreateCityRequest
-	4,  // 9: cityio.service.v1.CityService.ListCities:input_type -> cityio.service.v1.ListCitiesRequest
-	1,  // 10: cityio.service.v1.CityService.GetCity:output_type -> cityio.service.v1.GetCityResponse
-	3,  // 11: cityio.service.v1.CityService.CreateCity:output_type -> cityio.service.v1.CreateCityResponse
-	5,  // 12: cityio.service.v1.CityService.ListCities:output_type -> cityio.service.v1.ListCitiesResponse
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	8,  // 0: cityio.service.v1.GetCityRequest.city_id:type_name -> cityio.entity.v1.CityId
+	9,  // 1: cityio.service.v1.GetCityResponse.city:type_name -> cityio.entity.v1.City
+	10, // 2: cityio.service.v1.CreateCityRequest.type:type_name -> cityio.entity.v1.CityType
+	11, // 3: cityio.service.v1.CreateCityRequest.owner:type_name -> cityio.entity.v1.UserId
+	9,  // 4: cityio.service.v1.CreateCityResponse.city:type_name -> cityio.entity.v1.City
+	8,  // 5: cityio.service.v1.ListCitiesResponse.city_ids:type_name -> cityio.entity.v1.CityId
+	12, // 6: cityio.service.v1.ListCitiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	8,  // 7: cityio.service.v1.UpdateCityPolicyRequest.city_id:type_name -> cityio.entity.v1.CityId
+	9,  // 8: cityio.service.v1.UpdateCityPolicyResponse.city:type_name -> cityio.entity.v1.City
+	0,  // 9: cityio.service.v1.CityService.GetCity:input_type -> cityio.service.v1.GetCityRequest
+	2,  // 10: cityio.service.v1.CityService.CreateCity:input_type -> cityio.service.v1.CreateCityRequest
+	4,  // 11: cityio.service.v1.CityService.ListCities:input_type -> cityio.service.v1.ListCitiesRequest
+	6,  // 12: cityio.service.v1.CityService.UpdateCityPolicy:input_type -> cityio.service.v1.UpdateCityPolicyRequest
+	1,  // 13: cityio.service.v1.CityService.GetCity:output_type -> cityio.service.v1.GetCityResponse
+	3,  // 14: cityio.service.v1.CityService.CreateCity:output_type -> cityio.service.v1.CreateCityResponse
+	5,  // 15: cityio.service.v1.CityService.ListCities:output_type -> cityio.service.v1.ListCitiesResponse
+	7,  // 16: cityio.service.v1.CityService.UpdateCityPolicy:output_type -> cityio.service.v1.UpdateCityPolicyResponse
+	13, // [13:17] is the sub-list for method output_type
+	9,  // [9:13] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_city_proto_init() }
@@ -398,7 +515,7 @@ func file_cityio_service_v1_city_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_city_proto_rawDesc), len(file_cityio_service_v1_city_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

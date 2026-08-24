@@ -34,16 +34,20 @@ type Building struct {
 }
 
 type City struct {
-	CityID        string             `json:"city_id"`
-	Type          string             `json:"type"`
-	Owner         *string            `json:"owner"`
-	Name          string             `json:"name"`
-	Population    float64            `json:"population"`
-	PopulationCap float64            `json:"population_cap"`
-	StartCoords   domain.Coordinates `json:"start_coords"`
-	Size          int32              `json:"size"`
-	CreatedAt     pgtype.Timestamp   `json:"created_at"`
-	UpdatedAt     pgtype.Timestamp   `json:"updated_at"`
+	CityID            string             `json:"city_id"`
+	Type              string             `json:"type"`
+	Owner             *string            `json:"owner"`
+	Name              string             `json:"name"`
+	Population        float64            `json:"population"`
+	PopulationCap     float64            `json:"population_cap"`
+	StartCoords       domain.Coordinates `json:"start_coords"`
+	Size              int32              `json:"size"`
+	CreatedAt         pgtype.Timestamp   `json:"created_at"`
+	UpdatedAt         pgtype.Timestamp   `json:"updated_at"`
+	PopulationBasis   float64            `json:"population_basis"`
+	MilitiaPopulation float64            `json:"militia_population"`
+	MilitiaTarget     float64            `json:"militia_target"`
+	TaxRatePercent    int32              `json:"tax_rate_percent"`
 }
 
 type ExploredTile struct {
@@ -51,6 +55,15 @@ type ExploredTile struct {
 	TileX        int32            `json:"tile_x"`
 	TileY        int32            `json:"tile_y"`
 	DiscoveredAt pgtype.Timestamp `json:"discovered_at"`
+}
+
+type MailboxMessage struct {
+	MailboxMessageID string           `json:"mailbox_message_id"`
+	RecipientID      string           `json:"recipient_id"`
+	Kind             string           `json:"kind"`
+	Payload          []byte           `json:"payload"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	ReadAt           pgtype.Timestamp `json:"read_at"`
 }
 
 type TrainingOrder struct {

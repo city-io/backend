@@ -18,13 +18,19 @@ type City struct {
 	Name          string   `json:"name"`
 	Population    float64  `json:"population"`
 	PopulationCap float64  `json:"populationCap"`
-	// MilitaryPopulation is the share of Population reserved as standing army.
-	// Civilians (Population − MilitaryPopulation) drive food upkeep; the reserve
-	// is bounded by MilitaryPopulationFraction × Population.
-	MilitaryPopulation float64 `json:"militaryPopulation"`
-	StartX             int     `json:"startX"`
-	StartY             int     `json:"startY"`
-	Size               int     `json:"size"`
+	// PopulationBasis is the highest resident population reached. Recruitment
+	// and casualties do not lower it, so housing upgrades or repeated training
+	// cannot move the protected civilian floor underneath existing residents.
+	PopulationBasis float64 `json:"populationBasis"`
+	// MilitiaPopulation is the non-mobile defensive reserve currently present
+	// in the settlement. MilitiaTarget is the exact desired defender count;
+	// losses refill from future population growth rather than appearing for free.
+	MilitiaPopulation float64 `json:"militiaPopulation"`
+	MilitiaTarget     float64 `json:"militiaTarget"`
+	TaxRatePercent    int     `json:"taxRatePercent"`
+	StartX            int     `json:"startX"`
+	StartY            int     `json:"startY"`
+	Size              int     `json:"size"`
 
 	// FoodProductionRate is the food this city's own farms produce per hour.
 	// FoodUpkeep is the food this city's population consumes per hour. NetFoodFlow
@@ -37,10 +43,13 @@ type City struct {
 	NetFoodFlow        int64 `json:"netFoodFlow"`
 	Starving           bool  `json:"starving"`
 
-	// PopulationGrowthRate is the current per-hour population change. Positive
-	// when the city is growing, negative when starving and population is
-	// declining. Computed from the per-tick delta applied in growPopulation.
-	PopulationGrowthRate int64 `json:"populationGrowthRate"`
+	// PopulationGrowthBeforeTaxRate is the current per-hour biological growth
+	// baseline. PopulationGrowthRate applies the configured tax modifier to it;
+	// both are derived from each tick and are not persisted.
+	PopulationGrowthBeforeTaxRate int64   `json:"populationGrowthBeforeTaxRate"`
+	PopulationGrowthRate          int64   `json:"populationGrowthRate"`
+	TaxIncomeRate                 int64   `json:"taxIncomeRate"`
+	MilitiaBattleID               *string `json:"-"`
 
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`

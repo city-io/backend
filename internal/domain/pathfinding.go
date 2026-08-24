@@ -136,6 +136,31 @@ func FindKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, star
 	return buildPath(previous, start, best), false
 }
 
+// FindKnownLandPathAdjacent returns the cheapest known-land route to any of
+// the eight traversable tiles surrounding target. It is used by settlement
+// sieges, whose armies stage beside the center instead of entering it.
+func FindKnownLandPathAdjacent(grid TerrainGrid, explored map[Coordinates]struct{}, start, target Coordinates) ([]Coordinates, bool) {
+	masked := knownTerrainGrid(grid, explored, start)
+	var best []Coordinates
+	bestCost := int(^uint(0) >> 1)
+	found := false
+	for _, direction := range pathDirections {
+		destination := Coordinates{X: target.X + direction.X, Y: target.Y + direction.Y}
+		path, reaches := FindKnownLandPath(grid, explored, start, destination)
+		if !reaches {
+			continue
+		}
+		cost, valid := routeCost(masked, start, path)
+		if !valid || (found && cost >= bestCost) {
+			continue
+		}
+		best = path
+		bestCost = cost
+		found = true
+	}
+	return best, found
+}
+
 // UpdateKnownLandPath keeps an existing equal-cost route stable and replaces
 // it only when newly known terrain invalidates it or reveals a cheaper route.
 func UpdateKnownLandPath(grid TerrainGrid, explored map[Coordinates]struct{}, start, destination Coordinates, current []Coordinates) ([]Coordinates, bool) {

@@ -110,12 +110,11 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/metrics`** — Prometheus metric definitions + the RPC interceptor + a periodic
   world-snapshot gauge filler.
 - **`internal/worldgen`** — deterministic terrain and settlement generation. A cryptographic
-  seed is chosen for an empty database and persisted in `world_state`; smooth elevation/moisture
-  fields reproduce the same coherent terrain regions on later boots. Footprint-aware placement
-  reserves capital sites before generating neutral towns. `World` also restores occupied
-  settlement footprints and allocates terrain-valid sites for later registrations.
-- **`internal/setup`** — `Run()` seeds neutral towns only when all gameplay tables are empty,
-  restores persisted actors, and registers the development test user only when it is missing.
+  seed is chosen on each boot after the development database reset and persisted in `world_state`
+  for that runtime. Smooth elevation/moisture fields produce coherent terrain regions.
+  Footprint-aware placement reserves capital sites before generating neutral towns.
+- **`internal/setup`** — `Run()` seeds the freshly reset world, restores its actors, and registers
+  the development test user.
 - **`scripts/troops.py`** — a dev-only helper that drives `ArmyService` over the Connect JSON
   API (no `grpcurl` needed). See "Client / frontend API reference → Local testing".
 
@@ -155,8 +154,8 @@ the "Client / frontend API reference" section below.
 
 - **Map:** a `MapSize`×`MapSize` (75×75) grid. A tile is addressed by `(x, y)` and has one of
   eight terrain types: grassland, plains, forest, hills, mountains, desert, marsh, or water.
-  Terrain is reconstructed from the persisted world seed on every boot and revealed as raw tile
-  entities only after exploration; a new seed is created only for an empty database. Terrain
+  Terrain is regenerated from a new seed on every boot and revealed as raw tile entities only
+  after exploration. Terrain
   affects settlement placement and army movement, but not production.
   Buildings and armies live on tiles; armies stack (multiple armies + a building can share a
   tile).
@@ -174,8 +173,8 @@ the "Client / frontend API reference" section below.
   population) live in `constants/buildings.go` and are exposed to clients via
   `ConfigService.GetGameConfig`.
 - **Resources & economy:** two resources, `gold` and `food`, pooled per **user** (not per city).
-  Centers/mines produce gold; farms produce food. Each city consumes food upkeep =
-  `(population − military_population) × FoodPerPopPerHour` (48/hr) **plus** the upkeep of any
+  Centers/mines and city taxes produce gold; farms produce food. Every resident, including the
+  militia, consumes `FoodPerPopPerHour` (48/hr), **plus** the upkeep of any
   armies attributed to it. A city consumes its own food first, deposits surplus to the user pool,
   and draws the shortfall from the pool. Starvation and population change compare stable hourly
   production/upkeep rates rather than rounded per-tick food units, while the pool still transfers
@@ -191,21 +190,34 @@ the "Client / frontend API reference" section below.
   soldiers/archers take 1.65s, and artillery takes 2.475s. Marsh multiplies that time by two,
   mountains by three, and water is impassable to current land armies. Armies can stack, and two
   same-owner armies on the same tile can be merged.
-  - **Combat:** hostile armies sharing a tile enter a battle. Battles tick once per second and
-    compute both sides' damage from the pre-tick composition, so casualties are simultaneous.
-    Attack, defense, and HP determine fractional expected losses; battle-local carry converts
-    them into deterministic whole-unit deaths over time. There is no persistent army/unit health
-    or wounded state. A zero-unit army is deleted. A side can contain multiple users: additional
-    attackers targeting a participant join the opposing side, leaving formal alliance policy for
-    the future diplomacy layer.
-  - **Conquest:** an army ordered to conquer fights defenders on the settlement center tile and
-    then must hold it uncontested for 30 seconds. Any new defender resets capture progress.
-    Completion transfers the existing settlement and its buildings to the attacker.
-  - **Population carve-out:** training reserves population into `city.military_population`, capped
-    at `MilitaryPopulationFraction` (0.35) of the city's population. Civilians
-    (`population − military_population`) drive city food upkeep, so a standing army is
-    exploit-free. Reserved population is not released on merge (troops keep their origin's
-    reservation); a release path will come with combat/disband later.
+  - **Combat:** hostile armies sharing a tile enter a battle. Battles schedule one round every
+    five seconds, re-arming only after the previous round finishes so delayed actor work cannot
+    produce catch-up rounds. Both sides' damage uses the pre-round composition, so casualties are
+    simultaneous. Attack, defense, and HP determine fractional expected losses, scaled by
+    `BattleCasualtyRate`; battle-local carry converts them into deterministic whole-unit deaths
+    over time. There is no persistent army/unit health or wounded state. A zero-unit army is
+    deleted. A side can contain multiple users: additional attackers targeting a participant join
+    the opposing side, leaving formal alliance policy for the future diplomacy layer.
+  - **Conquest:** an army ordered to conquer fights field defenders and the settlement's passive
+    militia from the cheapest traversable tile adjacent (including diagonally) to the center, then
+    must hold that staging tile uncontested for 30 seconds. Settlement militia cannot engage the
+    conqueror before it reaches that destination. Militia casualties reduce both militia and total
+    population; siege rounds can also inflict lower-rate civilian casualties. Completion transfers
+    the existing settlement and its buildings to the attacker.
+  - **Population transfer:** 55% of the city's peak resident population is a protected civilian
+    core. The persisted peak does not fall after recruitment/casualties and does not jump when
+    housing is added, so neither repeated training nor capacity upgrades move the floor. A city
+    stores an exact passive-militia target, constrained to 5–45% of housing capacity when changed
+    (10% by default; neutral towns start at 45%). Actual core civilians are the lesser of that
+    protected floor and the non-militia residents still alive, so starvation consumes recruitable
+    civilians before it reaches the core. Residents above the actual core plus current militia are
+    recruitable. Starting a training order immediately removes its population cost from the
+    settlement. Armies own that manpower thereafter, deaths are permanent, and future settlement
+    growth can create new recruitable surplus.
+  - **Tax policy:** each owned city has a 0–100% tax rate (10% by default). Every non-militia
+    resident is taxable. At 100%, each taxable resident yields 16 gold/hour and removes 150% of
+    untaxed growth, turning growth into a 50% baseline decline; income and growth effects scale
+    linearly with the configured rate.
   - **Food upkeep:** each army's food upkeep is added to its **nearest owned settlement's**
     upkeep, recomputed (by Chebyshev distance) as the army marches. Cities and captured towns
     both qualify because they share the `City` domain model.
@@ -286,9 +298,11 @@ for TypeScript) rather than hand-writing request types.
   password is never sent.
 - **City** — public fields: `city_id, type, owner? (UserId), name, population (double),
   population_cap (double), start (Coordinates, top-left), size, starving (bool),
-  population_growth (Rate), military_population (double)`. **Owner-only** fields (nil for
-  non-owners): `food_production, food_upkeep, net_food_flow (Rate)`. See
-  `mapping.HidePrivateCityFields`.
+  population_growth (Rate), militia_population, militia_target, derived militia_percent, core_population,
+  taxable_population`. **Owner-only** fields (nil/zero for non-owners): `food_production,
+  food_upkeep, net_food_flow (Rate), recruitable_population, core_population_floor,
+  tax_rate_percent, tax_income,
+  population_growth_before_tax`. See `mapping.HidePrivateCityFields`.
 - **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
   construction_end? }` — under construction when `level != target_level` (timestamps present).
 - **Army** `{ army_id, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
@@ -301,7 +315,13 @@ for TypeScript) rather than hand-writing request types.
   cancellation, failure, or replacement produces a tombstone; there are no terminal status/reason
   records.
 - **Battle** `{ battle_id, tile_id, attackers, defenders, started_at, next_tick_at }` — ephemeral
-  active combat. Both sides contain repeated user and army IDs so future allies can share a side.
+  active combat. Both sides contain repeated user and army IDs so future allies can share a side;
+  a side may additionally contain settlement militia. `strength_visible` is viewer-specific;
+  opposing militia counts remain zero/hidden during combat.
+- **MailboxMessage/BattleReport** — durable recipient-owned combat history. A report always
+  exposes the recipient's side exactly. Opposing troop, militia, population, power, and casualty
+  counts are concealed unless the recipient won; victory reports disclose both sides. Siege
+  reports include per-round and total civilian casualties when that side is disclosed.
 - **Tile** `{ tile_id: TileId, terrain, city_id?, building_id?, army_ids[] }` — terrain is
   immutable for the current generated world; occupancy references resolve through the same
   `EntityBag`.
@@ -337,6 +357,9 @@ for TypeScript) rather than hand-writing request types.
 - `GetCity(city_id) → { city }` — vision-gated; economy fields owner-only.
 - `CreateCity(type, owner?, name, size) → { city }` — placed on a random empty block.
 - `ListCities() → { city_ids[], entities(cities) }` — your owned cities.
+- `UpdateCityPolicy(city_id, militia_target, tax_rate_percent) → { city }` — owner-only;
+  militia target must be a whole resident within 5–45% of current housing capacity when changed;
+  tax must be 0–100. Policy changes stream immediately.
 
 **BuildingService**
 - `CreateBuilding(city_id, type, coords) → { building }` — must own the city; starts construction
@@ -351,8 +374,9 @@ for TypeScript) rather than hand-writing request types.
 
 **ArmyService**
 - `TrainTroops(barracks_id, type, count) → { order }` — must own the barracks' city; the
-  barracks must be finished (not under construction); `count` ∈ `[1, 5 × barracksLevel]`. Reserves
-  `count × popCost` military population (≤ 35% of city population) and deducts `count × goldCost`.
+  barracks must be finished (not under construction); `count` ∈ `[1, 5 × barracksLevel]`.
+  Immediately transfers `count × popCost` recruitable residents out of the city and deducts
+  `count × goldCost`.
   Errors: `FailedPrecondition` (`InsufficientGold`, insufficient trainable population, training
   capacity exceeded, construction in progress); `InvalidArgument` (bad count/type). After the
   batch's total train time (`count × per-troop time`) an `Army` spawns at the barracks tile
@@ -380,12 +404,13 @@ for TypeScript) rather than hand-writing request types.
   hostile target. The order follows updated visible coordinates, stops at the last-known tile if
   contact is lost, and starts or joins a battle on contact.
 - `ConquerSettlement(army_id, city_id) → {}` — must own the army and see the hostile or neutral
-  settlement. The army fights center-tile defenders, then captures it after a 30-second
-  uncontested hold.
+  settlement. The army routes to the cheapest traversable tile adjacent to its center, fights its
+  defenders there, then captures it after a 30-second uncontested hold.
 - `RetreatArmy(army_id) → {}` — removes the army from its active battle and routes it to the
   nearest owned settlement.
-- `MergeArmies(target_army_id, source_army_id) → {}` — must own both; both must be on the same
-  tile. The source's troops fold into the target and the source army disappears.
+- `MergeArmies(target_army_id, source_army_id) → { army_id, entities(target_army,
+  army_order?), deleted }` — must own both; both must be on the same tile. The authoritative target
+  state and source deletion are returned together so clients need not wait for a stream resync.
 - `SplitArmy(army_id, troops[]) → { army_id, entities(source_army, new_army, army_order?) }` —
   must own the source and it cannot be in battle. Counts are detached into a new idle army on
   the same tile while the source retains its active order. At least one troop must remain in the
@@ -403,7 +428,8 @@ for TypeScript) rather than hand-writing request types.
 **ConfigService**
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),
   city_tick (Duration), buildings[]: { type, levels[]: { level, cost[], construction_time
-  (Duration), production[], population } } }` — *public*, static tunables for the client. Note:
+  (Duration), production[], population } }, population_policy }` — *public*, static tunables for
+  the client, including civilian/militia/tax limits, tax yield, and the maximum tax-growth penalty. Note:
   troop stats are **not** exposed here yet (see Game model → troop stat table).
 
 ### Error codes (Connect)
@@ -507,7 +533,8 @@ psql -h localhost -p 5432 -U cityio -d cityio
 
 Migrations can be run manually (the app also runs them itself — see gotcha). Migrations live in
 `db/migrations/` (`00001_initial_schema`, `00002_drop_derived_columns`, `00003_add_armies`,
-`00004_add_training_orders`, `00005_add_explored_tiles`, `00006_add_world_state`):
+`00004_add_training_orders`, `00005_add_explored_tiles`, `00006_add_world_state`,
+`00007_add_city_population_policies`):
 
 ```bash
 GOOSE_DRIVER=postgres \
@@ -517,12 +544,11 @@ goose -dir db/migrations up
 
 ## Critical gotchas
 
-- **World and player state survive restarts.** `NewDB` runs goose `up` without rolling migrations
-  down. The world seed is stored in `world_state`, neutral towns are seeded only when every
-  gameplay table is empty, and the hardcoded test user (`cityio@example.com`) is created only when
-  missing. The commented `down-to 0` block in `NewDB` can be re-enabled for an intentional clean
-  reset after a breaking change. New migrations still apply automatically on boot; a manual
-  `goose up` is only useful if a running instance stays on old code.
+- **The development world is destroyed and rebuilt on every boot.** `NewDB` runs goose `down-to 0`
+  and then `up`, startup creates a new terrain seed, seeds neutral towns, and registers the
+  hardcoded test user (`cityio@example.com`). Policy columns deliberately have no database
+  defaults or checks; creation paths provide their values and RPC/actor code enforces gameplay
+  ranges. A restart wipes all world and player progress.
 - **The API is Connect RPC, served over h2c.** Handlers live in `internal/rpc`; auth is a JWT
   Connect interceptor. Live state is pushed to clients via the server-streaming `StreamState`
   RPC (backed by `internal/stream`), not websockets.

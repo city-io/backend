@@ -25,6 +25,14 @@ func (s *Server) projectArmyRoute(army domain.Army, destination domain.Coordinat
 	return s.projectArmyPath(army, path, explored)
 }
 
+func (s *Server) projectArmySiegeRoute(army domain.Army, center domain.Coordinates, explored map[domain.Coordinates]struct{}) projectedArmyRoute {
+	path, _ := domain.FindKnownLandPathAdjacent(
+		s.world.Terrain(), explored,
+		domain.Coordinates{X: army.X, Y: army.Y}, center,
+	)
+	return s.projectArmyPath(army, path, explored)
+}
+
 func (s *Server) projectArmyPath(army domain.Army, path []domain.Coordinates, explored map[domain.Coordinates]struct{}) projectedArmyRoute {
 	pathCost := 0
 	for _, coords := range path {

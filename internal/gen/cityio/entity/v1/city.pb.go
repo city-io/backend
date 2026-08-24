@@ -23,17 +23,13 @@ const (
 
 // City is a settlement on the map, owned by a player or neutral.
 //
-// Visibility: public fields are returned to anyone whose vision covers the
-// city (population, population_cap, starving, identity, location). Private
-// fields (food_production, food_upkeep, net_food_flow) are economy intel and
-// only populated when the requester is the city's owner; for non-owners they
-// arrive unset. The owner-only restriction is enforced in
-// mapping.HidePrivateCityFields, called from GetMap and GetCity.
-// StreamState is already owner-scoped (publishes only to *City.Owner) so it
-// always carries the full set.
+// Visibility: identity, ownership, type, and location are visible when the
+// settlement is in vision. Exact demographics, defensive strength, and
+// economy are owner-only until a future scouting system discloses them.
+// demographics_visible tells clients whether those numeric fields are real.
 type City struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// --- Public ---
+	// --- Identity, location, and disclosure-gated demographics ---
 	CityId        *CityId      `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
 	Type          CityType     `protobuf:"varint,2,opt,name=type,proto3,enum=cityio.entity.v1.CityType" json:"type,omitempty"`
 	Owner         *UserId      `protobuf:"bytes,3,opt,name=owner,proto3,oneof" json:"owner,omitempty"`
@@ -42,24 +38,45 @@ type City struct {
 	PopulationCap float64      `protobuf:"fixed64,6,opt,name=population_cap,json=populationCap,proto3" json:"population_cap,omitempty"`
 	Start         *Coordinates `protobuf:"bytes,7,opt,name=start,proto3" json:"start,omitempty"`
 	Size          int32        `protobuf:"varint,8,opt,name=size,proto3" json:"size,omitempty"`
-	// starving is public: visible from outside ("refugees, failed crops").
-	Starving bool `protobuf:"varint,12,opt,name=starving,proto3" json:"starving,omitempty"`
+	Starving      bool         `protobuf:"varint,12,opt,name=starving,proto3" json:"starving,omitempty"`
 	// population_growth is the signed per-hour change in population (positive
-	// when growing, negative when declining). Public — observable from outside
-	// by anyone watching the city over time.
+	// when growing, negative when declining).
 	PopulationGrowth *Rate `protobuf:"bytes,13,opt,name=population_growth,json=populationGrowth,proto3" json:"population_growth,omitempty"`
-	// military_population is the share of population currently reserved as
-	// standing army (bounded by MilitaryPopulationFraction × population).
-	MilitaryPopulation float64 `protobuf:"fixed64,14,opt,name=military_population,json=militaryPopulation,proto3" json:"military_population,omitempty"`
+	// The current non-mobile defensive reserve, its exact configured target, and
+	// that target as a derived share of housing capacity. Militia losses refill
+	// through future growth.
+	MilitiaPopulation float64 `protobuf:"fixed64,14,opt,name=militia_population,json=militiaPopulation,proto3" json:"militia_population,omitempty"`
+	MilitiaTarget     float64 `protobuf:"fixed64,15,opt,name=militia_target,json=militiaTarget,proto3" json:"militia_target,omitempty"`
+	// Core civilians currently present. Recruitment protects up to 55% of the
+	// city's peak population, but population loss can reduce the actual count
+	// below that floor after recruitable civilians are exhausted.
+	CorePopulation float64 `protobuf:"fixed64,16,opt,name=core_population,json=corePopulation,proto3" json:"core_population,omitempty"`
+	// Residents currently available to transfer into training orders.
+	RecruitablePopulation float64 `protobuf:"fixed64,17,opt,name=recruitable_population,json=recruitablePopulation,proto3" json:"recruitable_population,omitempty"`
+	// Residents currently paying tax (all residents except the militia).
+	TaxablePopulation float64 `protobuf:"fixed64,18,opt,name=taxable_population,json=taxablePopulation,proto3" json:"taxable_population,omitempty"`
 	// --- Owner-only ---
-	// food_production, food_upkeep, and net_food_flow expose this city's
-	// economy. They are populated when the requester owns the city and unset
-	// otherwise. Non-owners receive nil/zero for these fields.
+	// These fields expose this city's private economy and policy. They are
+	// populated when the requester owns the city and unset otherwise.
 	FoodProduction *Rate `protobuf:"bytes,9,opt,name=food_production,json=foodProduction,proto3" json:"food_production,omitempty"`
 	FoodUpkeep     *Rate `protobuf:"bytes,10,opt,name=food_upkeep,json=foodUpkeep,proto3" json:"food_upkeep,omitempty"`
 	NetFoodFlow    *Rate `protobuf:"bytes,11,opt,name=net_food_flow,json=netFoodFlow,proto3" json:"net_food_flow,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	TaxRatePercent int32 `protobuf:"varint,19,opt,name=tax_rate_percent,json=taxRatePercent,proto3" json:"tax_rate_percent,omitempty"`
+	TaxIncome      *Rate `protobuf:"bytes,20,opt,name=tax_income,json=taxIncome,proto3" json:"tax_income,omitempty"`
+	// Current population change before tax policy is applied. This owner-only
+	// baseline lets clients preview policy changes without guessing the city
+	// simulation's food and logistic-growth inputs.
+	PopulationGrowthBeforeTax *Rate   `protobuf:"bytes,21,opt,name=population_growth_before_tax,json=populationGrowthBeforeTax,proto3" json:"population_growth_before_tax,omitempty"`
+	MilitiaPercent            float64 `protobuf:"fixed64,22,opt,name=militia_percent,json=militiaPercent,proto3" json:"militia_percent,omitempty"`
+	// The peak-derived civilian floor used by recruitment and militia policy.
+	// Actual core_population may be lower after severe population loss.
+	CorePopulationFloor float64 `protobuf:"fixed64,23,opt,name=core_population_floor,json=corePopulationFloor,proto3" json:"core_population_floor,omitempty"`
+	// False when demographic and defensive-strength fields are intentionally
+	// undisclosed to this viewer. Scouting systems can reveal them later by
+	// returning the same city with this flag enabled.
+	DemographicsVisible bool `protobuf:"varint,24,opt,name=demographics_visible,json=demographicsVisible,proto3" json:"demographics_visible,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *City) Reset() {
@@ -162,9 +179,37 @@ func (x *City) GetPopulationGrowth() *Rate {
 	return nil
 }
 
-func (x *City) GetMilitaryPopulation() float64 {
+func (x *City) GetMilitiaPopulation() float64 {
 	if x != nil {
-		return x.MilitaryPopulation
+		return x.MilitiaPopulation
+	}
+	return 0
+}
+
+func (x *City) GetMilitiaTarget() float64 {
+	if x != nil {
+		return x.MilitiaTarget
+	}
+	return 0
+}
+
+func (x *City) GetCorePopulation() float64 {
+	if x != nil {
+		return x.CorePopulation
+	}
+	return 0
+}
+
+func (x *City) GetRecruitablePopulation() float64 {
+	if x != nil {
+		return x.RecruitablePopulation
+	}
+	return 0
+}
+
+func (x *City) GetTaxablePopulation() float64 {
+	if x != nil {
+		return x.TaxablePopulation
 	}
 	return 0
 }
@@ -190,11 +235,53 @@ func (x *City) GetNetFoodFlow() *Rate {
 	return nil
 }
 
+func (x *City) GetTaxRatePercent() int32 {
+	if x != nil {
+		return x.TaxRatePercent
+	}
+	return 0
+}
+
+func (x *City) GetTaxIncome() *Rate {
+	if x != nil {
+		return x.TaxIncome
+	}
+	return nil
+}
+
+func (x *City) GetPopulationGrowthBeforeTax() *Rate {
+	if x != nil {
+		return x.PopulationGrowthBeforeTax
+	}
+	return nil
+}
+
+func (x *City) GetMilitiaPercent() float64 {
+	if x != nil {
+		return x.MilitiaPercent
+	}
+	return 0
+}
+
+func (x *City) GetCorePopulationFloor() float64 {
+	if x != nil {
+		return x.CorePopulationFloor
+	}
+	return 0
+}
+
+func (x *City) GetDemographicsVisible() bool {
+	if x != nil {
+		return x.DemographicsVisible
+	}
+	return false
+}
+
 var File_cityio_entity_v1_city_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x94\x05\n" +
+	"\x1bcityio/entity/v1/city.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\"\x92\t\n" +
 	"\x04City\x121\n" +
 	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12.\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1a.cityio.entity.v1.CityTypeR\x04type\x123\n" +
@@ -207,13 +294,24 @@ const file_cityio_entity_v1_city_proto_rawDesc = "" +
 	"\x05start\x18\a \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x05start\x12\x12\n" +
 	"\x04size\x18\b \x01(\x05R\x04size\x12\x1a\n" +
 	"\bstarving\x18\f \x01(\bR\bstarving\x12C\n" +
-	"\x11population_growth\x18\r \x01(\v2\x16.cityio.entity.v1.RateR\x10populationGrowth\x12/\n" +
-	"\x13military_population\x18\x0e \x01(\x01R\x12militaryPopulation\x12?\n" +
+	"\x11population_growth\x18\r \x01(\v2\x16.cityio.entity.v1.RateR\x10populationGrowth\x12-\n" +
+	"\x12militia_population\x18\x0e \x01(\x01R\x11militiaPopulation\x12%\n" +
+	"\x0emilitia_target\x18\x0f \x01(\x01R\rmilitiaTarget\x12'\n" +
+	"\x0fcore_population\x18\x10 \x01(\x01R\x0ecorePopulation\x125\n" +
+	"\x16recruitable_population\x18\x11 \x01(\x01R\x15recruitablePopulation\x12-\n" +
+	"\x12taxable_population\x18\x12 \x01(\x01R\x11taxablePopulation\x12?\n" +
 	"\x0ffood_production\x18\t \x01(\v2\x16.cityio.entity.v1.RateR\x0efoodProduction\x127\n" +
 	"\vfood_upkeep\x18\n" +
 	" \x01(\v2\x16.cityio.entity.v1.RateR\n" +
 	"foodUpkeep\x12:\n" +
-	"\rnet_food_flow\x18\v \x01(\v2\x16.cityio.entity.v1.RateR\vnetFoodFlowB\b\n" +
+	"\rnet_food_flow\x18\v \x01(\v2\x16.cityio.entity.v1.RateR\vnetFoodFlow\x12(\n" +
+	"\x10tax_rate_percent\x18\x13 \x01(\x05R\x0etaxRatePercent\x125\n" +
+	"\n" +
+	"tax_income\x18\x14 \x01(\v2\x16.cityio.entity.v1.RateR\ttaxIncome\x12W\n" +
+	"\x1cpopulation_growth_before_tax\x18\x15 \x01(\v2\x16.cityio.entity.v1.RateR\x19populationGrowthBeforeTax\x12'\n" +
+	"\x0fmilitia_percent\x18\x16 \x01(\x01R\x0emilitiaPercent\x122\n" +
+	"\x15core_population_floor\x18\x17 \x01(\x01R\x13corePopulationFloor\x121\n" +
+	"\x14demographics_visible\x18\x18 \x01(\bR\x13demographicsVisibleB\b\n" +
 	"\x06_ownerB\xb2\x01\n" +
 	"\x14com.cityio.entity.v1B\tCityProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
@@ -239,19 +337,21 @@ var file_cityio_entity_v1_city_proto_goTypes = []any{
 	(*Rate)(nil),        // 5: cityio.entity.v1.Rate
 }
 var file_cityio_entity_v1_city_proto_depIdxs = []int32{
-	1, // 0: cityio.entity.v1.City.city_id:type_name -> cityio.entity.v1.CityId
-	2, // 1: cityio.entity.v1.City.type:type_name -> cityio.entity.v1.CityType
-	3, // 2: cityio.entity.v1.City.owner:type_name -> cityio.entity.v1.UserId
-	4, // 3: cityio.entity.v1.City.start:type_name -> cityio.entity.v1.Coordinates
-	5, // 4: cityio.entity.v1.City.population_growth:type_name -> cityio.entity.v1.Rate
-	5, // 5: cityio.entity.v1.City.food_production:type_name -> cityio.entity.v1.Rate
-	5, // 6: cityio.entity.v1.City.food_upkeep:type_name -> cityio.entity.v1.Rate
-	5, // 7: cityio.entity.v1.City.net_food_flow:type_name -> cityio.entity.v1.Rate
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	1,  // 0: cityio.entity.v1.City.city_id:type_name -> cityio.entity.v1.CityId
+	2,  // 1: cityio.entity.v1.City.type:type_name -> cityio.entity.v1.CityType
+	3,  // 2: cityio.entity.v1.City.owner:type_name -> cityio.entity.v1.UserId
+	4,  // 3: cityio.entity.v1.City.start:type_name -> cityio.entity.v1.Coordinates
+	5,  // 4: cityio.entity.v1.City.population_growth:type_name -> cityio.entity.v1.Rate
+	5,  // 5: cityio.entity.v1.City.food_production:type_name -> cityio.entity.v1.Rate
+	5,  // 6: cityio.entity.v1.City.food_upkeep:type_name -> cityio.entity.v1.Rate
+	5,  // 7: cityio.entity.v1.City.net_food_flow:type_name -> cityio.entity.v1.Rate
+	5,  // 8: cityio.entity.v1.City.tax_income:type_name -> cityio.entity.v1.Rate
+	5,  // 9: cityio.entity.v1.City.population_growth_before_tax:type_name -> cityio.entity.v1.Rate
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_city_proto_init() }

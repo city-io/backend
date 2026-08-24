@@ -19,6 +19,7 @@ type Store interface {
 	GetAllBuildings(ctx context.Context) ([]domain.Building, error)
 	GetAllArmies(ctx context.Context) ([]domain.Army, error)
 	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]domain.TrainingOrder, error)
+	GetMailboxMessagesByRecipient(ctx context.Context, userID string) ([]domain.MailboxMessage, error)
 	GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error)
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]domain.Building, error)
 	GetExploredTiles(ctx context.Context, userID string) ([]domain.Coordinates, error)
@@ -29,7 +30,9 @@ type Store interface {
 	CreateBuilding(ctx context.Context, building domain.Building) error
 	CreateArmy(ctx context.Context, army domain.Army) error
 	CreateTrainingOrder(ctx context.Context, order domain.TrainingOrder) error
+	CreateMailboxMessage(ctx context.Context, message domain.MailboxMessage) error
 	StartTrainingOrder(ctx context.Context, orderID string, startedAt, completesAt time.Time) error
+	MarkMailboxMessageRead(ctx context.Context, messageID, userID string) (*domain.MailboxMessage, error)
 
 	DeleteUser(ctx context.Context, userID string) error
 	DeleteCity(ctx context.Context, cityID string) error

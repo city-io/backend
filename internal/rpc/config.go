@@ -24,6 +24,18 @@ func (h *configHandler) GetGameConfig(_ context.Context, _ *connect.Request[serv
 		BuildingTick: durationpb.New(constants.BuildingTickInterval * time.Second),
 		CityTick:     durationpb.New(constants.CityTickInterval * time.Second),
 		Buildings:    buildBuildingConfigs(),
+		PopulationPolicy: &servicev1.PopulationPolicyConfig{
+			CoreCivilianPercent:        constants.CoreCivilianPercent,
+			DefaultMilitiaPercent:      constants.DefaultMilitiaPercent,
+			NeutralMilitiaPercent:      constants.NeutralMilitiaPercent,
+			MinMilitiaPercent:          constants.MinMilitiaPercent,
+			MaxMilitiaPercent:          constants.MaxMilitiaPercent,
+			MaxMilitaryPercent:         100 - constants.CoreCivilianPercent,
+			DefaultTaxRatePercent:      constants.DefaultTaxRatePercent,
+			MaxTaxRatePercent:          constants.MaxTaxRatePercent,
+			TaxGoldPerPopulation:       mapping.RatePerHour(constants.TaxGoldPerPopPerHour),
+			MaxTaxGrowthPenaltyPercent: constants.MaxTaxGrowthPenaltyPercent,
+		},
 	}), nil
 }
 

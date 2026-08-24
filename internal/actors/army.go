@@ -209,8 +209,10 @@ func (state *armyActor) merge(ctx actor.Context, sourceArmyID string) {
 	}
 	state.Store.EnqueueArmy(state.Army)
 	state.updateUpkeepCity()
-	state.publish()
-	ctx.Respond(messages.Ack{})
+	merged := state.Army
+	merged.RemainingPath = append([]domain.Coordinates(nil), state.path...)
+	stream.Publish(state.Army.Owner, stream.StateUpdate{Army: &merged, DeletedArmyID: &sourceArmyID})
+	ctx.Respond(&messages.MergeArmiesResponseMessage{Army: merged, DeletedArmyID: sourceArmyID})
 }
 
 func (state *armyActor) split(ctx actor.Context, requested map[domain.TroopType]int64) {
@@ -313,7 +315,7 @@ func (state *armyActor) attack(ctx actor.Context, targetID string) {
 		return
 	}
 	if target.BattleID != nil {
-		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err != nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{Army: state.Army, OpposesArmyID: target.ArmyID}); err != nil {
 			ctx.Respond(err)
 			return
 		}
@@ -362,18 +364,37 @@ func (state *armyActor) conquer(ctx actor.Context, cityID string) {
 		return
 	}
 	x, y := response.City.StartX+response.City.Size/2, response.City.StartY+response.City.Size/2
+	explored, err := state.Store.GetExploredTiles(state.Ctx(), state.Army.Owner)
+	if err != nil {
+		ctx.Respond(&messages.InternalError{})
+		return
+	}
+	known := make(map[domain.Coordinates]struct{}, len(explored))
+	for _, coords := range explored {
+		known[coords] = struct{}{}
+	}
+	path, reaches := domain.FindKnownLandPathAdjacent(
+		state.World.Terrain(), known,
+		domain.Coordinates{X: state.Army.X, Y: state.Army.Y},
+		domain.Coordinates{X: x, Y: y},
+	)
+	if !reaches {
+		ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
+		return
+	}
+	destination := domain.Coordinates{X: state.Army.X, Y: state.Army.Y}
+	if len(path) > 0 {
+		destination = path[len(path)-1]
+	}
 	orderID := uuid.NewString()
 	state.Army.OrderID = &orderID
 	state.Army.OrderKind = domain.ArmyOrderConquer
 	state.Army.TargetCityID = &cityID
 	state.Army.TargetArmyID, state.Army.CaptureStart = nil, nil
-	state.setDestination(x, y)
-	if state.Army.X == x && state.Army.Y == y {
+	state.setDestination(destination.X, destination.Y)
+	state.path = path
+	if state.Army.X == destination.X && state.Army.Y == destination.Y {
 		state.finishAtDestination()
-	} else if err := state.planPath(); err != nil || len(state.path) == 0 {
-		state.clearOrder()
-		ctx.Respond(&messages.UnreachableDestinationError{X: x, Y: y})
-		return
 	}
 	state.Store.EnqueueArmy(state.Army)
 	state.publish()
@@ -445,7 +466,7 @@ func (state *armyActor) refreshAttackTarget() {
 		return
 	}
 	if target.BattleID != nil {
-		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err == nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{Army: state.Army, OpposesArmyID: target.ArmyID}); err == nil {
 			battleID := *target.BattleID
 			state.Army.BattleID = &battleID
 			state.path = nil
@@ -529,22 +550,102 @@ func (state *armyActor) engageSettlementDefender() bool {
 	if !ok {
 		return false
 	}
+	var targetCity *domain.City
+	atDestination := state.Army.DestX != nil && state.Army.DestY != nil &&
+		state.Army.X == *state.Army.DestX && state.Army.Y == *state.Army.DestY
+	if state.Army.OrderKind == domain.ArmyOrderConquer && state.Army.TargetCityID != nil && atDestination {
+		if cityResult, cityErr := state.Cluster.Request("city", *state.Army.TargetCityID, messages.GetCityMessage{}); cityErr == nil {
+			if response, cityOK := cityResult.(*messages.GetCityResponseMessage); cityOK {
+				city := response.City
+				targetCity = &city
+			}
+		}
+	}
 	for _, id := range tile.ArmyIDs {
 		if id == state.Army.ArmyID {
 			continue
 		}
 		other, err := state.getArmy(id)
 		if err == nil && other.Owner != state.Army.Owner {
-			state.startBattle(other)
+			if targetCity != nil && targetCity.MilitiaPopulation >= 1 {
+				state.startMilitiaBattle(*targetCity, &other)
+			} else {
+				state.startBattle(other)
+			}
 			return true
 		}
+	}
+	if targetCity != nil && targetCity.MilitiaPopulation >= 1 {
+		state.startMilitiaBattle(*targetCity, nil)
+		return true
 	}
 	return false
 }
 
+func (state *armyActor) startMilitiaBattle(city domain.City, fieldDefender *domain.Army) {
+	proposedID := uuid.NewString()
+	res, err := state.Cluster.Request("city", city.CityID, messages.BeginMilitiaBattleMessage{BattleID: proposedID})
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to enroll settlement militia", "army_id", state.Army.ArmyID, "city_id", city.CityID, "error", err)
+		return
+	}
+	response, ok := res.(*messages.BeginMilitiaBattleResponseMessage)
+	if !ok || response.BattleID == "" || response.Count <= 0 {
+		return
+	}
+	if response.BattleID != proposedID {
+		if _, err := state.Cluster.Request("battle", response.BattleID, messages.JoinBattleMessage{
+			Army:                 state.Army,
+			OpposesMilitiaCityID: city.CityID,
+		}); err != nil {
+			slog.ErrorContext(state.Ctx(), "failed to join militia battle", "army_id", state.Army.ArmyID, "battle_id", response.BattleID, "error", err)
+			return
+		}
+		battleID := response.BattleID
+		state.Army.BattleID = &battleID
+		state.path = nil
+		state.publish()
+		if fieldDefender != nil && fieldDefender.BattleID == nil {
+			if _, err := state.Cluster.Request("battle", battleID, messages.JoinBattleMessage{
+				Army:          *fieldDefender,
+				OpposesArmyID: state.Army.ArmyID,
+			}); err == nil {
+				_ = state.Cluster.Tell("army", fieldDefender.ArmyID, messages.EnterBattleMessage{BattleID: battleID})
+			}
+		}
+		return
+	}
+	now := time.Now()
+	defenders := domain.BattleSide{MilitiaCityID: &city.CityID, MilitiaCount: response.Count}
+	if city.Owner != nil {
+		defenders.UserIDs = []string{*city.Owner}
+	}
+	if fieldDefender != nil {
+		defenders.UserIDs = appendUnique(defenders.UserIDs, fieldDefender.Owner)
+		defenders.ArmyIDs = []string{fieldDefender.ArmyID}
+	}
+	battle := domain.Battle{
+		BattleID:  proposedID,
+		X:         state.Army.X,
+		Y:         state.Army.Y,
+		StartedAt: now,
+		NextTick:  now.Add(constants.BattleTickInterval),
+		Attackers: domain.BattleSide{UserIDs: []string{state.Army.Owner}, ArmyIDs: []string{state.Army.ArmyID}},
+		Defenders: defenders,
+	}
+	participants := []domain.Army{state.Army}
+	if fieldDefender != nil {
+		participants = append(participants, *fieldDefender)
+	}
+	if _, err := state.Cluster.Request("battle", proposedID, &messages.CreateBattleMessage{Battle: battle, Armies: participants}); err != nil {
+		_ = state.Cluster.Tell("city", city.CityID, messages.EndMilitiaBattleMessage{BattleID: proposedID})
+		slog.ErrorContext(state.Ctx(), "failed to create militia battle", "army_id", state.Army.ArmyID, "city_id", city.CityID, "error", err)
+	}
+}
+
 func (state *armyActor) startBattle(target domain.Army) {
 	if target.BattleID != nil {
-		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{ArmyID: state.Army.ArmyID, Owner: state.Army.Owner, OpposesArmyID: target.ArmyID}); err == nil {
+		if _, err := state.Cluster.Request("battle", *target.BattleID, messages.JoinBattleMessage{Army: state.Army, OpposesArmyID: target.ArmyID}); err == nil {
 			battleID := *target.BattleID
 			state.Army.BattleID = &battleID
 			state.path = nil
@@ -554,6 +655,7 @@ func (state *armyActor) startBattle(target domain.Army) {
 	}
 	battleID := uuid.NewString()
 	now := time.Now()
+	participants := []domain.Army{state.Army, target}
 	battle := domain.Battle{BattleID: battleID, X: state.Army.X, Y: state.Army.Y, StartedAt: now, NextTick: now.Add(constants.BattleTickInterval),
 		Attackers: domain.BattleSide{UserIDs: []string{state.Army.Owner}, ArmyIDs: []string{state.Army.ArmyID}},
 		Defenders: domain.BattleSide{UserIDs: []string{target.Owner}, ArmyIDs: []string{target.ArmyID}}}
@@ -569,27 +671,24 @@ func (state *armyActor) startBattle(target domain.Army) {
 				}
 				if army.Owner == state.Army.Owner {
 					battle.Attackers.ArmyIDs = append(battle.Attackers.ArmyIDs, id)
+					participants = append(participants, army)
 				}
 				if army.Owner == target.Owner {
 					battle.Defenders.ArmyIDs = append(battle.Defenders.ArmyIDs, id)
+					participants = append(participants, army)
 				}
 			}
 		}
 	}
-	if _, err := state.Cluster.Request("battle", battleID, &messages.CreateBattleMessage{Battle: battle}); err != nil {
+	if _, err := state.Cluster.Request("battle", battleID, &messages.CreateBattleMessage{Battle: battle, Armies: participants}); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to create battle", "army_id", state.Army.ArmyID, "target_army_id", target.ArmyID, "error", err)
 	}
 }
 
 func (state *armyActor) applyCasualties(ctx actor.Context, casualties map[domain.TroopType]int64) {
-	var released int64
 	for troopType, count := range casualties {
 		removed := min(count, state.Army.Troops[troopType])
 		state.Army.Troops[troopType] -= removed
-		released += removed * constants.GetTroopPopCost(troopType)
-	}
-	if released > 0 && state.Army.UpkeepCityID != nil {
-		_ = state.Cluster.Tell("city", *state.Army.UpkeepCityID, messages.ReleaseMilitaryPopulationMessage{Count: released})
 	}
 	survived := false
 	for _, count := range state.Army.Troops {

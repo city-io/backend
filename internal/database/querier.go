@@ -20,6 +20,7 @@ type Querier interface {
 	CreateArmy(ctx context.Context, arg CreateArmyParams) error
 	CreateBuilding(ctx context.Context, arg CreateBuildingParams) error
 	CreateCity(ctx context.Context, arg CreateCityParams) error
+	CreateMailboxMessage(ctx context.Context, arg CreateMailboxMessageParams) error
 	CreateTrainingOrder(ctx context.Context, arg CreateTrainingOrderParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteArmy(ctx context.Context, armyID string) error
@@ -34,10 +35,12 @@ type Querier interface {
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]GetBuildingsByCityRow, error)
 	GetCitiesByOwner(ctx context.Context, owner *string) ([]GetCitiesByOwnerRow, error)
 	GetExploredTiles(ctx context.Context, userID string) ([]GetExploredTilesRow, error)
+	GetMailboxMessagesByRecipient(ctx context.Context, recipientID string) ([]MailboxMessage, error)
 	GetOrCreateWorldSeed(ctx context.Context, seed int64) (int64, error)
 	GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]TrainingOrder, error)
 	GetUserByID(ctx context.Context, userID string) (User, error)
 	GetUserByIdentifier(ctx context.Context, email string) (User, error)
+	MarkMailboxMessageRead(ctx context.Context, arg MarkMailboxMessageReadParams) (MailboxMessage, error)
 	StartTrainingOrder(ctx context.Context, arg StartTrainingOrderParams) error
 	UpdateCity(ctx context.Context, arg UpdateCityParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error

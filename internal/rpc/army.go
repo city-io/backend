@@ -16,6 +16,7 @@ import (
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
 	"cityio/internal/services"
+	"cityio/internal/utils"
 )
 
 type armyHandler struct {
@@ -159,7 +160,7 @@ func (h *armyHandler) GetArmy(ctx context.Context, req *connect.Request[servicev
 	}
 	if army.BattleID != nil {
 		if battle, ok := battles.Get(*army.BattleID); ok {
-			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle))
+			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle, claims.UserID))
 		}
 	}
 	return connect.NewResponse(&servicev1.GetArmyResponse{ArmyId: mapping.ToArmyId(army.ArmyID), Entities: bag}), nil
@@ -276,7 +277,23 @@ func (h *armyHandler) PreviewArmyRoute(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	route := h.srv.projectArmyRoute(army, domain.Coordinates{X: x, Y: y}, exploredSet(explored))
+	known := exploredSet(explored)
+	destination := domain.Coordinates{X: x, Y: y}
+	route := h.srv.projectArmyRoute(army, destination, known)
+	claims, _ := auth.ClaimsFromContext(ctx)
+	if tileResult, tileErr := h.srv.cluster.Request("tile", utils.GetTileIndex(x, y), messages.GetTileMessage{}); tileErr == nil {
+		if tile, ok := tileResult.(messages.GetTileResponseMessage); ok && tile.CityID != nil {
+			if cityResult, cityErr := h.srv.cluster.Request("city", *tile.CityID, messages.GetCityMessage{}); cityErr == nil {
+				if response, cityOK := cityResult.(*messages.GetCityResponseMessage); cityOK {
+					city := response.City
+					center := domain.Coordinates{X: city.StartX + city.Size/2, Y: city.StartY + city.Size/2}
+					if center == destination && (city.Owner == nil || *city.Owner != claims.UserID) {
+						route = h.srv.projectArmySiegeRoute(army, center, known)
+					}
+				}
+			}
+		}
+	}
 	return connect.NewResponse(&servicev1.PreviewArmyRouteResponse{
 		Route: route.route, EstimatedDuration: durationpb.New(route.duration),
 	}), nil
@@ -299,14 +316,29 @@ func (h *armyHandler) MergeArmies(ctx context.Context, req *connect.Request[serv
 	if target.X != source.X || target.Y != source.Y {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("armies must be on the same tile to merge"))
 	}
-	if err := services.MergeArmies(ctx, h.srv.cluster, targetID, sourceID); err != nil {
+	result, err := services.MergeArmies(ctx, h.srv.cluster, targetID, sourceID)
+	if err != nil {
 		var inBattle *messages.ArmyInBattleError
 		if errors.As(err, &inBattle) {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&servicev1.MergeArmiesResponse{}), nil
+	bag := mapping.EntitiesToBag(nil, nil, nil, []domain.Army{result.Army})
+	if result.Army.OrderID != nil {
+		explored, err := h.srv.store.GetExploredTiles(ctx, result.Army.Owner)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if order := h.srv.projectOwnedArmyOrder(result.Army, exploredSet(explored)); order != nil {
+			bag.ArmyOrders = append(bag.ArmyOrders, order)
+		}
+	}
+	return connect.NewResponse(&servicev1.MergeArmiesResponse{
+		ArmyId:   mapping.ToArmyId(result.Army.ArmyID),
+		Entities: bag,
+		Deleted:  &entityv1.EntityIdBag{ArmyIds: []*entityv1.ArmyId{mapping.ToArmyId(result.DeletedArmyID)}},
+	}), nil
 }
 
 func (h *armyHandler) SplitArmy(ctx context.Context, req *connect.Request[servicev1.SplitArmyRequest]) (*connect.Response[servicev1.SplitArmyResponse], error) {
@@ -384,7 +416,7 @@ func (h *armyHandler) ListArmies(ctx context.Context, req *connect.Request[servi
 	}
 	for _, battle := range battles.All() {
 		if battleVisibleToUser(battle, claims.UserID, map[domain.Coordinates]struct{}{}) {
-			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle))
+			bag.Battles = append(bag.Battles, mapping.BattleToProto(battle, claims.UserID))
 		}
 	}
 	return connect.NewResponse(&servicev1.ListArmiesResponse{

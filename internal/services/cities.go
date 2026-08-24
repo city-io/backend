@@ -35,17 +35,31 @@ func CreateCity(ctx context.Context, cluster contracts.ClusterProvider, store co
 
 	startX := block.X
 	startY := block.Y
-	newCity := domain.City{
-		CityID:        cityID,
-		Type:          city.Type,
-		Owner:         city.Owner,
-		Name:          city.Name,
-		Population:    constants.InitialPlayerCityPopulation,
-		PopulationCap: constants.InitialPlayerCityPopulation,
-		StartX:        startX,
-		StartY:        startY,
-		Size:          city.Size,
+	militiaPercent := constants.DefaultMilitiaPercent
+	taxRatePercent := constants.DefaultTaxRatePercent
+	if city.Type == domain.CityTypeTown {
+		militiaPercent = constants.NeutralMilitiaPercent
+		taxRatePercent = constants.NeutralTaxRatePercent
 	}
+	newCity := domain.City{
+		CityID:          cityID,
+		Type:            city.Type,
+		Owner:           city.Owner,
+		Name:            city.Name,
+		Population:      constants.InitialPlayerCityPopulation,
+		PopulationCap:   constants.InitialPlayerCityPopulation,
+		PopulationBasis: constants.InitialPlayerCityPopulation,
+		TaxRatePercent:  taxRatePercent,
+		StartX:          startX,
+		StartY:          startY,
+		Size:            city.Size,
+	}
+	newCity.MilitiaTarget = constants.MilitiaTargetForPercent(newCity, militiaPercent)
+	if city.Type == domain.CityTypeTown {
+		newCity.MilitiaTarget = constants.MaxMilitiaTarget(newCity)
+	}
+	newCity.MilitiaPopulation = constants.MilitiaTarget(newCity)
+	newCity.TaxIncomeRate = constants.TaxIncomePerHour(newCity)
 
 	if _, err = cluster.Request("city", cityID, &messages.CreateCityMessage{City: newCity, Restore: false}); err != nil {
 		slog.ErrorContext(ctx, "failed to create city actor", "error", err)
