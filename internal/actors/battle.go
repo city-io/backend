@@ -313,8 +313,8 @@ func (state *battleActor) tick(ctx actor.Context) {
 	defenderPower := attackPower(defenders, state.Battle.Defenders.MilitiaCount)
 	toDefenders, defenderMilitiaLosses := state.casualties(defenders, state.Battle.Defenders.MilitiaCityID, state.Battle.Defenders.MilitiaCount, attackerPower)
 	toAttackers, attackerMilitiaLosses := state.casualties(attackers, state.Battle.Attackers.MilitiaCityID, state.Battle.Attackers.MilitiaCount, defenderPower)
-	defenderCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Defenders, attackerPower)
-	attackerCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Attackers, defenderPower)
+	defenderCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Defenders, militaryCasualtyCount(toDefenders, defenderMilitiaLosses))
+	attackerCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Attackers, militaryCasualtyCount(toAttackers, attackerMilitiaLosses))
 	state.reportRounds = append(state.reportRounds, domain.BattleReportRound{
 		Number:                     len(state.reportRounds) + 1,
 		OccurredAt:                 time.Now(),
@@ -385,6 +385,16 @@ func reportLosses(losses map[string]map[domain.TroopType]int64, militiaCityID *s
 	return result
 }
 
+func militaryCasualtyCount(losses map[string]map[domain.TroopType]int64, militia int64) int64 {
+	total := militia
+	for _, armyLosses := range losses {
+		for _, count := range armyLosses {
+			total += count
+		}
+	}
+	return total
+}
+
 func (state *battleActor) recordMilitiaLosses(side *domain.BattleReportSide, count int64) {
 	side.SurvivingMilitia = max(side.SurvivingMilitia-count, 0)
 }
@@ -423,15 +433,13 @@ func (state *battleActor) applyMilitiaLosses(side *domain.BattleSide, count int6
 	}
 }
 
-func (state *battleActor) applySiegeCivilianCasualties(side *domain.BattleSide, incomingPower float64) int64 {
-	if side.MilitiaCityID == nil || incomingPower <= 0 {
+func (state *battleActor) applySiegeCivilianCasualties(side *domain.BattleSide, militaryCasualties int64) int64 {
+	if side.MilitiaCityID == nil || militaryCasualties <= 0 {
 		return 0
 	}
 	cityID := *side.MilitiaCityID
-	soldier := constants.GetTroopStat(domain.TroopTypeSoldier)
-	durability := float64(soldier.HP + 5*soldier.Defense)
 	key := "civilians:" + cityID
-	expected := incomingPower/durability*constants.BattleCasualtyRate*constants.SiegeCivilianCasualtyRate + state.casualtyCarry[key]
+	expected := float64(militaryCasualties)*constants.SiegeCivilianCasualtiesPerMilitaryLoss + state.casualtyCarry[key]
 	requested := int64(math.Floor(expected))
 	state.casualtyCarry[key] = expected - float64(requested)
 	if requested <= 0 {

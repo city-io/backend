@@ -13,9 +13,10 @@ const (
 	// Keeping it below one lets formations exchange several rounds before one
 	// side collapses.
 	BattleCasualtyRate = 0.50
-	// SiegeCivilianCasualtyRate converts incoming military force into a much
-	// smaller amount of collateral population loss, accumulated across rounds.
-	SiegeCivilianCasualtyRate = 0.10
+	// SiegeCivilianCasualtiesPerMilitaryLoss ties collateral population loss
+	// directly to the army and militia casualties suffered by that side. The
+	// fractional remainder carries across rounds.
+	SiegeCivilianCasualtiesPerMilitaryLoss = 0.15
 )
 
 // TroopStat holds the tier-1 stat profile for a troop type. Gold is the

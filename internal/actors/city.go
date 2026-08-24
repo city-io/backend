@@ -642,7 +642,8 @@ func (state *cityActor) applyMilitiaCasualties(count int64) bool {
 }
 
 func (state *cityActor) applyCivilianCasualties(count int64) int64 {
-	available := int64(math.Floor(constants.TaxablePopulation(state.City)))
+	minimumCoreSurvivors := constants.ProtectedCorePopulation(state.City) * constants.SiegeCoreSurvivalPercent / 100
+	available := int64(math.Floor(max(constants.TaxablePopulation(state.City)-minimumCoreSurvivors, 0)))
 	applied := min(max(count, 0), available)
 	state.City.Population = max(state.City.Population-float64(applied), state.City.MilitiaPopulation)
 	state.City.TaxIncomeRate = constants.TaxIncomePerHour(state.City)

@@ -106,13 +106,44 @@ func TestSiegeAppliesCivilianCasualtiesButFieldBattleDoesNot(t *testing.T) {
 		casualtyCarry: make(map[string]float64),
 	}
 
-	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{}, 1_500); got != 0 {
+	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{}, 10); got != 0 {
 		t.Fatalf("field battle civilian casualties = %d, want 0", got)
 	}
-	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{MilitiaCityID: &cityID}, 3_000); got != 1 {
+	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{MilitiaCityID: &cityID}, 10); got != 1 {
 		t.Fatalf("siege civilian casualties = %d, want 1", got)
 	}
 	if applied != 1 {
 		t.Fatalf("applied civilian casualties = %d, want 1", applied)
+	}
+}
+
+func TestSiegeCivilianCasualtiesScaleWithMilitaryLosses(t *testing.T) {
+	cityID := "town"
+	cluster := &armyOperationTestCluster{request: func(_, _ string, message any) (any, error) {
+		casualties := message.(messages.ApplyCivilianCasualtiesMessage)
+		return &messages.ApplyCivilianCasualtiesResponseMessage{Applied: casualties.Count}, nil
+	}}
+	state := &battleActor{
+		baseActor:     baseActor{Cluster: cluster},
+		Battle:        domain.Battle{BattleID: "battle"},
+		casualtyCarry: make(map[string]float64),
+	}
+	side := &domain.BattleSide{MilitiaCityID: &cityID}
+
+	if got := state.applySiegeCivilianCasualties(side, 1); got != 0 {
+		t.Fatalf("fractional civilian casualties = %d, want 0", got)
+	}
+	if got := state.applySiegeCivilianCasualties(side, 20); got != 3 {
+		t.Fatalf("large-round civilian casualties = %d, want 3", got)
+	}
+}
+
+func TestMilitaryCasualtyCountIncludesArmiesAndMilitia(t *testing.T) {
+	losses := map[string]map[domain.TroopType]int64{
+		"first":  {domain.TroopTypeSoldier: 3, domain.TroopTypeArcher: 2},
+		"second": {domain.TroopTypeCavalry: 4},
+	}
+	if got := militaryCasualtyCount(losses, 6); got != 15 {
+		t.Fatalf("military casualty count = %d, want 15", got)
 	}
 }
