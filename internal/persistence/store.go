@@ -152,8 +152,8 @@ func (s *Store) GetAllArmies(ctx context.Context) ([]domain.Army, error) {
 	return armies, nil
 }
 
-func (s *Store) GetTrainingOrdersByBarracks(ctx context.Context, barracksID string) ([]domain.TrainingOrder, error) {
-	rows, err := s.db.GetTrainingOrdersByBarracks(ctx, barracksID)
+func (s *Store) GetTrainingOrdersByCity(ctx context.Context, cityID string) ([]domain.TrainingOrder, error) {
+	rows, err := s.db.GetTrainingOrdersByCity(ctx, cityID)
 	if err != nil {
 		return nil, err
 	}
@@ -290,6 +290,7 @@ func (s *Store) CreateTrainingOrder(ctx context.Context, order domain.TrainingOr
 	return s.db.CreateTrainingOrder(ctx, database.CreateTrainingOrderParams{
 		TrainingOrderID: order.TrainingOrderID,
 		ArmyID:          order.ArmyID,
+		CityID:          order.CityID,
 		BarracksID:      order.BarracksID,
 		TroopType:       string(order.TroopType),
 		Count:           order.Count,
@@ -325,9 +326,10 @@ func (s *Store) CreateMailboxMessage(ctx context.Context, message domain.Mailbox
 	})
 }
 
-func (s *Store) StartTrainingOrder(ctx context.Context, orderID string, startedAt, completesAt time.Time) error {
-	return s.db.StartTrainingOrder(ctx, database.StartTrainingOrderParams{
+func (s *Store) AssignTrainingOrder(ctx context.Context, orderID, barracksID string, startedAt, completesAt time.Time) error {
+	return s.db.AssignTrainingOrder(ctx, database.AssignTrainingOrderParams{
 		TrainingOrderID: orderID,
+		BarracksID:      &barracksID,
 		StartedAt:       database.ToPGTimestamp(&startedAt),
 		CompletesAt:     database.ToPGTimestamp(&completesAt),
 	})

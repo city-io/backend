@@ -1,13 +1,14 @@
--- name: GetTrainingOrdersByBarracks :many
+-- name: GetTrainingOrdersByCity :many
 SELECT *
 FROM training_orders
-WHERE barracks_id = $1
+WHERE city_id = $1
 ORDER BY created_at, training_order_id;
 
 -- name: CreateTrainingOrder :exec
 INSERT INTO training_orders (
     training_order_id,
     army_id,
+    city_id,
     barracks_id,
     troop_type,
     count,
@@ -17,14 +18,16 @@ INSERT INTO training_orders (
     completes_at,
     created_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
--- name: StartTrainingOrder :exec
+-- name: AssignTrainingOrder :exec
 UPDATE training_orders
 SET
-    started_at = $2,
-    completes_at = $3
-WHERE training_order_id = $1;
+    barracks_id = $2,
+    started_at = $3,
+    completes_at = $4
+WHERE training_order_id = $1
+  AND started_at IS NULL;
 
 -- name: DeleteTrainingOrder :exec
 DELETE FROM training_orders

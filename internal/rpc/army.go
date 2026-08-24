@@ -51,30 +51,19 @@ func (h *armyHandler) requireArmyOwnership(ctx context.Context, armyID string) (
 }
 
 func (h *armyHandler) TrainTroops(ctx context.Context, req *connect.Request[servicev1.TrainTroopsRequest]) (*connect.Response[servicev1.TrainTroopsResponse], error) {
-	barracksID := req.Msg.GetBarracksId().GetValue()
-	res, err := h.srv.cluster.Request("building", barracksID, messages.GetBuildingMessage{})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	building, ok := res.(*messages.GetBuildingResponseMessage)
-	if !ok {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("barracks not found"))
-	}
-	if building.Building.BuildingType() != domain.BuildingTypeBarracks {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("building is not a barracks"))
-	}
-	owns, err := h.srv.ownsCity(ctx, building.Building.CityID)
+	cityID := req.Msg.GetCityId().GetValue()
+	owns, err := h.srv.ownsCity(ctx, cityID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if !owns {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("barracks not owned by caller"))
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
 	}
 
 	order, err := services.TrainTroops(ctx, h.srv.cluster, &services.ArmyInput{
-		BarracksID: barracksID,
-		TroopType:  mapping.TroopTypeFromProto(req.Msg.GetType()),
-		Count:      int64(req.Msg.GetCount()),
+		CityID:    cityID,
+		TroopType: mapping.TroopTypeFromProto(req.Msg.GetType()),
+		Count:     int64(req.Msg.GetCount()),
 	})
 	if err != nil {
 		return nil, trainingError(err)
@@ -83,15 +72,15 @@ func (h *armyHandler) TrainTroops(ctx context.Context, req *connect.Request[serv
 }
 
 func (h *armyHandler) ListTrainingOrders(ctx context.Context, req *connect.Request[servicev1.ListTrainingOrdersRequest]) (*connect.Response[servicev1.ListTrainingOrdersResponse], error) {
-	barracksID := req.Msg.GetBarracksId().GetValue()
-	building, err := (&buildingHandler{srv: h.srv}).requireBuildingOwnership(ctx, barracksID)
+	cityID := req.Msg.GetCityId().GetValue()
+	owns, err := h.srv.ownsCity(ctx, cityID)
 	if err != nil {
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if building.BuildingType() != domain.BuildingTypeBarracks {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("building is not a barracks"))
+	if !owns {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
 	}
-	orders, err := services.GetTrainingOrders(ctx, h.srv.cluster, barracksID)
+	orders, err := services.GetTrainingOrders(ctx, h.srv.cluster, cityID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -102,22 +91,43 @@ func (h *armyHandler) ListTrainingOrders(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&servicev1.ListTrainingOrdersResponse{Orders: result}), nil
 }
 
+func (h *armyHandler) CancelTrainingOrder(ctx context.Context, req *connect.Request[servicev1.CancelTrainingOrderRequest]) (*connect.Response[servicev1.CancelTrainingOrderResponse], error) {
+	cityID := req.Msg.GetCityId().GetValue()
+	owns, err := h.srv.ownsCity(ctx, cityID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !owns {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
+	}
+	if err := services.CancelTrainingOrder(ctx, h.srv.cluster, cityID, req.Msg.GetTrainingOrderId().GetValue()); err != nil {
+		var started *messages.TrainingAlreadyStartedError
+		var notFound *messages.TrainingOrderNotFoundError
+		switch {
+		case errors.As(err, &started):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		case errors.As(err, &notFound):
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		default:
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	}
+	return connect.NewResponse(&servicev1.CancelTrainingOrderResponse{}), nil
+}
+
 // trainingError maps the barracks/city rejection errors to Connect codes.
 func trainingError(err error) error {
 	var insufficientGold *messages.InsufficientGoldError
 	var insufficientPop *messages.InsufficientPopulationError
-	var capacity *messages.TrainingCapacityExceededError
-	var construction *messages.ConstructionInProgressError
 	var invalidCount *messages.InvalidTroopCountError
 	var invalidType *messages.InvalidTroopTypeError
+	var noBarracks *messages.NoBarracksError
 	switch {
 	case errors.As(err, &insufficientGold):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.As(err, &insufficientPop):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.As(err, &capacity):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.As(err, &construction):
+	case errors.As(err, &noBarracks):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.As(err, &invalidCount):
 		return connect.NewError(connect.CodeInvalidArgument, err)

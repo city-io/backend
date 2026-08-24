@@ -9,8 +9,9 @@ Usage (server must be running on :8080; see `make all`):
     python3 scripts/troops.py login                 # cache a JWT for the test user
     python3 scripts/troops.py cities                # list owned cities
     python3 scripts/troops.py barracks              # build a barracks in the first owned city
-    python3 scripts/troops.py train <barracksId> soldier 5
-    python3 scripts/troops.py queue <barracksId>
+    python3 scripts/troops.py train <cityId> soldier 5
+    python3 scripts/troops.py queue <cityId>
+    python3 scripts/troops.py cancel <cityId> <trainingOrderId>
     python3 scripts/troops.py armies                # list your armies
     python3 scripts/troops.py move <armyId> <x> <y>
     python3 scripts/troops.py getarmy <armyId>
@@ -102,17 +103,23 @@ def cmd_barracks():
           "(waits ~10s to finish construction before it can train)")
 
 
-def cmd_train(bid, ttype, count):
+def cmd_train(cid, ttype, count):
     st, r = call("cityio.service.v1.ArmyService/TrainTroops",
-                 {"barracksId": {"value": bid}, "type": TROOP_ENUM[ttype],
+                 {"cityId": {"value": cid}, "type": TROOP_ENUM[ttype],
                   "count": int(count)}, token())
     print("train:", st, r)
     return st, r
 
 
-def cmd_queue(bid):
+def cmd_queue(cid):
     st, r = call("cityio.service.v1.ArmyService/ListTrainingOrders",
-                 {"barracksId": {"value": bid}}, token())
+                 {"cityId": {"value": cid}}, token())
+    pp(st, r)
+
+
+def cmd_cancel(cid, order_id):
+    st, r = call("cityio.service.v1.ArmyService/CancelTrainingOrder",
+                 {"cityId": {"value": cid}, "trainingOrderId": {"value": order_id}}, token())
     pp(st, r)
 
 
@@ -174,11 +181,11 @@ def cmd_smoke():
     print("barracks", bid, "- waiting ~13s for construction")
     time.sleep(13)
 
-    st, training = cmd_train(bid, "soldier", 5)
+    st, training = cmd_train(cid, "soldier", 5)
     if st != 200:
         return
     aid = training["order"]["armyId"]["value"]
-    cmd_queue(bid)
+    cmd_queue(cid)
     _, r = call("cityio.service.v1.CityService/GetCity", {"cityId": {"value": cid}}, token())
     print("city milPop after train:", r["city"].get("militaryPopulation"))
     print("waiting ~28s for training (5 soldiers at 5s each)")
@@ -205,7 +212,7 @@ def main():
     cmd, args = sys.argv[1], sys.argv[2:]
     handlers = {
         "login": cmd_login, "cities": cmd_cities, "barracks": cmd_barracks,
-        "train": cmd_train, "queue": cmd_queue, "armies": cmd_armies, "move": cmd_move,
+        "train": cmd_train, "queue": cmd_queue, "cancel": cmd_cancel, "armies": cmd_armies, "move": cmd_move,
         "getarmy": cmd_getarmy, "merge": cmd_merge, "split": cmd_split, "city": cmd_city, "smoke": cmd_smoke,
     }
     if cmd not in handlers:

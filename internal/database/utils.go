@@ -175,6 +175,7 @@ func (o TrainingOrder) ToModel() *domain.TrainingOrder {
 	return &domain.TrainingOrder{
 		TrainingOrderID: o.TrainingOrderID,
 		ArmyID:          o.ArmyID,
+		CityID:          o.CityID,
 		BarracksID:      o.BarracksID,
 		TroopType:       domain.TroopType(o.TroopType),
 		Count:           o.Count,

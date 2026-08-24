@@ -178,6 +178,18 @@ func TestCityToProtoMarksOwnerProjectionDemographicsVisible(t *testing.T) {
 	}
 }
 
+func TestTrainingOrderProjectionDistinguishesQueuedAndAssignedWork(t *testing.T) {
+	queued := TrainingOrderToProto(domain.TrainingOrder{TrainingOrderID: "queued", ArmyID: "army", CityID: "city"})
+	if queued.GetCityId().GetValue() != "city" || queued.GetBarracksId() != nil || queued.GetStartedAt() != nil {
+		t.Fatalf("queued projection = %+v", queued)
+	}
+	barracksID := "barracks"
+	assigned := TrainingOrderToProto(domain.TrainingOrder{TrainingOrderID: "active", ArmyID: "army", CityID: "city", BarracksID: &barracksID})
+	if assigned.GetBarracksId().GetValue() != barracksID {
+		t.Fatalf("assigned barracks = %+v", assigned.GetBarracksId())
+	}
+}
+
 func TestMapTilesAroundPointToProtoClampsAndIncludesOccupancy(t *testing.T) {
 	grid := domain.TerrainGrid{
 		Width:  4,

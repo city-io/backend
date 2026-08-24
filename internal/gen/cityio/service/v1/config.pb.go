@@ -136,8 +136,10 @@ type BuildingLevelStats struct {
 	ConstructionTime *durationpb.Duration   `protobuf:"bytes,3,opt,name=construction_time,json=constructionTime,proto3" json:"construction_time,omitempty"`
 	Production       []*ResourceRate        `protobuf:"bytes,4,rep,name=production,proto3" json:"production,omitempty"`
 	Population       float64                `protobuf:"fixed64,5,opt,name=population,proto3" json:"population,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Barracks only: throughput relative to a level-one training lane.
+	TrainingSpeedMultiplier float64 `protobuf:"fixed64,6,opt,name=training_speed_multiplier,json=trainingSpeedMultiplier,proto3" json:"training_speed_multiplier,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *BuildingLevelStats) Reset() {
@@ -201,6 +203,13 @@ func (x *BuildingLevelStats) GetProduction() []*ResourceRate {
 func (x *BuildingLevelStats) GetPopulation() float64 {
 	if x != nil {
 		return x.Population
+	}
+	return 0
+}
+
+func (x *BuildingLevelStats) GetTrainingSpeedMultiplier() float64 {
+	if x != nil {
+		return x.TrainingSpeedMultiplier
 	}
 	return 0
 }
@@ -514,7 +523,7 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x06amount\x18\x02 \x01(\x03R\x06amount\"V\n" +
 	"\fResourceRate\x12\x1a\n" +
 	"\bresource\x18\x01 \x01(\tR\bresource\x12*\n" +
-	"\x04rate\x18\x02 \x01(\v2\x16.cityio.entity.v1.RateR\x04rate\"\x8a\x02\n" +
+	"\x04rate\x18\x02 \x01(\v2\x16.cityio.entity.v1.RateR\x04rate\"\xc6\x02\n" +
 	"\x12BuildingLevelStats\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x125\n" +
 	"\x04cost\x18\x02 \x03(\v2!.cityio.service.v1.ResourceAmountR\x04cost\x12F\n" +
@@ -524,7 +533,8 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"production\x12\x1e\n" +
 	"\n" +
 	"population\x18\x05 \x01(\x01R\n" +
-	"population\"\x83\x01\n" +
+	"population\x12:\n" +
+	"\x19training_speed_multiplier\x18\x06 \x01(\x01R\x17trainingSpeedMultiplier\"\x83\x01\n" +
 	"\x0eBuildingConfig\x122\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x12=\n" +
 	"\x06levels\x18\x02 \x03(\v2%.cityio.service.v1.BuildingLevelStatsR\x06levels\"\x16\n" +

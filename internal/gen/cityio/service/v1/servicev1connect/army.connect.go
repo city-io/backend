@@ -38,6 +38,9 @@ const (
 	// ArmyServiceListTrainingOrdersProcedure is the fully-qualified name of the ArmyService's
 	// ListTrainingOrders RPC.
 	ArmyServiceListTrainingOrdersProcedure = "/cityio.service.v1.ArmyService/ListTrainingOrders"
+	// ArmyServiceCancelTrainingOrderProcedure is the fully-qualified name of the ArmyService's
+	// CancelTrainingOrder RPC.
+	ArmyServiceCancelTrainingOrderProcedure = "/cityio.service.v1.ArmyService/CancelTrainingOrder"
 	// ArmyServiceGetArmyProcedure is the fully-qualified name of the ArmyService's GetArmy RPC.
 	ArmyServiceGetArmyProcedure = "/cityio.service.v1.ArmyService/GetArmy"
 	// ArmyServicePreviewArmyRouteProcedure is the fully-qualified name of the ArmyService's
@@ -64,6 +67,7 @@ const (
 type ArmyServiceClient interface {
 	TrainTroops(context.Context, *connect.Request[v1.TrainTroopsRequest]) (*connect.Response[v1.TrainTroopsResponse], error)
 	ListTrainingOrders(context.Context, *connect.Request[v1.ListTrainingOrdersRequest]) (*connect.Response[v1.ListTrainingOrdersResponse], error)
+	CancelTrainingOrder(context.Context, *connect.Request[v1.CancelTrainingOrderRequest]) (*connect.Response[v1.CancelTrainingOrderResponse], error)
 	GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error)
 	PreviewArmyRoute(context.Context, *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error)
 	MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error)
@@ -96,6 +100,12 @@ func NewArmyServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+ArmyServiceListTrainingOrdersProcedure,
 			connect.WithSchema(armyServiceMethods.ByName("ListTrainingOrders")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelTrainingOrder: connect.NewClient[v1.CancelTrainingOrderRequest, v1.CancelTrainingOrderResponse](
+			httpClient,
+			baseURL+ArmyServiceCancelTrainingOrderProcedure,
+			connect.WithSchema(armyServiceMethods.ByName("CancelTrainingOrder")),
 			connect.WithClientOptions(opts...),
 		),
 		getArmy: connect.NewClient[v1.GetArmyRequest, v1.GetArmyResponse](
@@ -157,17 +167,18 @@ func NewArmyServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // armyServiceClient implements ArmyServiceClient.
 type armyServiceClient struct {
-	trainTroops        *connect.Client[v1.TrainTroopsRequest, v1.TrainTroopsResponse]
-	listTrainingOrders *connect.Client[v1.ListTrainingOrdersRequest, v1.ListTrainingOrdersResponse]
-	getArmy            *connect.Client[v1.GetArmyRequest, v1.GetArmyResponse]
-	previewArmyRoute   *connect.Client[v1.PreviewArmyRouteRequest, v1.PreviewArmyRouteResponse]
-	moveArmy           *connect.Client[v1.MoveArmyRequest, v1.MoveArmyResponse]
-	attackArmy         *connect.Client[v1.AttackArmyRequest, v1.AttackArmyResponse]
-	conquerSettlement  *connect.Client[v1.ConquerSettlementRequest, v1.ConquerSettlementResponse]
-	retreatArmy        *connect.Client[v1.RetreatArmyRequest, v1.RetreatArmyResponse]
-	mergeArmies        *connect.Client[v1.MergeArmiesRequest, v1.MergeArmiesResponse]
-	splitArmy          *connect.Client[v1.SplitArmyRequest, v1.SplitArmyResponse]
-	listArmies         *connect.Client[v1.ListArmiesRequest, v1.ListArmiesResponse]
+	trainTroops         *connect.Client[v1.TrainTroopsRequest, v1.TrainTroopsResponse]
+	listTrainingOrders  *connect.Client[v1.ListTrainingOrdersRequest, v1.ListTrainingOrdersResponse]
+	cancelTrainingOrder *connect.Client[v1.CancelTrainingOrderRequest, v1.CancelTrainingOrderResponse]
+	getArmy             *connect.Client[v1.GetArmyRequest, v1.GetArmyResponse]
+	previewArmyRoute    *connect.Client[v1.PreviewArmyRouteRequest, v1.PreviewArmyRouteResponse]
+	moveArmy            *connect.Client[v1.MoveArmyRequest, v1.MoveArmyResponse]
+	attackArmy          *connect.Client[v1.AttackArmyRequest, v1.AttackArmyResponse]
+	conquerSettlement   *connect.Client[v1.ConquerSettlementRequest, v1.ConquerSettlementResponse]
+	retreatArmy         *connect.Client[v1.RetreatArmyRequest, v1.RetreatArmyResponse]
+	mergeArmies         *connect.Client[v1.MergeArmiesRequest, v1.MergeArmiesResponse]
+	splitArmy           *connect.Client[v1.SplitArmyRequest, v1.SplitArmyResponse]
+	listArmies          *connect.Client[v1.ListArmiesRequest, v1.ListArmiesResponse]
 }
 
 // TrainTroops calls cityio.service.v1.ArmyService.TrainTroops.
@@ -178,6 +189,11 @@ func (c *armyServiceClient) TrainTroops(ctx context.Context, req *connect.Reques
 // ListTrainingOrders calls cityio.service.v1.ArmyService.ListTrainingOrders.
 func (c *armyServiceClient) ListTrainingOrders(ctx context.Context, req *connect.Request[v1.ListTrainingOrdersRequest]) (*connect.Response[v1.ListTrainingOrdersResponse], error) {
 	return c.listTrainingOrders.CallUnary(ctx, req)
+}
+
+// CancelTrainingOrder calls cityio.service.v1.ArmyService.CancelTrainingOrder.
+func (c *armyServiceClient) CancelTrainingOrder(ctx context.Context, req *connect.Request[v1.CancelTrainingOrderRequest]) (*connect.Response[v1.CancelTrainingOrderResponse], error) {
+	return c.cancelTrainingOrder.CallUnary(ctx, req)
 }
 
 // GetArmy calls cityio.service.v1.ArmyService.GetArmy.
@@ -229,6 +245,7 @@ func (c *armyServiceClient) ListArmies(ctx context.Context, req *connect.Request
 type ArmyServiceHandler interface {
 	TrainTroops(context.Context, *connect.Request[v1.TrainTroopsRequest]) (*connect.Response[v1.TrainTroopsResponse], error)
 	ListTrainingOrders(context.Context, *connect.Request[v1.ListTrainingOrdersRequest]) (*connect.Response[v1.ListTrainingOrdersResponse], error)
+	CancelTrainingOrder(context.Context, *connect.Request[v1.CancelTrainingOrderRequest]) (*connect.Response[v1.CancelTrainingOrderResponse], error)
 	GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error)
 	PreviewArmyRoute(context.Context, *connect.Request[v1.PreviewArmyRouteRequest]) (*connect.Response[v1.PreviewArmyRouteResponse], error)
 	MoveArmy(context.Context, *connect.Request[v1.MoveArmyRequest]) (*connect.Response[v1.MoveArmyResponse], error)
@@ -257,6 +274,12 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 		ArmyServiceListTrainingOrdersProcedure,
 		svc.ListTrainingOrders,
 		connect.WithSchema(armyServiceMethods.ByName("ListTrainingOrders")),
+		connect.WithHandlerOptions(opts...),
+	)
+	armyServiceCancelTrainingOrderHandler := connect.NewUnaryHandler(
+		ArmyServiceCancelTrainingOrderProcedure,
+		svc.CancelTrainingOrder,
+		connect.WithSchema(armyServiceMethods.ByName("CancelTrainingOrder")),
 		connect.WithHandlerOptions(opts...),
 	)
 	armyServiceGetArmyHandler := connect.NewUnaryHandler(
@@ -319,6 +342,8 @@ func NewArmyServiceHandler(svc ArmyServiceHandler, opts ...connect.HandlerOption
 			armyServiceTrainTroopsHandler.ServeHTTP(w, r)
 		case ArmyServiceListTrainingOrdersProcedure:
 			armyServiceListTrainingOrdersHandler.ServeHTTP(w, r)
+		case ArmyServiceCancelTrainingOrderProcedure:
+			armyServiceCancelTrainingOrderHandler.ServeHTTP(w, r)
 		case ArmyServiceGetArmyProcedure:
 			armyServiceGetArmyHandler.ServeHTTP(w, r)
 		case ArmyServicePreviewArmyRouteProcedure:
@@ -352,6 +377,10 @@ func (UnimplementedArmyServiceHandler) TrainTroops(context.Context, *connect.Req
 
 func (UnimplementedArmyServiceHandler) ListTrainingOrders(context.Context, *connect.Request[v1.ListTrainingOrdersRequest]) (*connect.Response[v1.ListTrainingOrdersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.ListTrainingOrders is not implemented"))
+}
+
+func (UnimplementedArmyServiceHandler) CancelTrainingOrder(context.Context, *connect.Request[v1.CancelTrainingOrderRequest]) (*connect.Response[v1.CancelTrainingOrderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("cityio.service.v1.ArmyService.CancelTrainingOrder is not implemented"))
 }
 
 func (UnimplementedArmyServiceHandler) GetArmy(context.Context, *connect.Request[v1.GetArmyRequest]) (*connect.Response[v1.GetArmyResponse], error) {

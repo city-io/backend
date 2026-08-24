@@ -75,10 +75,17 @@ func GetTroopMovementDuration(t domain.TroopType) time.Duration {
 	return troopStats[t].MovementDuration
 }
 
-// GetBarracksTrainingCapacity returns how many troops a barracks of the given
-// level can hold in a single in-progress training batch (5 × level).
-func GetBarracksTrainingCapacity(level int) int64 {
-	return int64(5 * level)
+// GetBarracksTrainingSpeed returns the rate at which one barracks lane trains.
+// Each level after the first adds 20% throughput without changing queue rules.
+func GetBarracksTrainingSpeed(level int) float64 {
+	return 1 + 0.20*float64(max(level-1, 0))
+}
+
+// GetBarracksTrainingDuration applies the assigned barracks' speed to a paid
+// batch. Durations retain sub-second precision so level upgrades always help.
+func GetBarracksTrainingDuration(t domain.TroopType, count int64, level int) time.Duration {
+	base := time.Duration(GetTroopTrainingDuration(t, count)) * time.Second
+	return time.Duration(float64(base) / GetBarracksTrainingSpeed(level))
 }
 
 // AllTroopTypes returns every defined troop type.

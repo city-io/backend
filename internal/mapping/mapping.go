@@ -125,9 +125,14 @@ func TrainingOrderToProto(order domain.TrainingOrder) *servicev1.TrainingOrder {
 	result := &servicev1.TrainingOrder{
 		TrainingOrderId: ToTrainingOrderId(order.TrainingOrderID),
 		ArmyId:          ToArmyId(order.ArmyID),
-		BarracksId:      ToBuildingId(order.BarracksID),
+		CityId:          ToCityId(order.CityID),
 		Type:            TroopTypeToProto(order.TroopType),
 		Count:           int32(order.Count),
+		PopulationCost:  order.PopulationCost,
+		GoldCost:        order.GoldCost,
+	}
+	if order.BarracksID != nil {
+		result.BarracksId = ToBuildingId(*order.BarracksID)
 	}
 	if order.StartedAt.Time != nil {
 		result.StartedAt = timestamppb.New(*order.StartedAt.Time)

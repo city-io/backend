@@ -28,11 +28,14 @@ type TrainingOrder struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	TrainingOrderId *v1.TrainingOrderId    `protobuf:"bytes,1,opt,name=training_order_id,json=trainingOrderId,proto3" json:"training_order_id,omitempty"`
 	ArmyId          *v1.ArmyId             `protobuf:"bytes,2,opt,name=army_id,json=armyId,proto3" json:"army_id,omitempty"`
-	BarracksId      *v1.BuildingId         `protobuf:"bytes,3,opt,name=barracks_id,json=barracksId,proto3" json:"barracks_id,omitempty"`
-	Type            v1.TroopType           `protobuf:"varint,4,opt,name=type,proto3,enum=cityio.entity.v1.TroopType" json:"type,omitempty"`
-	Count           int32                  `protobuf:"varint,5,opt,name=count,proto3" json:"count,omitempty"`
-	StartedAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3,oneof" json:"started_at,omitempty"`
-	CompletesAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=completes_at,json=completesAt,proto3,oneof" json:"completes_at,omitempty"`
+	CityId          *v1.CityId             `protobuf:"bytes,3,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
+	BarracksId      *v1.BuildingId         `protobuf:"bytes,4,opt,name=barracks_id,json=barracksId,proto3,oneof" json:"barracks_id,omitempty"`
+	Type            v1.TroopType           `protobuf:"varint,5,opt,name=type,proto3,enum=cityio.entity.v1.TroopType" json:"type,omitempty"`
+	Count           int32                  `protobuf:"varint,6,opt,name=count,proto3" json:"count,omitempty"`
+	StartedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3,oneof" json:"started_at,omitempty"`
+	CompletesAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=completes_at,json=completesAt,proto3,oneof" json:"completes_at,omitempty"`
+	PopulationCost  int64                  `protobuf:"varint,9,opt,name=population_cost,json=populationCost,proto3" json:"population_cost,omitempty"`
+	GoldCost        int64                  `protobuf:"varint,10,opt,name=gold_cost,json=goldCost,proto3" json:"gold_cost,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -81,6 +84,13 @@ func (x *TrainingOrder) GetArmyId() *v1.ArmyId {
 	return nil
 }
 
+func (x *TrainingOrder) GetCityId() *v1.CityId {
+	if x != nil {
+		return x.CityId
+	}
+	return nil
+}
+
 func (x *TrainingOrder) GetBarracksId() *v1.BuildingId {
 	if x != nil {
 		return x.BarracksId
@@ -116,9 +126,23 @@ func (x *TrainingOrder) GetCompletesAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *TrainingOrder) GetPopulationCost() int64 {
+	if x != nil {
+		return x.PopulationCost
+	}
+	return 0
+}
+
+func (x *TrainingOrder) GetGoldCost() int64 {
+	if x != nil {
+		return x.GoldCost
+	}
+	return 0
+}
+
 type TrainTroopsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	BarracksId    *v1.BuildingId         `protobuf:"bytes,1,opt,name=barracks_id,json=barracksId,proto3" json:"barracks_id,omitempty"`
+	CityId        *v1.CityId             `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
 	Type          v1.TroopType           `protobuf:"varint,2,opt,name=type,proto3,enum=cityio.entity.v1.TroopType" json:"type,omitempty"`
 	Count         int32                  `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -155,9 +179,9 @@ func (*TrainTroopsRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *TrainTroopsRequest) GetBarracksId() *v1.BuildingId {
+func (x *TrainTroopsRequest) GetCityId() *v1.CityId {
 	if x != nil {
-		return x.BarracksId
+		return x.CityId
 	}
 	return nil
 }
@@ -222,7 +246,7 @@ func (x *TrainTroopsResponse) GetOrder() *TrainingOrder {
 
 type ListTrainingOrdersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	BarracksId    *v1.BuildingId         `protobuf:"bytes,1,opt,name=barracks_id,json=barracksId,proto3" json:"barracks_id,omitempty"`
+	CityId        *v1.CityId             `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -257,9 +281,9 @@ func (*ListTrainingOrdersRequest) Descriptor() ([]byte, []int) {
 	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ListTrainingOrdersRequest) GetBarracksId() *v1.BuildingId {
+func (x *ListTrainingOrdersRequest) GetCityId() *v1.CityId {
 	if x != nil {
-		return x.BarracksId
+		return x.CityId
 	}
 	return nil
 }
@@ -308,6 +332,94 @@ func (x *ListTrainingOrdersResponse) GetOrders() []*TrainingOrder {
 	return nil
 }
 
+type CancelTrainingOrderRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CityId          *v1.CityId             `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
+	TrainingOrderId *v1.TrainingOrderId    `protobuf:"bytes,2,opt,name=training_order_id,json=trainingOrderId,proto3" json:"training_order_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CancelTrainingOrderRequest) Reset() {
+	*x = CancelTrainingOrderRequest{}
+	mi := &file_cityio_service_v1_army_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelTrainingOrderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelTrainingOrderRequest) ProtoMessage() {}
+
+func (x *CancelTrainingOrderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_army_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelTrainingOrderRequest.ProtoReflect.Descriptor instead.
+func (*CancelTrainingOrderRequest) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CancelTrainingOrderRequest) GetCityId() *v1.CityId {
+	if x != nil {
+		return x.CityId
+	}
+	return nil
+}
+
+func (x *CancelTrainingOrderRequest) GetTrainingOrderId() *v1.TrainingOrderId {
+	if x != nil {
+		return x.TrainingOrderId
+	}
+	return nil
+}
+
+type CancelTrainingOrderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelTrainingOrderResponse) Reset() {
+	*x = CancelTrainingOrderResponse{}
+	mi := &file_cityio_service_v1_army_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelTrainingOrderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelTrainingOrderResponse) ProtoMessage() {}
+
+func (x *CancelTrainingOrderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cityio_service_v1_army_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelTrainingOrderResponse.ProtoReflect.Descriptor instead.
+func (*CancelTrainingOrderResponse) Descriptor() ([]byte, []int) {
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{6}
+}
+
 type GetArmyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ArmyId        *v1.ArmyId             `protobuf:"bytes,1,opt,name=army_id,json=armyId,proto3" json:"army_id,omitempty"`
@@ -317,7 +429,7 @@ type GetArmyRequest struct {
 
 func (x *GetArmyRequest) Reset() {
 	*x = GetArmyRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[5]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -329,7 +441,7 @@ func (x *GetArmyRequest) String() string {
 func (*GetArmyRequest) ProtoMessage() {}
 
 func (x *GetArmyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[5]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -342,7 +454,7 @@ func (x *GetArmyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArmyRequest.ProtoReflect.Descriptor instead.
 func (*GetArmyRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{5}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetArmyRequest) GetArmyId() *v1.ArmyId {
@@ -362,7 +474,7 @@ type GetArmyResponse struct {
 
 func (x *GetArmyResponse) Reset() {
 	*x = GetArmyResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[6]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -374,7 +486,7 @@ func (x *GetArmyResponse) String() string {
 func (*GetArmyResponse) ProtoMessage() {}
 
 func (x *GetArmyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[6]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -387,7 +499,7 @@ func (x *GetArmyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArmyResponse.ProtoReflect.Descriptor instead.
 func (*GetArmyResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{6}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetArmyResponse) GetArmyId() *v1.ArmyId {
@@ -414,7 +526,7 @@ type MoveArmyRequest struct {
 
 func (x *MoveArmyRequest) Reset() {
 	*x = MoveArmyRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[7]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -426,7 +538,7 @@ func (x *MoveArmyRequest) String() string {
 func (*MoveArmyRequest) ProtoMessage() {}
 
 func (x *MoveArmyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[7]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -439,7 +551,7 @@ func (x *MoveArmyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveArmyRequest.ProtoReflect.Descriptor instead.
 func (*MoveArmyRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{7}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *MoveArmyRequest) GetArmyId() *v1.ArmyId {
@@ -464,7 +576,7 @@ type MoveArmyResponse struct {
 
 func (x *MoveArmyResponse) Reset() {
 	*x = MoveArmyResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[8]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -476,7 +588,7 @@ func (x *MoveArmyResponse) String() string {
 func (*MoveArmyResponse) ProtoMessage() {}
 
 func (x *MoveArmyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[8]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -489,7 +601,7 @@ func (x *MoveArmyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveArmyResponse.ProtoReflect.Descriptor instead.
 func (*MoveArmyResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{8}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{10}
 }
 
 type AttackArmyRequest struct {
@@ -502,7 +614,7 @@ type AttackArmyRequest struct {
 
 func (x *AttackArmyRequest) Reset() {
 	*x = AttackArmyRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[9]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -514,7 +626,7 @@ func (x *AttackArmyRequest) String() string {
 func (*AttackArmyRequest) ProtoMessage() {}
 
 func (x *AttackArmyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[9]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -527,7 +639,7 @@ func (x *AttackArmyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttackArmyRequest.ProtoReflect.Descriptor instead.
 func (*AttackArmyRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{9}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AttackArmyRequest) GetArmyId() *v1.ArmyId {
@@ -552,7 +664,7 @@ type AttackArmyResponse struct {
 
 func (x *AttackArmyResponse) Reset() {
 	*x = AttackArmyResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[10]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -564,7 +676,7 @@ func (x *AttackArmyResponse) String() string {
 func (*AttackArmyResponse) ProtoMessage() {}
 
 func (x *AttackArmyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[10]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -577,7 +689,7 @@ func (x *AttackArmyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttackArmyResponse.ProtoReflect.Descriptor instead.
 func (*AttackArmyResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{10}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{12}
 }
 
 type ConquerSettlementRequest struct {
@@ -590,7 +702,7 @@ type ConquerSettlementRequest struct {
 
 func (x *ConquerSettlementRequest) Reset() {
 	*x = ConquerSettlementRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[11]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -602,7 +714,7 @@ func (x *ConquerSettlementRequest) String() string {
 func (*ConquerSettlementRequest) ProtoMessage() {}
 
 func (x *ConquerSettlementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[11]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -615,7 +727,7 @@ func (x *ConquerSettlementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConquerSettlementRequest.ProtoReflect.Descriptor instead.
 func (*ConquerSettlementRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{11}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ConquerSettlementRequest) GetArmyId() *v1.ArmyId {
@@ -640,7 +752,7 @@ type ConquerSettlementResponse struct {
 
 func (x *ConquerSettlementResponse) Reset() {
 	*x = ConquerSettlementResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[12]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -652,7 +764,7 @@ func (x *ConquerSettlementResponse) String() string {
 func (*ConquerSettlementResponse) ProtoMessage() {}
 
 func (x *ConquerSettlementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[12]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -665,7 +777,7 @@ func (x *ConquerSettlementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConquerSettlementResponse.ProtoReflect.Descriptor instead.
 func (*ConquerSettlementResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{12}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{14}
 }
 
 type RetreatArmyRequest struct {
@@ -677,7 +789,7 @@ type RetreatArmyRequest struct {
 
 func (x *RetreatArmyRequest) Reset() {
 	*x = RetreatArmyRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[13]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -689,7 +801,7 @@ func (x *RetreatArmyRequest) String() string {
 func (*RetreatArmyRequest) ProtoMessage() {}
 
 func (x *RetreatArmyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[13]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -702,7 +814,7 @@ func (x *RetreatArmyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetreatArmyRequest.ProtoReflect.Descriptor instead.
 func (*RetreatArmyRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{13}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RetreatArmyRequest) GetArmyId() *v1.ArmyId {
@@ -720,7 +832,7 @@ type RetreatArmyResponse struct {
 
 func (x *RetreatArmyResponse) Reset() {
 	*x = RetreatArmyResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[14]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -732,7 +844,7 @@ func (x *RetreatArmyResponse) String() string {
 func (*RetreatArmyResponse) ProtoMessage() {}
 
 func (x *RetreatArmyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[14]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -745,7 +857,7 @@ func (x *RetreatArmyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetreatArmyResponse.ProtoReflect.Descriptor instead.
 func (*RetreatArmyResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{14}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{16}
 }
 
 type PreviewArmyRouteRequest struct {
@@ -758,7 +870,7 @@ type PreviewArmyRouteRequest struct {
 
 func (x *PreviewArmyRouteRequest) Reset() {
 	*x = PreviewArmyRouteRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[15]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -770,7 +882,7 @@ func (x *PreviewArmyRouteRequest) String() string {
 func (*PreviewArmyRouteRequest) ProtoMessage() {}
 
 func (x *PreviewArmyRouteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[15]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -783,7 +895,7 @@ func (x *PreviewArmyRouteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewArmyRouteRequest.ProtoReflect.Descriptor instead.
 func (*PreviewArmyRouteRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{15}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PreviewArmyRouteRequest) GetArmyId() *v1.ArmyId {
@@ -810,7 +922,7 @@ type PreviewArmyRouteResponse struct {
 
 func (x *PreviewArmyRouteResponse) Reset() {
 	*x = PreviewArmyRouteResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[16]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -822,7 +934,7 @@ func (x *PreviewArmyRouteResponse) String() string {
 func (*PreviewArmyRouteResponse) ProtoMessage() {}
 
 func (x *PreviewArmyRouteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[16]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -835,7 +947,7 @@ func (x *PreviewArmyRouteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewArmyRouteResponse.ProtoReflect.Descriptor instead.
 func (*PreviewArmyRouteResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{16}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PreviewArmyRouteResponse) GetRoute() *v1.ArmyRoute {
@@ -862,7 +974,7 @@ type MergeArmiesRequest struct {
 
 func (x *MergeArmiesRequest) Reset() {
 	*x = MergeArmiesRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[17]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +986,7 @@ func (x *MergeArmiesRequest) String() string {
 func (*MergeArmiesRequest) ProtoMessage() {}
 
 func (x *MergeArmiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[17]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +999,7 @@ func (x *MergeArmiesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MergeArmiesRequest.ProtoReflect.Descriptor instead.
 func (*MergeArmiesRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{17}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *MergeArmiesRequest) GetTargetArmyId() *v1.ArmyId {
@@ -915,7 +1027,7 @@ type MergeArmiesResponse struct {
 
 func (x *MergeArmiesResponse) Reset() {
 	*x = MergeArmiesResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[18]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +1039,7 @@ func (x *MergeArmiesResponse) String() string {
 func (*MergeArmiesResponse) ProtoMessage() {}
 
 func (x *MergeArmiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[18]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +1052,7 @@ func (x *MergeArmiesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MergeArmiesResponse.ProtoReflect.Descriptor instead.
 func (*MergeArmiesResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{18}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *MergeArmiesResponse) GetArmyId() *v1.ArmyId {
@@ -974,7 +1086,7 @@ type SplitArmyRequest struct {
 
 func (x *SplitArmyRequest) Reset() {
 	*x = SplitArmyRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[19]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1098,7 @@ func (x *SplitArmyRequest) String() string {
 func (*SplitArmyRequest) ProtoMessage() {}
 
 func (x *SplitArmyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[19]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1111,7 @@ func (x *SplitArmyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SplitArmyRequest.ProtoReflect.Descriptor instead.
 func (*SplitArmyRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{19}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SplitArmyRequest) GetArmyId() *v1.ArmyId {
@@ -1026,7 +1138,7 @@ type SplitArmyResponse struct {
 
 func (x *SplitArmyResponse) Reset() {
 	*x = SplitArmyResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[20]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1038,7 +1150,7 @@ func (x *SplitArmyResponse) String() string {
 func (*SplitArmyResponse) ProtoMessage() {}
 
 func (x *SplitArmyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[20]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1051,7 +1163,7 @@ func (x *SplitArmyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SplitArmyResponse.ProtoReflect.Descriptor instead.
 func (*SplitArmyResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{20}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SplitArmyResponse) GetArmyId() *v1.ArmyId {
@@ -1076,7 +1188,7 @@ type ListArmiesRequest struct {
 
 func (x *ListArmiesRequest) Reset() {
 	*x = ListArmiesRequest{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[21]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1088,7 +1200,7 @@ func (x *ListArmiesRequest) String() string {
 func (*ListArmiesRequest) ProtoMessage() {}
 
 func (x *ListArmiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[21]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1101,7 +1213,7 @@ func (x *ListArmiesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArmiesRequest.ProtoReflect.Descriptor instead.
 func (*ListArmiesRequest) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{21}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{23}
 }
 
 type ListArmiesResponse struct {
@@ -1114,7 +1226,7 @@ type ListArmiesResponse struct {
 
 func (x *ListArmiesResponse) Reset() {
 	*x = ListArmiesResponse{}
-	mi := &file_cityio_service_v1_army_proto_msgTypes[22]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1126,7 +1238,7 @@ func (x *ListArmiesResponse) String() string {
 func (*ListArmiesResponse) ProtoMessage() {}
 
 func (x *ListArmiesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_cityio_service_v1_army_proto_msgTypes[22]
+	mi := &file_cityio_service_v1_army_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1139,7 +1251,7 @@ func (x *ListArmiesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArmiesResponse.ProtoReflect.Descriptor instead.
 func (*ListArmiesResponse) Descriptor() ([]byte, []int) {
-	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{22}
+	return file_cityio_service_v1_army_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListArmiesResponse) GetArmyIds() []*v1.ArmyId {
@@ -1160,31 +1272,38 @@ var File_cityio_service_v1_army_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_army_proto_rawDesc = "" +
 	"\n" +
-	"\x1ccityio/service/v1/army.proto\x12\x11cityio.service.v1\x1a!cityio/entity/v1/army_order.proto\x1a\x1bcityio/entity/v1/army.proto\x1a\x1acityio/entity/v1/bag.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xbb\x03\n" +
+	"\x1ccityio/service/v1/army.proto\x12\x11cityio.service.v1\x1a!cityio/entity/v1/army_order.proto\x1a\x1bcityio/entity/v1/army.proto\x1a\x1acityio/entity/v1/bag.proto\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/duration.proto\"\xc9\x04\n" +
 	"\rTrainingOrder\x12M\n" +
 	"\x11training_order_id\x18\x01 \x01(\v2!.cityio.entity.v1.TrainingOrderIdR\x0ftrainingOrderId\x121\n" +
-	"\aarmy_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x12=\n" +
-	"\vbarracks_id\x18\x03 \x01(\v2\x1c.cityio.entity.v1.BuildingIdR\n" +
-	"barracksId\x12/\n" +
-	"\x04type\x18\x04 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x14\n" +
-	"\x05count\x18\x05 \x01(\x05R\x05count\x12>\n" +
+	"\aarmy_id\x18\x02 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\x121\n" +
+	"\acity_id\x18\x03 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12B\n" +
+	"\vbarracks_id\x18\x04 \x01(\v2\x1c.cityio.entity.v1.BuildingIdH\x00R\n" +
+	"barracksId\x88\x01\x01\x12/\n" +
+	"\x04type\x18\x05 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x14\n" +
+	"\x05count\x18\x06 \x01(\x05R\x05count\x12>\n" +
 	"\n" +
-	"started_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\tstartedAt\x88\x01\x01\x12B\n" +
-	"\fcompletes_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x01R\vcompletesAt\x88\x01\x01B\r\n" +
+	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x01R\tstartedAt\x88\x01\x01\x12B\n" +
+	"\fcompletes_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x02R\vcompletesAt\x88\x01\x01\x12'\n" +
+	"\x0fpopulation_cost\x18\t \x01(\x03R\x0epopulationCost\x12\x1b\n" +
+	"\tgold_cost\x18\n" +
+	" \x01(\x03R\bgoldCostB\x0e\n" +
+	"\f_barracks_idB\r\n" +
 	"\v_started_atB\x0f\n" +
-	"\r_completes_at\"\x9a\x01\n" +
-	"\x12TrainTroopsRequest\x12=\n" +
-	"\vbarracks_id\x18\x01 \x01(\v2\x1c.cityio.entity.v1.BuildingIdR\n" +
-	"barracksId\x12/\n" +
+	"\r_completes_at\"\x8e\x01\n" +
+	"\x12TrainTroopsRequest\x121\n" +
+	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.cityio.entity.v1.TroopTypeR\x04type\x12\x14\n" +
 	"\x05count\x18\x03 \x01(\x05R\x05count\"M\n" +
 	"\x13TrainTroopsResponse\x126\n" +
-	"\x05order\x18\x01 \x01(\v2 .cityio.service.v1.TrainingOrderR\x05order\"Z\n" +
-	"\x19ListTrainingOrdersRequest\x12=\n" +
-	"\vbarracks_id\x18\x01 \x01(\v2\x1c.cityio.entity.v1.BuildingIdR\n" +
-	"barracksId\"V\n" +
+	"\x05order\x18\x01 \x01(\v2 .cityio.service.v1.TrainingOrderR\x05order\"N\n" +
+	"\x19ListTrainingOrdersRequest\x121\n" +
+	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\"V\n" +
 	"\x1aListTrainingOrdersResponse\x128\n" +
-	"\x06orders\x18\x01 \x03(\v2 .cityio.service.v1.TrainingOrderR\x06orders\"C\n" +
+	"\x06orders\x18\x01 \x03(\v2 .cityio.service.v1.TrainingOrderR\x06orders\"\x9e\x01\n" +
+	"\x1aCancelTrainingOrderRequest\x121\n" +
+	"\acity_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.CityIdR\x06cityId\x12M\n" +
+	"\x11training_order_id\x18\x02 \x01(\v2!.cityio.entity.v1.TrainingOrderIdR\x0ftrainingOrderId\"\x1d\n" +
+	"\x1bCancelTrainingOrderResponse\"C\n" +
 	"\x0eGetArmyRequest\x121\n" +
 	"\aarmy_id\x18\x01 \x01(\v2\x18.cityio.entity.v1.ArmyIdR\x06armyId\"}\n" +
 	"\x0fGetArmyResponse\x121\n" +
@@ -1227,10 +1346,11 @@ const file_cityio_service_v1_army_proto_rawDesc = "" +
 	"\x11ListArmiesRequest\"\x82\x01\n" +
 	"\x12ListArmiesResponse\x123\n" +
 	"\barmy_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.ArmyIdR\aarmyIds\x127\n" +
-	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\xac\b\n" +
+	"\bentities\x18\x02 \x01(\v2\x1b.cityio.entity.v1.EntityBagR\bentities2\xa2\t\n" +
 	"\vArmyService\x12\\\n" +
 	"\vTrainTroops\x12%.cityio.service.v1.TrainTroopsRequest\x1a&.cityio.service.v1.TrainTroopsResponse\x12q\n" +
-	"\x12ListTrainingOrders\x12,.cityio.service.v1.ListTrainingOrdersRequest\x1a-.cityio.service.v1.ListTrainingOrdersResponse\x12P\n" +
+	"\x12ListTrainingOrders\x12,.cityio.service.v1.ListTrainingOrdersRequest\x1a-.cityio.service.v1.ListTrainingOrdersResponse\x12t\n" +
+	"\x13CancelTrainingOrder\x12-.cityio.service.v1.CancelTrainingOrderRequest\x1a..cityio.service.v1.CancelTrainingOrderResponse\x12P\n" +
 	"\aGetArmy\x12!.cityio.service.v1.GetArmyRequest\x1a\".cityio.service.v1.GetArmyResponse\x12k\n" +
 	"\x10PreviewArmyRoute\x12*.cityio.service.v1.PreviewArmyRouteRequest\x1a+.cityio.service.v1.PreviewArmyRouteResponse\x12S\n" +
 	"\bMoveArmy\x12\".cityio.service.v1.MoveArmyRequest\x1a#.cityio.service.v1.MoveArmyResponse\x12Y\n" +
@@ -1256,108 +1376,115 @@ func file_cityio_service_v1_army_proto_rawDescGZIP() []byte {
 	return file_cityio_service_v1_army_proto_rawDescData
 }
 
-var file_cityio_service_v1_army_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_cityio_service_v1_army_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_cityio_service_v1_army_proto_goTypes = []any{
-	(*TrainingOrder)(nil),              // 0: cityio.service.v1.TrainingOrder
-	(*TrainTroopsRequest)(nil),         // 1: cityio.service.v1.TrainTroopsRequest
-	(*TrainTroopsResponse)(nil),        // 2: cityio.service.v1.TrainTroopsResponse
-	(*ListTrainingOrdersRequest)(nil),  // 3: cityio.service.v1.ListTrainingOrdersRequest
-	(*ListTrainingOrdersResponse)(nil), // 4: cityio.service.v1.ListTrainingOrdersResponse
-	(*GetArmyRequest)(nil),             // 5: cityio.service.v1.GetArmyRequest
-	(*GetArmyResponse)(nil),            // 6: cityio.service.v1.GetArmyResponse
-	(*MoveArmyRequest)(nil),            // 7: cityio.service.v1.MoveArmyRequest
-	(*MoveArmyResponse)(nil),           // 8: cityio.service.v1.MoveArmyResponse
-	(*AttackArmyRequest)(nil),          // 9: cityio.service.v1.AttackArmyRequest
-	(*AttackArmyResponse)(nil),         // 10: cityio.service.v1.AttackArmyResponse
-	(*ConquerSettlementRequest)(nil),   // 11: cityio.service.v1.ConquerSettlementRequest
-	(*ConquerSettlementResponse)(nil),  // 12: cityio.service.v1.ConquerSettlementResponse
-	(*RetreatArmyRequest)(nil),         // 13: cityio.service.v1.RetreatArmyRequest
-	(*RetreatArmyResponse)(nil),        // 14: cityio.service.v1.RetreatArmyResponse
-	(*PreviewArmyRouteRequest)(nil),    // 15: cityio.service.v1.PreviewArmyRouteRequest
-	(*PreviewArmyRouteResponse)(nil),   // 16: cityio.service.v1.PreviewArmyRouteResponse
-	(*MergeArmiesRequest)(nil),         // 17: cityio.service.v1.MergeArmiesRequest
-	(*MergeArmiesResponse)(nil),        // 18: cityio.service.v1.MergeArmiesResponse
-	(*SplitArmyRequest)(nil),           // 19: cityio.service.v1.SplitArmyRequest
-	(*SplitArmyResponse)(nil),          // 20: cityio.service.v1.SplitArmyResponse
-	(*ListArmiesRequest)(nil),          // 21: cityio.service.v1.ListArmiesRequest
-	(*ListArmiesResponse)(nil),         // 22: cityio.service.v1.ListArmiesResponse
-	(*v1.TrainingOrderId)(nil),         // 23: cityio.entity.v1.TrainingOrderId
-	(*v1.ArmyId)(nil),                  // 24: cityio.entity.v1.ArmyId
-	(*v1.BuildingId)(nil),              // 25: cityio.entity.v1.BuildingId
-	(v1.TroopType)(0),                  // 26: cityio.entity.v1.TroopType
-	(*timestamppb.Timestamp)(nil),      // 27: google.protobuf.Timestamp
-	(*v1.EntityBag)(nil),               // 28: cityio.entity.v1.EntityBag
-	(*v1.Coordinates)(nil),             // 29: cityio.entity.v1.Coordinates
-	(*v1.CityId)(nil),                  // 30: cityio.entity.v1.CityId
-	(*v1.ArmyRoute)(nil),               // 31: cityio.entity.v1.ArmyRoute
-	(*durationpb.Duration)(nil),        // 32: google.protobuf.Duration
-	(*v1.EntityIdBag)(nil),             // 33: cityio.entity.v1.EntityIdBag
-	(*v1.TroopStack)(nil),              // 34: cityio.entity.v1.TroopStack
+	(*TrainingOrder)(nil),               // 0: cityio.service.v1.TrainingOrder
+	(*TrainTroopsRequest)(nil),          // 1: cityio.service.v1.TrainTroopsRequest
+	(*TrainTroopsResponse)(nil),         // 2: cityio.service.v1.TrainTroopsResponse
+	(*ListTrainingOrdersRequest)(nil),   // 3: cityio.service.v1.ListTrainingOrdersRequest
+	(*ListTrainingOrdersResponse)(nil),  // 4: cityio.service.v1.ListTrainingOrdersResponse
+	(*CancelTrainingOrderRequest)(nil),  // 5: cityio.service.v1.CancelTrainingOrderRequest
+	(*CancelTrainingOrderResponse)(nil), // 6: cityio.service.v1.CancelTrainingOrderResponse
+	(*GetArmyRequest)(nil),              // 7: cityio.service.v1.GetArmyRequest
+	(*GetArmyResponse)(nil),             // 8: cityio.service.v1.GetArmyResponse
+	(*MoveArmyRequest)(nil),             // 9: cityio.service.v1.MoveArmyRequest
+	(*MoveArmyResponse)(nil),            // 10: cityio.service.v1.MoveArmyResponse
+	(*AttackArmyRequest)(nil),           // 11: cityio.service.v1.AttackArmyRequest
+	(*AttackArmyResponse)(nil),          // 12: cityio.service.v1.AttackArmyResponse
+	(*ConquerSettlementRequest)(nil),    // 13: cityio.service.v1.ConquerSettlementRequest
+	(*ConquerSettlementResponse)(nil),   // 14: cityio.service.v1.ConquerSettlementResponse
+	(*RetreatArmyRequest)(nil),          // 15: cityio.service.v1.RetreatArmyRequest
+	(*RetreatArmyResponse)(nil),         // 16: cityio.service.v1.RetreatArmyResponse
+	(*PreviewArmyRouteRequest)(nil),     // 17: cityio.service.v1.PreviewArmyRouteRequest
+	(*PreviewArmyRouteResponse)(nil),    // 18: cityio.service.v1.PreviewArmyRouteResponse
+	(*MergeArmiesRequest)(nil),          // 19: cityio.service.v1.MergeArmiesRequest
+	(*MergeArmiesResponse)(nil),         // 20: cityio.service.v1.MergeArmiesResponse
+	(*SplitArmyRequest)(nil),            // 21: cityio.service.v1.SplitArmyRequest
+	(*SplitArmyResponse)(nil),           // 22: cityio.service.v1.SplitArmyResponse
+	(*ListArmiesRequest)(nil),           // 23: cityio.service.v1.ListArmiesRequest
+	(*ListArmiesResponse)(nil),          // 24: cityio.service.v1.ListArmiesResponse
+	(*v1.TrainingOrderId)(nil),          // 25: cityio.entity.v1.TrainingOrderId
+	(*v1.ArmyId)(nil),                   // 26: cityio.entity.v1.ArmyId
+	(*v1.CityId)(nil),                   // 27: cityio.entity.v1.CityId
+	(*v1.BuildingId)(nil),               // 28: cityio.entity.v1.BuildingId
+	(v1.TroopType)(0),                   // 29: cityio.entity.v1.TroopType
+	(*timestamppb.Timestamp)(nil),       // 30: google.protobuf.Timestamp
+	(*v1.EntityBag)(nil),                // 31: cityio.entity.v1.EntityBag
+	(*v1.Coordinates)(nil),              // 32: cityio.entity.v1.Coordinates
+	(*v1.ArmyRoute)(nil),                // 33: cityio.entity.v1.ArmyRoute
+	(*durationpb.Duration)(nil),         // 34: google.protobuf.Duration
+	(*v1.EntityIdBag)(nil),              // 35: cityio.entity.v1.EntityIdBag
+	(*v1.TroopStack)(nil),               // 36: cityio.entity.v1.TroopStack
 }
 var file_cityio_service_v1_army_proto_depIdxs = []int32{
-	23, // 0: cityio.service.v1.TrainingOrder.training_order_id:type_name -> cityio.entity.v1.TrainingOrderId
-	24, // 1: cityio.service.v1.TrainingOrder.army_id:type_name -> cityio.entity.v1.ArmyId
-	25, // 2: cityio.service.v1.TrainingOrder.barracks_id:type_name -> cityio.entity.v1.BuildingId
-	26, // 3: cityio.service.v1.TrainingOrder.type:type_name -> cityio.entity.v1.TroopType
-	27, // 4: cityio.service.v1.TrainingOrder.started_at:type_name -> google.protobuf.Timestamp
-	27, // 5: cityio.service.v1.TrainingOrder.completes_at:type_name -> google.protobuf.Timestamp
-	25, // 6: cityio.service.v1.TrainTroopsRequest.barracks_id:type_name -> cityio.entity.v1.BuildingId
-	26, // 7: cityio.service.v1.TrainTroopsRequest.type:type_name -> cityio.entity.v1.TroopType
-	0,  // 8: cityio.service.v1.TrainTroopsResponse.order:type_name -> cityio.service.v1.TrainingOrder
-	25, // 9: cityio.service.v1.ListTrainingOrdersRequest.barracks_id:type_name -> cityio.entity.v1.BuildingId
-	0,  // 10: cityio.service.v1.ListTrainingOrdersResponse.orders:type_name -> cityio.service.v1.TrainingOrder
-	24, // 11: cityio.service.v1.GetArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	24, // 12: cityio.service.v1.GetArmyResponse.army_id:type_name -> cityio.entity.v1.ArmyId
-	28, // 13: cityio.service.v1.GetArmyResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	24, // 14: cityio.service.v1.MoveArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	29, // 15: cityio.service.v1.MoveArmyRequest.destination:type_name -> cityio.entity.v1.Coordinates
-	24, // 16: cityio.service.v1.AttackArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	24, // 17: cityio.service.v1.AttackArmyRequest.target_army_id:type_name -> cityio.entity.v1.ArmyId
-	24, // 18: cityio.service.v1.ConquerSettlementRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	30, // 19: cityio.service.v1.ConquerSettlementRequest.city_id:type_name -> cityio.entity.v1.CityId
-	24, // 20: cityio.service.v1.RetreatArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	24, // 21: cityio.service.v1.PreviewArmyRouteRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	29, // 22: cityio.service.v1.PreviewArmyRouteRequest.destination:type_name -> cityio.entity.v1.Coordinates
-	31, // 23: cityio.service.v1.PreviewArmyRouteResponse.route:type_name -> cityio.entity.v1.ArmyRoute
-	32, // 24: cityio.service.v1.PreviewArmyRouteResponse.estimated_duration:type_name -> google.protobuf.Duration
-	24, // 25: cityio.service.v1.MergeArmiesRequest.target_army_id:type_name -> cityio.entity.v1.ArmyId
-	24, // 26: cityio.service.v1.MergeArmiesRequest.source_army_id:type_name -> cityio.entity.v1.ArmyId
-	24, // 27: cityio.service.v1.MergeArmiesResponse.army_id:type_name -> cityio.entity.v1.ArmyId
-	28, // 28: cityio.service.v1.MergeArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	33, // 29: cityio.service.v1.MergeArmiesResponse.deleted:type_name -> cityio.entity.v1.EntityIdBag
-	24, // 30: cityio.service.v1.SplitArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
-	34, // 31: cityio.service.v1.SplitArmyRequest.troops:type_name -> cityio.entity.v1.TroopStack
-	24, // 32: cityio.service.v1.SplitArmyResponse.army_id:type_name -> cityio.entity.v1.ArmyId
-	28, // 33: cityio.service.v1.SplitArmyResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	24, // 34: cityio.service.v1.ListArmiesResponse.army_ids:type_name -> cityio.entity.v1.ArmyId
-	28, // 35: cityio.service.v1.ListArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
-	1,  // 36: cityio.service.v1.ArmyService.TrainTroops:input_type -> cityio.service.v1.TrainTroopsRequest
-	3,  // 37: cityio.service.v1.ArmyService.ListTrainingOrders:input_type -> cityio.service.v1.ListTrainingOrdersRequest
-	5,  // 38: cityio.service.v1.ArmyService.GetArmy:input_type -> cityio.service.v1.GetArmyRequest
-	15, // 39: cityio.service.v1.ArmyService.PreviewArmyRoute:input_type -> cityio.service.v1.PreviewArmyRouteRequest
-	7,  // 40: cityio.service.v1.ArmyService.MoveArmy:input_type -> cityio.service.v1.MoveArmyRequest
-	9,  // 41: cityio.service.v1.ArmyService.AttackArmy:input_type -> cityio.service.v1.AttackArmyRequest
-	11, // 42: cityio.service.v1.ArmyService.ConquerSettlement:input_type -> cityio.service.v1.ConquerSettlementRequest
-	13, // 43: cityio.service.v1.ArmyService.RetreatArmy:input_type -> cityio.service.v1.RetreatArmyRequest
-	17, // 44: cityio.service.v1.ArmyService.MergeArmies:input_type -> cityio.service.v1.MergeArmiesRequest
-	19, // 45: cityio.service.v1.ArmyService.SplitArmy:input_type -> cityio.service.v1.SplitArmyRequest
-	21, // 46: cityio.service.v1.ArmyService.ListArmies:input_type -> cityio.service.v1.ListArmiesRequest
-	2,  // 47: cityio.service.v1.ArmyService.TrainTroops:output_type -> cityio.service.v1.TrainTroopsResponse
-	4,  // 48: cityio.service.v1.ArmyService.ListTrainingOrders:output_type -> cityio.service.v1.ListTrainingOrdersResponse
-	6,  // 49: cityio.service.v1.ArmyService.GetArmy:output_type -> cityio.service.v1.GetArmyResponse
-	16, // 50: cityio.service.v1.ArmyService.PreviewArmyRoute:output_type -> cityio.service.v1.PreviewArmyRouteResponse
-	8,  // 51: cityio.service.v1.ArmyService.MoveArmy:output_type -> cityio.service.v1.MoveArmyResponse
-	10, // 52: cityio.service.v1.ArmyService.AttackArmy:output_type -> cityio.service.v1.AttackArmyResponse
-	12, // 53: cityio.service.v1.ArmyService.ConquerSettlement:output_type -> cityio.service.v1.ConquerSettlementResponse
-	14, // 54: cityio.service.v1.ArmyService.RetreatArmy:output_type -> cityio.service.v1.RetreatArmyResponse
-	18, // 55: cityio.service.v1.ArmyService.MergeArmies:output_type -> cityio.service.v1.MergeArmiesResponse
-	20, // 56: cityio.service.v1.ArmyService.SplitArmy:output_type -> cityio.service.v1.SplitArmyResponse
-	22, // 57: cityio.service.v1.ArmyService.ListArmies:output_type -> cityio.service.v1.ListArmiesResponse
-	47, // [47:58] is the sub-list for method output_type
-	36, // [36:47] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	25, // 0: cityio.service.v1.TrainingOrder.training_order_id:type_name -> cityio.entity.v1.TrainingOrderId
+	26, // 1: cityio.service.v1.TrainingOrder.army_id:type_name -> cityio.entity.v1.ArmyId
+	27, // 2: cityio.service.v1.TrainingOrder.city_id:type_name -> cityio.entity.v1.CityId
+	28, // 3: cityio.service.v1.TrainingOrder.barracks_id:type_name -> cityio.entity.v1.BuildingId
+	29, // 4: cityio.service.v1.TrainingOrder.type:type_name -> cityio.entity.v1.TroopType
+	30, // 5: cityio.service.v1.TrainingOrder.started_at:type_name -> google.protobuf.Timestamp
+	30, // 6: cityio.service.v1.TrainingOrder.completes_at:type_name -> google.protobuf.Timestamp
+	27, // 7: cityio.service.v1.TrainTroopsRequest.city_id:type_name -> cityio.entity.v1.CityId
+	29, // 8: cityio.service.v1.TrainTroopsRequest.type:type_name -> cityio.entity.v1.TroopType
+	0,  // 9: cityio.service.v1.TrainTroopsResponse.order:type_name -> cityio.service.v1.TrainingOrder
+	27, // 10: cityio.service.v1.ListTrainingOrdersRequest.city_id:type_name -> cityio.entity.v1.CityId
+	0,  // 11: cityio.service.v1.ListTrainingOrdersResponse.orders:type_name -> cityio.service.v1.TrainingOrder
+	27, // 12: cityio.service.v1.CancelTrainingOrderRequest.city_id:type_name -> cityio.entity.v1.CityId
+	25, // 13: cityio.service.v1.CancelTrainingOrderRequest.training_order_id:type_name -> cityio.entity.v1.TrainingOrderId
+	26, // 14: cityio.service.v1.GetArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	26, // 15: cityio.service.v1.GetArmyResponse.army_id:type_name -> cityio.entity.v1.ArmyId
+	31, // 16: cityio.service.v1.GetArmyResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	26, // 17: cityio.service.v1.MoveArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	32, // 18: cityio.service.v1.MoveArmyRequest.destination:type_name -> cityio.entity.v1.Coordinates
+	26, // 19: cityio.service.v1.AttackArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	26, // 20: cityio.service.v1.AttackArmyRequest.target_army_id:type_name -> cityio.entity.v1.ArmyId
+	26, // 21: cityio.service.v1.ConquerSettlementRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	27, // 22: cityio.service.v1.ConquerSettlementRequest.city_id:type_name -> cityio.entity.v1.CityId
+	26, // 23: cityio.service.v1.RetreatArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	26, // 24: cityio.service.v1.PreviewArmyRouteRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	32, // 25: cityio.service.v1.PreviewArmyRouteRequest.destination:type_name -> cityio.entity.v1.Coordinates
+	33, // 26: cityio.service.v1.PreviewArmyRouteResponse.route:type_name -> cityio.entity.v1.ArmyRoute
+	34, // 27: cityio.service.v1.PreviewArmyRouteResponse.estimated_duration:type_name -> google.protobuf.Duration
+	26, // 28: cityio.service.v1.MergeArmiesRequest.target_army_id:type_name -> cityio.entity.v1.ArmyId
+	26, // 29: cityio.service.v1.MergeArmiesRequest.source_army_id:type_name -> cityio.entity.v1.ArmyId
+	26, // 30: cityio.service.v1.MergeArmiesResponse.army_id:type_name -> cityio.entity.v1.ArmyId
+	31, // 31: cityio.service.v1.MergeArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	35, // 32: cityio.service.v1.MergeArmiesResponse.deleted:type_name -> cityio.entity.v1.EntityIdBag
+	26, // 33: cityio.service.v1.SplitArmyRequest.army_id:type_name -> cityio.entity.v1.ArmyId
+	36, // 34: cityio.service.v1.SplitArmyRequest.troops:type_name -> cityio.entity.v1.TroopStack
+	26, // 35: cityio.service.v1.SplitArmyResponse.army_id:type_name -> cityio.entity.v1.ArmyId
+	31, // 36: cityio.service.v1.SplitArmyResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	26, // 37: cityio.service.v1.ListArmiesResponse.army_ids:type_name -> cityio.entity.v1.ArmyId
+	31, // 38: cityio.service.v1.ListArmiesResponse.entities:type_name -> cityio.entity.v1.EntityBag
+	1,  // 39: cityio.service.v1.ArmyService.TrainTroops:input_type -> cityio.service.v1.TrainTroopsRequest
+	3,  // 40: cityio.service.v1.ArmyService.ListTrainingOrders:input_type -> cityio.service.v1.ListTrainingOrdersRequest
+	5,  // 41: cityio.service.v1.ArmyService.CancelTrainingOrder:input_type -> cityio.service.v1.CancelTrainingOrderRequest
+	7,  // 42: cityio.service.v1.ArmyService.GetArmy:input_type -> cityio.service.v1.GetArmyRequest
+	17, // 43: cityio.service.v1.ArmyService.PreviewArmyRoute:input_type -> cityio.service.v1.PreviewArmyRouteRequest
+	9,  // 44: cityio.service.v1.ArmyService.MoveArmy:input_type -> cityio.service.v1.MoveArmyRequest
+	11, // 45: cityio.service.v1.ArmyService.AttackArmy:input_type -> cityio.service.v1.AttackArmyRequest
+	13, // 46: cityio.service.v1.ArmyService.ConquerSettlement:input_type -> cityio.service.v1.ConquerSettlementRequest
+	15, // 47: cityio.service.v1.ArmyService.RetreatArmy:input_type -> cityio.service.v1.RetreatArmyRequest
+	19, // 48: cityio.service.v1.ArmyService.MergeArmies:input_type -> cityio.service.v1.MergeArmiesRequest
+	21, // 49: cityio.service.v1.ArmyService.SplitArmy:input_type -> cityio.service.v1.SplitArmyRequest
+	23, // 50: cityio.service.v1.ArmyService.ListArmies:input_type -> cityio.service.v1.ListArmiesRequest
+	2,  // 51: cityio.service.v1.ArmyService.TrainTroops:output_type -> cityio.service.v1.TrainTroopsResponse
+	4,  // 52: cityio.service.v1.ArmyService.ListTrainingOrders:output_type -> cityio.service.v1.ListTrainingOrdersResponse
+	6,  // 53: cityio.service.v1.ArmyService.CancelTrainingOrder:output_type -> cityio.service.v1.CancelTrainingOrderResponse
+	8,  // 54: cityio.service.v1.ArmyService.GetArmy:output_type -> cityio.service.v1.GetArmyResponse
+	18, // 55: cityio.service.v1.ArmyService.PreviewArmyRoute:output_type -> cityio.service.v1.PreviewArmyRouteResponse
+	10, // 56: cityio.service.v1.ArmyService.MoveArmy:output_type -> cityio.service.v1.MoveArmyResponse
+	12, // 57: cityio.service.v1.ArmyService.AttackArmy:output_type -> cityio.service.v1.AttackArmyResponse
+	14, // 58: cityio.service.v1.ArmyService.ConquerSettlement:output_type -> cityio.service.v1.ConquerSettlementResponse
+	16, // 59: cityio.service.v1.ArmyService.RetreatArmy:output_type -> cityio.service.v1.RetreatArmyResponse
+	20, // 60: cityio.service.v1.ArmyService.MergeArmies:output_type -> cityio.service.v1.MergeArmiesResponse
+	22, // 61: cityio.service.v1.ArmyService.SplitArmy:output_type -> cityio.service.v1.SplitArmyResponse
+	24, // 62: cityio.service.v1.ArmyService.ListArmies:output_type -> cityio.service.v1.ListArmiesResponse
+	51, // [51:63] is the sub-list for method output_type
+	39, // [39:51] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_cityio_service_v1_army_proto_init() }
@@ -1372,7 +1499,7 @@ func file_cityio_service_v1_army_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cityio_service_v1_army_proto_rawDesc), len(file_cityio_service_v1_army_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

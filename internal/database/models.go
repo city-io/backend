@@ -69,7 +69,7 @@ type MailboxMessage struct {
 type TrainingOrder struct {
 	TrainingOrderID string           `json:"training_order_id"`
 	ArmyID          string           `json:"army_id"`
-	BarracksID      string           `json:"barracks_id"`
+	BarracksID      *string          `json:"barracks_id"`
 	TroopType       string           `json:"troop_type"`
 	Count           int64            `json:"count"`
 	PopulationCost  int64            `json:"population_cost"`
@@ -77,6 +77,7 @@ type TrainingOrder struct {
 	StartedAt       pgtype.Timestamp `json:"started_at"`
 	CompletesAt     pgtype.Timestamp `json:"completes_at"`
 	CreatedAt       pgtype.Timestamp `json:"created_at"`
+	CityID          string           `json:"city_id"`
 }
 
 type User struct {
