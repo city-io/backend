@@ -168,7 +168,8 @@ the "Client / frontend API reference" section below.
 - **Buildings:** typed structures. City buildings are `city_center`, `town_center`, `barracks`,
   `house`, `farm`, and `mine`; standalone player-owned structures are `watchtower` and `fort`.
   Standalone structures occupy neutral land outside settlement footprints and must be within
-  `StructurePlacementRadius` (10) of an owned settlement. Levels are 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
+  `StructurePlacementRadius` (10) of an owned settlement with an army owned by the builder on
+  their target tile. Levels are 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
   construction time; while under construction `level != target_level`. City/town centers can't be
   demolished. New level-0 construction produces nothing; an existing building continues operating
   at 75% of its current completed level's production while upgrading. Fractional per-tick output is
@@ -380,9 +381,9 @@ for TypeScript) rather than hand-writing request types.
 
 **BuildingService**
 - `CreateBuilding(city_id?, type, coords) → { building }` — city buildings require an owned city;
-  watchtowers/forts omit `city_id` and require an empty neutral land tile within the configured
-  placement radius of an owned settlement. Standalone construction reserves the configured gold
-  cost and spawns at level 0 → target 1.
+  watchtowers/forts omit `city_id` and require neutral land without an existing settlement/building
+  within the configured placement radius of an owned settlement, occupied by one of the caller's
+  armies. Standalone construction reserves the configured gold cost and spawns at level 0 → target 1.
 - `GetBuilding(building_id) → { building }` — vision-gated.
 - `UpgradeBuilding(building_id) → {}` — must own; deducts gold and starts construction to the next
   level. Errors: `FailedPrecondition` (`InsufficientGold`, `ConstructionInProgress`,

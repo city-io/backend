@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"connectrpc.com/connect"
 
@@ -61,7 +62,7 @@ func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Reque
 		}
 		claims, _ := auth.ClaimsFromContext(ctx)
 		owner = claims.UserID
-		if err := h.validateStandalonePlacement(ctx, int(coords.GetX()), int(coords.GetY())); err != nil {
+		if err := h.validateStandalonePlacement(ctx, owner, int(coords.GetX()), int(coords.GetY())); err != nil {
 			return nil, err
 		}
 	} else {
@@ -95,7 +96,7 @@ func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&servicev1.CreateBuildingResponse{Building: mapping.BuildingToProto(*building)}), nil
 }
 
-func (h *buildingHandler) validateStandalonePlacement(ctx context.Context, x, y int) error {
+func (h *buildingHandler) validateStandalonePlacement(ctx context.Context, owner string, x, y int) error {
 	terrain, ok := h.srv.world.TerrainAt(x, y)
 	if !ok {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("structure coordinates are outside the map"))
@@ -112,7 +113,14 @@ func (h *buildingHandler) validateStandalonePlacement(ctx context.Context, x, y 
 		return connect.NewError(connect.CodeInternal, errors.New("unexpected tile response"))
 	}
 	if tile.CityID != nil || tile.BuildingID != nil {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("structure tile must be neutral and empty"))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("structure tile must be neutral and free of structures"))
+	}
+	hasOwnedArmy, err := h.ownedArmyOccupiesTile(owner, x, y, tile.ArmyIDs)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	if !hasOwnedArmy {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("an owned army must occupy the structure tile"))
 	}
 	cities, err := h.srv.ownedCities(ctx)
 	if err != nil {
@@ -122,6 +130,26 @@ func (h *buildingHandler) validateStandalonePlacement(ctx context.Context, x, y 
 		return nil
 	}
 	return connect.NewError(connect.CodeFailedPrecondition, errors.New("structure is outside placement range of an owned settlement"))
+}
+
+func (h *buildingHandler) ownedArmyOccupiesTile(owner string, x, y int, armyIDs []string) (bool, error) {
+	var requestErr error
+	for _, armyID := range armyIDs {
+		res, err := h.srv.cluster.Request("army", armyID, messages.GetArmyMessage{})
+		if err != nil {
+			requestErr = err
+			continue
+		}
+		response, ok := res.(*messages.GetArmyResponseMessage)
+		if !ok {
+			return false, fmt.Errorf("unexpected army response for %s: %T", armyID, res)
+		}
+		army := response.Army
+		if army.Owner == owner && army.X == x && army.Y == y {
+			return true, nil
+		}
+	}
+	return false, requestErr
 }
 
 func withinStructurePlacementRange(cities []domain.City, x, y int) bool {
