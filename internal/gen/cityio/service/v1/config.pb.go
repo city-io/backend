@@ -138,8 +138,12 @@ type BuildingLevelStats struct {
 	Population       float64                `protobuf:"fixed64,5,opt,name=population,proto3" json:"population,omitempty"`
 	// Barracks only: throughput relative to a level-one training lane.
 	TrainingSpeedMultiplier float64 `protobuf:"fixed64,6,opt,name=training_speed_multiplier,json=trainingSpeedMultiplier,proto3" json:"training_speed_multiplier,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Watchtower only: Chebyshev map-vision radius at this completed level.
+	VisionRadius int32 `protobuf:"varint,7,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
+	// Centers and forts: effective durability added during eligible battles.
+	DefenseBonusPercent int32 `protobuf:"varint,8,opt,name=defense_bonus_percent,json=defenseBonusPercent,proto3" json:"defense_bonus_percent,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *BuildingLevelStats) Reset() {
@@ -210,6 +214,20 @@ func (x *BuildingLevelStats) GetPopulation() float64 {
 func (x *BuildingLevelStats) GetTrainingSpeedMultiplier() float64 {
 	if x != nil {
 		return x.TrainingSpeedMultiplier
+	}
+	return 0
+}
+
+func (x *BuildingLevelStats) GetVisionRadius() int32 {
+	if x != nil {
+		return x.VisionRadius
+	}
+	return 0
+}
+
+func (x *BuildingLevelStats) GetDefenseBonusPercent() int32 {
+	if x != nil {
+		return x.DefenseBonusPercent
 	}
 	return 0
 }
@@ -422,16 +440,17 @@ func (x *PopulationPolicyConfig) GetMaxTaxGrowthPenaltyPercent() int32 {
 }
 
 type GetGameConfigResponse struct {
-	state            protoimpl.MessageState  `protogen:"open.v1"`
-	MapSize          int32                   `protobuf:"varint,1,opt,name=map_size,json=mapSize,proto3" json:"map_size,omitempty"`
-	CitySize         int32                   `protobuf:"varint,2,opt,name=city_size,json=citySize,proto3" json:"city_size,omitempty"`
-	VisionRadius     int32                   `protobuf:"varint,3,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
-	BuildingTick     *durationpb.Duration    `protobuf:"bytes,4,opt,name=building_tick,json=buildingTick,proto3" json:"building_tick,omitempty"`
-	Buildings        []*BuildingConfig       `protobuf:"bytes,5,rep,name=buildings,proto3" json:"buildings,omitempty"`
-	CityTick         *durationpb.Duration    `protobuf:"bytes,6,opt,name=city_tick,json=cityTick,proto3" json:"city_tick,omitempty"`
-	PopulationPolicy *PopulationPolicyConfig `protobuf:"bytes,7,opt,name=population_policy,json=populationPolicy,proto3" json:"population_policy,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                    protoimpl.MessageState  `protogen:"open.v1"`
+	MapSize                  int32                   `protobuf:"varint,1,opt,name=map_size,json=mapSize,proto3" json:"map_size,omitempty"`
+	CitySize                 int32                   `protobuf:"varint,2,opt,name=city_size,json=citySize,proto3" json:"city_size,omitempty"`
+	VisionRadius             int32                   `protobuf:"varint,3,opt,name=vision_radius,json=visionRadius,proto3" json:"vision_radius,omitempty"`
+	BuildingTick             *durationpb.Duration    `protobuf:"bytes,4,opt,name=building_tick,json=buildingTick,proto3" json:"building_tick,omitempty"`
+	Buildings                []*BuildingConfig       `protobuf:"bytes,5,rep,name=buildings,proto3" json:"buildings,omitempty"`
+	CityTick                 *durationpb.Duration    `protobuf:"bytes,6,opt,name=city_tick,json=cityTick,proto3" json:"city_tick,omitempty"`
+	PopulationPolicy         *PopulationPolicyConfig `protobuf:"bytes,7,opt,name=population_policy,json=populationPolicy,proto3" json:"population_policy,omitempty"`
+	StructurePlacementRadius int32                   `protobuf:"varint,8,opt,name=structure_placement_radius,json=structurePlacementRadius,proto3" json:"structure_placement_radius,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GetGameConfigResponse) Reset() {
@@ -513,6 +532,13 @@ func (x *GetGameConfigResponse) GetPopulationPolicy() *PopulationPolicyConfig {
 	return nil
 }
 
+func (x *GetGameConfigResponse) GetStructurePlacementRadius() int32 {
+	if x != nil {
+		return x.StructurePlacementRadius
+	}
+	return 0
+}
+
 var File_cityio_service_v1_config_proto protoreflect.FileDescriptor
 
 const file_cityio_service_v1_config_proto_rawDesc = "" +
@@ -523,7 +549,7 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x06amount\x18\x02 \x01(\x03R\x06amount\"V\n" +
 	"\fResourceRate\x12\x1a\n" +
 	"\bresource\x18\x01 \x01(\tR\bresource\x12*\n" +
-	"\x04rate\x18\x02 \x01(\v2\x16.cityio.entity.v1.RateR\x04rate\"\xc6\x02\n" +
+	"\x04rate\x18\x02 \x01(\v2\x16.cityio.entity.v1.RateR\x04rate\"\x9f\x03\n" +
 	"\x12BuildingLevelStats\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x125\n" +
 	"\x04cost\x18\x02 \x03(\v2!.cityio.service.v1.ResourceAmountR\x04cost\x12F\n" +
@@ -534,7 +560,9 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\n" +
 	"population\x18\x05 \x01(\x01R\n" +
 	"population\x12:\n" +
-	"\x19training_speed_multiplier\x18\x06 \x01(\x01R\x17trainingSpeedMultiplier\"\x83\x01\n" +
+	"\x19training_speed_multiplier\x18\x06 \x01(\x01R\x17trainingSpeedMultiplier\x12#\n" +
+	"\rvision_radius\x18\a \x01(\x05R\fvisionRadius\x122\n" +
+	"\x15defense_bonus_percent\x18\b \x01(\x05R\x13defenseBonusPercent\"\x83\x01\n" +
 	"\x0eBuildingConfig\x122\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1e.cityio.entity.v1.BuildingTypeR\x04type\x12=\n" +
 	"\x06levels\x18\x02 \x03(\v2%.cityio.service.v1.BuildingLevelStatsR\x06levels\"\x16\n" +
@@ -550,7 +578,7 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\x17tax_gold_per_population\x18\b \x01(\v2\x16.cityio.entity.v1.RateR\x14taxGoldPerPopulation\x12.\n" +
 	"\x13min_militia_percent\x18\t \x01(\x05R\x11minMilitiaPercent\x12B\n" +
 	"\x1emax_tax_growth_penalty_percent\x18\n" +
-	" \x01(\x05R\x1amaxTaxGrowthPenaltyPercent\"\x85\x03\n" +
+	" \x01(\x05R\x1amaxTaxGrowthPenaltyPercent\"\xc3\x03\n" +
 	"\x15GetGameConfigResponse\x12\x19\n" +
 	"\bmap_size\x18\x01 \x01(\x05R\amapSize\x12\x1b\n" +
 	"\tcity_size\x18\x02 \x01(\x05R\bcitySize\x12#\n" +
@@ -558,7 +586,8 @@ const file_cityio_service_v1_config_proto_rawDesc = "" +
 	"\rbuilding_tick\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\fbuildingTick\x12?\n" +
 	"\tbuildings\x18\x05 \x03(\v2!.cityio.service.v1.BuildingConfigR\tbuildings\x126\n" +
 	"\tcity_tick\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\bcityTick\x12V\n" +
-	"\x11population_policy\x18\a \x01(\v2).cityio.service.v1.PopulationPolicyConfigR\x10populationPolicy2s\n" +
+	"\x11population_policy\x18\a \x01(\v2).cityio.service.v1.PopulationPolicyConfigR\x10populationPolicy\x12<\n" +
+	"\x1astructure_placement_radius\x18\b \x01(\x05R\x18structurePlacementRadius2s\n" +
 	"\rConfigService\x12b\n" +
 	"\rGetGameConfig\x12'.cityio.service.v1.GetGameConfigRequest\x1a(.cityio.service.v1.GetGameConfigResponseB\xbb\x01\n" +
 	"\x15com.cityio.service.v1B\vConfigProtoP\x01Z/cityio/internal/gen/cityio/service/v1;servicev1\xa2\x02\x03CSX\xaa\x02\x11Cityio.Service.V1\xca\x02\x11Cityio\\Service\\V1\xe2\x02\x1dCityio\\Service\\V1\\GPBMetadata\xea\x02\x13Cityio::Service::V1b\x06proto3"

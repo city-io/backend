@@ -1,9 +1,16 @@
 package domain
 
-// Vision contains the cities and armies that reveal the map for a player.
+type VisionPoint struct {
+	X      int
+	Y      int
+	Radius int
+}
+
+// Vision contains the settlements, armies, and structures that reveal the map.
 type Vision struct {
 	Cities []City
 	Armies []Army
+	Points []VisionPoint
 }
 
 // VisibleCoordinates returns every in-bounds tile currently revealed by this
@@ -24,6 +31,9 @@ func (v Vision) VisibleCoordinates(width, height, radius int) []Coordinates {
 	}
 	for _, army := range v.Armies {
 		mark(army.X-radius, army.Y-radius, army.X+radius, army.Y+radius)
+	}
+	for _, point := range v.Points {
+		mark(point.X-point.Radius, point.Y-point.Radius, point.X+point.Radius, point.Y+point.Radius)
 	}
 	result := make([]Coordinates, 0)
 	for index, isVisible := range visible {
@@ -51,6 +61,11 @@ func (v Vision) PointVisible(px, py, radius int) bool {
 			return true
 		}
 	}
+	for _, point := range v.Points {
+		if max(abs(point.X-px), abs(point.Y-py)) <= point.Radius {
+			return true
+		}
+	}
 	return false
 }
 
@@ -71,6 +86,11 @@ func (v Vision) CityVisible(target City, radius int) bool {
 	for i := range v.Armies {
 		a := &v.Armies[i]
 		if a.X+radius >= tx1 && a.X-radius <= tx2 && a.Y+radius >= ty1 && a.Y-radius <= ty2 {
+			return true
+		}
+	}
+	for _, point := range v.Points {
+		if point.X+point.Radius >= tx1 && point.X-point.Radius <= tx2 && point.Y+point.Radius >= ty1 && point.Y-point.Radius <= ty2 {
 			return true
 		}
 	}

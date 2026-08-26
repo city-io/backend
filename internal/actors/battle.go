@@ -1,9 +1,10 @@
 package actors
 
 import (
-	"fmt"
+	"crypto/sha256"
 	"log/slog"
 	"math"
+	"math/rand/v2"
 	"sort"
 	"time"
 
@@ -15,16 +16,18 @@ import (
 	"cityio/internal/domain"
 	"cityio/internal/messages"
 	"cityio/internal/stream"
+	"cityio/internal/utils"
 )
 
 type battleActor struct {
 	baseActor
-	Battle          domain.Battle
-	roundTimer      *time.Timer
-	casualtyCarry   map[string]float64
-	reportAttackers domain.BattleReportSide
-	reportDefenders domain.BattleReportSide
-	reportRounds    []domain.BattleReportRound
+	Battle                domain.Battle
+	roundTimer            *time.Timer
+	casualtyRNG           *rand.Rand
+	civilianCasualtyCarry map[string]float64
+	reportAttackers       domain.BattleReportSide
+	reportDefenders       domain.BattleReportSide
+	reportRounds          []domain.BattleReportRound
 }
 
 func NewBattleActor() BaseActorInterface { return &battleActor{} }
@@ -38,7 +41,8 @@ func (state *battleActor) Receive(ctx actor.Context) {
 			return
 		}
 		state.Battle = msg.Battle
-		state.casualtyCarry = make(map[string]float64)
+		state.casualtyRNG = newBattleCasualtyRNG(state.Battle.BattleID)
+		state.civilianCasualtyCarry = make(map[string]float64)
 		armySnapshots := make(map[string]domain.Army, len(msg.Armies))
 		for _, army := range msg.Armies {
 			armySnapshots[army.ArmyID] = army
@@ -51,6 +55,7 @@ func (state *battleActor) Receive(ctx actor.Context) {
 				slog.WarnContext(state.Ctx(), "failed to enroll army in battle", "battle_id", state.Battle.BattleID, "army_id", id, "error", err)
 			}
 		}
+		state.updateDefenseBonuses()
 		state.armNextRound(ctx)
 		state.publish()
 		ctx.Respond(messages.Ack{})
@@ -69,6 +74,7 @@ func (state *battleActor) Receive(ctx actor.Context) {
 			return
 		}
 		state.recordJoinedArmy(msg.Army)
+		state.updateDefenseBonuses()
 		state.publish()
 		ctx.Respond(messages.Ack{})
 	case messages.PeriodicOperationMessage:
@@ -257,7 +263,31 @@ func attackPower(armies []battleArmy, militiaCount int64) float64 {
 	return power
 }
 
-func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string, militiaCount int64, incoming float64) (map[string]map[domain.TroopType]int64, int64) {
+func newBattleCasualtyRNG(battleID string) *rand.Rand {
+	seed := sha256.Sum256([]byte(battleID))
+	return rand.New(rand.NewChaCha8(seed))
+}
+
+func (state *battleActor) rollCasualties(count int64, probability float64) int64 {
+	if count <= 0 || probability <= 0 {
+		return 0
+	}
+	if probability >= 1 {
+		return count
+	}
+	if state.casualtyRNG == nil {
+		state.casualtyRNG = newBattleCasualtyRNG(state.Battle.BattleID)
+	}
+	var casualties int64
+	for range count {
+		if state.casualtyRNG.Float64() < probability {
+			casualties++
+		}
+	}
+	return casualties
+}
+
+func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string, militiaCount int64, incoming float64, defenseBonusPercent int) (map[string]map[domain.TroopType]int64, int64) {
 	result := make(map[string]map[domain.TroopType]int64)
 	var durability float64
 	for _, target := range targets {
@@ -270,23 +300,21 @@ func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string
 		stat := constants.GetTroopStat(domain.TroopTypeSoldier)
 		durability += float64(militiaCount * (stat.HP + 5*stat.Defense))
 	}
+	durability *= 1 + float64(max(defenseBonusPercent, 0))/100
 	if durability <= 0 || incoming <= 0 {
 		return result, 0
 	}
-	// Incoming power is the sum of every opposing unit's attack. Distributing
-	// that power across the defending force makes absolute losses grow with
-	// force size for otherwise equivalent battles, while fractional carry keeps
-	// small engagements below a forced one-casualty-per-round minimum.
+	// Every unit independently rolls the same casualty probability. This keeps
+	// the existing expected losses while allowing smaller forces to occasionally
+	// outperform the average and making larger battles proportionally steadier.
+	probability := min(incoming*constants.BattleCasualtyRate/durability, 1)
 	for _, target := range targets {
 		for _, troopType := range constants.AllTroopTypes() {
 			count := target.army.Troops[troopType]
 			if count <= 0 {
 				continue
 			}
-			key := fmt.Sprintf("%s:%s", target.id, troopType)
-			expected := incoming*constants.BattleCasualtyRate*float64(count)/durability + state.casualtyCarry[key]
-			kills := min(count, int64(math.Floor(expected)))
-			state.casualtyCarry[key] = expected - float64(kills)
+			kills := state.rollCasualties(count, probability)
 			if kills > 0 {
 				if result[target.id] == nil {
 					result[target.id] = make(map[domain.TroopType]int64)
@@ -297,10 +325,7 @@ func (state *battleActor) casualties(targets []battleArmy, militiaCityID *string
 	}
 	var militiaKills int64
 	if militiaCityID != nil && militiaCount > 0 {
-		key := "militia:" + *militiaCityID
-		expected := incoming*constants.BattleCasualtyRate*float64(militiaCount)/durability + state.casualtyCarry[key]
-		militiaKills = min(militiaCount, int64(math.Floor(expected)))
-		state.casualtyCarry[key] = expected - float64(militiaKills)
+		militiaKills = state.rollCasualties(militiaCount, probability)
 	}
 	return result, militiaKills
 }
@@ -317,8 +342,9 @@ func (state *battleActor) tick(ctx actor.Context) {
 	}
 	attackerPower := attackPower(attackers, state.Battle.Attackers.MilitiaCount)
 	defenderPower := attackPower(defenders, state.Battle.Defenders.MilitiaCount)
-	toDefenders, defenderMilitiaLosses := state.casualties(defenders, state.Battle.Defenders.MilitiaCityID, state.Battle.Defenders.MilitiaCount, attackerPower)
-	toAttackers, attackerMilitiaLosses := state.casualties(attackers, state.Battle.Attackers.MilitiaCityID, state.Battle.Attackers.MilitiaCount, defenderPower)
+	state.updateDefenseBonuses()
+	toDefenders, defenderMilitiaLosses := state.casualties(defenders, state.Battle.Defenders.MilitiaCityID, state.Battle.Defenders.MilitiaCount, attackerPower, state.Battle.Defenders.DefenseBonusPercent)
+	toAttackers, attackerMilitiaLosses := state.casualties(attackers, state.Battle.Attackers.MilitiaCityID, state.Battle.Attackers.MilitiaCount, defenderPower, state.Battle.Attackers.DefenseBonusPercent)
 	defenderCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Defenders, militaryCasualtyCount(toDefenders, defenderMilitiaLosses))
 	attackerCivilianCasualties := state.applySiegeCivilianCasualties(&state.Battle.Attackers, militaryCasualtyCount(toAttackers, attackerMilitiaLosses))
 	state.reportRounds = append(state.reportRounds, domain.BattleReportRound{
@@ -356,6 +382,80 @@ func (state *battleActor) tick(ctx actor.Context) {
 	}
 	state.armNextRound(ctx)
 	state.publish()
+}
+
+func (state *battleActor) updateDefenseBonuses() {
+	fort := state.fortAtBattleTile()
+	settlement := state.settlementAtBattleTile()
+	state.Battle.Attackers.DefenseBonusPercent = state.defenseBonusPercent(state.Battle.Attackers, fort, settlement)
+	state.Battle.Defenders.DefenseBonusPercent = state.defenseBonusPercent(state.Battle.Defenders, fort, settlement)
+}
+
+func (state *battleActor) fortAtBattleTile() *domain.Building {
+	res, err := state.Cluster.Request("tile", utils.GetTileIndex(state.Battle.X, state.Battle.Y), messages.GetTileMessage{})
+	if err != nil {
+		return nil
+	}
+	tile, ok := res.(messages.GetTileResponseMessage)
+	if !ok || tile.BuildingID == nil {
+		return nil
+	}
+	res, err = state.Cluster.Request("building", *tile.BuildingID, messages.GetBuildingMessage{})
+	if err != nil {
+		return nil
+	}
+	building, ok := res.(*messages.GetBuildingResponseMessage)
+	if !ok || building.Building.BuildingType() != domain.BuildingTypeFort || building.Building.Level <= 0 {
+		return nil
+	}
+	return &building.Building
+}
+
+func (state *battleActor) settlementAtBattleTile() *domain.City {
+	res, err := state.Cluster.Request("tile", utils.GetTileIndex(state.Battle.X, state.Battle.Y), messages.GetTileMessage{})
+	if err != nil {
+		return nil
+	}
+	tile, ok := res.(messages.GetTileResponseMessage)
+	if !ok || tile.CityID == nil {
+		return nil
+	}
+	res, err = state.Cluster.Request("city", *tile.CityID, messages.GetCityMessage{})
+	if err != nil {
+		return nil
+	}
+	city, ok := res.(*messages.GetCityResponseMessage)
+	if !ok {
+		return nil
+	}
+	return &city.City
+}
+
+func (state *battleActor) defenseBonusPercent(side domain.BattleSide, fort *domain.Building, settlement *domain.City) int {
+	bonus := 0
+	defendedCityID := side.MilitiaCityID
+	if defendedCityID == nil && settlement != nil && settlement.Owner != nil && contains(side.UserIDs, *settlement.Owner) {
+		defendedCityID = &settlement.CityID
+	}
+	if defendedCityID != nil {
+		if buildings, err := state.Store.GetBuildingsByCity(state.Ctx(), *defendedCityID); err == nil {
+			for _, building := range buildings {
+				if res, requestErr := state.Cluster.Request("building", building.BuildingID, messages.GetBuildingMessage{}); requestErr == nil {
+					if response, ok := res.(*messages.GetBuildingResponseMessage); ok {
+						building = response.Building
+					}
+				}
+				switch building.BuildingType() {
+				case domain.BuildingTypeCityCenter, domain.BuildingTypeTownCenter:
+					bonus += constants.GetBuildingDefenseBonusPercent(building.BuildingType(), building.Level)
+				}
+			}
+		}
+	}
+	if fort != nil && fort.Owner != "" && contains(side.UserIDs, fort.Owner) {
+		bonus += constants.GetBuildingDefenseBonusPercent(domain.BuildingTypeFort, fort.Level)
+	}
+	return bonus
 }
 
 func (state *battleActor) recordTroopLosses(side *domain.BattleReportSide, armyID string, casualties map[domain.TroopType]int64) {
@@ -445,21 +545,24 @@ func (state *battleActor) applySiegeCivilianCasualties(side *domain.BattleSide, 
 	}
 	cityID := *side.MilitiaCityID
 	key := "civilians:" + cityID
-	expected := float64(militaryCasualties)*constants.SiegeCivilianCasualtiesPerMilitaryLoss + state.casualtyCarry[key]
+	if state.civilianCasualtyCarry == nil {
+		state.civilianCasualtyCarry = make(map[string]float64)
+	}
+	expected := float64(militaryCasualties)*constants.SiegeCivilianCasualtiesPerMilitaryLoss + state.civilianCasualtyCarry[key]
 	requested := int64(math.Floor(expected))
-	state.casualtyCarry[key] = expected - float64(requested)
+	state.civilianCasualtyCarry[key] = expected - float64(requested)
 	if requested <= 0 {
 		return 0
 	}
 	res, err := state.Cluster.Request("city", cityID, messages.ApplyCivilianCasualtiesMessage{Count: requested})
 	if err != nil {
-		state.casualtyCarry[key] += float64(requested)
+		state.civilianCasualtyCarry[key] += float64(requested)
 		slog.WarnContext(state.Ctx(), "failed to apply siege civilian casualties", "battle_id", state.Battle.BattleID, "city_id", cityID, "error", err)
 		return 0
 	}
 	response, ok := res.(*messages.ApplyCivilianCasualtiesResponseMessage)
 	if !ok {
-		state.casualtyCarry[key] += float64(requested)
+		state.civilianCasualtyCarry[key] += float64(requested)
 		return 0
 	}
 	return response.Applied

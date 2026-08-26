@@ -95,8 +95,10 @@ type BattleSide struct {
 	StartingMilitiaCount int64              `protobuf:"varint,8,opt,name=starting_militia_count,json=startingMilitiaCount,proto3" json:"starting_militia_count,omitempty"`
 	CumulativeLosses     *BattleLossSummary `protobuf:"bytes,9,opt,name=cumulative_losses,json=cumulativeLosses,proto3" json:"cumulative_losses,omitempty"`
 	LastRoundLosses      *BattleLossSummary `protobuf:"bytes,10,opt,name=last_round_losses,json=lastRoundLosses,proto3" json:"last_round_losses,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Effective durability added by a settlement center and/or owned fort.
+	DefenseBonusPercent int32 `protobuf:"varint,11,opt,name=defense_bonus_percent,json=defenseBonusPercent,proto3" json:"defense_bonus_percent,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *BattleSide) Reset() {
@@ -197,6 +199,13 @@ func (x *BattleSide) GetLastRoundLosses() *BattleLossSummary {
 		return x.LastRoundLosses
 	}
 	return nil
+}
+
+func (x *BattleSide) GetDefenseBonusPercent() int32 {
+	if x != nil {
+		return x.DefenseBonusPercent
+	}
+	return 0
 }
 
 // Battle exists only while combat is active. Each side can contain armies
@@ -302,7 +311,7 @@ const file_cityio_entity_v1_battle_proto_rawDesc = "" +
 	"\x11BattleLossSummary\x124\n" +
 	"\x06troops\x18\x01 \x03(\v2\x1c.cityio.entity.v1.TroopStackR\x06troops\x12\x18\n" +
 	"\amilitia\x18\x02 \x01(\x03R\amilitia\x12\x1c\n" +
-	"\tcivilians\x18\x03 \x01(\x03R\tcivilians\"\x8a\x05\n" +
+	"\tcivilians\x18\x03 \x01(\x03R\tcivilians\"\xbe\x05\n" +
 	"\n" +
 	"BattleSide\x123\n" +
 	"\buser_ids\x18\x01 \x03(\v2\x18.cityio.entity.v1.UserIdR\auserIds\x123\n" +
@@ -315,7 +324,8 @@ const file_cityio_entity_v1_battle_proto_rawDesc = "" +
 	"\x16starting_militia_count\x18\b \x01(\x03R\x14startingMilitiaCount\x12P\n" +
 	"\x11cumulative_losses\x18\t \x01(\v2#.cityio.entity.v1.BattleLossSummaryR\x10cumulativeLosses\x12O\n" +
 	"\x11last_round_losses\x18\n" +
-	" \x01(\v2#.cityio.entity.v1.BattleLossSummaryR\x0flastRoundLossesB\x12\n" +
+	" \x01(\v2#.cityio.entity.v1.BattleLossSummaryR\x0flastRoundLosses\x122\n" +
+	"\x15defense_bonus_percent\x18\v \x01(\x05R\x13defenseBonusPercentB\x12\n" +
 	"\x10_militia_city_id\"\x90\x03\n" +
 	"\x06Battle\x127\n" +
 	"\tbattle_id\x18\x01 \x01(\v2\x1a.cityio.entity.v1.BattleIdR\bbattleId\x121\n" +

@@ -25,6 +25,13 @@ func toNullTime(ts pgtype.Timestamp) domain.NullTime {
 	return domain.NullTime{Time: &ts.Time}
 }
 
+func stringFromPtr(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 // targetLevelFromConstruction reconstructs a building's target level on
 // restore. Construction is always a single-level upgrade in this codebase, so
 // the target is level+1 when timestamps are present and level otherwise.
@@ -87,7 +94,8 @@ func (u User) ToModel() *domain.User {
 func (b Building) ToModel() *domain.Building {
 	return &domain.Building{
 		BuildingID:        b.BuildingID,
-		CityID:            b.CityID,
+		CityID:            stringFromPtr(b.CityID),
+		Owner:             stringFromPtr(b.Owner),
 		Type:              b.Type,
 		Level:             int(b.Level),
 		TargetLevel:       targetLevelFromConstruction(b.Level, b.ConstructionStart, b.ConstructionEnd),
@@ -120,6 +128,22 @@ func (b GetBuildingsByCityRow) ToModel() *domain.Building {
 	return &domain.Building{
 		BuildingID:        b.BuildingID,
 		CityID:            b.CityID,
+		Owner:             b.Owner,
+		Type:              b.Type,
+		Level:             int(b.Level),
+		TargetLevel:       targetLevelFromConstruction(b.Level, b.ConstructionStart, b.ConstructionEnd),
+		X:                 int(b.X),
+		Y:                 int(b.Y),
+		ConstructionStart: toNullTime(b.ConstructionStart),
+		ConstructionEnd:   toNullTime(b.ConstructionEnd),
+	}
+}
+
+func (b GetBuildingsByOwnerRow) ToModel() *domain.Building {
+	return &domain.Building{
+		BuildingID:        b.BuildingID,
+		CityID:            b.CityID,
+		Owner:             b.Owner,
 		Type:              b.Type,
 		Level:             int(b.Level),
 		TargetLevel:       targetLevelFromConstruction(b.Level, b.ConstructionStart, b.ConstructionEnd),
@@ -134,6 +158,7 @@ func (b GetAllBuildingsRow) ToModel() *domain.Building {
 	return &domain.Building{
 		BuildingID:        b.BuildingID,
 		CityID:            b.CityID,
+		Owner:             b.Owner,
 		Type:              b.Type,
 		Level:             int(b.Level),
 		TargetLevel:       targetLevelFromConstruction(b.Level, b.ConstructionStart, b.ConstructionEnd),

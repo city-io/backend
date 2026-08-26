@@ -32,6 +32,8 @@ var buildingTypeToProto = map[domain.BuildingType]entityv1.BuildingType{
 	domain.BuildingTypeHouse:      entityv1.BuildingType_BUILDING_TYPE_HOUSE,
 	domain.BuildingTypeFarm:       entityv1.BuildingType_BUILDING_TYPE_FARM,
 	domain.BuildingTypeMine:       entityv1.BuildingType_BUILDING_TYPE_MINE,
+	domain.BuildingTypeWatchtower: entityv1.BuildingType_BUILDING_TYPE_WATCHTOWER,
+	domain.BuildingTypeFort:       entityv1.BuildingType_BUILDING_TYPE_FORT,
 }
 
 var buildingTypeFromProto = map[entityv1.BuildingType]domain.BuildingType{
@@ -41,6 +43,8 @@ var buildingTypeFromProto = map[entityv1.BuildingType]domain.BuildingType{
 	entityv1.BuildingType_BUILDING_TYPE_HOUSE:       domain.BuildingTypeHouse,
 	entityv1.BuildingType_BUILDING_TYPE_FARM:        domain.BuildingTypeFarm,
 	entityv1.BuildingType_BUILDING_TYPE_MINE:        domain.BuildingTypeMine,
+	entityv1.BuildingType_BUILDING_TYPE_WATCHTOWER:  domain.BuildingTypeWatchtower,
+	entityv1.BuildingType_BUILDING_TYPE_FORT:        domain.BuildingTypeFort,
 }
 
 var terrainTypeToProto = map[domain.TerrainType]entityv1.TerrainType{
@@ -353,11 +357,16 @@ func mappedTile(grid domain.TerrainGrid, cityAt, buildingAt map[int]string, armi
 func BuildingToProto(b domain.Building) *entityv1.Building {
 	out := &entityv1.Building{
 		BuildingId:  ToBuildingId(b.BuildingID),
-		CityId:      ToCityId(b.CityID),
 		Type:        BuildingTypeToProto(b.BuildingType()),
 		Level:       int32(b.Level),
 		TargetLevel: int32(b.TargetLevel),
 		Coords:      &entityv1.Coordinates{X: int32(b.X), Y: int32(b.Y)},
+	}
+	if b.CityID != "" {
+		out.CityId = ToCityId(b.CityID)
+	}
+	if b.Owner != "" {
+		out.Owner = ToUserId(b.Owner)
 	}
 	if b.ConstructionStart.Time != nil {
 		out.ConstructionStart = timestamppb.New(*b.ConstructionStart.Time)
@@ -422,7 +431,7 @@ func BattleToProto(b domain.Battle, viewerID string) *entityv1.Battle {
 }
 
 func battleSideToProto(side domain.BattleSide, strengthVisible bool) *entityv1.BattleSide {
-	out := &entityv1.BattleSide{StrengthVisible: strengthVisible}
+	out := &entityv1.BattleSide{StrengthVisible: strengthVisible, DefenseBonusPercent: int32(side.DefenseBonusPercent)}
 	if strengthVisible {
 		out.MilitiaCount = side.MilitiaCount
 		out.StartingTroops = troopCountsToProto(side.StartingTroops)

@@ -15,6 +15,7 @@ const batchCreateBuildings = `-- name: BatchCreateBuildings :exec
 INSERT INTO buildings (
     building_id,
     city_id,
+    owner,
     type,
     level,
     coords,
@@ -23,7 +24,8 @@ INSERT INTO buildings (
 )
 SELECT
     v.building_id,
-    v.city_id,
+    NULLIF(v.city_id, ''),
+    NULLIF(v.owner, ''),
     v.type,
     v.level,
     ROW(v.x, v.y)::coordinates,
@@ -33,18 +35,20 @@ FROM (
     SELECT
         UNNEST($1::text[])              AS building_id,
         UNNEST($2::text[])                  AS city_id,
-        UNNEST($3::text[])                     AS type,
-        UNNEST($4::int[])                     AS level,
-        UNNEST($5::int[])                         AS x,
-        UNNEST($6::int[])                         AS y,
-        UNNEST($7::timestamp[]) AS construction_start,
-        UNNEST($8::timestamp[])   AS construction_end
+        UNNEST($3::text[])                    AS owner,
+        UNNEST($4::text[])                     AS type,
+        UNNEST($5::int[])                     AS level,
+        UNNEST($6::int[])                         AS x,
+        UNNEST($7::int[])                         AS y,
+        UNNEST($8::timestamp[]) AS construction_start,
+        UNNEST($9::timestamp[])   AS construction_end
 ) AS v
 `
 
 type BatchCreateBuildingsParams struct {
 	BuildingIds        []string           `json:"building_ids"`
 	CityIds            []string           `json:"city_ids"`
+	Owners             []string           `json:"owners"`
 	Types              []string           `json:"types"`
 	Levels             []int32            `json:"levels"`
 	Xs                 []int32            `json:"xs"`
@@ -57,6 +61,7 @@ func (q *Queries) BatchCreateBuildings(ctx context.Context, arg BatchCreateBuild
 	_, err := q.db.Exec(ctx, batchCreateBuildings,
 		arg.BuildingIds,
 		arg.CityIds,
+		arg.Owners,
 		arg.Types,
 		arg.Levels,
 		arg.Xs,
@@ -70,7 +75,8 @@ func (q *Queries) BatchCreateBuildings(ctx context.Context, arg BatchCreateBuild
 const batchUpdateBuildings = `-- name: BatchUpdateBuildings :exec
 UPDATE buildings AS b
 SET
-    city_id            = v.city_id,
+    city_id            = NULLIF(v.city_id, ''),
+    owner              = NULLIF(v.owner, ''),
     type               = v.type,
     level              = v.level,
     coords             = ROW(v.x, v.y)::coordinates,
@@ -80,12 +86,13 @@ FROM (
     SELECT
         UNNEST($1::text[])             AS building_id,
         UNNEST($2::text[])                 AS city_id,
-        UNNEST($3::text[])                    AS type,
-        UNNEST($4::int[])                    AS level,
-        UNNEST($5::int[])                        AS x,
-        UNNEST($6::int[])                         AS y,
-        UNNEST($7::timestamp[]) AS construction_start,
-        UNNEST($8::timestamp[])   AS construction_end
+        UNNEST($3::text[])                   AS owner,
+        UNNEST($4::text[])                    AS type,
+        UNNEST($5::int[])                    AS level,
+        UNNEST($6::int[])                        AS x,
+        UNNEST($7::int[])                         AS y,
+        UNNEST($8::timestamp[]) AS construction_start,
+        UNNEST($9::timestamp[])   AS construction_end
 ) AS v
 WHERE b.building_id = v.building_id
 `
@@ -93,6 +100,7 @@ WHERE b.building_id = v.building_id
 type BatchUpdateBuildingsParams struct {
 	BuildingIds        []string           `json:"building_ids"`
 	CityIds            []string           `json:"city_ids"`
+	Owners             []string           `json:"owners"`
 	Types              []string           `json:"types"`
 	Levels             []int32            `json:"levels"`
 	Xs                 []int32            `json:"xs"`
@@ -105,6 +113,7 @@ func (q *Queries) BatchUpdateBuildings(ctx context.Context, arg BatchUpdateBuild
 	_, err := q.db.Exec(ctx, batchUpdateBuildings,
 		arg.BuildingIds,
 		arg.CityIds,
+		arg.Owners,
 		arg.Types,
 		arg.Levels,
 		arg.Xs,
@@ -119,6 +128,7 @@ const createBuilding = `-- name: CreateBuilding :exec
 INSERT INTO buildings (
     building_id,
     city_id,
+    owner,
     type,
     level,
     coords,
@@ -127,18 +137,20 @@ INSERT INTO buildings (
 )
 VALUES (
     $1,
-    $2,
-    $3,
+    NULLIF($2::text, ''),
+    NULLIF($3::text, ''),
     $4,
-    ROW($5::int4, $6::int4)::coordinates,
-    $7,
-    $8
+    $5,
+    ROW($6::int4, $7::int4)::coordinates,
+    $8,
+    $9
 )
 `
 
 type CreateBuildingParams struct {
 	BuildingID        string           `json:"building_id"`
 	CityID            string           `json:"city_id"`
+	Owner             string           `json:"owner"`
 	Type              string           `json:"type"`
 	Level             int32            `json:"level"`
 	X                 int32            `json:"x"`
@@ -151,6 +163,7 @@ func (q *Queries) CreateBuilding(ctx context.Context, arg CreateBuildingParams) 
 	_, err := q.db.Exec(ctx, createBuilding,
 		arg.BuildingID,
 		arg.CityID,
+		arg.Owner,
 		arg.Type,
 		arg.Level,
 		arg.X,
@@ -174,7 +187,8 @@ func (q *Queries) DeleteBuilding(ctx context.Context, buildingID string) error {
 const getAllBuildings = `-- name: GetAllBuildings :many
 SELECT
     building_id,
-    city_id,
+    COALESCE(city_id, '')::text AS city_id,
+    COALESCE(owner, '')::text AS owner,
     type,
     level,
     (coords).x::int4 AS x,
@@ -187,6 +201,7 @@ FROM buildings
 type GetAllBuildingsRow struct {
 	BuildingID        string           `json:"building_id"`
 	CityID            string           `json:"city_id"`
+	Owner             string           `json:"owner"`
 	Type              string           `json:"type"`
 	Level             int32            `json:"level"`
 	X                 int32            `json:"x"`
@@ -207,6 +222,7 @@ func (q *Queries) GetAllBuildings(ctx context.Context) ([]GetAllBuildingsRow, er
 		if err := rows.Scan(
 			&i.BuildingID,
 			&i.CityID,
+			&i.Owner,
 			&i.Type,
 			&i.Level,
 			&i.X,
@@ -227,7 +243,8 @@ func (q *Queries) GetAllBuildings(ctx context.Context) ([]GetAllBuildingsRow, er
 const getBuildingsByCity = `-- name: GetBuildingsByCity :many
 SELECT
     building_id,
-    city_id,
+    COALESCE(city_id, '')::text AS city_id,
+    COALESCE(owner, '')::text AS owner,
     type,
     level,
     (coords).x::int4 AS x,
@@ -241,6 +258,7 @@ WHERE city_id = $1
 type GetBuildingsByCityRow struct {
 	BuildingID        string           `json:"building_id"`
 	CityID            string           `json:"city_id"`
+	Owner             string           `json:"owner"`
 	Type              string           `json:"type"`
 	Level             int32            `json:"level"`
 	X                 int32            `json:"x"`
@@ -249,7 +267,7 @@ type GetBuildingsByCityRow struct {
 	ConstructionEnd   pgtype.Timestamp `json:"construction_end"`
 }
 
-func (q *Queries) GetBuildingsByCity(ctx context.Context, cityID string) ([]GetBuildingsByCityRow, error) {
+func (q *Queries) GetBuildingsByCity(ctx context.Context, cityID *string) ([]GetBuildingsByCityRow, error) {
 	rows, err := q.db.Query(ctx, getBuildingsByCity, cityID)
 	if err != nil {
 		return nil, err
@@ -261,6 +279,64 @@ func (q *Queries) GetBuildingsByCity(ctx context.Context, cityID string) ([]GetB
 		if err := rows.Scan(
 			&i.BuildingID,
 			&i.CityID,
+			&i.Owner,
+			&i.Type,
+			&i.Level,
+			&i.X,
+			&i.Y,
+			&i.ConstructionStart,
+			&i.ConstructionEnd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getBuildingsByOwner = `-- name: GetBuildingsByOwner :many
+SELECT
+    building_id,
+    COALESCE(city_id, '')::text AS city_id,
+    COALESCE(owner, '')::text AS owner,
+    type,
+    level,
+    (coords).x::int4 AS x,
+    (coords).y::int4 AS y,
+    construction_start,
+    construction_end
+FROM buildings
+WHERE owner = $1
+`
+
+type GetBuildingsByOwnerRow struct {
+	BuildingID        string           `json:"building_id"`
+	CityID            string           `json:"city_id"`
+	Owner             string           `json:"owner"`
+	Type              string           `json:"type"`
+	Level             int32            `json:"level"`
+	X                 int32            `json:"x"`
+	Y                 int32            `json:"y"`
+	ConstructionStart pgtype.Timestamp `json:"construction_start"`
+	ConstructionEnd   pgtype.Timestamp `json:"construction_end"`
+}
+
+func (q *Queries) GetBuildingsByOwner(ctx context.Context, owner *string) ([]GetBuildingsByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, getBuildingsByOwner, owner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBuildingsByOwnerRow
+	for rows.Next() {
+		var i GetBuildingsByOwnerRow
+		if err := rows.Scan(
+			&i.BuildingID,
+			&i.CityID,
+			&i.Owner,
 			&i.Type,
 			&i.Level,
 			&i.X,

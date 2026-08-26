@@ -54,3 +54,27 @@ func TestGameConfigExposesBarracksTrainingSpeedByLevel(t *testing.T) {
 	}
 	t.Fatal("barracks config missing")
 }
+
+func TestGameConfigExposesStandaloneStructureTuning(t *testing.T) {
+	response, err := (&configHandler{}).GetGameConfig(context.Background(), connect.NewRequest(&servicev1.GetGameConfigRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Msg.GetStructurePlacementRadius() != constants.StructurePlacementRadius {
+		t.Fatalf("structure placement radius = %d", response.Msg.GetStructurePlacementRadius())
+	}
+	configs := buildBuildingConfigs()
+	for _, config := range configs {
+		levels := config.GetLevels()
+		switch config.GetType() {
+		case mapping.BuildingTypeToProto(domain.BuildingTypeWatchtower):
+			if levels[0].GetVisionRadius() != 3 || levels[len(levels)-1].GetVisionRadius() != 12 {
+				t.Fatalf("watchtower vision progression = %d..%d", levels[0].GetVisionRadius(), levels[len(levels)-1].GetVisionRadius())
+			}
+		case mapping.BuildingTypeToProto(domain.BuildingTypeFort):
+			if levels[0].GetDefenseBonusPercent() != 5 || levels[len(levels)-1].GetDefenseBonusPercent() != 50 {
+				t.Fatalf("fort defense progression = %d..%d", levels[0].GetDefenseBonusPercent(), levels[len(levels)-1].GetDefenseBonusPercent())
+			}
+		}
+	}
+}

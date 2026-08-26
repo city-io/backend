@@ -58,6 +58,23 @@ func TestMapTilesToProtoBuildsCoordinateKeyedEntityGraph(t *testing.T) {
 	}
 }
 
+func TestBuildingToProtoUsesStandaloneOwnerWithoutCity(t *testing.T) {
+	mapped := BuildingToProto(domain.Building{
+		BuildingID: "watchtower", Owner: "owner", Type: string(domain.BuildingTypeWatchtower),
+		Level: 2, TargetLevel: 2, X: 7, Y: 8,
+	})
+
+	if mapped.GetCityId() != nil {
+		t.Fatalf("standalone structure has city id: %+v", mapped.GetCityId())
+	}
+	if mapped.GetOwner().GetValue() != "owner" {
+		t.Fatalf("owner = %q, want owner", mapped.GetOwner().GetValue())
+	}
+	if mapped.GetType() != entityv1.BuildingType_BUILDING_TYPE_WATCHTOWER {
+		t.Fatalf("type = %v, want watchtower", mapped.GetType())
+	}
+}
+
 func TestMailboxMessageToProtoPreservesDetailedBattleReport(t *testing.T) {
 	started := time.Date(2026, time.August, 23, 12, 0, 0, 0, time.UTC)
 	ended := started.Add(8 * time.Second)
