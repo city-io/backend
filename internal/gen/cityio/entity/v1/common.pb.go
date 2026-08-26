@@ -82,6 +82,8 @@ const (
 	BuildingType_BUILDING_TYPE_HOUSE       BuildingType = 4
 	BuildingType_BUILDING_TYPE_FARM        BuildingType = 5
 	BuildingType_BUILDING_TYPE_MINE        BuildingType = 6
+	BuildingType_BUILDING_TYPE_WATCHTOWER  BuildingType = 7
+	BuildingType_BUILDING_TYPE_FORT        BuildingType = 8
 )
 
 // Enum value maps for BuildingType.
@@ -94,6 +96,8 @@ var (
 		4: "BUILDING_TYPE_HOUSE",
 		5: "BUILDING_TYPE_FARM",
 		6: "BUILDING_TYPE_MINE",
+		7: "BUILDING_TYPE_WATCHTOWER",
+		8: "BUILDING_TYPE_FORT",
 	}
 	BuildingType_value = map[string]int32{
 		"BUILDING_TYPE_UNSPECIFIED": 0,
@@ -103,6 +107,8 @@ var (
 		"BUILDING_TYPE_HOUSE":       4,
 		"BUILDING_TYPE_FARM":        5,
 		"BUILDING_TYPE_MINE":        6,
+		"BUILDING_TYPE_WATCHTOWER":  7,
+		"BUILDING_TYPE_FORT":        8,
 	}
 )
 
@@ -311,7 +317,7 @@ const file_cityio_entity_v1_common_proto_rawDesc = "" +
 	"\bCityType\x12\x19\n" +
 	"\x15CITY_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eCITY_TYPE_CITY\x10\x01\x12\x12\n" +
-	"\x0eCITY_TYPE_TOWN\x10\x02*\xd0\x01\n" +
+	"\x0eCITY_TYPE_TOWN\x10\x02*\x86\x02\n" +
 	"\fBuildingType\x12\x1d\n" +
 	"\x19BUILDING_TYPE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19BUILDING_TYPE_CITY_CENTER\x10\x01\x12\x1d\n" +
@@ -319,7 +325,9 @@ const file_cityio_entity_v1_common_proto_rawDesc = "" +
 	"\x16BUILDING_TYPE_BARRACKS\x10\x03\x12\x17\n" +
 	"\x13BUILDING_TYPE_HOUSE\x10\x04\x12\x16\n" +
 	"\x12BUILDING_TYPE_FARM\x10\x05\x12\x16\n" +
-	"\x12BUILDING_TYPE_MINE\x10\x06*\x88\x01\n" +
+	"\x12BUILDING_TYPE_MINE\x10\x06\x12\x1c\n" +
+	"\x18BUILDING_TYPE_WATCHTOWER\x10\a\x12\x16\n" +
+	"\x12BUILDING_TYPE_FORT\x10\b*\x88\x01\n" +
 	"\tTroopType\x12\x1a\n" +
 	"\x16TROOP_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12TROOP_TYPE_SOLDIER\x10\x01\x12\x15\n" +

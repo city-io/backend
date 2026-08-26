@@ -37,6 +37,7 @@ func (h *configHandler) GetGameConfig(_ context.Context, _ *connect.Request[serv
 			TaxGoldPerPopulation:       mapping.RatePerHour(constants.TaxGoldPerPopPerHour),
 			MaxTaxGrowthPenaltyPercent: constants.MaxTaxGrowthPenaltyPercent,
 		},
+		StructurePlacementRadius: constants.StructurePlacementRadius,
 	}), nil
 }
 
@@ -64,6 +65,8 @@ func buildBuildingConfigs() []*servicev1.BuildingConfig {
 			if bt == domain.BuildingTypeBarracks {
 				level.TrainingSpeedMultiplier = constants.GetBarracksTrainingSpeed(i + 1)
 			}
+			level.VisionRadius = int32(constants.GetBuildingVisionRadius(bt, i+1))
+			level.DefenseBonusPercent = int32(constants.GetBuildingDefenseBonusPercent(bt, i+1))
 			for _, entry := range prodEntries {
 				level.Production = append(level.Production, &servicev1.ResourceRate{
 					Resource: entry.Resource,

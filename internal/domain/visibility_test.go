@@ -15,6 +15,16 @@ func TestVisionIncludesArmyRadius(t *testing.T) {
 	}
 }
 
+func TestVisionIncludesIndependentPointRadius(t *testing.T) {
+	vision := Vision{Points: []VisionPoint{{X: 10, Y: 10, Radius: 5}}}
+	if !vision.PointVisible(15, 15, 3) {
+		t.Fatal("point inside structure-specific radius should be visible")
+	}
+	if vision.PointVisible(16, 10, 3) {
+		t.Fatal("point outside structure-specific radius should not be visible")
+	}
+}
+
 func TestVisionArmyRevealsIntersectingCityAndEntities(t *testing.T) {
 	vision := Vision{Armies: []Army{{ArmyID: "scout", X: 5, Y: 5}}}
 	cities := []City{

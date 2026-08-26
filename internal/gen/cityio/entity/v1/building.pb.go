@@ -22,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Building is a structure within a city.
+// Building is either part of a city or a standalone player-owned structure.
 type Building struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	BuildingId        *BuildingId            `protobuf:"bytes,1,opt,name=building_id,json=buildingId,proto3" json:"building_id,omitempty"`
@@ -33,8 +33,11 @@ type Building struct {
 	Coords            *Coordinates           `protobuf:"bytes,6,opt,name=coords,proto3" json:"coords,omitempty"`
 	ConstructionStart *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=construction_start,json=constructionStart,proto3,oneof" json:"construction_start,omitempty"`
 	ConstructionEnd   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=construction_end,json=constructionEnd,proto3,oneof" json:"construction_end,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Set only for standalone structures. City buildings inherit ownership from
+	// their city and continue to use city_id.
+	Owner         *UserId `protobuf:"bytes,9,opt,name=owner,proto3,oneof" json:"owner,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Building) Reset() {
@@ -123,11 +126,18 @@ func (x *Building) GetConstructionEnd() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Building) GetOwner() *UserId {
+	if x != nil {
+		return x.Owner
+	}
+	return nil
+}
+
 var File_cityio_entity_v1_building_proto protoreflect.FileDescriptor
 
 const file_cityio_entity_v1_building_proto_rawDesc = "" +
 	"\n" +
-	"\x1fcityio/entity/v1/building.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe8\x03\n" +
+	"\x1fcityio/entity/v1/building.proto\x12\x10cityio.entity.v1\x1a\x1dcityio/entity/v1/common.proto\x1a\x1acityio/entity/v1/ids.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa7\x04\n" +
 	"\bBuilding\x12=\n" +
 	"\vbuilding_id\x18\x01 \x01(\v2\x1c.cityio.entity.v1.BuildingIdR\n" +
 	"buildingId\x121\n" +
@@ -137,9 +147,11 @@ const file_cityio_entity_v1_building_proto_rawDesc = "" +
 	"\ftarget_level\x18\x05 \x01(\x05R\vtargetLevel\x125\n" +
 	"\x06coords\x18\x06 \x01(\v2\x1d.cityio.entity.v1.CoordinatesR\x06coords\x12N\n" +
 	"\x12construction_start\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x11constructionStart\x88\x01\x01\x12J\n" +
-	"\x10construction_end\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x0fconstructionEnd\x88\x01\x01B\x15\n" +
+	"\x10construction_end\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x0fconstructionEnd\x88\x01\x01\x123\n" +
+	"\x05owner\x18\t \x01(\v2\x18.cityio.entity.v1.UserIdH\x02R\x05owner\x88\x01\x01B\x15\n" +
 	"\x13_construction_startB\x13\n" +
-	"\x11_construction_endB\xb6\x01\n" +
+	"\x11_construction_endB\b\n" +
+	"\x06_ownerB\xb6\x01\n" +
 	"\x14com.cityio.entity.v1B\rBuildingProtoP\x01Z-cityio/internal/gen/cityio/entity/v1;entityv1\xa2\x02\x03CEX\xaa\x02\x10Cityio.Entity.V1\xca\x02\x10Cityio\\Entity\\V1\xe2\x02\x1cCityio\\Entity\\V1\\GPBMetadata\xea\x02\x12Cityio::Entity::V1b\x06proto3"
 
 var (
@@ -162,6 +174,7 @@ var file_cityio_entity_v1_building_proto_goTypes = []any{
 	(BuildingType)(0),             // 3: cityio.entity.v1.BuildingType
 	(*Coordinates)(nil),           // 4: cityio.entity.v1.Coordinates
 	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*UserId)(nil),                // 6: cityio.entity.v1.UserId
 }
 var file_cityio_entity_v1_building_proto_depIdxs = []int32{
 	1, // 0: cityio.entity.v1.Building.building_id:type_name -> cityio.entity.v1.BuildingId
@@ -170,11 +183,12 @@ var file_cityio_entity_v1_building_proto_depIdxs = []int32{
 	4, // 3: cityio.entity.v1.Building.coords:type_name -> cityio.entity.v1.Coordinates
 	5, // 4: cityio.entity.v1.Building.construction_start:type_name -> google.protobuf.Timestamp
 	5, // 5: cityio.entity.v1.Building.construction_end:type_name -> google.protobuf.Timestamp
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6, // 6: cityio.entity.v1.Building.owner:type_name -> cityio.entity.v1.UserId
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_cityio_entity_v1_building_proto_init() }

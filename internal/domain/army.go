@@ -46,15 +46,16 @@ const (
 )
 
 type BattleSide struct {
-	UserIDs          []string
-	ArmyIDs          []string
-	MilitiaCityID    *string
-	MilitiaCount     int64
-	StartingTroops   map[TroopType]int64
-	SurvivingTroops  map[TroopType]int64
-	StartingMilitia  int64
-	CumulativeLosses BattleLossSummary
-	LastRoundLosses  BattleLossSummary
+	UserIDs             []string
+	ArmyIDs             []string
+	MilitiaCityID       *string
+	MilitiaCount        int64
+	StartingTroops      map[TroopType]int64
+	SurvivingTroops     map[TroopType]int64
+	StartingMilitia     int64
+	CumulativeLosses    BattleLossSummary
+	LastRoundLosses     BattleLossSummary
+	DefenseBonusPercent int
 }
 
 type BattleLossSummary struct {

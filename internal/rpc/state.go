@@ -61,7 +61,7 @@ func (s *Server) buildProjectedState(ctx context.Context, userID string) (*proje
 			ownedArmies = append(ownedArmies, army)
 		}
 	}
-	vision := domain.Vision{Cities: ownedCities, Armies: ownedArmies}
+	vision := domain.Vision{Cities: ownedCities, Armies: ownedArmies, Points: structureVisionPoints(userID, buildings)}
 	visibleCoords := vision.VisibleCoordinates(constants.MapSize, constants.MapSize, constants.VisionRadius)
 	visible := make(map[domain.Coordinates]struct{}, len(visibleCoords))
 	for _, coords := range visibleCoords {

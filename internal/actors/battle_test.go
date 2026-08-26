@@ -1,14 +1,26 @@
 package actors
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"cityio/internal/constants"
+	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/messages"
 )
+
+type battleDefenseTestStore struct {
+	contracts.Store
+	buildings []domain.Building
+}
+
+func (s *battleDefenseTestStore) GetBuildingsByCity(context.Context, string) ([]domain.Building, error) {
+	return s.buildings, nil
+}
 
 func TestBattleRoundsUseThreeSecondCadence(t *testing.T) {
 	if constants.BattleTickInterval != 3*time.Second {
@@ -16,49 +28,95 @@ func TestBattleRoundsUseThreeSecondCadence(t *testing.T) {
 	}
 }
 
-func TestBattleFractionalCarryEventuallyKillsWholeUnit(t *testing.T) {
-	state := &battleActor{casualtyCarry: make(map[string]float64)}
-	targets := []battleArmy{{id: "defender", army: domain.Army{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 1}}}}
-
-	var killed int64
-	for tick := 0; tick < 32; tick++ {
-		casualties, _ := state.casualties(targets, nil, 0, 10)
-		killed += casualties["defender"][domain.TroopTypeSoldier]
-		if killed > 0 {
-			break
-		}
+func TestBattleCasualtiesVaryAcrossBattleSeeds(t *testing.T) {
+	targets := []battleArmy{{id: "defender", army: domain.Army{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 15}}}}
+	outcomes := make(map[int64]struct{})
+	for seed := 0; seed < 128; seed++ {
+		state := &battleActor{Battle: domain.Battle{BattleID: fmt.Sprintf("battle-%d", seed)}}
+		casualties, _ := state.casualties(targets, nil, 0, 150, 0)
+		outcomes[casualties["defender"][domain.TroopTypeSoldier]] = struct{}{}
 	}
-	if killed != 1 {
-		t.Fatalf("casualties = %d, want one whole unit after fractional damage accumulates", killed)
+	if len(outcomes) < 2 {
+		t.Fatalf("casualty outcomes = %v, want variation across battle seeds", outcomes)
 	}
 }
 
-func TestBattleCasualtyRateSpreadsLossAcrossRounds(t *testing.T) {
-	state := &battleActor{casualtyCarry: make(map[string]float64)}
-	targets := []battleArmy{{id: "defender", army: domain.Army{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 1}}}}
+func TestBattleCasualtiesAreReproducibleForBattleSeed(t *testing.T) {
+	targets := []battleArmy{{id: "defender", army: domain.Army{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 15}}}}
+	first := &battleActor{Battle: domain.Battle{BattleID: "same-battle"}}
+	second := &battleActor{Battle: domain.Battle{BattleID: "same-battle"}}
+	for round := 0; round < 20; round++ {
+		firstLosses, _ := first.casualties(targets, nil, 0, 150, 0)
+		secondLosses, _ := second.casualties(targets, nil, 0, 150, 0)
+		firstCount := firstLosses["defender"][domain.TroopTypeSoldier]
+		secondCount := secondLosses["defender"][domain.TroopTypeSoldier]
+		if firstCount != secondCount {
+			t.Fatalf("round %d casualties = %d and %d for the same battle seed", round+1, firstCount, secondCount)
+		}
+	}
+}
 
-	first, _ := state.casualties(targets, nil, 0, 150)
-	second, _ := state.casualties(targets, nil, 0, 150)
+func TestBattleRandomCasualtiesPreserveExpectedLosses(t *testing.T) {
+	targets := []battleArmy{{id: "defender", army: domain.Army{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 15}}}}
+	var total int64
+	const samples = 4096
+	for seed := 0; seed < samples; seed++ {
+		state := &battleActor{Battle: domain.Battle{BattleID: fmt.Sprintf("battle-%d", seed)}}
+		casualties, _ := state.casualties(targets, nil, 0, 100, 0)
+		total += casualties["defender"][domain.TroopTypeSoldier]
+	}
+	mean := float64(total) / samples
+	if mean < 0.60 || mean > 0.73 {
+		t.Fatalf("mean casualties = %f, want approximately 0.667", mean)
+	}
+}
 
-	if first["defender"][domain.TroopTypeSoldier] != 1 || second["defender"][domain.TroopTypeSoldier] != 1 {
-		t.Fatalf("casualties by round = %v then %v, want 1 then 1", first, second)
+func TestBattleDefenseBonusReducesExpectedLosses(t *testing.T) {
+	targets := []battleArmy{{id: "defender", army: domain.Army{Troops: map[domain.TroopType]int64{domain.TroopTypeSoldier: 15}}}}
+	var total int64
+	const samples = 4096
+	for seed := 0; seed < samples; seed++ {
+		state := &battleActor{Battle: domain.Battle{BattleID: fmt.Sprintf("defended-battle-%d", seed)}}
+		casualties, _ := state.casualties(targets, nil, 0, 150, 50)
+		total += casualties["defender"][domain.TroopTypeSoldier]
+	}
+	mean := float64(total) / samples
+	if mean < 0.60 || mean > 0.73 {
+		t.Fatalf("mean defended casualties = %f, want approximately 0.667", mean)
+	}
+}
+
+func TestBattleSettlementAndFortDefenseBonusesAdd(t *testing.T) {
+	cityID := "town"
+	state := &battleActor{baseActor: baseActor{Store: &battleDefenseTestStore{buildings: []domain.Building{{
+		Type: string(domain.BuildingTypeTownCenter), Level: 3,
+	}}}, Cluster: &armyOperationTestCluster{}}}
+	fort := &domain.Building{Owner: "owner", Type: string(domain.BuildingTypeFort), Level: 3}
+	got := state.defenseBonusPercent(domain.BattleSide{UserIDs: []string{"owner"}, MilitiaCityID: &cityID}, fort, nil)
+	if got != 35 {
+		t.Fatalf("combined defense bonus = %d, want 35", got)
 	}
 }
 
 func TestBattleCasualtiesScaleWithForceSize(t *testing.T) {
-	lossesForEqualBattle := func(count int64) int64 {
-		state := &battleActor{casualtyCarry: make(map[string]float64)}
-		army := battleArmy{id: "army", army: domain.Army{Troops: map[domain.TroopType]int64{
-			domain.TroopTypeSoldier: count,
-		}}}
-		casualties, _ := state.casualties([]battleArmy{army}, nil, 0, attackPower([]battleArmy{army}, 0))
-		return casualties[army.id][domain.TroopTypeSoldier]
+	meanLossesForEqualBattle := func(count int64) float64 {
+		var total int64
+		const samples = 2048
+		for seed := 0; seed < samples; seed++ {
+			state := &battleActor{Battle: domain.Battle{BattleID: fmt.Sprintf("battle-%d-%d", count, seed)}}
+			army := battleArmy{id: "army", army: domain.Army{Troops: map[domain.TroopType]int64{
+				domain.TroopTypeSoldier: count,
+			}}}
+			casualties, _ := state.casualties([]battleArmy{army}, nil, 0, attackPower([]battleArmy{army}, 0), 0)
+			total += casualties[army.id][domain.TroopTypeSoldier]
+		}
+		return float64(total) / samples
 	}
 
-	small := lossesForEqualBattle(15)
-	large := lossesForEqualBattle(150)
-	if small != 1 || large != 10 {
-		t.Fatalf("equal-battle casualties: 15v15 = %d, 150v150 = %d; want 1 and 10", small, large)
+	small := meanLossesForEqualBattle(15)
+	large := meanLossesForEqualBattle(150)
+	if small < 0.90 || small > 1.10 || large < 9.50 || large > 10.50 {
+		t.Fatalf("mean equal-battle casualties: 15v15 = %f, 150v150 = %f; want approximately 1 and 10", small, large)
 	}
 }
 
@@ -92,10 +150,10 @@ func TestBattleJoinAllowsAlliesAgainstSettlementMilitia(t *testing.T) {
 }
 
 func TestBattleCasualtiesAreCappedAtAvailableUnits(t *testing.T) {
-	state := &battleActor{casualtyCarry: make(map[string]float64)}
+	state := &battleActor{Battle: domain.Battle{BattleID: "capped-army-casualties"}}
 	targets := []battleArmy{{id: "defender", army: domain.Army{Troops: map[domain.TroopType]int64{domain.TroopTypeArcher: 3}}}}
 
-	casualties, _ := state.casualties(targets, nil, 0, 1_000_000)
+	casualties, _ := state.casualties(targets, nil, 0, 1_000_000, 0)
 	got := casualties["defender"][domain.TroopTypeArcher]
 	if got != 3 {
 		t.Fatalf("casualties = %d, want available count 3", got)
@@ -103,9 +161,9 @@ func TestBattleCasualtiesAreCappedAtAvailableUnits(t *testing.T) {
 }
 
 func TestBattleMilitiaCasualtiesAreCappedAtAvailableDefenders(t *testing.T) {
-	state := &battleActor{casualtyCarry: make(map[string]float64)}
+	state := &battleActor{Battle: domain.Battle{BattleID: "capped-militia-casualties"}}
 	cityID := "town"
-	_, got := state.casualties(nil, &cityID, 3, 1_000_000)
+	_, got := state.casualties(nil, &cityID, 3, 1_000_000, 0)
 	if got != 3 {
 		t.Fatalf("militia casualties = %d, want available count 3", got)
 	}
@@ -126,9 +184,9 @@ func TestSiegeAppliesCivilianCasualtiesButFieldBattleDoesNot(t *testing.T) {
 		return &messages.ApplyCivilianCasualtiesResponseMessage{Applied: casualties.Count}, nil
 	}}
 	state := &battleActor{
-		baseActor:     baseActor{Cluster: cluster},
-		Battle:        domain.Battle{BattleID: "battle"},
-		casualtyCarry: make(map[string]float64),
+		baseActor:             baseActor{Cluster: cluster},
+		Battle:                domain.Battle{BattleID: "battle"},
+		civilianCasualtyCarry: make(map[string]float64),
 	}
 
 	if got := state.applySiegeCivilianCasualties(&domain.BattleSide{}, 10); got != 0 {
@@ -149,9 +207,9 @@ func TestSiegeCivilianCasualtiesScaleWithMilitaryLosses(t *testing.T) {
 		return &messages.ApplyCivilianCasualtiesResponseMessage{Applied: casualties.Count}, nil
 	}}
 	state := &battleActor{
-		baseActor:     baseActor{Cluster: cluster},
-		Battle:        domain.Battle{BattleID: "battle"},
-		casualtyCarry: make(map[string]float64),
+		baseActor:             baseActor{Cluster: cluster},
+		Battle:                domain.Battle{BattleID: "battle"},
+		civilianCasualtyCarry: make(map[string]float64),
 	}
 	side := &domain.BattleSide{MilitiaCityID: &cityID}
 

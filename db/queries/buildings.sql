@@ -1,7 +1,8 @@
 -- name: GetAllBuildings :many
 SELECT
     building_id,
-    city_id,
+    COALESCE(city_id, '')::text AS city_id,
+    COALESCE(owner, '')::text AS owner,
     type,
     level,
     (coords).x::int4 AS x,
@@ -13,7 +14,8 @@ FROM buildings;
 -- name: GetBuildingsByCity :many
 SELECT
     building_id,
-    city_id,
+    COALESCE(city_id, '')::text AS city_id,
+    COALESCE(owner, '')::text AS owner,
     type,
     level,
     (coords).x::int4 AS x,
@@ -23,10 +25,25 @@ SELECT
 FROM buildings
 WHERE city_id = $1;
 
+-- name: GetBuildingsByOwner :many
+SELECT
+    building_id,
+    COALESCE(city_id, '')::text AS city_id,
+    COALESCE(owner, '')::text AS owner,
+    type,
+    level,
+    (coords).x::int4 AS x,
+    (coords).y::int4 AS y,
+    construction_start,
+    construction_end
+FROM buildings
+WHERE owner = $1;
+
 -- name: CreateBuilding :exec
 INSERT INTO buildings (
     building_id,
     city_id,
+    owner,
     type,
     level,
     coords,
@@ -35,7 +52,8 @@ INSERT INTO buildings (
 )
 VALUES (
     sqlc.arg(building_id),
-    sqlc.arg(city_id),
+    NULLIF(sqlc.arg(city_id)::text, ''),
+    NULLIF(sqlc.arg(owner)::text, ''),
     sqlc.arg(type),
     sqlc.arg(level),
     ROW(sqlc.arg(x)::int4, sqlc.arg(y)::int4)::coordinates,
@@ -50,7 +68,8 @@ WHERE building_id = $1;
 -- name: BatchUpdateBuildings :exec
 UPDATE buildings AS b
 SET
-    city_id            = v.city_id,
+    city_id            = NULLIF(v.city_id, ''),
+    owner              = NULLIF(v.owner, ''),
     type               = v.type,
     level              = v.level,
     coords             = ROW(v.x, v.y)::coordinates,
@@ -60,6 +79,7 @@ FROM (
     SELECT
         UNNEST(sqlc.arg(building_ids)::text[])             AS building_id,
         UNNEST(sqlc.arg(city_ids)::text[])                 AS city_id,
+        UNNEST(sqlc.arg(owners)::text[])                   AS owner,
         UNNEST(sqlc.arg(types)::text[])                    AS type,
         UNNEST(sqlc.arg(levels)::int[])                    AS level,
         UNNEST(sqlc.arg(xs)::int[])                        AS x,
@@ -73,6 +93,7 @@ WHERE b.building_id = v.building_id;
 INSERT INTO buildings (
     building_id,
     city_id,
+    owner,
     type,
     level,
     coords,
@@ -81,7 +102,8 @@ INSERT INTO buildings (
 )
 SELECT
     v.building_id,
-    v.city_id,
+    NULLIF(v.city_id, ''),
+    NULLIF(v.owner, ''),
     v.type,
     v.level,
     ROW(v.x, v.y)::coordinates,
@@ -91,6 +113,7 @@ FROM (
     SELECT
         UNNEST(sqlc.arg(building_ids)::text[])              AS building_id,
         UNNEST(sqlc.arg(city_ids)::text[])                  AS city_id,
+        UNNEST(sqlc.arg(owners)::text[])                    AS owner,
         UNNEST(sqlc.arg(types)::text[])                     AS type,
         UNNEST(sqlc.arg(levels)::int[])                     AS level,
         UNNEST(sqlc.arg(xs)::int[])                         AS x,

@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"cityio/internal/auth"
+	"cityio/internal/constants"
 	"cityio/internal/contracts"
 	"cityio/internal/domain"
 	"cityio/internal/gen/cityio/service/v1/servicev1connect"
@@ -45,7 +46,17 @@ func (s *Server) ownedCities(ctx context.Context) ([]domain.City, error) {
 	if !ok {
 		return nil, errors.New("missing claims")
 	}
-	return s.store.GetCitiesByOwner(ctx, claims.UserID)
+	cities, err := s.liveCities(ctx)
+	if err != nil {
+		return nil, err
+	}
+	owned := make([]domain.City, 0)
+	for _, city := range cities {
+		if city.Owner != nil && *city.Owner == claims.UserID {
+			owned = append(owned, city)
+		}
+	}
+	return owned, nil
 }
 
 func (s *Server) liveArmies(ctx context.Context) ([]domain.Army, error) {
@@ -112,7 +123,11 @@ func (s *Server) ownedVisionWithArmies(ctx context.Context, armies []domain.Army
 	if !ok {
 		return domain.Vision{}, errors.New("missing claims")
 	}
-	cities, err := s.store.GetCitiesByOwner(ctx, claims.UserID)
+	cities, err := s.ownedCities(ctx)
+	if err != nil {
+		return domain.Vision{}, err
+	}
+	buildings, err := s.liveBuildings(ctx)
 	if err != nil {
 		return domain.Vision{}, err
 	}
@@ -122,7 +137,21 @@ func (s *Server) ownedVisionWithArmies(ctx context.Context, armies []domain.Army
 			ownedArmies = append(ownedArmies, army)
 		}
 	}
-	return domain.Vision{Cities: cities, Armies: ownedArmies}, nil
+	return domain.Vision{Cities: cities, Armies: ownedArmies, Points: structureVisionPoints(claims.UserID, buildings)}, nil
+}
+
+func structureVisionPoints(owner string, buildings []domain.Building) []domain.VisionPoint {
+	points := make([]domain.VisionPoint, 0)
+	for _, building := range buildings {
+		if building.Owner != owner || !constants.IsStandaloneStructure(building.BuildingType()) {
+			continue
+		}
+		points = append(points, domain.VisionPoint{
+			X: building.X, Y: building.Y,
+			Radius: constants.GetBuildingVisionRadius(building.BuildingType(), building.Level),
+		})
+	}
+	return points
 }
 
 func (s *Server) ownsCity(ctx context.Context, cityID string) (bool, error) {

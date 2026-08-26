@@ -191,7 +191,19 @@ func (s *Store) GetCitiesByOwner(ctx context.Context, owner string) ([]domain.Ci
 }
 
 func (s *Store) GetBuildingsByCity(ctx context.Context, cityID string) ([]domain.Building, error) {
-	rows, err := s.db.GetBuildingsByCity(ctx, cityID)
+	rows, err := s.db.GetBuildingsByCity(ctx, &cityID)
+	if err != nil {
+		return nil, err
+	}
+	buildings := make([]domain.Building, 0, len(rows))
+	for _, b := range rows {
+		buildings = append(buildings, *b.ToModel())
+	}
+	return buildings, nil
+}
+
+func (s *Store) GetBuildingsByOwner(ctx context.Context, owner string) ([]domain.Building, error) {
+	rows, err := s.db.GetBuildingsByOwner(ctx, &owner)
 	if err != nil {
 		return nil, err
 	}
@@ -262,6 +274,7 @@ func (s *Store) CreateBuilding(ctx context.Context, building domain.Building) er
 	return s.db.CreateBuilding(ctx, database.CreateBuildingParams{
 		BuildingID:        building.BuildingID,
 		CityID:            building.CityID,
+		Owner:             building.Owner,
 		Type:              building.Type,
 		Level:             int32(building.Level),
 		X:                 int32(building.X),
@@ -568,6 +581,7 @@ func (s *Store) flushBuildings(ctx context.Context, buffer map[string]domain.Bui
 		params := database.BatchUpdateBuildingsParams{
 			BuildingIds:        make([]string, 0, len(chunk)),
 			CityIds:            make([]string, 0, len(chunk)),
+			Owners:             make([]string, 0, len(chunk)),
 			Types:              make([]string, 0, len(chunk)),
 			Levels:             make([]int32, 0, len(chunk)),
 			Xs:                 make([]int32, 0, len(chunk)),
@@ -579,6 +593,7 @@ func (s *Store) flushBuildings(ctx context.Context, buffer map[string]domain.Bui
 		for _, b := range chunk {
 			params.BuildingIds = append(params.BuildingIds, b.BuildingID)
 			params.CityIds = append(params.CityIds, b.CityID)
+			params.Owners = append(params.Owners, b.Owner)
 			params.Types = append(params.Types, b.Type)
 			params.Levels = append(params.Levels, int32(b.Level))
 			params.Xs = append(params.Xs, int32(b.X))

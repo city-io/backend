@@ -20,6 +20,7 @@ type CityInput struct {
 // BuildingInput is the command to construct a new building.
 type BuildingInput struct {
 	CityID string              `json:"city_id"`
+	Owner  string              `json:"owner"`
 	Type   domain.BuildingType `json:"type"`
 	X      int                 `json:"x"`
 	Y      int                 `json:"y"`

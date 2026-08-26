@@ -11,6 +11,7 @@ import (
 	"cityio/internal/domain"
 	"cityio/internal/messages"
 	"cityio/internal/metrics"
+	"cityio/internal/stream"
 	"cityio/internal/utils"
 )
 
@@ -59,8 +60,17 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *messages.CreateBuildingMessage:
 		state.Building = msg.Building
+		var paidAmount int64
 		if !msg.Restore {
 			if msg.Construct {
+				if state.Building.IsStandalone() {
+					paidAmount = constants.GetBuildingCost(state.Building.BuildingType(), 1)
+					if err := state.deductGold(paidAmount); err != nil {
+						ctx.Respond(err)
+						ctx.Stop(ctx.Self())
+						return
+					}
+				}
 				now := time.Now()
 				end := now.Add(
 					time.Duration(constants.GetBuildingConstructionTime(
@@ -76,6 +86,12 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 
 			if err := state.Store.CreateBuilding(state.Ctx(), state.Building); err != nil {
 				slog.ErrorContext(state.Ctx(), "failed to persist building create", "building_id", state.Building.BuildingID, "error", err)
+				if paidAmount > 0 {
+					state.refundGold(paidAmount)
+					ctx.Respond(&messages.InternalError{})
+					ctx.Stop(ctx.Self())
+					return
+				}
 			}
 		}
 		switch state.Building.BuildingType() {
@@ -91,6 +107,13 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 			state.Impl = newHouseImpl()
 		case domain.BuildingTypeBarracks:
 			state.Impl = newBarracksImpl()
+		case domain.BuildingTypeWatchtower, domain.BuildingTypeFort:
+			state.Impl = newStaticStructureImpl()
+		}
+		if state.Impl == nil {
+			ctx.Respond(&messages.InternalError{})
+			ctx.Stop(ctx.Self())
+			return
 		}
 
 		state.Impl.Create(ctx, state)
@@ -135,9 +158,14 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 		state.stopPeriodicOperation()
 		state.reportPopulation(0)
 		state.reportFoodProductionRate(0)
-		state.Cluster.Tell("city", state.Building.CityID, messages.BuildingDestroyedMessage{
-			BuildingID: state.Building.BuildingID,
-		})
+		if state.Building.IsStandalone() {
+			id := state.Building.BuildingID
+			stream.Publish("", stream.StateUpdate{DeletedBuildingID: &id})
+		} else {
+			state.Cluster.Tell("city", state.Building.CityID, messages.BuildingDestroyedMessage{
+				BuildingID: state.Building.BuildingID,
+			})
+		}
 		ctx.Respond(messages.Ack{})
 		state.destroy(ctx)
 
@@ -160,11 +188,27 @@ func (state *buildingActor) Receive(ctx actor.Context) {
 }
 
 func (state *buildingActor) notifyStateChanged() {
+	if state.Building.IsStandalone() {
+		state.recordStructureExploration()
+		building := state.Building
+		stream.Publish("", stream.StateUpdate{Building: &building})
+		return
+	}
 	if err := state.Cluster.Tell("city", state.Building.CityID, messages.BuildingStateChangedMessage{
 		Building: state.Building,
 	}); err != nil {
 		slog.ErrorContext(state.Ctx(), "failed to notify city of building state change", "building_id", state.Building.BuildingID, "error", err)
 	}
+}
+
+func (state *buildingActor) recordStructureExploration() {
+	if !state.Building.IsStandalone() {
+		return
+	}
+	radius := constants.GetBuildingVisionRadius(state.Building.BuildingType(), state.Building.Level)
+	state.recordExploration(state.Building.Owner, domain.Vision{Points: []domain.VisionPoint{{
+		X: state.Building.X, Y: state.Building.Y, Radius: radius,
+	}}})
 }
 
 // reaffirmTile re-pushes this building's presence to its tile. The building's
@@ -225,22 +269,8 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 		return &messages.MaxLevelReachedError{BuildingID: state.Building.BuildingID}
 	}
 
-	res, err := state.Cluster.Request("city", state.Building.CityID, messages.DeductOwnerGoldMessage{
-		Amount: constants.GetBuildingCost(buildingType, state.Building.Level+1),
-	})
-	if err != nil {
-		slog.ErrorContext(state.Ctx(), "failed to deduct gold for upgrade", "error", err)
+	if err := state.deductGold(constants.GetBuildingCost(buildingType, state.Building.Level+1)); err != nil {
 		return err
-	}
-	switch msg := res.(type) {
-	case messages.Ack:
-		// continue upgrade
-	case messages.InsufficientGoldError:
-		slog.WarnContext(state.Ctx(), "not enough gold", "needed", msg.Missing)
-		return &msg
-	default:
-		slog.ErrorContext(state.Ctx(), "unexpected response type from user actor", "type", fmt.Sprintf("%T", res))
-		return fmt.Errorf("unexpected response type: %T", res)
 	}
 
 	targetLevel := state.Building.Level + 1
@@ -261,6 +291,41 @@ func (state *buildingActor) upgrade(ctx actor.Context) error {
 	state.scheduleConstructionComplete(ctx)
 	metrics.UpgradesStartedTotal.WithLabelValues(string(buildingType), fmt.Sprintf("%d", targetLevel)).Inc()
 	return nil
+}
+
+func (state *buildingActor) deductGold(amount int64) error {
+	kind, id, message := "city", state.Building.CityID, any(messages.DeductOwnerGoldMessage{Amount: amount})
+	if state.Building.IsStandalone() {
+		kind, id, message = "user", state.Building.Owner, messages.CheckAndDeductGoldMessage{Amount: amount}
+	}
+	res, err := state.Cluster.Request(kind, id, message)
+	if err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to deduct gold for building", "error", err)
+		return err
+	}
+	switch msg := res.(type) {
+	case messages.Ack:
+		return nil
+	case messages.InsufficientGoldError:
+		slog.WarnContext(state.Ctx(), "not enough gold", "needed", msg.Missing)
+		return &msg
+	case *messages.InsufficientGoldError:
+		return msg
+	case error:
+		return msg
+	default:
+		return fmt.Errorf("unexpected gold deduction response: %T", res)
+	}
+}
+
+func (state *buildingActor) refundGold(amount int64) {
+	kind, id, message := "city", state.Building.CityID, any(messages.CreditOwnerGoldMessage{Amount: amount})
+	if state.Building.IsStandalone() {
+		kind, id, message = "user", state.Building.Owner, messages.RefundUserGoldMessage{Amount: amount}
+	}
+	if _, err := state.Cluster.Request(kind, id, message); err != nil {
+		slog.ErrorContext(state.Ctx(), "failed to refund gold after building create failure", "amount", amount, "error", err)
+	}
 }
 
 func (state *buildingActor) destroy(ctx actor.Context) {

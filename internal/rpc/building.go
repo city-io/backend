@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"cityio/internal/auth"
 	"cityio/internal/constants"
 	"cityio/internal/domain"
 	entityv1 "cityio/internal/gen/cityio/entity/v1"
@@ -13,6 +14,7 @@ import (
 	"cityio/internal/mapping"
 	"cityio/internal/messages"
 	"cityio/internal/services"
+	"cityio/internal/utils"
 )
 
 type buildingHandler struct {
@@ -28,6 +30,13 @@ func (h *buildingHandler) requireBuildingOwnership(ctx context.Context, building
 	if !ok {
 		return domain.Building{}, connect.NewError(connect.CodeNotFound, errors.New("building not found"))
 	}
+	claims, _ := auth.ClaimsFromContext(ctx)
+	if resp.Building.Owner != "" {
+		if resp.Building.Owner != claims.UserID {
+			return domain.Building{}, connect.NewError(connect.CodePermissionDenied, errors.New("building not owned by caller"))
+		}
+		return resp.Building, nil
+	}
 	owns, err := h.srv.ownsCity(ctx, resp.Building.CityID)
 	if err != nil {
 		return domain.Building{}, connect.NewError(connect.CodeInternal, err)
@@ -40,23 +49,88 @@ func (h *buildingHandler) requireBuildingOwnership(ctx context.Context, building
 
 func (h *buildingHandler) CreateBuilding(ctx context.Context, req *connect.Request[servicev1.CreateBuildingRequest]) (*connect.Response[servicev1.CreateBuildingResponse], error) {
 	cityID := req.Msg.GetCityId().GetValue()
-	owns, err := h.srv.ownsCity(ctx, cityID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+	buildingType := mapping.BuildingTypeFromProto(req.Msg.GetType())
+	coords := req.Msg.GetCoords()
+	if coords == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("building coordinates are required"))
 	}
-	if !owns {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
+	owner := ""
+	if constants.IsStandaloneStructure(buildingType) {
+		if cityID != "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("standalone structures cannot belong to a city"))
+		}
+		claims, _ := auth.ClaimsFromContext(ctx)
+		owner = claims.UserID
+		if err := h.validateStandalonePlacement(ctx, int(coords.GetX()), int(coords.GetY())); err != nil {
+			return nil, err
+		}
+	} else {
+		switch buildingType {
+		case domain.BuildingTypeHouse, domain.BuildingTypeFarm, domain.BuildingTypeMine, domain.BuildingTypeBarracks:
+		default:
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("building type cannot be constructed"))
+		}
+		owns, err := h.srv.ownsCity(ctx, cityID)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if !owns {
+			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("city not owned by caller"))
+		}
 	}
 	building, err := services.CreateBuilding(ctx, h.srv.cluster, &services.BuildingInput{
 		CityID: cityID,
-		Type:   mapping.BuildingTypeFromProto(req.Msg.GetType()),
-		X:      int(req.Msg.GetCoords().GetX()),
-		Y:      int(req.Msg.GetCoords().GetY()),
+		Owner:  owner,
+		Type:   buildingType,
+		X:      int(coords.GetX()),
+		Y:      int(coords.GetY()),
 	})
 	if err != nil {
+		var insufficientGold *messages.InsufficientGoldError
+		if errors.As(err, &insufficientGold) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&servicev1.CreateBuildingResponse{Building: mapping.BuildingToProto(*building)}), nil
+}
+
+func (h *buildingHandler) validateStandalonePlacement(ctx context.Context, x, y int) error {
+	terrain, ok := h.srv.world.TerrainAt(x, y)
+	if !ok {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("structure coordinates are outside the map"))
+	}
+	if terrain == domain.TerrainTypeWater {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("structures cannot be built on water"))
+	}
+	res, err := h.srv.cluster.Request("tile", utils.GetTileIndex(x, y), messages.GetTileMessage{})
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	tile, ok := res.(messages.GetTileResponseMessage)
+	if !ok {
+		return connect.NewError(connect.CodeInternal, errors.New("unexpected tile response"))
+	}
+	if tile.CityID != nil || tile.BuildingID != nil {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("structure tile must be neutral and empty"))
+	}
+	cities, err := h.srv.ownedCities(ctx)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	if withinStructurePlacementRange(cities, x, y) {
+		return nil
+	}
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New("structure is outside placement range of an owned settlement"))
+}
+
+func withinStructurePlacementRange(cities []domain.City, x, y int) bool {
+	for _, city := range cities {
+		if domain.ChebyshevToCity(city, x, y) <= constants.StructurePlacementRadius {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *buildingHandler) GetBuilding(ctx context.Context, req *connect.Request[servicev1.GetBuildingRequest]) (*connect.Response[servicev1.GetBuildingResponse], error) {
@@ -135,7 +209,15 @@ func (h *buildingHandler) DeleteBuilding(ctx context.Context, req *connect.Reque
 }
 
 func (h *buildingHandler) ListBuildings(ctx context.Context, req *connect.Request[servicev1.ListBuildingsRequest]) (*connect.Response[servicev1.ListBuildingsResponse], error) {
-	buildingList, err := h.srv.store.GetBuildingsByCity(ctx, req.Msg.GetCityId().GetValue())
+	cityID := req.Msg.GetCityId().GetValue()
+	var buildingList []domain.Building
+	var err error
+	if cityID == "" {
+		claims, _ := auth.ClaimsFromContext(ctx)
+		buildingList, err = h.srv.store.GetBuildingsByOwner(ctx, claims.UserID)
+	} else {
+		buildingList, err = h.srv.store.GetBuildingsByCity(ctx, cityID)
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

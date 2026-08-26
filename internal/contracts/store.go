@@ -25,6 +25,7 @@ type Store interface {
 	GetMailboxMessagesByRecipient(ctx context.Context, userID string) ([]domain.MailboxMessage, error)
 	GetCitiesByOwner(ctx context.Context, owner string) ([]domain.City, error)
 	GetBuildingsByCity(ctx context.Context, cityID string) ([]domain.Building, error)
+	GetBuildingsByOwner(ctx context.Context, owner string) ([]domain.Building, error)
 	GetExploredTiles(ctx context.Context, userID string) ([]domain.Coordinates, error)
 	AddExploredTiles(ctx context.Context, userID string, tiles []domain.Coordinates) error
 

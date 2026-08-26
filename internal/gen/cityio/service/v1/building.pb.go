@@ -23,10 +23,11 @@ const (
 )
 
 type CreateBuildingRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CityId        *v1.CityId             `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
-	Type          v1.BuildingType        `protobuf:"varint,2,opt,name=type,proto3,enum=cityio.entity.v1.BuildingType" json:"type,omitempty"`
-	Coords        *v1.Coordinates        `protobuf:"bytes,3,opt,name=coords,proto3" json:"coords,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required for city buildings and omitted for standalone watchtowers/forts.
+	CityId        *v1.CityId      `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
+	Type          v1.BuildingType `protobuf:"varint,2,opt,name=type,proto3,enum=cityio.entity.v1.BuildingType" json:"type,omitempty"`
+	Coords        *v1.Coordinates `protobuf:"bytes,3,opt,name=coords,proto3" json:"coords,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -375,8 +376,9 @@ func (*DeleteBuildingResponse) Descriptor() ([]byte, []int) {
 }
 
 type ListBuildingsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CityId        *v1.CityId             `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When omitted, returns the caller's standalone structures.
+	CityId        *v1.CityId `protobuf:"bytes,1,opt,name=city_id,json=cityId,proto3" json:"city_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

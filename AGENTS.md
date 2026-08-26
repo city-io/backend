@@ -44,7 +44,8 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
 - **`internal/actors`** — the heart of the system. One actor per live entity, six kinds:
   - `userActor`, `cityActor`, `buildingActor`, `tileActor`, `armyActor`, `battleActor` — each embeds `baseActor`.
   - `buildingActor` delegates type-specific behavior to a `buildingActorImpl`
-    (`cityCenter.go`, `townCenter.go`, `house.go`, `farm.go`, `mine.go`, `barracks.go`) via
+    (`cityCenter.go`, `townCenter.go`, `house.go`, `farm.go`, `mine.go`, `barracks.go`,
+    `staticStructure.go`) via
     `Create` / `Destroy` / `Handle` hooks. The city actor owns its durable FIFO training
     pipeline; each `barracks.go` implementation is one worker lane that claims an order, owns
     its one-shot completion timer, and retries an idempotent `armyActor` spawn until it succeeds.
@@ -52,7 +53,7 @@ Connect RPC (rpc)  ──▶  services  ──▶  cluster (contracts.ClusterPro
     nearest-owned-settlement food-upkeep attribution, composition-aware weighted
     8-directional terrain pathfinding, merging, combat enrollment, retreat, and capture orders.
   - `battleActor` owns one active battle: alliance-ready attacker/defender sides, simultaneous
-    three-second combat rounds, deterministic whole-unit casualties, and resolution.
+    three-second combat rounds, seeded random whole-unit casualties, and resolution.
   - Actors persist through the injected `contracts.Store` (`state.Store`): reads/creates/deletes
     hit the DB immediately; `Enqueue*` coalesces updates for the background writer.
 - **`internal/persistence`** — `Store` (implements `contracts.Store`), the single sink for
@@ -164,8 +165,10 @@ the "Client / frontend API reference" section below.
   unowned). New player cities temporarily start with a completed level-1 farm and barracks in
   addition to their city center. A city has `population` (grows logistically toward
   `population_cap`), and the cap is the sum of its buildings' population contributions.
-- **Buildings:** typed structures inside a city. Types: `city_center`, `town_center`, `barracks`,
-  `house`, `farm`, `mine`. Levels 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
+- **Buildings:** typed structures. City buildings are `city_center`, `town_center`, `barracks`,
+  `house`, `farm`, and `mine`; standalone player-owned structures are `watchtower` and `fort`.
+  Standalone structures occupy neutral land outside settlement footprints and must be within
+  `StructurePlacementRadius` (10) of an owned settlement. Levels are 1..`MAX_BUILDING_LEVEL` (10). Building/upgrading takes
   construction time; while under construction `level != target_level`. City/town centers can't be
   demolished. New level-0 construction produces nothing; an existing building continues operating
   at 75% of its current completed level's production while upgrading. Fractional per-tick output is
@@ -195,9 +198,12 @@ the "Client / frontend API reference" section below.
     three seconds, re-arming only after the previous round finishes so delayed actor work cannot
     produce catch-up rounds. Both sides' damage uses the pre-round composition, so casualties are
     simultaneous. Total opposing attack power makes absolute casualties scale proportionally with
-    force size for equivalent compositions. Attack, defense, and HP determine fractional expected
-    losses, scaled by `BattleCasualtyRate` (currently 1.0); battle-local carry converts them into
-    deterministic whole-unit deaths over time. There is no persistent army/unit health or wounded
+    force size for equivalent compositions. Attack, defense, and HP determine each unit's casualty
+    probability, scaled by `BattleCasualtyRate` (currently 1.0); seeded per-unit rolls produce
+    whole-unit deaths while making small battles less predictable than large ones. Completed city/town
+    centers add level-scaled durability while defending their settlement; completed forts add a
+    level-scaled durability bonus to their owner's side for battles on the fort tile. Eligible
+    bonuses stack. There is no persistent army/unit health or wounded
     state. A zero-unit army is deleted. A side can contain multiple users: additional attackers
     targeting a participant join the opposing side, leaving formal alliance policy for the future
     diplomacy layer.
@@ -244,7 +250,9 @@ the "Client / frontend API reference" section below.
     active batch is blocked from upgrade or demolition. `GetGameConfig` exposes each barracks
     level's `training_speed_multiplier`; troop costs and base times remain client-known constants.
 - **Vision:** a player sees any tile within Chebyshev distance `VisionRadius` (3) of any tile of
-  a city they own or the current tile of any army they own. This gates what read RPCs return
+  a city they own or the current tile of any army they own. A completed watchtower adds its own
+  level-scaled Chebyshev radius (3 at level 1 through 12 at level 10); every owned standalone
+  structure reveals at least its tile. This gates what read RPCs return
   (see visibility rules below). Seen coordinates are persisted in `explored_tiles`: terrain stays
   known after vision leaves, while occupancy and dynamic entities are removed. Army movement
   persists and streams newly explored terrain whenever an army enters a tile.
@@ -290,7 +298,7 @@ for TypeScript) rather than hand-writing request types.
 - **Enums** (proto JSON uses the full SCREAMING_SNAKE name):
   - `CityType`: `CITY_TYPE_CITY`, `CITY_TYPE_TOWN` (+ `..._UNSPECIFIED`).
   - `BuildingType`: `BUILDING_TYPE_CITY_CENTER`, `_TOWN_CENTER`, `_BARRACKS`, `_HOUSE`, `_FARM`,
-    `_MINE` (+ `_UNSPECIFIED`).
+    `_MINE`, `_WATCHTOWER`, `_FORT` (+ `_UNSPECIFIED`).
   - `TroopType`: `TROOP_TYPE_SOLDIER`, `_ARCHER`, `_CAVALRY`, `_ARTILLERY` (+ `_UNSPECIFIED`).
 - **EntityBag** — a flat collection of raw entities returned by list/map/stream responses:
   `{ users[], cities[], buildings[], armies[], tiles[], army_orders[], battles[] }`. Stream typed deletion/hidden IDs live
@@ -309,8 +317,9 @@ for TypeScript) rather than hand-writing request types.
   food_upkeep, net_food_flow (Rate), recruitable_population, core_population_floor,
   tax_rate_percent, tax_income,
   population_growth_before_tax`. See `mapping.HidePrivateCityFields`.
-- **Building** `{ building_id, city_id, type, level, target_level, coords, construction_start?,
-  construction_end? }` — under construction when `level != target_level` (timestamps present).
+- **Building** `{ building_id, city_id?, owner?, type, level, target_level, coords,
+  construction_start?, construction_end? }` — city buildings use `city_id`; standalone structures
+  use `owner`. Under construction when `level != target_level` (timestamps present).
 - **Army** `{ army_id, name, owner (UserId), coords, composition_visibility, troops[], order_id?, battle_id? }` —
   composition is exact for the owner and explicitly hidden from unauthorized viewers; private
   order/battle references are removed from sanitized foreign armies. Names are public and unique
@@ -370,15 +379,18 @@ for TypeScript) rather than hand-writing request types.
   tax must be 0–100. Policy changes stream immediately.
 
 **BuildingService**
-- `CreateBuilding(city_id, type, coords) → { building }` — must own the city; starts construction
-  (spawns at level 0 → target 1).
+- `CreateBuilding(city_id?, type, coords) → { building }` — city buildings require an owned city;
+  watchtowers/forts omit `city_id` and require an empty neutral land tile within the configured
+  placement radius of an owned settlement. Standalone construction reserves the configured gold
+  cost and spawns at level 0 → target 1.
 - `GetBuilding(building_id) → { building }` — vision-gated.
 - `UpgradeBuilding(building_id) → {}` — must own; deducts gold and starts construction to the next
   level. Errors: `FailedPrecondition` (`InsufficientGold`, `ConstructionInProgress`,
   `TrainingInProgress` for a barracks with an active assigned order, `MaxLevelReached`).
 - `DeleteBuilding(building_id) → {}` — must own; city/town centers and a barracks with an active
   assigned training order cannot be demolished (`FailedPrecondition`).
-- `ListBuildings(city_id) → { buildings[] }` — vision-filtered.
+- `ListBuildings(city_id?) → { buildings[] }` — vision-filtered; omitting `city_id` returns the
+  caller's standalone structures.
 
 **ArmyService**
 - `TrainTroops(city_id, type, count) → { order }` — must own the city and have at least one
@@ -442,7 +454,8 @@ for TypeScript) rather than hand-writing request types.
 **ConfigService**
 - `GetGameConfig() → { map_size, city_size, vision_radius, building_tick (Duration),
   city_tick (Duration), buildings[]: { type, levels[]: { level, cost[], construction_time
-  (Duration), production[], population } }, population_policy }` — *public*, static tunables for
+  (Duration), production[], population, vision_radius, defense_bonus_percent } },
+  structure_placement_radius, population_policy }` — *public*, static tunables for
   the client, including civilian/militia/tax limits, tax yield, and the maximum tax-growth penalty. Note:
   troop stats are **not** exposed here yet (see Game model → troop stat table).
 

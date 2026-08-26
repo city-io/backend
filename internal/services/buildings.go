@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -29,15 +30,30 @@ func CreateBuilding(ctx context.Context, cluster contracts.ClusterProvider, buil
 	newBuilding := domain.Building{
 		BuildingID: buildingID,
 		CityID:     building.CityID,
+		Owner:      building.Owner,
 		Type:       string(building.Type),
 		X:          building.X,
 		Y:          building.Y,
 	}
 
-	if _, err := cluster.Request("building", buildingID, &messages.CreateBuildingMessage{Building: newBuilding, Restore: false, Construct: true}); err != nil {
+	res, err := cluster.Request("building", buildingID, &messages.CreateBuildingMessage{Building: newBuilding, Restore: false, Construct: true})
+	if err != nil {
 		slog.ErrorContext(ctx, "failed to create building actor", "error", err)
 		return nil, err
 	}
-
-	return &newBuilding, nil
+	if _, ok := res.(messages.Ack); !ok {
+		if responseErr, ok := res.(error); ok {
+			return nil, responseErr
+		}
+		return nil, fmt.Errorf("unexpected building create response: %T", res)
+	}
+	res, err = cluster.Request("building", buildingID, messages.GetBuildingMessage{})
+	if err != nil {
+		return nil, err
+	}
+	response, ok := res.(*messages.GetBuildingResponseMessage)
+	if !ok {
+		return nil, fmt.Errorf("unexpected building response after create: %T", res)
+	}
+	return &response.Building, nil
 }

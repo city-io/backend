@@ -234,6 +234,7 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 		params := database.BatchCreateBuildingsParams{
 			BuildingIds:        make([]string, 0, len(chunk)),
 			CityIds:            make([]string, 0, len(chunk)),
+			Owners:             make([]string, 0, len(chunk)),
 			Types:              make([]string, 0, len(chunk)),
 			Levels:             make([]int32, 0, len(chunk)),
 			Xs:                 make([]int32, 0, len(chunk)),
@@ -245,6 +246,7 @@ func seedWorld(ctx context.Context, deps *Deps) error {
 		for _, b := range chunk {
 			params.BuildingIds = append(params.BuildingIds, b.BuildingID)
 			params.CityIds = append(params.CityIds, b.CityID)
+			params.Owners = append(params.Owners, b.Owner)
 			params.Types = append(params.Types, string(b.Type))
 			params.Levels = append(params.Levels, int32(b.Level))
 			params.Xs = append(params.Xs, int32(b.X))

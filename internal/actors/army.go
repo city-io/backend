@@ -535,6 +535,7 @@ func (state *armyActor) refreshAttackTarget() {
 	if cities, err := state.Store.GetCitiesByOwner(state.Ctx(), state.Army.Owner); err == nil {
 		vision.Cities = cities
 	}
+	vision.Points = state.structureVisionPoints(state.Army.Owner)
 	if !vision.PointVisible(target.X, target.Y, constants.VisionRadius) {
 		return
 	}
