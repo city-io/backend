@@ -532,8 +532,8 @@ make status-db  # check if Postgres is running
 buf generate    # regenerate internal/gen from proto/cityio/{entity,service}/v1/*.proto
 ```
 
-Run/build commands must be executed from the **repo root** — `NewDB` loads migrations from the
-relative path `db/migrations`.
+Run/build commands above are executed from the **repo root**. SQL files in `db/migrations`
+are embedded into the binary by `db/migrations.go` and used by `NewDB`.
 
 ### Environment
 

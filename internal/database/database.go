@@ -2,6 +2,7 @@
 package database
 
 import (
+	"cityio/db"
 	"context"
 	"log/slog"
 	"os"
@@ -26,11 +27,13 @@ func NewDB(ctx context.Context, dsn string) Querier {
 		os.Exit(1)
 	}
 
+	goose.SetBaseFS(db.Migrations)
+
 	if err := goose.RunContext(
 		ctx,
 		"down-to",
 		migrations,
-		"db/migrations",
+		"migrations",
 		"0",
 	); err != nil {
 		slog.ErrorContext(ctx, "failed to run goose reset migration", "error", err)
@@ -41,7 +44,7 @@ func NewDB(ctx context.Context, dsn string) Querier {
 		ctx,
 		"up",
 		migrations,
-		"db/migrations",
+		"migrations",
 	); err != nil {
 		slog.ErrorContext(ctx, "failed to open goose apply migration", "error", err)
 		os.Exit(1)
